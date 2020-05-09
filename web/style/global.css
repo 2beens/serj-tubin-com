@@ -1,0 +1,38 @@
+@font-face {
+    font-family: mainFont;
+    src: url(fonts/FjallaOne-Regular.ttf);
+}
+
+body {
+    font-family: mainFont, sans-serif;
+    background-color: black;
+    color: whitesmoke;
+}
+
+.container {
+    padding: 15px;
+    margin-top: 20px;
+}
+
+footer {
+    position: fixed;
+    height: 100px;
+    bottom: 0;
+    width: 100%;
+}
+
+.s-footer {
+    padding: 15px;
+    border-top: solid #125688 3px;
+}
+
+#my-image {
+    border-radius: 50%;
+    max-width: 25%;
+    height: auto;
+    float: right;
+}
+
+#my-image:hover {
+    box-shadow: 0 0 2px 1px rgba(0, 140, 186, 0.5);
+}
