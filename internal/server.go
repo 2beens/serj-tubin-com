@@ -35,6 +35,9 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	r.HandleFunc("/quote/random", func(w http.ResponseWriter, r *http.Request) {
+		//Allow CORS here By * or specific origin
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
 		q := s.quotesManager.RandomQuote()
 		qBytes, err := json.Marshal(q)
 		if err != nil {
