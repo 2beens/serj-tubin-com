@@ -23,7 +23,7 @@ func main() {
 	loggingSetup(*logsPath, "trace")
 
 	server := internal.NewServer()
-	server.Serve()
+	server.Serve(*port)
 }
 
 func loggingSetup(logFileName string, logLevel string) {

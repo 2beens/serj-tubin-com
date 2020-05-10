@@ -49,10 +49,10 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	return r
 }
 
-func (s *Server) Serve() {
+func (s *Server) Serve(port int) {
 	router := s.routerSetup()
 
-	ipAndPort := fmt.Sprintf("%s:%s", "localhost", "8080")
+	ipAndPort := fmt.Sprintf("%s:%d", "localhost", port)
 
 	httpServer := &http.Server{
 		Handler:      router,
