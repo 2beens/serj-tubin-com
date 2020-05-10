@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,10 +11,19 @@ import (
 )
 
 type Server struct {
+	quotesManager *QuotesManager
 }
 
 func NewServer() *Server {
 	s := &Server{}
+
+	qm, err := NewQuoteManager("./assets/quotes.csv")
+	if err != nil {
+		panic(err)
+	}
+
+	s.quotesManager = qm
+
 	return s
 }
 
@@ -25,7 +35,15 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	r.HandleFunc("/quote/random", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/web/index.html", http.StatusPermanentRedirect)
+		q := s.quotesManager.RandomQuote()
+		qBytes, err := json.Marshal(q)
+		if err != nil {
+			http.Error(w, "", http.StatusInternalServerError)
+			log.Errorf("marshal quote error: %s", err)
+			return
+		}
+
+		w.Write(qBytes)
 	})
 
 	return r
