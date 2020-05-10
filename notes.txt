@@ -1,0 +1,6 @@
+some ideas:
+    - utils page with things like;
+        - your location, user agent, ip
+        - weather tomorrow
+        - some quotes
+        - etc

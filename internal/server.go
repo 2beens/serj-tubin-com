@@ -20,11 +20,11 @@ func NewServer() *Server {
 func (s *Server) routerSetup() (r *mux.Router) {
 	r = mux.NewRouter()
 
-	// server static files
-	fs := http.FileServer(http.Dir("./web/"))
-	r.PathPrefix("/web/").Handler(http.StripPrefix("/web/", fs))
-
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(":)"))
+	})
+
+	r.HandleFunc("/quote/random", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/web/index.html", http.StatusPermanentRedirect)
 	})
 
