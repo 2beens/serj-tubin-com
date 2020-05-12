@@ -55,7 +55,15 @@ func (s *Server) routerSetup() (r *mux.Router) {
 		w.Header().Set("Content-Type", "application/json")
 
 		// allowed up to 15,000 queries per hour
-		geoIpUrl := fmt.Sprintf("https://freegeoip.app/json/%s", r.Header.Get("X-Forwarded-For"))
+		// https://freegeoip.app/
+		userIp, err := ReadUserIP(r)
+		if err != nil {
+			log.Errorf("error getting user ip: %s", err.Error())
+			http.Error(w, "geoip error", http.StatusInternalServerError)
+			return
+		}
+
+		geoIpUrl := fmt.Sprintf("https://freegeoip.app/json/%s", userIp)
 		log.Debugf("calling geo ip info: %s", geoIpUrl)
 
 		resp, err := http.Get(geoIpUrl)
