@@ -62,6 +62,8 @@ type WeatherApiResponse struct {
 // example API call
 // http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=0af09f7bce2fd9cbea44d6740f3c8e27
 
+// TODO: cache responses
+
 func getWeatherInfo(geoInfo GeoIpInfo, weatherApiKey string) (WeatherApiResponse, error) {
 	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=%s", geoInfo.City, geoInfo.CountryCode, weatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
