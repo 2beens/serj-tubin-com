@@ -22,7 +22,12 @@ func main() {
 
 	loggingSetup(*logsPath, "trace")
 
-	server := internal.NewServer()
+	openWeatherApiKey := os.Getenv("OPEN_WEATHER_API_KEY")
+	if openWeatherApiKey == "" {
+		log.Errorf("open weather API key not set, use OPEN_WEATHER_API_KEY env var to set it")
+	}
+
+	server := internal.NewServer(openWeatherApiKey)
 	server.Serve(*port)
 }
 
