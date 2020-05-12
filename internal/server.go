@@ -3,7 +3,6 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -54,37 +53,9 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	r.HandleFunc("/weather/tomorrow", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		// allowed up to 15,000 queries per hour
-		// https://freegeoip.app/
-		userIp, err := ReadUserIP(r)
+		geoIpResponse, err := getRequestGeoInfo(r)
 		if err != nil {
-			log.Errorf("error getting user ip: %s", err.Error())
-			http.Error(w, "geoip error", http.StatusInternalServerError)
-			return
-		}
-
-		geoIpUrl := fmt.Sprintf("https://freegeoip.app/json/%s", userIp)
-		log.Debugf("calling geo ip info: %s", geoIpUrl)
-
-		resp, err := http.Get(geoIpUrl)
-		if err != nil {
-			log.Errorf("error getting freegeoip response: %s", err.Error())
-			http.Error(w, "geoip error", http.StatusInternalServerError)
-			return
-		}
-
-		respBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Errorf("failed to read geo ip response bytes: %s", err)
-			http.Error(w, "geoip error", http.StatusInternalServerError)
-			return
-		}
-
-		geoIpResponse := &GeoIpResponse{}
-		err = json.Unmarshal(respBytes, geoIpResponse)
-		if err != nil {
-			log.Errorf("failed to unmarshal geo ip response bytes: %s", err)
-			http.Error(w, "geoip error", http.StatusInternalServerError)
+			http.Error(w, "geo ip error", http.StatusInternalServerError)
 			return
 		}
 
