@@ -54,7 +54,6 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
-	// /Users/serj/Documents/projects/serj-tubin-com/internal/city.list.json
 	NewWeatherHandler(weatherRouter, "./assets/city.list.json", s.openWeatherApiKey)
 
 	return r
