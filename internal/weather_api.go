@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -59,6 +60,14 @@ type WeatherApiResponse struct {
 	Cod      int    `json:"cod"`
 }
 
+type WeatherCity struct {
+	ID      int        `json:"id"`
+	Name    string     `json:"name"`
+	State   string     `json:"state"`
+	Country string     `json:"country"`
+	Coord   Coordinate `json:"coord"`
+}
+
 // example API call
 // http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=0af09f7bce2fd9cbea44d6740f3c8e27
 
@@ -85,4 +94,24 @@ func getWeatherInfo(geoInfo GeoIpInfo, weatherApiKey string) (WeatherApiResponse
 	}
 
 	return *weatherApiResponse, nil
+}
+
+func loadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
+	citiesJsonFile, err := os.Open(cityListDataPath)
+	if err != nil {
+		return []WeatherCity{}, err
+	}
+
+	citiesJsonFileData, err := ioutil.ReadAll(citiesJsonFile)
+	if err != nil {
+		return []WeatherCity{}, err
+	}
+
+	var cities []WeatherCity
+	err = json.Unmarshal(citiesJsonFileData, &cities)
+	if err != nil {
+		return []WeatherCity{}, err
+	}
+
+	return cities, nil
 }
