@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -94,6 +95,14 @@ func getWeatherInfo(geoInfo GeoIpInfo, weatherApiKey string) (WeatherApiResponse
 	}
 
 	return *weatherApiResponse, nil
+}
+
+// returns something like sunny, cloudy, etc
+func getWeatherTomorrow(city WeatherCity) ([]string, error) {
+	// TODO: get city ID and make a open weather API call to get weather for tomorrow
+	//	check their API docs on how
+
+	return nil, errors.New("not implemented")
 }
 
 func loadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
