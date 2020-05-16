@@ -54,6 +54,11 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	r.HandleFunc("/whereami", func(w http.ResponseWriter, r *http.Request) {
+		// TODO: allow CORS on all requests ?
+		//Allow CORS here By * or specific origin
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+
 		geoIpInfo, err := getRequestGeoInfo(r)
 		if err != nil {
 			log.Errorf("error getting geo ip info: %s", err)
