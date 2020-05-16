@@ -10,8 +10,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	OneHour            = 60 * 60
+	GeoIpCacheExpire   = OneHour * 5 // default expire in hours
+	WeatherCacheExpire = OneHour     // default expire in hours
+)
+
 type Server struct {
 	geoIp             *GeoIp
+	weatherApi        *WeatherApi
 	quotesManager     *QuotesManager
 	openWeatherApiKey string
 	muteRequestLogs   bool
@@ -22,6 +29,7 @@ func NewServer(openWeatherApiKey string) *Server {
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(50),
+		weatherApi:        NewWeatherApi(50),
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -38,7 +46,7 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	r = mux.NewRouter()
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(":)"))
+		w.Write([]byte("I'm OK, thanks :)"))
 	})
 
 	r.HandleFunc("/quote/random", func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +78,7 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
-	NewWeatherHandler(weatherRouter, s.geoIp, "./assets/city.list.json", s.openWeatherApiKey)
+	NewWeatherHandler(weatherRouter, s.geoIp, s.weatherApi, "./assets/city.list.json", s.openWeatherApiKey)
 
 	r.Use(s.corsMiddleware())
 	r.Use(s.loggingMiddleware())

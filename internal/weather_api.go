@@ -7,16 +7,41 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/coocood/freecache"
 	log "github.com/sirupsen/logrus"
 )
 
 // example API call
 // http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=0af09f7bce2fd9cbea44d6740f3c8e27
 
-// TODO: cache responses
+type WeatherApi struct {
+	cache *freecache.Cache
+}
 
-func getWeatherCurrent(geoInfo *GeoIpInfo, weatherApiKey string) (WeatherApiResponse, error) {
-	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=%s", geoInfo.City, geoInfo.CountryCode, weatherApiKey)
+func NewWeatherApi(cacheSizeMegabytes int) *WeatherApi {
+	megabyte := 1024 * 1024
+	cacheSize := cacheSizeMegabytes * megabyte
+
+	return &WeatherApi{
+		cache: freecache.NewCache(cacheSize),
+	}
+}
+
+func (w *WeatherApi) GetWeatherCurrent(city WeatherCity, weatherApiKey string) (WeatherApiResponse, error) {
+	weatherApiResponse := &WeatherApiResponse{}
+
+	cacheKey := fmt.Sprintf("current::%s", city.ID)
+	if currentCityWeatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
+		if err = json.Unmarshal(currentCityWeatherBytes, weatherApiResponse); err == nil {
+			return *weatherApiResponse, nil
+		} else {
+			log.Errorf("failed to unmarshal current weather from cache for city %s: %s", city.Name, err)
+		}
+	} else {
+		log.Debugf("cached current weather for city %s not found: %s", city.Name, err)
+	}
+
+	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?id=%d&appid=%s", city.ID, weatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 
 	resp, err := http.Get(weatherApiUrl)
@@ -29,17 +54,23 @@ func getWeatherCurrent(geoInfo *GeoIpInfo, weatherApiKey string) (WeatherApiResp
 		return WeatherApiResponse{}, fmt.Errorf("failed to read weather api response bytes: %s", err)
 	}
 
-	weatherApiResponse := &WeatherApiResponse{}
 	err = json.Unmarshal(respBytes, weatherApiResponse)
 	if err != nil {
 		return WeatherApiResponse{}, fmt.Errorf("failed to unmarshal weather api response bytes: %s", err)
+	}
+
+	// set cache
+	if err = w.cache.Set([]byte(cacheKey), respBytes, WeatherCacheExpire); err != nil {
+		log.Errorf("failed to write geo ip cache for %s %d: %s", city.Name, city.ID, err)
+	} else {
+		log.Debugf("geo ip cache set for city: %s", city.Name)
 	}
 
 	return *weatherApiResponse, nil
 }
 
 // returns something like sunny, cloudy, etc
-func getWeatherTomorrow(city WeatherCity, weatherApiKey string) ([]string, error) {
+func (w *WeatherApi) GetWeatherTomorrow(city WeatherCity, weatherApiKey string) ([]string, error) {
 	log.Tracef("getting weather tomorrow for: %d %s / $s", city.ID, city.Name, city.Country)
 
 	//  get city ID and make a open weather API call to get weather for tomorrow
@@ -73,7 +104,7 @@ func getWeatherTomorrow(city WeatherCity, weatherApiKey string) ([]string, error
 	return weatherTomorrow, nil
 }
 
-func loadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
+func (w *WeatherApi) LoadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
 	citiesJsonFile, err := os.Open(cityListDataPath)
 	if err != nil {
 		return []WeatherCity{}, err

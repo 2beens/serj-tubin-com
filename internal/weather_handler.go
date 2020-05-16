@@ -12,6 +12,7 @@ import (
 
 type WeatherHandler struct {
 	geoIp             *GeoIp
+	weatherApi        *WeatherApi
 	openWeatherApiKey string
 	citiesData        map[string]*[]WeatherCity
 }
@@ -20,14 +21,15 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
-func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, citiesDataPath, openWeatherApiKey string) *WeatherHandler {
+func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, weatherApi *WeatherApi, citiesDataPath, openWeatherApiKey string) *WeatherHandler {
 	handler := &WeatherHandler{
 		openWeatherApiKey: openWeatherApiKey,
 		geoIp:             geoIp,
+		weatherApi:        weatherApi,
 	}
 
 	loadedCities := 0
-	citiesData, err := loadCitiesData(citiesDataPath)
+	citiesData, err := weatherApi.LoadCitiesData(citiesDataPath)
 	if err != nil {
 		log.Errorf("failed to load weather cities data: %s", err)
 	} else {
@@ -53,6 +55,48 @@ func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, citiesDataPath, 
 	return handler
 }
 
+func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if handler.openWeatherApiKey == "" {
+		log.Errorf("error getting Weather info info: open weather api key not set")
+		http.Error(w, "weather api error", http.StatusInternalServerError)
+		return
+	}
+
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
+	if err != nil {
+		log.Errorf("error getting geo ip info: %s", err)
+		http.Error(w, "geo ip info error", http.StatusInternalServerError)
+		return
+	}
+
+	city, err := handler.getWeatherCity(geoIpInfo)
+	if err != nil {
+		log.Errorf("error getting current weather city from geo ip info: %s", err)
+		http.Error(w, "weather city info error", http.StatusInternalServerError)
+		return
+	}
+
+	weatherInfo, err := handler.weatherApi.GetWeatherCurrent(city, handler.openWeatherApiKey)
+	if err != nil {
+		log.Errorf("error getting weather info: %s", err)
+		http.Error(w, "weather api error", http.StatusInternalServerError)
+		return
+	}
+
+	var weatherMain []string
+	for _, w := range weatherInfo.Weather {
+		weatherMain = append(weatherMain, w.Main)
+	}
+
+	testResponse := fmt.Sprintf(`{"weather": "%s"}`, strings.Join(weatherMain, ", "))
+	_, err = w.Write([]byte(testResponse))
+	if err != nil {
+		log.Errorf("failed to write response for weather: %s", err)
+	}
+}
+
 func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -76,7 +120,7 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	weatherInfo, err := getWeatherTomorrow(city, handler.openWeatherApiKey)
+	weatherInfo, err := handler.weatherApi.GetWeatherTomorrow(city, handler.openWeatherApiKey)
 	if err != nil {
 		log.Errorf("error getting weather tomorrow info: %s", err)
 		http.Error(w, "weather tomorrow error", http.StatusInternalServerError)
@@ -90,41 +134,7 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if handler.openWeatherApiKey == "" {
-		log.Errorf("error getting Weather info info: open weather api key not set")
-		http.Error(w, "weather api error", http.StatusInternalServerError)
-		return
-	}
-
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
-	if err != nil {
-		log.Errorf("error getting geo ip info: %s", err)
-		http.Error(w, "geo ip info error", http.StatusInternalServerError)
-		return
-	}
-
-	weatherInfo, err := getWeatherCurrent(geoIpInfo, handler.openWeatherApiKey)
-	if err != nil {
-		log.Errorf("error getting weather info: %s", err)
-		http.Error(w, "weather api error", http.StatusInternalServerError)
-		return
-	}
-
-	var weatherMain []string
-	for _, w := range weatherInfo.Weather {
-		weatherMain = append(weatherMain, w.Main)
-	}
-
-	testResponse := fmt.Sprintf(`{"weather": "%s"}`, strings.Join(weatherMain, ", "))
-	_, err = w.Write([]byte(testResponse))
-	if err != nil {
-		log.Errorf("failed to write response for weather: %s", err)
-	}
-}
-
+// TODO: move this to weather api struct
 func (handler *WeatherHandler) getWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
 	cityName := strings.ToLower(geoInfo.City)
 	citiesList, found := handler.citiesData[cityName]

@@ -27,11 +27,6 @@ type GeoIpInfo struct {
 	MetroCode   int     `json:"metro_code"`
 }
 
-const (
-	GeoIpHour        = 60 * 60
-	GeoIpCacheExpire = GeoIpHour * 5 // default expire in hours
-)
-
 type GeoIp struct {
 	cache *freecache.Cache
 	mutex sync.RWMutex
@@ -75,12 +70,9 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 
 	// seems like freechache already solves sync issues
 	gi.mutex.RLock()
-	geoIpInfoBytes, err := gi.cache.Get([]byte(userIp))
-	if err == nil {
+	if geoIpInfoBytes, err := gi.cache.Get([]byte(userIp)); err == nil {
 		log.Tracef("found geo ip info for %s in cache", userIp)
-
-		err = json.Unmarshal(geoIpInfoBytes, geoIpResponse)
-		if err == nil {
+		if err = json.Unmarshal(geoIpInfoBytes, geoIpResponse); err == nil {
 			return geoIpResponse, nil
 		}
 
@@ -112,18 +104,13 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	}
 
 	// set cache
-	geoIpInfoBytes, err = json.Marshal(geoIpResponse)
-	if err == nil {
-		gi.mutex.Lock()
-		err = gi.cache.Set([]byte(userIp), geoIpInfoBytes, GeoIpCacheExpire)
-		if err != nil {
-			log.Errorf("failed to write geo ip cache for %s: %s", userIp, err)
-		}
-		log.Debugf("geo ip cache set for: %s", userIp)
-		gi.mutex.Unlock()
+	gi.mutex.Lock()
+	if err = gi.cache.Set([]byte(userIp), respBytes, GeoIpCacheExpire); err != nil {
+		log.Errorf("failed to write geo ip cache for %s: %s", userIp, err)
 	} else {
-		log.Errorf("failed to marshal geo ip info for cache %s: %s", userIp, err)
+		log.Debugf("geo ip cache set for: %s", userIp)
 	}
+	gi.mutex.Unlock()
 
 	return geoIpResponse, nil
 }
