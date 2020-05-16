@@ -53,6 +53,18 @@ func (s *Server) routerSetup() (r *mux.Router) {
 		w.Write(qBytes)
 	})
 
+	r.HandleFunc("/whereami", func(w http.ResponseWriter, r *http.Request) {
+		geoIpInfo, err := getRequestGeoInfo(r)
+		if err != nil {
+			log.Errorf("error getting geo ip info: %s", err)
+			http.Error(w, "geo ip info error", http.StatusInternalServerError)
+			return
+		}
+
+		geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.City, geoIpInfo.CountryName)
+		w.Write([]byte(geoResp))
+	})
+
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	NewWeatherHandler(weatherRouter, "./assets/city.list.json", s.openWeatherApiKey)
 
