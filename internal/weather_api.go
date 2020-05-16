@@ -32,6 +32,7 @@ func (w *WeatherApi) GetWeatherCurrent(city WeatherCity, weatherApiKey string) (
 
 	cacheKey := fmt.Sprintf("current::%s", city.ID)
 	if currentCityWeatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
+		log.Tracef("found current weather info for %s in cache", city.Name)
 		if err = json.Unmarshal(currentCityWeatherBytes, weatherApiResponse); err == nil {
 			return *weatherApiResponse, nil
 		} else {
