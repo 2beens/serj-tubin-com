@@ -11,6 +11,7 @@ import (
 )
 
 type WeatherHandler struct {
+	geoIp             *GeoIp
 	openWeatherApiKey string
 	citiesData        map[string]*[]WeatherCity
 }
@@ -19,9 +20,10 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
-func NewWeatherHandler(weatherRouter *mux.Router, citiesDataPath, openWeatherApiKey string) *WeatherHandler {
+func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, citiesDataPath, openWeatherApiKey string) *WeatherHandler {
 	handler := &WeatherHandler{
 		openWeatherApiKey: openWeatherApiKey,
+		geoIp:             geoIp,
 	}
 
 	loadedCities := 0
@@ -60,7 +62,7 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	geoIpInfo, err := getRequestGeoInfo(r)
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
@@ -97,7 +99,7 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	geoIpInfo, err := getRequestGeoInfo(r)
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
@@ -123,7 +125,7 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (handler *WeatherHandler) getWeatherCity(geoInfo GeoIpInfo) (WeatherCity, error) {
+func (handler *WeatherHandler) getWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
 	cityName := strings.ToLower(geoInfo.City)
 	citiesList, found := handler.citiesData[cityName]
 	if !found {

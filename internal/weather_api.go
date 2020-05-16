@@ -15,7 +15,7 @@ import (
 
 // TODO: cache responses
 
-func getWeatherCurrent(geoInfo GeoIpInfo, weatherApiKey string) (WeatherApiResponse, error) {
+func getWeatherCurrent(geoInfo *GeoIpInfo, weatherApiKey string) (WeatherApiResponse, error) {
 	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=%s", geoInfo.City, geoInfo.CountryCode, weatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 

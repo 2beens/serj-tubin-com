@@ -7,7 +7,9 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
+	"github.com/coocood/freecache"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,19 +27,36 @@ type GeoIpInfo struct {
 	MetroCode   int     `json:"metro_code"`
 }
 
-// TODO: cache geo ip info
+const (
+	GeoIpHour        = 60 * 60
+	GeoIpCacheExpire = GeoIpHour * 5 // default expire in hours
+)
 
-func getRequestGeoInfo(r *http.Request) (GeoIpInfo, error) {
-	userIp, err := readUserIP(r)
+type GeoIp struct {
+	cache *freecache.Cache
+	mutex sync.RWMutex
+}
+
+func NewGeoIp(cacheSizeMegabytes int) *GeoIp {
+	megabyte := 1024 * 1024
+	cacheSize := cacheSizeMegabytes * megabyte
+
+	return &GeoIp{
+		cache: freecache.NewCache(cacheSize),
+	}
+}
+
+func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
+	userIp, err := gi.ReadUserIP(r)
 	if err != nil {
-		return GeoIpInfo{}, fmt.Errorf("error getting user ip: %s", err.Error())
+		return nil, fmt.Errorf("error getting user ip: %s", err.Error())
 	}
 
 	// TODO: control this with config and environment
 	// used for development
 	if userIp == "127.0.0.1" {
 		log.Debugf("request geo info: returning development 127.0.0.1 / Berlin")
-		return GeoIpInfo{
+		return &GeoIpInfo{
 			Ip:          "127.0.0.1",
 			CountryCode: "de",
 			CountryName: "Germany",
@@ -52,6 +71,26 @@ func getRequestGeoInfo(r *http.Request) (GeoIpInfo, error) {
 		}, nil
 	}
 
+	geoIpResponse := &GeoIpInfo{}
+
+	// seems like freechache already solves sync issues
+	gi.mutex.RLock()
+	geoIpInfoBytes, err := gi.cache.Get([]byte(userIp))
+	if err == nil {
+		log.Tracef("found geo ip info for %s in cache", userIp)
+
+		err = json.Unmarshal(geoIpInfoBytes, geoIpResponse)
+		if err == nil {
+			return geoIpResponse, nil
+		}
+
+		log.Errorf("failed to unmarshal cached geo ip info %s: %s", userIp, err)
+		// continue, and try getting it from Geo IP API
+	} else {
+		log.Debugf("failed to get cached geo ip info value for %s: %s", userIp, err)
+	}
+	gi.mutex.RUnlock()
+
 	// allowed up to 15,000 queries per hour
 	// https://freegeoip.app/
 	geoIpUrl := fmt.Sprintf("https://freegeoip.app/json/%s", userIp)
@@ -59,24 +98,37 @@ func getRequestGeoInfo(r *http.Request) (GeoIpInfo, error) {
 
 	resp, err := http.Get(geoIpUrl)
 	if err != nil {
-		return GeoIpInfo{}, fmt.Errorf("error getting freegeoip response: %s", err.Error())
+		return nil, fmt.Errorf("error getting freegeoip response: %s", err.Error())
 	}
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return GeoIpInfo{}, fmt.Errorf("failed to read geo ip response bytes: %s", err)
+		return nil, fmt.Errorf("failed to read geo ip response bytes: %s", err)
 	}
 
-	geoIpResponse := &GeoIpInfo{}
 	err = json.Unmarshal(respBytes, geoIpResponse)
 	if err != nil {
-		return GeoIpInfo{}, fmt.Errorf("failed to unmarshal geo ip response bytes: %s", err)
+		return nil, fmt.Errorf("failed to unmarshal geo ip response bytes: %s", err)
 	}
 
-	return *geoIpResponse, nil
+	// set cache
+	geoIpInfoBytes, err = json.Marshal(geoIpResponse)
+	if err == nil {
+		gi.mutex.Lock()
+		err = gi.cache.Set([]byte(userIp), geoIpInfoBytes, GeoIpCacheExpire)
+		if err != nil {
+			log.Errorf("failed to write geo ip cache for %s: %s", userIp, err)
+		}
+		log.Debugf("geo ip cache set for: %s", userIp)
+		gi.mutex.Unlock()
+	} else {
+		log.Errorf("failed to marshal geo ip info for cache %s: %s", userIp, err)
+	}
+
+	return geoIpResponse, nil
 }
 
-func readUserIP(r *http.Request) (string, error) {
+func (gi *GeoIp) ReadUserIP(r *http.Request) (string, error) {
 	ipAddr := r.Header.Get("X-Real-Ip")
 	if ipAddr == "" {
 		ipAddr = r.Header.Get("X-Forwarded-For")

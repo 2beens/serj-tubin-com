@@ -11,6 +11,7 @@ import (
 )
 
 type Server struct {
+	geoIp             *GeoIp
 	quotesManager     *QuotesManager
 	openWeatherApiKey string
 	muteRequestLogs   bool
@@ -20,6 +21,7 @@ func NewServer(openWeatherApiKey string) *Server {
 	s := &Server{
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
+		geoIp:             NewGeoIp(50),
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -56,7 +58,7 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	r.HandleFunc("/whereami", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		geoIpInfo, err := getRequestGeoInfo(r)
+		geoIpInfo, err := s.geoIp.GetRequestGeoInfo(r)
 		if err != nil {
 			log.Errorf("error getting geo ip info: %s", err)
 			http.Error(w, "geo ip info error", http.StatusInternalServerError)
@@ -68,7 +70,7 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
-	NewWeatherHandler(weatherRouter, "./assets/city.list.json", s.openWeatherApiKey)
+	NewWeatherHandler(weatherRouter, s.geoIp, "./assets/city.list.json", s.openWeatherApiKey)
 
 	r.Use(s.corsMiddleware())
 	r.Use(s.loggingMiddleware())
