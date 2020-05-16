@@ -13,11 +13,13 @@ import (
 type Server struct {
 	quotesManager     *QuotesManager
 	openWeatherApiKey string
+	muteRequestLogs   bool
 }
 
 func NewServer(openWeatherApiKey string) *Server {
 	s := &Server{
 		openWeatherApiKey: openWeatherApiKey,
+		muteRequestLogs:   false,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -38,8 +40,6 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	r.HandleFunc("/quote/random", func(w http.ResponseWriter, r *http.Request) {
-		//Allow CORS here By * or specific origin
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
 
 		q := s.quotesManager.RandomQuote()
@@ -54,9 +54,6 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	r.HandleFunc("/whereami", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: allow CORS on all requests ?
-		//Allow CORS here By * or specific origin
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
 
 		geoIpInfo, err := getRequestGeoInfo(r)
@@ -72,6 +69,9 @@ func (s *Server) routerSetup() (r *mux.Router) {
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	NewWeatherHandler(weatherRouter, "./assets/city.list.json", s.openWeatherApiKey)
+
+	r.Use(s.corsMiddleware())
+	r.Use(s.loggingMiddleware())
 
 	return r
 }
@@ -90,4 +90,26 @@ func (s *Server) Serve(port int) {
 
 	log.Infof(" > server listening on: [%s]", ipAndPort)
 	log.Fatal(httpServer.ListenAndServe())
+}
+
+func (s *Server) corsMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			//Allow CORS here By * or specific origin
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func (s *Server) loggingMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !s.muteRequestLogs {
+				userAgent := r.Header.Get("User-Agent")
+				log.Tracef(" ====> request [%s] path: [%s] [UA: %s]", r.Method, r.URL.Path, userAgent)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
