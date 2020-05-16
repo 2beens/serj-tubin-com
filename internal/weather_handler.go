@@ -74,7 +74,7 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	weatherInfo, err := getWeatherTomorrow(city)
+	weatherInfo, err := getWeatherTomorrow(city, handler.openWeatherApiKey)
 	if err != nil {
 		log.Errorf("error getting weather tomorrow info: %s", err)
 		http.Error(w, "weather tomorrow error", http.StatusInternalServerError)
@@ -104,7 +104,7 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	weatherInfo, err := getWeatherInfo(geoIpInfo, handler.openWeatherApiKey)
+	weatherInfo, err := getWeatherCurrent(geoIpInfo, handler.openWeatherApiKey)
 	if err != nil {
 		log.Errorf("error getting weather info: %s", err)
 		http.Error(w, "weather api error", http.StatusInternalServerError)
