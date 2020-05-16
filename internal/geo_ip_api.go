@@ -36,6 +36,7 @@ func getRequestGeoInfo(r *http.Request) (GeoIpInfo, error) {
 	// TODO: control this with config and environment
 	// used for development
 	if userIp == "127.0.0.1" {
+		log.Debugf("request geo info: returning development 127.0.0.1 / Berlin")
 		return GeoIpInfo{
 			Ip:          "127.0.0.1",
 			CountryCode: "de",
@@ -87,6 +88,7 @@ func readUserIP(r *http.Request) (string, error) {
 	// TODO: control this with config and environment
 	// used for development
 	if strings.HasPrefix(ipAddr, "127.0.0.1") {
+		log.Debugf("read user IP: returning development 127.0.0.1 / Berlin")
 		return "127.0.0.1", nil
 	}
 
