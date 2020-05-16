@@ -52,6 +52,8 @@ func NewWeatherHandler(weatherRouter *mux.Router, citiesDataPath, openWeatherApi
 }
 
 func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
+	//Allow CORS here By * or specific origin
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
 	if handler.openWeatherApiKey == "" {
@@ -89,6 +91,8 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 }
 
 func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Request) {
+	//Allow CORS here By * or specific origin
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
 	if handler.openWeatherApiKey == "" {
