@@ -33,6 +33,24 @@ func getRequestGeoInfo(r *http.Request) (GeoIpInfo, error) {
 		return GeoIpInfo{}, fmt.Errorf("error getting user ip: %s", err.Error())
 	}
 
+	// TODO: control this with config and environment
+	// used for development
+	if userIp == "127.0.0.1" {
+		return GeoIpInfo{
+			Ip:          "127.0.0.1",
+			CountryCode: "de",
+			CountryName: "Germany",
+			RegionCode:  "",
+			RegionName:  "",
+			City:        "Berlin",
+			ZipCode:     "12099",
+			TimeZone:    "",
+			Latitude:    0,
+			Longitude:   0,
+			MetroCode:   0,
+		}, nil
+	}
+
 	// allowed up to 15,000 queries per hour
 	// https://freegeoip.app/
 	geoIpUrl := fmt.Sprintf("https://freegeoip.app/json/%s", userIp)
@@ -64,6 +82,12 @@ func readUserIP(r *http.Request) (string, error) {
 	}
 	if ipAddr == "" {
 		ipAddr = r.RemoteAddr
+	}
+
+	// TODO: control this with config and environment
+	// used for development
+	if strings.HasPrefix(ipAddr, "127.0.0.1") {
+		return "127.0.0.1", nil
 	}
 
 	ip := net.ParseIP(ipAddr)
