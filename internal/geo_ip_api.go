@@ -73,6 +73,7 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	if geoIpInfoBytes, err := gi.cache.Get([]byte(userIp)); err == nil {
 		log.Tracef("found geo ip info for %s in cache", userIp)
 		if err = json.Unmarshal(geoIpInfoBytes, geoIpResponse); err == nil {
+			gi.mutex.RUnlock()
 			return geoIpResponse, nil
 		}
 
