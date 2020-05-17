@@ -13,7 +13,7 @@ import (
 const (
 	OneHour            = 60 * 60
 	GeoIpCacheExpire   = OneHour * 5 // default expire in hours
-	WeatherCacheExpire = OneHour     // default expire in hours
+	WeatherCacheExpire = OneHour * 1 // default expire in hours
 )
 
 type Server struct {
