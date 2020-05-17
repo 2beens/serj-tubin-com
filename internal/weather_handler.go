@@ -3,7 +3,6 @@ package internal
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -88,13 +87,14 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var weatherMain []string
-	for _, w := range weatherInfo.WeatherDescriptions {
-		weatherMain = append(weatherMain, w.Main)
+	weatherDescriptionsBytes, err := json.Marshal(weatherInfo.WeatherDescriptions)
+	if err != nil {
+		log.Errorf("error marshaling weather descriptions for %s: %s", city.Name, err)
+		http.Error(w, "weather api marshal error", http.StatusInternalServerError)
+		return
 	}
 
-	testResponse := fmt.Sprintf(`{"weather": "%s"}`, strings.Join(weatherMain, ", "))
-	_, err = w.Write([]byte(testResponse))
+	_, err = w.Write(weatherDescriptionsBytes)
 	if err != nil {
 		log.Errorf("failed to write response for weather: %s", err)
 	}
