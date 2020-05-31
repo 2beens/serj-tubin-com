@@ -4,3 +4,20 @@ some ideas:
         - weather tomorrow
         - some quotes
         - etc
+
+31-may-2020 serj-tubin-backend service:
+    Backend is now ran not by "go run ...", but first built, and ran via systemd
+
+     - created systemd service config file
+        - service name: serj-tubin-backend
+     - check the service with
+        - sudo systemctl status serj-tubin-backend
+     - restart
+        - sudo systemctl restart serj-tubin-backend
+     - see logs
+        - sudo journalctl -u serj-tubin-backend.service
+
+     Monit monitoring available via:
+        -   https://www.serj-tubin.com/monit/
+        -   no services are still enabled
+        -   to enable serj-tubin backend (or any other), it needs its service file (done) and PID file (not done yet), then it can be seen in the monit dashboard
