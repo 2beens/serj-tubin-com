@@ -1,0 +1,13 @@
+[Unit]
+Description=Backend for personal serj-tubin.com site
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=serj
+WorkingDirectory=/home/serj/serj-tubin-com
+ExecStart=/home/serj/serj-tubin-com/main -port 1988 -logs-path /home/serj/serj-tubin-com/server-logs.log
+
+[Install]
+WantedBy=multi-user.target

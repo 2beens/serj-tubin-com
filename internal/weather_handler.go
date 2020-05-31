@@ -15,7 +15,8 @@ type WeatherHandler struct {
 	geoIp             *GeoIp
 	weatherApi        *WeatherApi
 	openWeatherApiKey string
-	citiesData        map[string]*[]WeatherCity
+	// TODO: move this to weather api
+	citiesData map[string]*[]WeatherCity
 }
 
 var (
