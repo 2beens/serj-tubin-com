@@ -29,7 +29,7 @@ func NewServer(openWeatherApiKey string) *Server {
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(50),
-		weatherApi:        NewWeatherApi(50),
+		weatherApi:        NewWeatherApi(50, "./assets/city.list.json"),
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -78,7 +78,7 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
-	NewWeatherHandler(weatherRouter, s.geoIp, s.weatherApi, "./assets/city.list.json", s.openWeatherApiKey)
+	NewWeatherHandler(weatherRouter, s.geoIp, s.weatherApi, s.openWeatherApiKey)
 
 	r.Use(s.corsMiddleware())
 	r.Use(s.loggingMiddleware())

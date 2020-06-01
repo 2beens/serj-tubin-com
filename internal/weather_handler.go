@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -15,41 +14,18 @@ type WeatherHandler struct {
 	geoIp             *GeoIp
 	weatherApi        *WeatherApi
 	openWeatherApiKey string
-	// TODO: move this to weather api
-	citiesData map[string]*[]WeatherCity
 }
 
 var (
 	ErrNotFound = errors.New("not found")
 )
 
-func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, weatherApi *WeatherApi, citiesDataPath, openWeatherApiKey string) *WeatherHandler {
+func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, weatherApi *WeatherApi, openWeatherApiKey string) *WeatherHandler {
 	handler := &WeatherHandler{
 		openWeatherApiKey: openWeatherApiKey,
 		geoIp:             geoIp,
 		weatherApi:        weatherApi,
 	}
-
-	loadedCities := 0
-	citiesData, err := weatherApi.LoadCitiesData(citiesDataPath)
-	if err != nil {
-		log.Errorf("failed to load weather cities data: %s", err)
-	} else {
-		handler.citiesData = make(map[string]*[]WeatherCity)
-		for i, _ := range citiesData {
-			loadedCities++
-			c := citiesData[i]
-			cityName := strings.ToLower(c.Name)
-			if cList, ok := handler.citiesData[cityName]; ok {
-				*cList = append(*cList, c)
-			} else {
-				handler.citiesData[cityName] = &[]WeatherCity{c}
-			}
-		}
-	}
-
-	log.Debugf("loaded %d city names", len(handler.citiesData))
-	log.Debugf("total loaded cities: %d", loadedCities)
 
 	weatherRouter.HandleFunc("/current", handler.handleCurrent).Methods("GET")
 	weatherRouter.HandleFunc("/tomorrow", handler.handleTomorrow).Methods("GET")
@@ -74,7 +50,7 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	city, err := handler.getWeatherCity(geoIpInfo)
+	city, err := handler.weatherApi.getWeatherCity(geoIpInfo)
 	if err != nil {
 		log.Errorf("error getting current weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
@@ -117,7 +93,7 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	city, err := handler.getWeatherCity(geoIpInfo)
+	city, err := handler.weatherApi.getWeatherCity(geoIpInfo)
 	if err != nil {
 		log.Errorf("error getting weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
@@ -172,7 +148,7 @@ func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	city, err := handler.getWeatherCity(geoIpInfo)
+	city, err := handler.weatherApi.getWeatherCity(geoIpInfo)
 	if err != nil {
 		log.Errorf("error getting weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
@@ -205,27 +181,4 @@ func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		log.Errorf("failed to write response for weather tomorrow: %s", err)
 	}
-}
-
-// TODO: move this to weather api struct, along with cities data
-func (handler *WeatherHandler) getWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
-	cityName := strings.ToLower(geoInfo.City)
-	citiesList, found := handler.citiesData[cityName]
-	if !found {
-		return WeatherCity{}, ErrNotFound
-	}
-
-	if len(*citiesList) == 1 {
-		return (*citiesList)[0], nil
-	}
-
-	country := strings.ToLower(geoInfo.CountryCode)
-	for i, _ := range *citiesList {
-		c := (*citiesList)[i]
-		if strings.ToLower(c.Country) == country {
-			return c, nil
-		}
-	}
-
-	return WeatherCity{}, ErrNotFound
 }

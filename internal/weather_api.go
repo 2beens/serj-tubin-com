@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/coocood/freecache"
 	log "github.com/sirupsen/logrus"
@@ -15,16 +16,40 @@ import (
 // http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=0af09f7bce2fd9cbea44d6740f3c8e27
 
 type WeatherApi struct {
-	cache *freecache.Cache
+	cache      *freecache.Cache
+	citiesData map[string]*[]WeatherCity
 }
 
-func NewWeatherApi(cacheSizeMegabytes int) *WeatherApi {
+func NewWeatherApi(cacheSizeMegabytes int, citiesDataPath string) *WeatherApi {
 	megabyte := 1024 * 1024
 	cacheSize := cacheSizeMegabytes * megabyte
 
-	return &WeatherApi{
+	weatherApi := &WeatherApi{
 		cache: freecache.NewCache(cacheSize),
 	}
+
+	loadedCities := 0
+	citiesData, err := loadCitiesData(citiesDataPath)
+	if err != nil {
+		log.Errorf("failed to load weather cities data: %s", err)
+	} else {
+		weatherApi.citiesData = make(map[string]*[]WeatherCity)
+		for i, _ := range citiesData {
+			loadedCities++
+			c := citiesData[i]
+			cityName := strings.ToLower(c.Name)
+			if cList, ok := weatherApi.citiesData[cityName]; ok {
+				*cList = append(*cList, c)
+			} else {
+				weatherApi.citiesData[cityName] = &[]WeatherCity{c}
+			}
+		}
+	}
+
+	log.Debugf("loaded %d city names", len(weatherApi.citiesData))
+	log.Debugf("total loaded cities: %d", loadedCities)
+
+	return weatherApi
 }
 
 func (w *WeatherApi) GetWeatherCurrent(city WeatherCity, weatherApiKey string) (WeatherApiResponse, error) {
@@ -117,7 +142,29 @@ func (w *WeatherApi) Get5DaysWeatherForecast(city WeatherCity, weatherApiKey str
 	return weatherApiResponse.List, nil
 }
 
-func (w *WeatherApi) LoadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
+func (w *WeatherApi) getWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
+	cityName := strings.ToLower(geoInfo.City)
+	citiesList, found := w.citiesData[cityName]
+	if !found {
+		return WeatherCity{}, ErrNotFound
+	}
+
+	if len(*citiesList) == 1 {
+		return (*citiesList)[0], nil
+	}
+
+	country := strings.ToLower(geoInfo.CountryCode)
+	for i, _ := range *citiesList {
+		c := (*citiesList)[i]
+		if strings.ToLower(c.Country) == country {
+			return c, nil
+		}
+	}
+
+	return WeatherCity{}, ErrNotFound
+}
+
+func loadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
 	citiesJsonFile, err := os.Open(cityListDataPath)
 	if err != nil {
 		return []WeatherCity{}, err
