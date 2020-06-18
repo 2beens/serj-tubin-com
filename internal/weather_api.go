@@ -34,7 +34,7 @@ func NewWeatherApi(cacheSizeMegabytes int, citiesDataPath string) *WeatherApi {
 		log.Errorf("failed to load weather cities data: %s", err)
 	} else {
 		weatherApi.citiesData = make(map[string]*[]WeatherCity)
-		for i, _ := range citiesData {
+		for i := range citiesData {
 			loadedCities++
 			c := citiesData[i]
 			cityName := strings.ToLower(c.Name)
@@ -55,7 +55,7 @@ func NewWeatherApi(cacheSizeMegabytes int, citiesDataPath string) *WeatherApi {
 func (w *WeatherApi) GetWeatherCurrent(city WeatherCity, weatherApiKey string) (WeatherApiResponse, error) {
 	weatherApiResponse := &WeatherApiResponse{}
 
-	cacheKey := fmt.Sprintf("current::%s", city.ID)
+	cacheKey := fmt.Sprintf("current::%d", city.ID)
 	if currentCityWeatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
 		log.Tracef("found current weather info for %s in cache", city.Name)
 		if err = json.Unmarshal(currentCityWeatherBytes, weatherApiResponse); err == nil {
@@ -99,7 +99,7 @@ func (w *WeatherApi) GetWeatherCurrent(city WeatherCity, weatherApiKey string) (
 func (w *WeatherApi) Get5DaysWeatherForecast(city WeatherCity, weatherApiKey string) ([]WeatherInfo, error) {
 	weatherApiResponse := &WeatherApi5DaysResponse{}
 
-	cacheKey := fmt.Sprintf("5days::%s", city.ID)
+	cacheKey := fmt.Sprintf("5days::%d", city.ID)
 	if weatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
 		log.Tracef("found 5 days weather info for %s in cache", city.Name)
 		if err = json.Unmarshal(weatherBytes, weatherApiResponse); err == nil {
@@ -154,7 +154,7 @@ func (w *WeatherApi) getWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
 	}
 
 	country := strings.ToLower(geoInfo.CountryCode)
-	for i, _ := range *citiesList {
+	for i := range *citiesList {
 		c := (*citiesList)[i]
 		if strings.ToLower(c.Country) == country {
 			return c, nil
