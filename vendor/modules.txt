@@ -1,0 +1,42 @@
+# github.com/aerospike/aerospike-client-go v3.0.0+incompatible
+## explicit
+github.com/aerospike/aerospike-client-go
+github.com/aerospike/aerospike-client-go/internal/atomic
+github.com/aerospike/aerospike-client-go/internal/lua
+github.com/aerospike/aerospike-client-go/internal/lua/resources
+github.com/aerospike/aerospike-client-go/internal/particle_type
+github.com/aerospike/aerospike-client-go/logger
+github.com/aerospike/aerospike-client-go/pkg/bcrypt
+github.com/aerospike/aerospike-client-go/pkg/ripemd160
+github.com/aerospike/aerospike-client-go/types
+github.com/aerospike/aerospike-client-go/types/rand
+github.com/aerospike/aerospike-client-go/utils/buffer
+# github.com/cespare/xxhash v1.1.0
+## explicit
+github.com/cespare/xxhash
+# github.com/coocood/freecache v1.1.0
+## explicit
+github.com/coocood/freecache
+# github.com/gorilla/mux v1.7.4
+## explicit
+github.com/gorilla/mux
+# github.com/konsorten/go-windows-terminal-sequences v1.0.3
+github.com/konsorten/go-windows-terminal-sequences
+# github.com/onsi/ginkgo v1.13.0
+## explicit
+# github.com/sirupsen/logrus v1.6.0
+## explicit
+github.com/sirupsen/logrus
+# github.com/yuin/gopher-lua v0.0.0-20200603152657-dc2b0ca8b37e
+## explicit
+github.com/yuin/gopher-lua
+github.com/yuin/gopher-lua/ast
+github.com/yuin/gopher-lua/parse
+github.com/yuin/gopher-lua/pm
+# golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+## explicit
+golang.org/x/sync/errgroup
+golang.org/x/sync/semaphore
+# golang.org/x/sys v0.0.0-20200519105757-fe76b779f299
+golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/unix

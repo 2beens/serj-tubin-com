@@ -17,19 +17,27 @@ const (
 )
 
 type Server struct {
-	geoIp             *GeoIp
-	weatherApi        *WeatherApi
-	quotesManager     *QuotesManager
+	geoIp         *GeoIp
+	weatherApi    *WeatherApi
+	quotesManager *QuotesManager
+	board         *Board
+
 	openWeatherApiKey string
 	muteRequestLogs   bool
 }
 
-func NewServer(openWeatherApiKey string) *Server {
+func NewServer(aerospikeHost string, aerospikePort int, openWeatherApiKey string) *Server {
+	board, err := NewBoard(aerospikeHost, aerospikePort)
+	if err != nil {
+		log.Errorf("failed to create visitor board: %s", err)
+	}
+
 	s := &Server{
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(50),
 		weatherApi:        NewWeatherApi(50, "./assets/city.list.json"),
+		board:             board,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -75,6 +83,60 @@ func (s *Server) routerSetup() (r *mux.Router) {
 
 		geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.City, geoIpInfo.CountryName)
 		w.Write([]byte(geoResp))
+	})
+
+	// TODO: add board router instead
+	r.HandleFunc("/board/messages/new", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "only POST allowed", http.StatusMethodNotAllowed)
+		}
+
+		err := r.ParseForm()
+		if err != nil {
+			log.Errorf("add new message failed, parse form error: %s", err)
+			w.Write([]byte("error 500: parse form error"))
+			return
+		}
+
+		message := r.Form.Get("message")
+		author := r.Form.Get("author")
+		timestamp := time.Now().Unix()
+
+		err = s.board.StoreMessage(BoardMessage{
+			Author:    author,
+			Timestamp: timestamp,
+			Message:   message,
+		})
+
+		if err != nil {
+			log.Errorf("store new message error: %s", err)
+			w.Write([]byte("error 500: get messages error"))
+			return
+		}
+
+		w.Write([]byte("added <3"))
+	})
+
+	r.HandleFunc("/board/messages/all", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "only GET allowed", http.StatusMethodNotAllowed)
+		}
+
+		boardMessages, err := s.board.AllMessages()
+		if err != nil {
+			log.Errorf("get all messages error: %s", err)
+			w.Write([]byte("error 500: get messages error"))
+			return
+		}
+
+		messagesJson, err := json.Marshal(boardMessages)
+		if err != nil {
+			log.Errorf("marshal all messages error: %s", err)
+			w.Write([]byte("error 500: get messages error"))
+			return
+		}
+
+		w.Write(messagesJson)
 	})
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()

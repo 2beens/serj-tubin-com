@@ -14,6 +14,8 @@ import (
 func main() {
 	fmt.Println("starting ...")
 
+	aeroHost := flag.String("ahost", "localhost", "hostanme of aerospike server")
+	aeroPort := flag.Int("aport", 3000, "aerospike server port number")
 	port := flag.Int("port", 8080, "port number")
 	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
 	flag.Parse()
@@ -27,7 +29,7 @@ func main() {
 		log.Errorf("open weather API key not set, use OPEN_WEATHER_API_KEY env var to set it")
 	}
 
-	server := internal.NewServer(openWeatherApiKey)
+	server := internal.NewServer(*aeroHost, *aeroPort, openWeatherApiKey)
 	server.Serve(*port)
 }
 
