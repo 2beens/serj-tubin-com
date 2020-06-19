@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"strconv"
 
 	as "github.com/aerospike/aerospike-client-go"
 	log "github.com/sirupsen/logrus"
@@ -97,19 +98,27 @@ func (b *Board) AllMessages() ([]*BoardMessage, error) {
 		}
 
 		log.Println("BINS: %+v", rec.Record.Bins)
+		t := rec.Record.Bins["timestamp"]
+		log.Printf("%d of type %T", t, t)
 
 		author, ok := rec.Record.Bins["author"].(string)
 		if !ok {
 			log.Errorf("get all messages, convert author to string failed!")
 		}
-		timestamp, ok := rec.Record.Bins["timestamp"].(int64)
+		timestampStr, ok := rec.Record.Bins["timestamp"].(string)
 		if !ok {
-			log.Errorf("get all messages, convert timestamp (%+v) to int failed!", timestamp)
+			log.Errorf("1 get all messages, convert timestamp (%+v) to int failed!", timestampStr)
 		}
 		message, ok := rec.Record.Bins["message"].(string)
 		if !ok {
 			log.Errorf("get all messages, convert message to string failed!")
 		}
+
+		timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+		if err == nil {
+			log.Errorf("2 get all messages, convert timestamp (%+v) to int failed!", timestampStr)
+		}
+
 		messages = append(messages, &BoardMessage{
 			Author:    author,
 			Timestamp: timestamp,
