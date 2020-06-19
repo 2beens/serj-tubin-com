@@ -101,14 +101,10 @@ func (s *Server) routerSetup() (r *mux.Router) {
 			return
 		}
 
-		message := r.Form.Get("message")
-		author := r.Form.Get("author")
-		timestamp := time.Now().Unix()
-
 		err = s.board.StoreMessage(BoardMessage{
-			Author:    author,
-			Timestamp: timestamp,
-			Message:   message,
+			Timestamp: time.Now().Unix(),
+			Author:    r.Form.Get("author"),
+			Message:   r.Form.Get("message"),
 		})
 
 		if err != nil {
@@ -118,6 +114,17 @@ func (s *Server) routerSetup() (r *mux.Router) {
 		}
 
 		w.Write([]byte("added <3"))
+	})
+
+	r.HandleFunc("/board/messages/count", func(w http.ResponseWriter, r *http.Request) {
+		count, err := s.board.MessagesCount()
+		if err != nil {
+			log.Errorf("get all messages count error: %s", err)
+			w.Write([]byte("error 500: get messages count error"))
+			return
+		}
+		resp := fmt.Sprintf(`{"count":%d}`, count)
+		w.Write([]byte(resp))
 	})
 
 	r.HandleFunc("/board/messages/all", func(w http.ResponseWriter, r *http.Request) {

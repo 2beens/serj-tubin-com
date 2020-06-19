@@ -9,12 +9,6 @@ import (
 
 // TODO: unit tests <3
 
-type BoardMessage struct {
-	Author    string `json:"author"`
-	Timestamp int64  `json:"timestamp"`
-	Message   string `json:"message"`
-}
-
 type Board struct {
 	aeroClient     *as.Client
 	boardNamespace string
@@ -95,26 +89,8 @@ func (b *Board) AllMessages() ([]*BoardMessage, error) {
 			log.Errorf("get all messages, record error: %s", err)
 			continue
 		}
-
-		log.Println("BINS: %+v", rec.Record.Bins)
-
-		author, ok := rec.Record.Bins["author"].(string)
-		if !ok {
-			log.Errorln("get all messages, convert author to string failed!")
-		}
-		timestamp, ok := rec.Record.Bins["timestamp"].(int)
-		if !ok {
-			log.Errorln("get all messages, convert timestamp to int failed!")
-		}
-		message, ok := rec.Record.Bins["message"].(string)
-		if !ok {
-			log.Errorln("get all messages, convert message to string failed!")
-		}
-		messages = append(messages, &BoardMessage{
-			Author:    author,
-			Timestamp: int64(timestamp),
-			Message:   message,
-		})
+		m := MessageFromBins(rec.Record.Bins)
+		messages = append(messages, &m)
 	}
 
 	return messages, nil
