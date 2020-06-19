@@ -21,7 +21,7 @@ type Board struct {
 	messagesSet    string
 }
 
-func NewBoard(aeroHost string, aeroPort int) (*Board, error) {
+func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
 	log.Debugf("connecting to aerospike server %s:%d ...", aeroHost, aeroPort)
 
 	client, err := as.NewClient(aeroHost, aeroPort)
@@ -31,7 +31,7 @@ func NewBoard(aeroHost string, aeroPort int) (*Board, error) {
 
 	b := &Board{
 		aeroClient:     client,
-		boardNamespace: "board",
+		boardNamespace: namespace,
 		messagesSet:    "messages",
 	}
 
@@ -54,6 +54,8 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("saving message: %+v: %s - %s", message.Timestamp, message.Author, message.Message)
 
 	bins := as.BinMap{
 		"author":    message.Author,
@@ -94,13 +96,15 @@ func (b *Board) AllMessages() ([]*BoardMessage, error) {
 			continue
 		}
 
+		log.Println("BINS: %+v", rec.Record.Bins)
+
 		author, ok := rec.Record.Bins["author"].(string)
 		if !ok {
 			log.Errorf("get all messages, convert author to string failed!")
 		}
 		timestamp, ok := rec.Record.Bins["timestamp"].(int64)
 		if !ok {
-			log.Errorf("get all messages, convert timestamp to int failed!")
+			log.Errorf("get all messages, convert timestamp (%+v) to int failed!", timestamp)
 		}
 		message, ok := rec.Record.Bins["message"].(string)
 		if !ok {

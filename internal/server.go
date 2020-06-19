@@ -14,6 +14,9 @@ const (
 	OneHour            = 60 * 60
 	GeoIpCacheExpire   = OneHour * 5 // default expire in hours
 	WeatherCacheExpire = OneHour * 1 // default expire in hours
+
+	// TODO: put in config
+	AerospikeBoardNamespace = "board"
 )
 
 type Server struct {
@@ -27,7 +30,7 @@ type Server struct {
 }
 
 func NewServer(aerospikeHost string, aerospikePort int, openWeatherApiKey string) *Server {
-	board, err := NewBoard(aerospikeHost, aerospikePort)
+	board, err := NewBoard(aerospikeHost, aerospikePort, AerospikeBoardNamespace)
 	if err != nil {
 		log.Errorf("failed to create visitor board: %s", err)
 	}
