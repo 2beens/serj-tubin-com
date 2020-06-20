@@ -88,69 +88,10 @@ func (s *Server) routerSetup() (r *mux.Router) {
 		w.Write([]byte(geoResp))
 	})
 
-	// TODO: add board router instead
-	r.HandleFunc("/board/messages/new", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "only POST allowed", http.StatusMethodNotAllowed)
-		}
-
-		err := r.ParseForm()
-		if err != nil {
-			log.Errorf("add new message failed, parse form error: %s", err)
-			w.Write([]byte("error 500: parse form error"))
-			return
-		}
-
-		err = s.board.StoreMessage(BoardMessage{
-			Timestamp: time.Now().Unix(),
-			Author:    r.Form.Get("author"),
-			Message:   r.Form.Get("message"),
-		})
-
-		if err != nil {
-			log.Errorf("store new message error: %s", err)
-			w.Write([]byte("error 500: get messages error"))
-			return
-		}
-
-		w.Write([]byte("added <3"))
-	})
-
-	r.HandleFunc("/board/messages/count", func(w http.ResponseWriter, r *http.Request) {
-		count, err := s.board.MessagesCount()
-		if err != nil {
-			log.Errorf("get all messages count error: %s", err)
-			w.Write([]byte("error 500: get messages count error"))
-			return
-		}
-		resp := fmt.Sprintf(`{"count":%d}`, count)
-		w.Write([]byte(resp))
-	})
-
-	r.HandleFunc("/board/messages/all", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "only GET allowed", http.StatusMethodNotAllowed)
-		}
-
-		boardMessages, err := s.board.AllMessages()
-		if err != nil {
-			log.Errorf("get all messages error: %s", err)
-			w.Write([]byte("error 500: get messages error"))
-			return
-		}
-
-		messagesJson, err := json.Marshal(boardMessages)
-		if err != nil {
-			log.Errorf("marshal all messages error: %s", err)
-			w.Write([]byte("error 500: get messages error"))
-			return
-		}
-
-		w.Write(messagesJson)
-	})
-
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
+	boardRouter := r.PathPrefix("/board").Subrouter()
 	NewWeatherHandler(weatherRouter, s.geoIp, s.weatherApi, s.openWeatherApiKey)
+	NewBoardHandler(boardRouter, s.board)
 
 	r.Use(s.corsMiddleware())
 	r.Use(s.loggingMiddleware())
