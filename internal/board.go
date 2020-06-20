@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"sort"
 
 	as "github.com/aerospike/aerospike-client-go"
 	log "github.com/sirupsen/logrus"
@@ -65,7 +66,7 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 	return nil
 }
 
-func (b *Board) AllMessages() ([]*BoardMessage, error) {
+func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 	if b.aeroClient == nil {
 		return nil, fmt.Errorf("aero client is nil")
 	}
@@ -90,6 +91,12 @@ func (b *Board) AllMessages() ([]*BoardMessage, error) {
 		}
 		m := MessageFromBins(rec.Record.Bins)
 		messages = append(messages, &m)
+	}
+
+	if sortByTimestamp {
+		sort.Slice(messages, func(i, j int) bool {
+			return messages[i].Timestamp < messages[j].Timestamp
+		})
 	}
 
 	return messages, nil

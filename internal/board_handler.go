@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -22,6 +23,7 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board) *BoardHandler {
 	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST")
 	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET")
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET")
+	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET")
 
 	return handler
 }
@@ -70,11 +72,34 @@ func (handler *BoardHandler) handleMessagesCount(w http.ResponseWriter, r *http.
 }
 
 func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http.Request) {
-	boardMessages, err := handler.board.AllMessages()
+	vars := mux.Vars(r)
+	limit := -1
+	limitStr := vars["limit"]
+	if limitStr != "" {
+		var err error
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("invalid limit provided"))
+			return
+		}
+	}
+
+	allBboardMessages, err := handler.board.AllMessages(true)
 	if err != nil {
 		log.Errorf("get all messages error: %s", err)
 		w.Write([]byte("error 500: get messages error"))
 		return
+	}
+
+	var boardMessages []*BoardMessage
+	if limit == 0 || limit >= len(allBboardMessages) {
+		boardMessages = allBboardMessages
+	} else {
+		msgCount := len(allBboardMessages)
+		for i := 0; i < limit; i++ {
+			boardMessages = append(boardMessages, allBboardMessages[msgCount-1-i])
+		}
 	}
 
 	messagesJson, err := json.Marshal(boardMessages)
