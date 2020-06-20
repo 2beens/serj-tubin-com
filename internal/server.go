@@ -1,9 +1,12 @@
 package internal
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -17,19 +20,27 @@ const (
 )
 
 type Server struct {
-	geoIp             *GeoIp
-	weatherApi        *WeatherApi
-	quotesManager     *QuotesManager
+	geoIp         *GeoIp
+	weatherApi    *WeatherApi
+	quotesManager *QuotesManager
+	board         *Board
+
 	openWeatherApiKey string
 	muteRequestLogs   bool
 }
 
-func NewServer(openWeatherApiKey string) *Server {
+func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, openWeatherApiKey string) *Server {
+	board, err := NewBoard(aerospikeHost, aerospikePort, aeroBoardNamespace)
+	if err != nil {
+		log.Errorf("failed to create visitor board: %s", err)
+	}
+
 	s := &Server{
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(50),
 		weatherApi:        NewWeatherApi(50, "./assets/city.list.json"),
+		board:             board,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -78,7 +89,9 @@ func (s *Server) routerSetup() (r *mux.Router) {
 	})
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
+	boardRouter := r.PathPrefix("/board").Subrouter()
 	NewWeatherHandler(weatherRouter, s.geoIp, s.weatherApi, s.openWeatherApiKey)
+	NewBoardHandler(boardRouter, s.board)
 
 	r.Use(s.corsMiddleware())
 	r.Use(s.loggingMiddleware())
@@ -98,8 +111,33 @@ func (s *Server) Serve(port int) {
 		ReadTimeout:  15 * time.Second,
 	}
 
-	log.Infof(" > server listening on: [%s]", ipAndPort)
-	log.Fatal(httpServer.ListenAndServe())
+	chOsInterrupt := make(chan os.Signal, 1)
+	signal.Notify(chOsInterrupt, os.Interrupt)
+
+	go func() {
+		log.Infof(" > server listening on: [%s]", ipAndPort)
+		log.Fatal(httpServer.ListenAndServe())
+	}()
+
+	select {
+	case <-chOsInterrupt:
+		log.Warn("os interrupt received ...")
+	}
+	s.gracefulShutdown(httpServer)
+}
+
+func (s *Server) gracefulShutdown(httpServer *http.Server) {
+	log.Debug("graceful shutdown initiated ...")
+
+	s.board.Close()
+
+	maxWaitDuration := time.Second * 15
+	ctx, cancel := context.WithTimeout(context.Background(), maxWaitDuration)
+	defer cancel()
+	if err := httpServer.Shutdown(ctx); err != nil {
+		log.Error(" >>> failed to gracefully shutdown http server")
+	}
+	log.Warn("server shut down")
 }
 
 func (s *Server) corsMiddleware() func(next http.Handler) http.Handler {

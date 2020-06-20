@@ -50,7 +50,7 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	city, err := handler.weatherApi.getWeatherCity(geoIpInfo)
+	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo)
 	if err != nil {
 		log.Errorf("error getting current weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
@@ -93,7 +93,7 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	city, err := handler.weatherApi.getWeatherCity(geoIpInfo)
+	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo)
 	if err != nil {
 		log.Errorf("error getting weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
@@ -148,7 +148,7 @@ func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	city, err := handler.weatherApi.getWeatherCity(geoIpInfo)
+	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo)
 	if err != nil {
 		log.Errorf("error getting weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)

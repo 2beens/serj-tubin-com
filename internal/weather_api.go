@@ -29,7 +29,7 @@ func NewWeatherApi(cacheSizeMegabytes int, citiesDataPath string) *WeatherApi {
 	}
 
 	loadedCities := 0
-	citiesData, err := loadCitiesData(citiesDataPath)
+	citiesData, err := LoadCitiesData(citiesDataPath)
 	if err != nil {
 		log.Errorf("failed to load weather cities data: %s", err)
 	} else {
@@ -142,7 +142,7 @@ func (w *WeatherApi) Get5DaysWeatherForecast(city WeatherCity, weatherApiKey str
 	return weatherApiResponse.List, nil
 }
 
-func (w *WeatherApi) getWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
+func (w *WeatherApi) GetWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
 	cityName := strings.ToLower(geoInfo.City)
 	citiesList, found := w.citiesData[cityName]
 	if !found {
@@ -164,7 +164,7 @@ func (w *WeatherApi) getWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
 	return WeatherCity{}, ErrNotFound
 }
 
-func loadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
+func LoadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
 	citiesJsonFile, err := os.Open(cityListDataPath)
 	if err != nil {
 		return []WeatherCity{}, err
