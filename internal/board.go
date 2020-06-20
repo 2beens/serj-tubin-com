@@ -32,7 +32,6 @@ func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
 	return b, nil
 }
 
-// TODO: implement server graceful shutdown
 func (b *Board) Close() {
 	if b.aeroClient != nil {
 		b.aeroClient.Close()

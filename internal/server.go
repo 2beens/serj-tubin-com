@@ -1,9 +1,12 @@
 package internal
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -14,9 +17,6 @@ const (
 	OneHour            = 60 * 60
 	GeoIpCacheExpire   = OneHour * 5 // default expire in hours
 	WeatherCacheExpire = OneHour * 1 // default expire in hours
-
-	// TODO: put in config
-	AerospikeBoardNamespace = "board"
 )
 
 type Server struct {
@@ -29,8 +29,8 @@ type Server struct {
 	muteRequestLogs   bool
 }
 
-func NewServer(aerospikeHost string, aerospikePort int, openWeatherApiKey string) *Server {
-	board, err := NewBoard(aerospikeHost, aerospikePort, AerospikeBoardNamespace)
+func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, openWeatherApiKey string) *Server {
+	board, err := NewBoard(aerospikeHost, aerospikePort, aeroBoardNamespace)
 	if err != nil {
 		log.Errorf("failed to create visitor board: %s", err)
 	}
@@ -111,8 +111,33 @@ func (s *Server) Serve(port int) {
 		ReadTimeout:  15 * time.Second,
 	}
 
-	log.Infof(" > server listening on: [%s]", ipAndPort)
-	log.Fatal(httpServer.ListenAndServe())
+	chOsInterrupt := make(chan os.Signal, 1)
+	signal.Notify(chOsInterrupt, os.Interrupt)
+
+	go func() {
+		log.Infof(" > server listening on: [%s]", ipAndPort)
+		log.Fatal(httpServer.ListenAndServe())
+	}()
+
+	select {
+	case <-chOsInterrupt:
+		log.Warn("os interrupt received ...")
+	}
+	s.gracefulShutdown(httpServer)
+}
+
+func (s *Server) gracefulShutdown(httpServer *http.Server) {
+	log.Debug("graceful shutdown initiated ...")
+
+	s.board.Close()
+
+	maxWaitDuration := time.Second * 15
+	ctx, cancel := context.WithTimeout(context.Background(), maxWaitDuration)
+	defer cancel()
+	if err := httpServer.Shutdown(ctx); err != nil {
+		log.Error(" >>> failed to gracefully shutdown http server")
+	}
+	log.Warn("server shut down")
 }
 
 func (s *Server) corsMiddleware() func(next http.Handler) http.Handler {

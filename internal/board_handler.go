@@ -34,11 +34,20 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	err = handler.board.StoreMessage(BoardMessage{
+	message := r.Form.Get("message")
+	if message == "" {
+		w.Write([]byte("error, message empty"))
+		return
+	}
+	author := r.Form.Get("author")
+
+	boardMessage := BoardMessage{
 		Timestamp: time.Now().Unix(),
-		Author:    r.Form.Get("author"),
-		Message:   r.Form.Get("message"),
-	})
+		Author:    author,
+		Message:   message,
+	}
+
+	err = handler.board.StoreMessage(boardMessage)
 
 	if err != nil {
 		log.Errorf("store new message error: %s", err)
