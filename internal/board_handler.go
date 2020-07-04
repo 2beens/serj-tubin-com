@@ -9,6 +9,8 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	// TODO: maybe try logging from uber
+	// https://github.com/uber-go/zap
 )
 
 type BoardHandler struct {
@@ -20,7 +22,7 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board) *BoardHandler {
 		board: board,
 	}
 
-	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST")
+	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS")
 	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET")
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET")
 	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET")
@@ -29,6 +31,11 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board) *BoardHandler {
 }
 
 func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("add new message failed, parse form error: %s", err)
@@ -38,10 +45,13 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 
 	message := r.Form.Get("message")
 	if message == "" {
-		w.Write([]byte("error, message empty"))
+		http.Error(w, "error, message empty", http.StatusBadRequest)
 		return
 	}
 	author := r.Form.Get("author")
+	if author == "" {
+		author = "anon"
+	}
 
 	boardMessage := BoardMessage{
 		Timestamp: time.Now().Unix(),
@@ -85,6 +95,8 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		}
 	}
 
+	log.Printf("getting last %d board messages ... ", limit)
+
 	allBboardMessages, err := handler.board.AllMessages(true)
 	if err != nil {
 		log.Errorf("get all messages error: %s", err)
@@ -100,6 +112,11 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		for i := 0; i < limit; i++ {
 			boardMessages = append(boardMessages, allBboardMessages[msgCount-1-i])
 		}
+	}
+
+	if len(boardMessages) == 0 {
+		w.Write([]byte("[]"))
+		return
 	}
 
 	messagesJson, err := json.Marshal(boardMessages)
