@@ -34,7 +34,7 @@ func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
 }
 
 func (b *Board) Close() {
-	if b.aeroClient != nil {
+	if b != nil && b.aeroClient != nil {
 		b.aeroClient.Close()
 	}
 }
