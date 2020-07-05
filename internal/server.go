@@ -88,6 +88,16 @@ func (s *Server) routerSetup() (r *mux.Router) {
 		w.Write([]byte(geoResp))
 	})
 
+	// TODO: move in util handler
+	r.HandleFunc("/myip", func(w http.ResponseWriter, r *http.Request) {
+		ip, err := s.geoIp.ReadUserIP(r)
+		if err != nil {
+			log.Errorf("failed to get user IP address: %s", err)
+			http.Error(w, "failed to get IP", http.StatusInternalServerError)
+		}
+		w.Write([]byte(ip))
+	})
+
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 	NewWeatherHandler(weatherRouter, s.geoIp, s.weatherApi, s.openWeatherApiKey)
