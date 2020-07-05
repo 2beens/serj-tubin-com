@@ -39,7 +39,7 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("add new message failed, parse form error: %s", err)
-		w.Write([]byte("error 500: parse form error"))
+		http.Error(w, "parse form error", http.StatusInternalServerError)
 		return
 	}
 
@@ -60,21 +60,20 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 	}
 
 	err = handler.board.StoreMessage(boardMessage)
-
 	if err != nil {
 		log.Errorf("store new message error: %s", err)
-		w.Write([]byte("error 500: get messages error"))
+		http.Error(w, "failed to store message", http.StatusInternalServerError)
 		return
 	}
 
-	w.Write([]byte("added <3"))
+	w.Write([]byte("added"))
 }
 
 func (handler *BoardHandler) handleMessagesCount(w http.ResponseWriter, r *http.Request) {
 	count, err := handler.board.MessagesCount()
 	if err != nil {
 		log.Errorf("get all messages count error: %s", err)
-		w.Write([]byte("error 500: get messages count error"))
+		http.Error(w, "failed to get messages count", http.StatusInternalServerError)
 		return
 	}
 	resp := fmt.Sprintf(`{"count":%d}`, count)
@@ -89,8 +88,7 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		var err error
 		limit, err = strconv.Atoi(limitStr)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("invalid limit provided"))
+			http.Error(w, "invalid limit provided", http.StatusBadRequest)
 			return
 		}
 	}
@@ -100,7 +98,7 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 	allBboardMessages, err := handler.board.AllMessages(true)
 	if err != nil {
 		log.Errorf("get all messages error: %s", err)
-		w.Write([]byte("error 500: get messages error"))
+		http.Error(w, "failed to get all messages", http.StatusBadRequest)
 		return
 	}
 
@@ -122,7 +120,7 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 	messagesJson, err := json.Marshal(boardMessages)
 	if err != nil {
 		log.Errorf("marshal all messages error: %s", err)
-		w.Write([]byte("error 500: get messages error"))
+		http.Error(w, "marshal messages error", http.StatusInternalServerError)
 		return
 	}
 
