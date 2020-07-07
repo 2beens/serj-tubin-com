@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	as "github.com/aerospike/aerospike-client-go"
+	"github.com/dgraph-io/ristretto"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -14,6 +15,7 @@ type Board struct {
 	aeroClient     *as.Client
 	boardNamespace string
 	messagesSet    string
+	cache          *ristretto.Cache
 }
 
 func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
@@ -24,10 +26,20 @@ func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
 		return nil, err
 	}
 
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,     // number of keys to track frequency of (10M)
+		MaxCost:     1 << 28, // maximum cost of cache (~268M)
+		BufferItems: 64,      // number of keys per Get buffer
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cache: %s", err)
+	}
+
 	b := &Board{
 		aeroClient:     client,
 		boardNamespace: namespace,
 		messagesSet:    "messages",
+		cache:          cache,
 	}
 
 	return b, nil

@@ -32,9 +32,9 @@ type GeoIp struct {
 	mutex sync.RWMutex
 }
 
-func NewGeoIp(cacheSizeMegabytes int) *GeoIp {
+func NewGeoIp() *GeoIp {
 	megabyte := 1024 * 1024
-	cacheSize := cacheSizeMegabytes * megabyte
+	cacheSize := 50 * megabyte
 
 	return &GeoIp{
 		cache: freecache.NewCache(cacheSize),
@@ -68,7 +68,7 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 
 	geoIpResponse := &GeoIpInfo{}
 
-	// seems like freechache already solves sync issues
+	// TODO: seems like freechache already solves sync issues (can be removed?)
 	gi.mutex.RLock()
 	if geoIpInfoBytes, err := gi.cache.Get([]byte(userIp)); err == nil {
 		log.Tracef("found geo ip info for %s in cache", userIp)
