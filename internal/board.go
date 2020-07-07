@@ -11,6 +11,10 @@ import (
 
 // TODO: unit tests <3
 
+const (
+	AllMessagesCacheKey = "all-messages"
+)
+
 type Board struct {
 	aeroClient     *as.Client
 	boardNamespace string
@@ -42,7 +46,27 @@ func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
 		cache:          cache,
 	}
 
+	go b.SetAllMessagesCacheFromAero()
+
 	return b, nil
+}
+
+func (b *Board) SetAllMessagesCacheFromAero() {
+	allMessages, err := b.AllMessages(true)
+	if err != nil {
+		log.Errorf("failed to prepare visitor board cache: %s", err)
+		return
+	}
+	// TODO: this is a super lazy way to cache messages
+	b.SetAllMessagesCache(allMessages)
+}
+
+func (b *Board) SetAllMessagesCache(allMessages []*BoardMessage) {
+	if !b.cache.Set(AllMessagesCacheKey, allMessages, int64(len(allMessages)*3)) {
+		log.Errorf("failed to set all messages to cache... for some reason")
+	} else {
+		log.Debug("all board messages cache set")
+	}
 }
 
 func (b *Board) Close() {
@@ -76,6 +100,24 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 	}
 
 	return nil
+}
+
+func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
+	allMessagesRaw, found := b.cache.Get(AllMessagesCacheKey)
+	if !found {
+		log.Errorf("failed to get all messages cache, will get them from aerospike")
+		allMessages, err := b.AllMessages(sortByTimestamp)
+		if err != nil {
+			return nil, err
+		}
+		b.SetAllMessagesCache(allMessages)
+		return allMessages, nil
+	}
+	allMessages, ok := allMessagesRaw.([]*BoardMessage)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert all messages cache, will get them from aerospike")
+	}
+	return allMessages, nil
 }
 
 func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
