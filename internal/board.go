@@ -99,6 +99,8 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 		return err
 	}
 
+	b.cache.Del(AllMessagesCacheKey)
+
 	return nil
 }
 
