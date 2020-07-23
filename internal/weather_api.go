@@ -20,9 +20,9 @@ type WeatherApi struct {
 	citiesData map[string]*[]WeatherCity
 }
 
-func NewWeatherApi(cacheSizeMegabytes int, citiesDataPath string) *WeatherApi {
+func NewWeatherApi(citiesDataPath string) *WeatherApi {
 	megabyte := 1024 * 1024
-	cacheSize := cacheSizeMegabytes * megabyte
+	cacheSize := 50 * megabyte
 
 	weatherApi := &WeatherApi{
 		cache: freecache.NewCache(cacheSize),

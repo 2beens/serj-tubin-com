@@ -5,15 +5,21 @@ import (
 	"sort"
 
 	as "github.com/aerospike/aerospike-client-go"
+	"github.com/dgraph-io/ristretto"
 	log "github.com/sirupsen/logrus"
 )
 
 // TODO: unit tests <3
 
+const (
+	AllMessagesCacheKey = "all-messages"
+)
+
 type Board struct {
 	aeroClient     *as.Client
 	boardNamespace string
 	messagesSet    string
+	cache          *ristretto.Cache
 }
 
 func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
@@ -24,13 +30,43 @@ func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
 		return nil, err
 	}
 
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,     // number of keys to track frequency of (10M)
+		MaxCost:     1 << 28, // maximum cost of cache (~268M)
+		BufferItems: 64,      // number of keys per Get buffer
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cache: %s", err)
+	}
+
 	b := &Board{
 		aeroClient:     client,
 		boardNamespace: namespace,
 		messagesSet:    "messages",
+		cache:          cache,
 	}
 
+	go b.SetAllMessagesCacheFromAero()
+
 	return b, nil
+}
+
+func (b *Board) SetAllMessagesCacheFromAero() {
+	allMessages, err := b.AllMessages(true)
+	if err != nil {
+		log.Errorf("failed to prepare visitor board cache: %s", err)
+		return
+	}
+	// TODO: this is a super lazy way to cache messages
+	b.SetAllMessagesCache(allMessages)
+}
+
+func (b *Board) SetAllMessagesCache(allMessages []*BoardMessage) {
+	if !b.cache.Set(AllMessagesCacheKey, allMessages, int64(len(allMessages)*3)) {
+		log.Errorf("failed to set all messages to cache... for some reason")
+	} else {
+		log.Debug("all board messages cache set")
+	}
 }
 
 func (b *Board) Close() {
@@ -63,7 +99,27 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 		return err
 	}
 
+	b.cache.Del(AllMessagesCacheKey)
+
 	return nil
+}
+
+func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
+	allMessagesRaw, found := b.cache.Get(AllMessagesCacheKey)
+	if !found {
+		log.Errorf("failed to get all messages cache, will get them from aerospike")
+		allMessages, err := b.AllMessages(sortByTimestamp)
+		if err != nil {
+			return nil, err
+		}
+		b.SetAllMessagesCache(allMessages)
+		return allMessages, nil
+	}
+	allMessages, ok := allMessagesRaw.([]*BoardMessage)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert all messages cache, will get them from aerospike")
+	}
+	return allMessages, nil
 }
 
 func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {

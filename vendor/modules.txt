@@ -12,11 +12,14 @@ github.com/aerospike/aerospike-client-go/types
 github.com/aerospike/aerospike-client-go/types/rand
 github.com/aerospike/aerospike-client-go/utils/buffer
 # github.com/cespare/xxhash v1.1.0
-## explicit
 github.com/cespare/xxhash
 # github.com/coocood/freecache v1.1.0
 ## explicit
 github.com/coocood/freecache
+# github.com/dgraph-io/ristretto v0.0.3
+## explicit
+github.com/dgraph-io/ristretto
+github.com/dgraph-io/ristretto/z
 # github.com/gorilla/mux v1.7.4
 ## explicit
 github.com/gorilla/mux

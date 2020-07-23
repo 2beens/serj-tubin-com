@@ -29,28 +29,28 @@ type Server struct {
 	muteRequestLogs   bool
 }
 
-func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, openWeatherApiKey string) *Server {
+func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, openWeatherApiKey string) (*Server, error) {
 	board, err := NewBoard(aerospikeHost, aerospikePort, aeroBoardNamespace)
 	if err != nil {
-		log.Errorf("failed to create visitor board: %s", err)
+		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
 
 	s := &Server{
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
-		geoIp:             NewGeoIp(50),
-		weatherApi:        NewWeatherApi(50, "./assets/city.list.json"),
+		geoIp:             NewGeoIp(),
+		weatherApi:        NewWeatherApi("./assets/city.list.json"),
 		board:             board,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to create quote manager: %s", err)
 	}
 
 	s.quotesManager = qm
 
-	return s
+	return s, nil
 }
 
 func (s *Server) routerSetup() (r *mux.Router) {
