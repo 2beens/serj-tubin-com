@@ -98,6 +98,17 @@ func (s *Server) routerSetup() (r *mux.Router) {
 		w.Write([]byte(ip))
 	})
 
+	r.HandleFunc("/status1", func(w http.ResponseWriter, r *http.Request) {
+		log.Tracef(" >>>>>>> status 1")
+		w.WriteHeader(http.StatusBadRequest)
+	})
+
+	r.HandleFunc("/status2", func(w http.ResponseWriter, r *http.Request) {
+		log.Tracef(" >>>>>>> status 2")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"test":"OK"}`))
+	})
+
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 	NewWeatherHandler(weatherRouter, s.geoIp, s.weatherApi, s.openWeatherApiKey)
