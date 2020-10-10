@@ -64,7 +64,7 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	weatherInfo, err := handler.weatherApi.GetWeatherCurrent(city)
+	weatherInfo, err := handler.weatherApi.GetWeatherCurrent(city.ID, city.Name)
 	if err != nil {
 		log.Errorf("error getting weather info: %s", err)
 		http.Error(w, "weather api error", http.StatusInternalServerError)

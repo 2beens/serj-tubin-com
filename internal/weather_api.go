@@ -48,47 +48,47 @@ func NewWeatherApi(openWeatherApiKey string, citiesData []WeatherCity) *WeatherA
 	return weatherApi
 }
 
-func (w *WeatherApi) GetWeatherCurrent(city *WeatherCity) (WeatherApiResponse, error) {
+func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApiResponse, error) {
 	weatherApiResponse := &WeatherApiResponse{}
 
-	cacheKey := fmt.Sprintf("current::%d", city.ID)
+	cacheKey := fmt.Sprintf("current::%d", cityID)
 	if currentCityWeatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
-		log.Tracef("found current weather info for %s in cache", city.Name)
+		log.Tracef("found current weather info for %s in cache", cityName)
 		if err = json.Unmarshal(currentCityWeatherBytes, weatherApiResponse); err == nil {
-			return *weatherApiResponse, nil
+			return weatherApiResponse, nil
 		} else {
-			log.Errorf("failed to unmarshal current weather from cache for city %s: %s", city.Name, err)
+			log.Errorf("failed to unmarshal current weather from cache for city %s: %s", cityName, err)
 		}
 	} else {
-		log.Debugf("cached current weather for city %s not found: %s", city.Name, err)
+		log.Debugf("cached current weather for city %s not found: %s", cityName, err)
 	}
 
-	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?id=%d&appid=%s", city.ID, w.openWeatherApiKey)
+	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?id=%d&appid=%s", cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 
 	resp, err := http.Get(weatherApiUrl)
 	if err != nil {
-		return WeatherApiResponse{}, fmt.Errorf("error getting weather api response: %s", err.Error())
+		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return WeatherApiResponse{}, fmt.Errorf("failed to read weather api response bytes: %s", err)
+		return nil, fmt.Errorf("failed to read weather api response bytes: %s", err)
 	}
 
 	err = json.Unmarshal(respBytes, weatherApiResponse)
 	if err != nil {
-		return WeatherApiResponse{}, fmt.Errorf("failed to unmarshal weather api response bytes: %s", err)
+		return nil, fmt.Errorf("failed to unmarshal weather api response bytes: %s", err)
 	}
 
 	// set cache
 	if err = w.cache.Set([]byte(cacheKey), respBytes, WeatherCacheExpire); err != nil {
-		log.Errorf("failed to write current weather cache for %s %d: %s", city.Name, city.ID, err)
+		log.Errorf("failed to write current weather cache for %s %d: %s", cityName, cityID, err)
 	} else {
-		log.Debugf("current weather cache set for city: %s", city.Name)
+		log.Debugf("current weather cache set for city: %s", cityName)
 	}
 
-	return *weatherApiResponse, nil
+	return weatherApiResponse, nil
 }
 
 // returns something like sunny, cloudy, etc

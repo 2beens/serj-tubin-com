@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_NewWeatherApi(t *testing.T) {
+func TestWeatherApi_NewWeatherApi(t *testing.T) {
 	citiesData := getTestCitiesData()
 	openWeatherTestKey := "open_weather_test_key"
 	weatherApi := NewWeatherApi(openWeatherTestKey, citiesData)
@@ -15,7 +15,7 @@ func Test_NewWeatherApi(t *testing.T) {
 	assert.Len(t, weatherApi.citiesData, 5)
 }
 
-func Test_NewWeatherApi_DuplicateCities(t *testing.T) {
+func TestWeatherApi_NewWeatherApi_DuplicateCities(t *testing.T) {
 	citiesData := getTestCitiesData()
 	// add city 0 twice, make sure all ok
 	citiesData = append(citiesData, WeatherCity{
@@ -61,6 +61,18 @@ func TestWeatherApi_GetWeatherCity(t *testing.T) {
 	c, err = weatherApi.GetWeatherCity("Novi Grad", "GR")
 	assert.Nil(t, c)
 	assert.Equal(t, ErrNotFound, err)
+}
+
+func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
+	citiesData := getTestCitiesData()
+	openWeatherTestKey := "open_weather_test_key"
+	weatherApi := NewWeatherApi(openWeatherTestKey, citiesData)
+	assert.NotNil(t, weatherApi)
+	assert.Len(t, weatherApi.citiesData, 5)
+
+	w, err := weatherApi.GetWeatherCurrent(2, "Berlin")
+	require.NotNil(t, w)
+	require.NoError(t, err)
 }
 
 func getTestCitiesData() []WeatherCity {
