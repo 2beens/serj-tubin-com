@@ -31,7 +31,12 @@ func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUr
 	handler := &WeatherHandler{
 		openWeatherApiKey: openWeatherApiKey,
 		geoIp:             geoIp,
-		weatherApi:        NewWeatherApi(openWeatherAPIUrl, openWeatherApiKey, citiesData),
+		weatherApi: NewWeatherApi(
+			openWeatherAPIUrl,
+			openWeatherApiKey,
+			citiesData,
+			http.DefaultClient,
+		),
 	}
 
 	weatherRouter.HandleFunc("/current", handler.handleCurrent).Methods("GET")

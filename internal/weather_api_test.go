@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,9 +12,9 @@ import (
 
 func TestWeatherApi_NewWeatherApi(t *testing.T) {
 	citiesData := getTestCitiesData()
-	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData)
+	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData, nil)
 	assert.NotNil(t, weatherApi)
-	assert.Len(t, weatherApi.citiesData, 5)
+	assert.Len(t, weatherApi.citiesData, 6)
 }
 
 func TestWeatherApi_NewWeatherApi_DuplicateCities(t *testing.T) {
@@ -28,16 +31,15 @@ func TestWeatherApi_NewWeatherApi_DuplicateCities(t *testing.T) {
 		Sunset:   0,
 	})
 
-	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData)
+	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData, nil)
 	assert.NotNil(t, weatherApi)
-	assert.Len(t, weatherApi.citiesData, 5)
+	assert.Len(t, weatherApi.citiesData, 6)
 }
 
 func TestWeatherApi_GetWeatherCity(t *testing.T) {
 	citiesData := getTestCitiesData()
-	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData)
+	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData, nil)
 	assert.NotNil(t, weatherApi)
-	assert.Len(t, weatherApi.citiesData, 5)
 
 	// not existent city
 	c, err := weatherApi.GetWeatherCity("blabla", "RS")
@@ -61,20 +63,54 @@ func TestWeatherApi_GetWeatherCity(t *testing.T) {
 }
 
 func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
+	londonCityId := 2643743
+
+	// there should be only 1 api call, since the second time we call for
+	// current weather, it's retrieved from the cache
+	apiCallsCount := 0
+
+	testServerHander := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallsCount++
+		assert.Equal(t, fmt.Sprintf("/?id=%d&appid=open_weather_test_key", londonCityId), r.RequestURI)
+		assert.Equal(t, http.MethodGet, r.Method)
+		w.Write([]byte(weatherApiTestResponses[londonCityId]))
+	})
+	testServer := httptest.NewServer(testServerHander)
+	defer testServer.Close()
+
 	citiesData := getTestCitiesData()
-	openWeatherApiUrl := "http://test.owa"
 	openWeatherTestKey := "open_weather_test_key"
-	weatherApi := NewWeatherApi(openWeatherApiUrl, openWeatherTestKey, citiesData)
+	weatherApi := NewWeatherApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
 	assert.NotNil(t, weatherApi)
-	assert.Len(t, weatherApi.citiesData, 5)
 
 	// with cache miss
-	w, err := weatherApi.GetWeatherCurrent(2, "Berlin")
-	require.NotNil(t, w)
+	weather, err := weatherApi.GetWeatherCurrent(londonCityId, "London")
+	require.NotNil(t, weather)
 	require.NoError(t, err)
+	assert.Equal(t, "London", weather.Name)
+	assert.Equal(t, londonCityId, weather.ID)
+
+	require.Len(t, weather.WeatherDescriptions, 1)
+	assert.Equal(t, 300, weather.WeatherDescriptions[0].ID)
+	assert.Equal(t, "light intensity drizzle", weather.WeatherDescriptions[0].Description)
+	assert.Equal(t, "Drizzle", weather.WeatherDescriptions[0].Main)
+	assert.Equal(t, "09d", weather.WeatherDescriptions[0].Icon)
 
 	// with cache hit
-	// TODO:
+	weather, err = weatherApi.GetWeatherCurrent(londonCityId, "London")
+	require.NotNil(t, weather)
+	require.NoError(t, err)
+	assert.Equal(t, "London", weather.Name)
+	assert.Equal(t, londonCityId, weather.ID)
+
+	require.Len(t, weather.WeatherDescriptions, 1)
+	assert.Equal(t, 300, weather.WeatherDescriptions[0].ID)
+	assert.Equal(t, "light intensity drizzle", weather.WeatherDescriptions[0].Description)
+	assert.Equal(t, "Drizzle", weather.WeatherDescriptions[0].Main)
+	assert.Equal(t, "09d", weather.WeatherDescriptions[0].Icon)
+
+	// second time we request - cache should be hit
+	assert.Equal(t, 1, apiCallsCount)
 }
 
 func getTestCitiesData() []WeatherCity {
@@ -139,5 +175,66 @@ func getTestCitiesData() []WeatherCity {
 			Sunrise:  0,
 			Sunset:   0,
 		},
+		{
+			ID:      2643743,
+			Name:    "London",
+			State:   "England",
+			Country: "GB",
+			Coord: Coordinate{
+				Lon: -0.13,
+				Lat: 51.51,
+			},
+			Timezone: 0,
+			Sunrise:  0,
+			Sunset:   0,
+		},
 	}
 }
+
+var (
+	weatherApiTestResponses = map[int]string{
+		2643743: `
+{
+ "coord": {
+   "lon": -0.13,
+   "lat": 51.51
+ },
+ "weather": [
+   {
+	 "id": 300,
+	 "main": "Drizzle",
+	 "description": "light intensity drizzle",
+	 "icon": "09d"
+   }
+ ],
+ "base": "stations",
+ "main": {
+   "temp": 280.32,
+   "pressure": 1012,
+   "humidity": 81,
+   "temp_min": 279.15,
+   "temp_max": 281.15
+ },
+ "visibility": 10000,
+ "wind": {
+   "speed": 4.1,
+   "deg": 80
+ },
+ "clouds": {
+   "all": 90
+ },
+ "dt": 1485789600,
+ "sys": {
+   "type": 1,
+   "id": 5091,
+   "message": 0.0103,
+   "country": "GB",
+   "sunrise": 1485762037,
+   "sunset": 1485794875
+ },
+ "id": 2643743,
+ "name": "London",
+ "cod": 200
+}`,
+	}
+)

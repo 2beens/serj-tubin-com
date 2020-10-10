@@ -19,9 +19,10 @@ type WeatherApi struct {
 	openWeatherApiUrl string // http://api.openweathermap.org/data/2.5/weather
 	openWeatherApiKey string
 	citiesData        map[string]*[]WeatherCity
+	httpClient        *http.Client
 }
 
-func NewWeatherApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []WeatherCity) *WeatherApi {
+func NewWeatherApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []WeatherCity, httpClient *http.Client) *WeatherApi {
 	megabyte := 1024 * 1024
 	cacheSize := 50 * megabyte
 
@@ -29,6 +30,7 @@ func NewWeatherApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []Wea
 		openWeatherApiUrl: openWeatherApiUrl,
 		openWeatherApiKey: openWeatherApiKey,
 		cache:             freecache.NewCache(cacheSize),
+		httpClient:        httpClient,
 	}
 
 	loadedCities := 0
@@ -68,7 +70,7 @@ func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApi
 	weatherApiUrl := fmt.Sprintf("%s?id=%d&appid=%s", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 
-	resp, err := http.Get(weatherApiUrl)
+	resp, err := w.httpClient.Get(weatherApiUrl)
 	if err != nil {
 		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
@@ -115,7 +117,7 @@ func (w *WeatherApi) Get5DaysWeatherForecast(city *WeatherCity, weatherApiKey st
 	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/forecast?id=%d&appid=%s&units=metric", city.ID, weatherApiKey)
 	log.Debugf("calling weather api city info: %s", weatherApiUrl)
 
-	resp, err := http.Get(weatherApiUrl)
+	resp, err := w.httpClient.Get(weatherApiUrl)
 	if err != nil {
 		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
