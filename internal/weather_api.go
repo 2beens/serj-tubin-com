@@ -48,7 +48,7 @@ func NewWeatherApi(openWeatherApiKey string, citiesData []WeatherCity) *WeatherA
 	return weatherApi
 }
 
-func (w *WeatherApi) GetWeatherCurrent(city WeatherCity) (WeatherApiResponse, error) {
+func (w *WeatherApi) GetWeatherCurrent(city *WeatherCity) (WeatherApiResponse, error) {
 	weatherApiResponse := &WeatherApiResponse{}
 
 	cacheKey := fmt.Sprintf("current::%d", city.ID)
@@ -92,7 +92,7 @@ func (w *WeatherApi) GetWeatherCurrent(city WeatherCity) (WeatherApiResponse, er
 }
 
 // returns something like sunny, cloudy, etc
-func (w *WeatherApi) Get5DaysWeatherForecast(city WeatherCity, weatherApiKey string) ([]WeatherInfo, error) {
+func (w *WeatherApi) Get5DaysWeatherForecast(city *WeatherCity, weatherApiKey string) ([]WeatherInfo, error) {
 	weatherApiResponse := &WeatherApi5DaysResponse{}
 
 	cacheKey := fmt.Sprintf("5days::%d", city.ID)
@@ -138,24 +138,24 @@ func (w *WeatherApi) Get5DaysWeatherForecast(city WeatherCity, weatherApiKey str
 	return weatherApiResponse.List, nil
 }
 
-func (w *WeatherApi) GetWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
-	cityName := strings.ToLower(geoInfo.City)
+func (w *WeatherApi) GetWeatherCity(city, countryCode string) (*WeatherCity, error) {
+	cityName := strings.ToLower(city)
 	citiesList, found := w.citiesData[cityName]
 	if !found {
-		return WeatherCity{}, ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	if len(*citiesList) == 1 {
-		return (*citiesList)[0], nil
+		return &(*citiesList)[0], nil
 	}
 
-	country := strings.ToLower(geoInfo.CountryCode)
+	country := strings.ToLower(countryCode)
 	for i := range *citiesList {
 		c := (*citiesList)[i]
 		if strings.ToLower(c.Country) == country {
-			return c, nil
+			return &c, nil
 		}
 	}
 
-	return WeatherCity{}, ErrNotFound
+	return nil, ErrNotFound
 }

@@ -37,6 +37,7 @@ github.com/sirupsen/logrus
 # github.com/stretchr/testify v1.4.0
 ## explicit
 github.com/stretchr/testify/assert
+github.com/stretchr/testify/require
 # github.com/yuin/gopher-lua v0.0.0-20200603152657-dc2b0ca8b37e
 ## explicit
 github.com/yuin/gopher-lua
