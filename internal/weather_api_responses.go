@@ -14,10 +14,10 @@ type WeatherMain struct {
 	FeelsLike float64 `json:"feels_like"`
 	TempMin   float64 `json:"temp_min"`
 	TempMax   float64 `json:"temp_max"`
-	Pressure  int     `json:"pressure"`
-	Humidity  int     `json:"humidity"`
-	SeaLevel  int     `json:"sea_level"`
-	GrndLevel int     `json:"grnd_level"`
+	Pressure  float64 `json:"pressure"`
+	Humidity  float64 `json:"humidity"`
+	SeaLevel  float64 `json:"sea_level"`
+	GrndLevel float64 `json:"grnd_level"`
 	TempKf    float64 `json:"temp_kf"`
 }
 
@@ -28,7 +28,7 @@ type Coordinate struct {
 
 type Wind struct {
 	Speed float64 `json:"speed"`
-	Deg   int     `json:"deg"`
+	Deg   float64 `json:"deg"`
 }
 
 type Clouds struct {
@@ -64,8 +64,8 @@ type WeatherApiResponse struct {
 
 type WeatherApi5DaysResponse struct {
 	Cod     string        `json:"cod"`
-	Message int           `json:"message"`
-	Cnt     int           `json:"cnt"`
+	Message float64       `json:"message"`
+	Cnt     float64       `json:"cnt"`
 	City    WeatherCity   `json:"city"`
 	List    []WeatherInfo `json:"list"`
 }
