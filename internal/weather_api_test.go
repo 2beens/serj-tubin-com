@@ -14,7 +14,7 @@ func TestWeatherApi_NewWeatherApi(t *testing.T) {
 	citiesData := getTestCitiesData()
 	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData, nil)
 	assert.NotNil(t, weatherApi)
-	assert.Len(t, weatherApi.citiesData, 6)
+	assert.Len(t, weatherApi.citiesData, 7)
 }
 
 func TestWeatherApi_NewWeatherApi_DuplicateCities(t *testing.T) {
@@ -33,7 +33,7 @@ func TestWeatherApi_NewWeatherApi_DuplicateCities(t *testing.T) {
 
 	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData, nil)
 	assert.NotNil(t, weatherApi)
-	assert.Len(t, weatherApi.citiesData, 6)
+	assert.Len(t, weatherApi.citiesData, 7)
 }
 
 func TestWeatherApi_GetWeatherCity(t *testing.T) {
@@ -132,11 +132,18 @@ func TestWeatherApi_Get5DaysWeatherForecast(t *testing.T) {
 	weatherApi := NewWeatherApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
 	assert.NotNil(t, weatherApi)
 
-	weather, err := weatherApi.Get5DaysWeatherForecast(altstadtCityId, "London", "GB")
+	weatherForecast, err := weatherApi.Get5DaysWeatherForecast(altstadtCityId, "Altstadt", "DE")
 	require.NoError(t, err)
-	require.NotNil(t, weather)
+	require.NotNil(t, weatherForecast)
+	assert.Len(t, weatherForecast, 4)
 
-	// TODO:
+	weatherForecast, err = weatherApi.Get5DaysWeatherForecast(altstadtCityId, "Altstadt", "DE")
+	require.NoError(t, err)
+	require.NotNil(t, weatherForecast)
+	assert.Len(t, weatherForecast, 4)
+
+	// second time we request - cache should be hit
+	assert.Equal(t, 1, apiCallsCount)
 }
 
 func getTestCitiesData() []WeatherCity {
