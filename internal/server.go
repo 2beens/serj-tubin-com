@@ -24,6 +24,7 @@ type Server struct {
 	quotesManager *QuotesManager
 	board         *Board
 
+	openWeatherAPIUrl string
 	openWeatherApiKey string
 	muteRequestLogs   bool
 }
@@ -35,6 +36,7 @@ func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, open
 	}
 
 	s := &Server{
+		openWeatherAPIUrl: "http://api.openweathermap.org/data/2.5/weather",
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(),
@@ -98,7 +100,7 @@ func (s *Server) routerSetup() (r *mux.Router) {
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
-	NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherApiKey)
+	NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey)
 	NewBoardHandler(boardRouter, s.board)
 
 	r.Use(s.loggingMiddleware())

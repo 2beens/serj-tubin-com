@@ -16,15 +16,17 @@ import (
 
 type WeatherApi struct {
 	cache             *freecache.Cache
+	openWeatherApiUrl string // http://api.openweathermap.org/data/2.5/weather
 	openWeatherApiKey string
 	citiesData        map[string]*[]WeatherCity
 }
 
-func NewWeatherApi(openWeatherApiKey string, citiesData []WeatherCity) *WeatherApi {
+func NewWeatherApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []WeatherCity) *WeatherApi {
 	megabyte := 1024 * 1024
 	cacheSize := 50 * megabyte
 
 	weatherApi := &WeatherApi{
+		openWeatherApiUrl: openWeatherApiUrl,
 		openWeatherApiKey: openWeatherApiKey,
 		cache:             freecache.NewCache(cacheSize),
 	}
@@ -63,7 +65,7 @@ func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApi
 		log.Debugf("cached current weather for city %s not found: %s", cityName, err)
 	}
 
-	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?id=%d&appid=%s", cityID, w.openWeatherApiKey)
+	weatherApiUrl := fmt.Sprintf("%s?id=%d&appid=%s", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 
 	resp, err := http.Get(weatherApiUrl)

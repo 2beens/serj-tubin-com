@@ -9,8 +9,7 @@ import (
 
 func TestWeatherApi_NewWeatherApi(t *testing.T) {
 	citiesData := getTestCitiesData()
-	openWeatherTestKey := "open_weather_test_key"
-	weatherApi := NewWeatherApi(openWeatherTestKey, citiesData)
+	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData)
 	assert.NotNil(t, weatherApi)
 	assert.Len(t, weatherApi.citiesData, 5)
 }
@@ -29,16 +28,14 @@ func TestWeatherApi_NewWeatherApi_DuplicateCities(t *testing.T) {
 		Sunset:   0,
 	})
 
-	openWeatherTestKey := "open_weather_test_key"
-	weatherApi := NewWeatherApi(openWeatherTestKey, citiesData)
+	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData)
 	assert.NotNil(t, weatherApi)
 	assert.Len(t, weatherApi.citiesData, 5)
 }
 
 func TestWeatherApi_GetWeatherCity(t *testing.T) {
 	citiesData := getTestCitiesData()
-	openWeatherTestKey := "open_weather_test_key"
-	weatherApi := NewWeatherApi(openWeatherTestKey, citiesData)
+	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData)
 	assert.NotNil(t, weatherApi)
 	assert.Len(t, weatherApi.citiesData, 5)
 
@@ -65,14 +62,19 @@ func TestWeatherApi_GetWeatherCity(t *testing.T) {
 
 func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 	citiesData := getTestCitiesData()
+	openWeatherApiUrl := "http://test.owa"
 	openWeatherTestKey := "open_weather_test_key"
-	weatherApi := NewWeatherApi(openWeatherTestKey, citiesData)
+	weatherApi := NewWeatherApi(openWeatherApiUrl, openWeatherTestKey, citiesData)
 	assert.NotNil(t, weatherApi)
 	assert.Len(t, weatherApi.citiesData, 5)
 
+	// with cache miss
 	w, err := weatherApi.GetWeatherCurrent(2, "Berlin")
 	require.NotNil(t, w)
 	require.NoError(t, err)
+
+	// with cache hit
+	// TODO:
 }
 
 func getTestCitiesData() []WeatherCity {

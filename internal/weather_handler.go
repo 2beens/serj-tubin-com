@@ -20,7 +20,7 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
-func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherApiKey string) *WeatherHandler {
+func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUrl, openWeatherApiKey string) *WeatherHandler {
 	citiesData, err := LoadCitiesData("./assets/city.list.json")
 	if err != nil {
 		log.Errorf("failed to load weather cities data: %s", err)
@@ -31,7 +31,7 @@ func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherApiKe
 	handler := &WeatherHandler{
 		openWeatherApiKey: openWeatherApiKey,
 		geoIp:             geoIp,
-		weatherApi:        NewWeatherApi(openWeatherApiKey, citiesData),
+		weatherApi:        NewWeatherApi(openWeatherAPIUrl, openWeatherApiKey, citiesData),
 	}
 
 	weatherRouter.HandleFunc("/current", handler.handleCurrent).Methods("GET")
