@@ -35,11 +35,18 @@ func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, open
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
 
+	citiesData, err := LoadCitiesData("./assets/city.list.json")
+	if err != nil {
+		log.Errorf("failed to load weather cities data: %s", err)
+		// TODO: I forgot, can it work without this city data?
+		citiesData = []WeatherCity{}
+	}
+
 	s := &Server{
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(),
-		weatherApi:        NewWeatherApi("./assets/city.list.json"),
+		weatherApi:        NewWeatherApi(citiesData),
 		board:             board,
 	}
 

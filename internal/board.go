@@ -10,6 +10,7 @@ import (
 )
 
 // TODO: unit tests <3
+// TODO: maybe better would be to persist board with SQLite, and CitiesData in Aerospike
 
 const (
 	AllMessagesCacheKey = "all-messages"

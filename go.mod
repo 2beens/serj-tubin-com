@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/onsi/ginkgo v1.13.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
+	github.com/stretchr/testify v1.4.0
 	github.com/yuin/gopher-lua v0.0.0-20200603152657-dc2b0ca8b37e // indirect
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a // indirect
 )

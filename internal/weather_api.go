@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/coocood/freecache"
@@ -20,7 +19,7 @@ type WeatherApi struct {
 	citiesData map[string]*[]WeatherCity
 }
 
-func NewWeatherApi(citiesDataPath string) *WeatherApi {
+func NewWeatherApi(citiesData []WeatherCity) *WeatherApi {
 	megabyte := 1024 * 1024
 	cacheSize := 50 * megabyte
 
@@ -29,20 +28,15 @@ func NewWeatherApi(citiesDataPath string) *WeatherApi {
 	}
 
 	loadedCities := 0
-	citiesData, err := LoadCitiesData(citiesDataPath)
-	if err != nil {
-		log.Errorf("failed to load weather cities data: %s", err)
-	} else {
-		weatherApi.citiesData = make(map[string]*[]WeatherCity)
-		for i := range citiesData {
-			loadedCities++
-			c := citiesData[i]
-			cityName := strings.ToLower(c.Name)
-			if cList, ok := weatherApi.citiesData[cityName]; ok {
-				*cList = append(*cList, c)
-			} else {
-				weatherApi.citiesData[cityName] = &[]WeatherCity{c}
-			}
+	weatherApi.citiesData = make(map[string]*[]WeatherCity)
+	for i := range citiesData {
+		loadedCities++
+		c := citiesData[i]
+		cityName := strings.ToLower(c.Name)
+		if cList, ok := weatherApi.citiesData[cityName]; ok {
+			*cList = append(*cList, c)
+		} else {
+			weatherApi.citiesData[cityName] = &[]WeatherCity{c}
 		}
 	}
 
@@ -162,24 +156,4 @@ func (w *WeatherApi) GetWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
 	}
 
 	return WeatherCity{}, ErrNotFound
-}
-
-func LoadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
-	citiesJsonFile, err := os.Open(cityListDataPath)
-	if err != nil {
-		return []WeatherCity{}, err
-	}
-
-	citiesJsonFileData, err := ioutil.ReadAll(citiesJsonFile)
-	if err != nil {
-		return []WeatherCity{}, err
-	}
-
-	var cities []WeatherCity
-	err = json.Unmarshal(citiesJsonFileData, &cities)
-	if err != nil {
-		return []WeatherCity{}, err
-	}
-
-	return cities, nil
 }
