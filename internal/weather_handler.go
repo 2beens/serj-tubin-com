@@ -11,8 +11,9 @@ import (
 )
 
 type WeatherHandler struct {
-	geoIp             *GeoIp
-	weatherApi        *WeatherApi
+	geoIp      *GeoIp
+	weatherApi *WeatherApi
+	// TODO: remove this from here, enough to be used in the constructor
 	openWeatherApiKey string
 }
 
@@ -112,7 +113,7 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city, handler.openWeatherApiKey)
+	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city.ID, city.Name, city.Country)
 	if err != nil {
 		log.Errorf("error getting weather tomorrow info: %s", err)
 		http.Error(w, "weather tomorrow error", http.StatusInternalServerError)
@@ -167,7 +168,7 @@ func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city, handler.openWeatherApiKey)
+	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city.ID, city.Name, city.Country)
 	if err != nil {
 		log.Errorf("error getting weather tomorrow info: %s", err)
 		http.Error(w, "weather tomorrow error", http.StatusInternalServerError)

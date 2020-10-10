@@ -113,6 +113,31 @@ func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 	assert.Equal(t, 1, apiCallsCount)
 }
 
+func TestWeatherApi_Get5DaysWeatherForecast(t *testing.T) {
+	londonCityId := 2643743
+	apiCallsCount := 0
+
+	testServerHander := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallsCount++
+		assert.Equal(t, fmt.Sprintf("/?id=%d&appid=open_weather_test_key", londonCityId), r.RequestURI)
+		assert.Equal(t, http.MethodGet, r.Method)
+		w.Write([]byte(weatherApiTestResponses[londonCityId]))
+	})
+	testServer := httptest.NewServer(testServerHander)
+	defer testServer.Close()
+
+	citiesData := getTestCitiesData()
+	openWeatherTestKey := "open_weather_test_key"
+	weatherApi := NewWeatherApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
+	assert.NotNil(t, weatherApi)
+
+	weather, err := weatherApi.Get5DaysWeatherForecast(londonCityId, "London", "GB")
+	require.NoError(t, err)
+	require.NotNil(t, weather)
+
+	// TODO:
+}
+
 func getTestCitiesData() []WeatherCity {
 	return []WeatherCity{
 		{

@@ -96,25 +96,25 @@ func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApi
 }
 
 // returns something like sunny, cloudy, etc
-func (w *WeatherApi) Get5DaysWeatherForecast(city *WeatherCity, weatherApiKey string) ([]WeatherInfo, error) {
+func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry string) ([]WeatherInfo, error) {
 	weatherApiResponse := &WeatherApi5DaysResponse{}
 
-	cacheKey := fmt.Sprintf("5days::%d", city.ID)
+	cacheKey := fmt.Sprintf("5days::%d", cityID)
 	if weatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
-		log.Tracef("found 5 days weather info for %s in cache", city.Name)
+		log.Tracef("found 5 days weather info for %s in cache", cityName)
 		if err = json.Unmarshal(weatherBytes, weatherApiResponse); err == nil {
 			return weatherApiResponse.List, nil
 		} else {
-			log.Errorf("failed to unmarshal 5 days weather from cache for city %s: %s", city.Name, err)
+			log.Errorf("failed to unmarshal 5 days weather from cache for city %s: %s", cityName, err)
 		}
 	} else {
-		log.Debugf("cached 5 days weather for city %s not found: %s", city.Name, err)
+		log.Debugf("cached 5 days weather for city %s not found: %s", cityName, err)
 	}
 
-	log.Tracef("getting 5 days weather forecast for: %d %s, %s", city.ID, city.Name, city.Country)
+	log.Tracef("getting 5 days weather forecast for: %d %s, %s", cityID, cityName, cityCountry)
 
 	// info https://openweathermap.org/forecast5
-	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/forecast?id=%d&appid=%s&units=metric", city.ID, weatherApiKey)
+	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/forecast?id=%d&appid=%s&units=metric", cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api city info: %s", weatherApiUrl)
 
 	resp, err := w.httpClient.Get(weatherApiUrl)
@@ -134,9 +134,9 @@ func (w *WeatherApi) Get5DaysWeatherForecast(city *WeatherCity, weatherApiKey st
 
 	// set cache
 	if err = w.cache.Set([]byte(cacheKey), respBytes, WeatherCacheExpire); err != nil {
-		log.Errorf("failed to write 5 days weather for %s %d: %s", city.Name, city.ID, err)
+		log.Errorf("failed to write 5 days weather for %s %d: %s", cityName, cityID, err)
 	} else {
-		log.Debugf("5 days weather cache set for city: %s", city.Name)
+		log.Debugf("5 days weather cache set for city: %s", cityName)
 	}
 
 	return weatherApiResponse.List, nil
