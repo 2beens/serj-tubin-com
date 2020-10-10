@@ -13,8 +13,6 @@ import (
 type WeatherHandler struct {
 	geoIp      *GeoIp
 	weatherApi *WeatherApi
-	// TODO: remove this from here, enough to be used in the constructor
-	openWeatherApiKey string
 }
 
 var (
@@ -30,8 +28,7 @@ func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUr
 	}
 
 	handler := &WeatherHandler{
-		openWeatherApiKey: openWeatherApiKey,
-		geoIp:             geoIp,
+		geoIp: geoIp,
 		weatherApi: NewWeatherApi(
 			openWeatherAPIUrl,
 			openWeatherApiKey,
@@ -49,12 +46,6 @@ func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUr
 
 func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	if handler.openWeatherApiKey == "" {
-		log.Errorf("error getting Weather info: open weather api key not set")
-		http.Error(w, "weather api error", http.StatusInternalServerError)
-		return
-	}
 
 	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
 	if err != nil {
@@ -92,12 +83,6 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 
 func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	if handler.openWeatherApiKey == "" {
-		log.Errorf("error getting Weather info: open weather api key not set")
-		http.Error(w, "weather api error", http.StatusInternalServerError)
-		return
-	}
 
 	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
 	if err != nil {
@@ -147,12 +132,6 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 
 func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	if handler.openWeatherApiKey == "" {
-		log.Errorf("error getting Weather info: open weather api key not set")
-		http.Error(w, "weather api error", http.StatusInternalServerError)
-		return
-	}
 
 	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
 	if err != nil {

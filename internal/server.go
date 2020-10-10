@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -33,6 +34,11 @@ func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, open
 	board, err := NewBoard(aerospikeHost, aerospikePort, aeroBoardNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
+	}
+
+	if openWeatherApiKey == "" {
+		log.Errorf("error getting Weather info: open weather api key not set")
+		return nil, errors.New("open weather API key not set")
 	}
 
 	s := &Server{
