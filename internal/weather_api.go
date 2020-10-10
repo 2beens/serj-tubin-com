@@ -67,7 +67,7 @@ func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApi
 		log.Debugf("cached current weather for city %s not found: %s", cityName, err)
 	}
 
-	weatherApiUrl := fmt.Sprintf("%s?id=%d&appid=%s", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
+	weatherApiUrl := fmt.Sprintf("%s/weather?id=%d&appid=%s", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 
 	resp, err := w.httpClient.Get(weatherApiUrl)
@@ -114,7 +114,7 @@ func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry s
 	log.Tracef("getting 5 days weather forecast for: %d %s, %s", cityID, cityName, cityCountry)
 
 	// info https://openweathermap.org/forecast5
-	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/forecast?id=%d&appid=%s&units=metric", cityID, w.openWeatherApiKey)
+	weatherApiUrl := fmt.Sprintf("%s/forecast?id=%d&appid=%s&units=metric", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api city info: %s", weatherApiUrl)
 
 	resp, err := w.httpClient.Get(weatherApiUrl)

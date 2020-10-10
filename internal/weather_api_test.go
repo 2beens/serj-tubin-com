@@ -71,7 +71,7 @@ func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 
 	testServerHander := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiCallsCount++
-		assert.Equal(t, fmt.Sprintf("/?id=%d&appid=open_weather_test_key", londonCityId), r.RequestURI)
+		assert.Equal(t, fmt.Sprintf("/weather?id=%d&appid=open_weather_test_key", londonCityId), r.RequestURI)
 		assert.Equal(t, http.MethodGet, r.Method)
 		w.Write([]byte(weatherApiTestResponses[londonCityId]))
 	})
@@ -114,14 +114,15 @@ func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 }
 
 func TestWeatherApi_Get5DaysWeatherForecast(t *testing.T) {
-	londonCityId := 2643743
+	altstadtCityId := 6940463
 	apiCallsCount := 0
 
 	testServerHander := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiCallsCount++
-		assert.Equal(t, fmt.Sprintf("/?id=%d&appid=open_weather_test_key", londonCityId), r.RequestURI)
+		fmt.Println(r.RequestURI)
+		assert.Equal(t, fmt.Sprintf("/forecast?id=%d&appid=open_weather_test_key&units=metric", altstadtCityId), r.RequestURI)
 		assert.Equal(t, http.MethodGet, r.Method)
-		w.Write([]byte(weatherApiTestResponses[londonCityId]))
+		w.Write([]byte(weatherApiForecastTestResponses[altstadtCityId]))
 	})
 	testServer := httptest.NewServer(testServerHander)
 	defer testServer.Close()
@@ -131,7 +132,7 @@ func TestWeatherApi_Get5DaysWeatherForecast(t *testing.T) {
 	weatherApi := NewWeatherApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
 	assert.NotNil(t, weatherApi)
 
-	weather, err := weatherApi.Get5DaysWeatherForecast(londonCityId, "London", "GB")
+	weather, err := weatherApi.Get5DaysWeatherForecast(altstadtCityId, "London", "GB")
 	require.NoError(t, err)
 	require.NotNil(t, weather)
 
@@ -213,6 +214,19 @@ func getTestCitiesData() []WeatherCity {
 			Sunrise:  0,
 			Sunset:   0,
 		},
+		{
+			ID:      6940463,
+			Name:    "Altstadt",
+			State:   "Sarland",
+			Country: "DE",
+			Coord: Coordinate{
+				Lon: 48.137,
+				Lat: 11.5752,
+			},
+			Timezone: 0,
+			Sunrise:  0,
+			Sunset:   0,
+		},
 	}
 }
 
@@ -261,5 +275,160 @@ var (
  "name": "London",
  "cod": 200
 }`,
+	}
+
+	weatherApiForecastTestResponses = map[int]string{
+		6940463: `
+{
+   "cod":"200",
+   "message":0.0032,
+   "cnt":36,
+   "list":[
+      {
+         "dt":1487246400,
+         "main":{
+            "temp":286.67,
+            "temp_min":281.556,
+            "temp_max":286.67,
+            "pressure":972.73,
+            "sea_level":1046.46,
+            "grnd_level":972.73,
+            "humidity":75,
+            "temp_kf":5.11
+         },
+         "weather":[
+            {
+               "id":800,
+               "main":"Clear",
+               "description":"clear sky",
+               "icon":"01d"
+            }
+         ],
+         "clouds":{
+            "all":0
+         },
+         "wind":{
+            "speed":1.81,
+            "deg":247.501
+         },
+         "sys":{
+            "pod":"d"
+         },
+         "dt_txt":"2017-02-16 12:00:00"
+      },
+      {
+         "dt":1487257200,
+         "main":{
+            "temp":285.66,
+            "temp_min":281.821,
+            "temp_max":285.66,
+            "pressure":970.91,
+            "sea_level":1044.32,
+            "grnd_level":970.91,
+            "humidity":70,
+            "temp_kf":3.84
+         },
+         "weather":[
+            {
+               "id":800,
+               "main":"Clear",
+               "description":"clear sky",
+               "icon":"01d"
+            }
+         ],
+         "clouds":{
+            "all":0
+         },
+         "wind":{
+            "speed":1.59,
+            "deg":290.501
+         },
+         "sys":{
+            "pod":"d"
+         },
+         "dt_txt":"2017-02-16 15:00:00"
+      },
+      {
+         "dt":1487268000,
+         "main":{
+            "temp":277.05,
+            "temp_min":274.498,
+            "temp_max":277.05,
+            "pressure":970.44,
+            "sea_level":1044.7,
+            "grnd_level":970.44,
+            "humidity":90,
+            "temp_kf":2.56
+         },
+         "weather":[
+            {
+               "id":800,
+               "main":"Clear",
+               "description":"clear sky",
+               "icon":"01n"
+            }
+         ],
+         "clouds":{
+            "all":0
+         },
+         "wind":{
+            "speed":1.41,
+            "deg":263.5
+         },
+         "sys":{
+            "pod":"n"
+         },
+         "dt_txt":"2017-02-16 18:00:00"
+      },
+      {
+         "dt":1487624400,
+         "main":{
+            "temp":272.424,
+            "temp_min":272.424,
+            "temp_max":272.424,
+            "pressure":968.38,
+            "sea_level":1043.17,
+            "grnd_level":968.38,
+            "humidity":85,
+            "temp_kf":0
+         },
+         "weather":[
+            {
+               "id":801,
+               "main":"Clouds",
+               "description":"few clouds",
+               "icon":"02n"
+            }
+         ],
+         "clouds":{
+            "all":20
+         },
+         "wind":{
+            "speed":3.57,
+            "deg":255.503
+         },
+         "rain":{
+
+         },
+         "snow":{
+
+         },
+         "sys":{
+            "pod":"n"
+         },
+         "dt_txt":"2017-02-20 21:00:00"
+      }
+   ],
+   "city":{
+      "id":6940463,
+      "name":"Altstadt",
+      "coord":{
+         "lat":48.137,
+         "lon":11.5752
+      },
+      "country":"DE"
+   }
+}
+`,
 	}
 )

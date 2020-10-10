@@ -36,7 +36,7 @@ func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, open
 	}
 
 	s := &Server{
-		openWeatherAPIUrl: "http://api.openweathermap.org/data/2.5/weather",
+		openWeatherAPIUrl: "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(),
