@@ -8,7 +8,8 @@ import (
 
 func Test_NewWeatherApi(t *testing.T) {
 	citiesData := getTestCitiesData()
-	weatherApi := NewWeatherApi(citiesData)
+	openWeatherTestKey := "open_weather_test_key"
+	weatherApi := NewWeatherApi(openWeatherTestKey, citiesData)
 	assert.NotNil(t, weatherApi)
 	assert.Len(t, weatherApi.citiesData, 3)
 }
@@ -20,14 +21,15 @@ func Test_NewWeatherApi_DuplicateCities(t *testing.T) {
 		ID:       1,
 		Name:     "city1",
 		State:    "state1",
-		Country:  "RS",
+		Country:  "HR",
 		Coord:    Coordinate{},
 		Timezone: 0,
 		Sunrise:  0,
 		Sunset:   0,
 	})
 
-	weatherApi := NewWeatherApi(citiesData)
+	openWeatherTestKey := "open_weather_test_key"
+	weatherApi := NewWeatherApi(openWeatherTestKey, citiesData)
 	assert.NotNil(t, weatherApi)
 	assert.Len(t, weatherApi.citiesData, 3)
 }
@@ -48,7 +50,7 @@ func getTestCitiesData() []WeatherCity {
 			ID:       1,
 			Name:     "city1",
 			State:    "state1",
-			Country:  "RS",
+			Country:  "HR",
 			Coord:    Coordinate{},
 			Timezone: 0,
 			Sunrise:  0,

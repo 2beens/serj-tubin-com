@@ -15,16 +15,18 @@ import (
 // http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=0af09f7bce2fd9cbea44d6740f3c8e27
 
 type WeatherApi struct {
-	cache      *freecache.Cache
-	citiesData map[string]*[]WeatherCity
+	cache             *freecache.Cache
+	openWeatherApiKey string
+	citiesData        map[string]*[]WeatherCity
 }
 
-func NewWeatherApi(citiesData []WeatherCity) *WeatherApi {
+func NewWeatherApi(openWeatherApiKey string, citiesData []WeatherCity) *WeatherApi {
 	megabyte := 1024 * 1024
 	cacheSize := 50 * megabyte
 
 	weatherApi := &WeatherApi{
-		cache: freecache.NewCache(cacheSize),
+		openWeatherApiKey: openWeatherApiKey,
+		cache:             freecache.NewCache(cacheSize),
 	}
 
 	loadedCities := 0
@@ -46,7 +48,7 @@ func NewWeatherApi(citiesData []WeatherCity) *WeatherApi {
 	return weatherApi
 }
 
-func (w *WeatherApi) GetWeatherCurrent(city WeatherCity, weatherApiKey string) (WeatherApiResponse, error) {
+func (w *WeatherApi) GetWeatherCurrent(city WeatherCity) (WeatherApiResponse, error) {
 	weatherApiResponse := &WeatherApiResponse{}
 
 	cacheKey := fmt.Sprintf("current::%d", city.ID)
@@ -61,7 +63,7 @@ func (w *WeatherApi) GetWeatherCurrent(city WeatherCity, weatherApiKey string) (
 		log.Debugf("cached current weather for city %s not found: %s", city.Name, err)
 	}
 
-	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?id=%d&appid=%s", city.ID, weatherApiKey)
+	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?id=%d&appid=%s", city.ID, w.openWeatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 
 	resp, err := http.Get(weatherApiUrl)
