@@ -11,20 +11,30 @@ import (
 )
 
 type WeatherHandler struct {
-	geoIp             *GeoIp
-	weatherApi        *WeatherApi
-	openWeatherApiKey string
+	geoIp      *GeoIp
+	weatherApi *WeatherApi
 }
 
 var (
 	ErrNotFound = errors.New("not found")
 )
 
-func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, weatherApi *WeatherApi, openWeatherApiKey string) *WeatherHandler {
+func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUrl, openWeatherApiKey string) *WeatherHandler {
+	citiesData, err := LoadCitiesData("./assets/city.list.json")
+	if err != nil {
+		log.Errorf("failed to load weather cities data: %s", err)
+		// TODO: I forgot, can it work without this city data?
+		citiesData = []WeatherCity{}
+	}
+
 	handler := &WeatherHandler{
-		openWeatherApiKey: openWeatherApiKey,
-		geoIp:             geoIp,
-		weatherApi:        weatherApi,
+		geoIp: geoIp,
+		weatherApi: NewWeatherApi(
+			openWeatherAPIUrl,
+			openWeatherApiKey,
+			citiesData,
+			http.DefaultClient,
+		),
 	}
 
 	weatherRouter.HandleFunc("/current", handler.handleCurrent).Methods("GET")
@@ -37,12 +47,6 @@ func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, weatherApi *Weat
 func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if handler.openWeatherApiKey == "" {
-		log.Errorf("error getting Weather info: open weather api key not set")
-		http.Error(w, "weather api error", http.StatusInternalServerError)
-		return
-	}
-
 	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
@@ -50,14 +54,14 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo)
+	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo.City, geoIpInfo.CountryCode)
 	if err != nil {
 		log.Errorf("error getting current weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}
 
-	weatherInfo, err := handler.weatherApi.GetWeatherCurrent(city, handler.openWeatherApiKey)
+	weatherInfo, err := handler.weatherApi.GetWeatherCurrent(city.ID, city.Name)
 	if err != nil {
 		log.Errorf("error getting weather info: %s", err)
 		http.Error(w, "weather api error", http.StatusInternalServerError)
@@ -80,12 +84,6 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if handler.openWeatherApiKey == "" {
-		log.Errorf("error getting Weather info: open weather api key not set")
-		http.Error(w, "weather api error", http.StatusInternalServerError)
-		return
-	}
-
 	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
@@ -93,14 +91,14 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo)
+	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo.City, geoIpInfo.CountryCode)
 	if err != nil {
 		log.Errorf("error getting weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}
 
-	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city, handler.openWeatherApiKey)
+	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city.ID, city.Name, city.Country)
 	if err != nil {
 		log.Errorf("error getting weather tomorrow info: %s", err)
 		http.Error(w, "weather tomorrow error", http.StatusInternalServerError)
@@ -135,12 +133,6 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if handler.openWeatherApiKey == "" {
-		log.Errorf("error getting Weather info: open weather api key not set")
-		http.Error(w, "weather api error", http.StatusInternalServerError)
-		return
-	}
-
 	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
@@ -148,14 +140,14 @@ func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo)
+	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo.City, geoIpInfo.CountryCode)
 	if err != nil {
 		log.Errorf("error getting weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}
 
-	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city, handler.openWeatherApiKey)
+	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city.ID, city.Name, city.Country)
 	if err != nil {
 		log.Errorf("error getting weather tomorrow info: %s", err)
 		http.Error(w, "weather tomorrow error", http.StatusInternalServerError)

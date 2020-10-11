@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/coocood/freecache"
@@ -16,33 +15,34 @@ import (
 // http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=0af09f7bce2fd9cbea44d6740f3c8e27
 
 type WeatherApi struct {
-	cache      *freecache.Cache
-	citiesData map[string]*[]WeatherCity
+	cache             *freecache.Cache
+	openWeatherApiUrl string // http://api.openweathermap.org/data/2.5/weather
+	openWeatherApiKey string
+	citiesData        map[string]*[]WeatherCity
+	httpClient        *http.Client
 }
 
-func NewWeatherApi(citiesDataPath string) *WeatherApi {
+func NewWeatherApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []WeatherCity, httpClient *http.Client) *WeatherApi {
 	megabyte := 1024 * 1024
 	cacheSize := 50 * megabyte
 
 	weatherApi := &WeatherApi{
-		cache: freecache.NewCache(cacheSize),
+		openWeatherApiUrl: openWeatherApiUrl,
+		openWeatherApiKey: openWeatherApiKey,
+		cache:             freecache.NewCache(cacheSize),
+		httpClient:        httpClient,
 	}
 
 	loadedCities := 0
-	citiesData, err := LoadCitiesData(citiesDataPath)
-	if err != nil {
-		log.Errorf("failed to load weather cities data: %s", err)
-	} else {
-		weatherApi.citiesData = make(map[string]*[]WeatherCity)
-		for i := range citiesData {
-			loadedCities++
-			c := citiesData[i]
-			cityName := strings.ToLower(c.Name)
-			if cList, ok := weatherApi.citiesData[cityName]; ok {
-				*cList = append(*cList, c)
-			} else {
-				weatherApi.citiesData[cityName] = &[]WeatherCity{c}
-			}
+	weatherApi.citiesData = make(map[string]*[]WeatherCity)
+	for i := range citiesData {
+		loadedCities++
+		c := citiesData[i]
+		cityName := strings.ToLower(c.Name)
+		if cList, ok := weatherApi.citiesData[cityName]; ok {
+			*cList = append(*cList, c)
+		} else {
+			weatherApi.citiesData[cityName] = &[]WeatherCity{c}
 		}
 	}
 
@@ -52,72 +52,72 @@ func NewWeatherApi(citiesDataPath string) *WeatherApi {
 	return weatherApi
 }
 
-func (w *WeatherApi) GetWeatherCurrent(city WeatherCity, weatherApiKey string) (WeatherApiResponse, error) {
+func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApiResponse, error) {
 	weatherApiResponse := &WeatherApiResponse{}
 
-	cacheKey := fmt.Sprintf("current::%d", city.ID)
+	cacheKey := fmt.Sprintf("current::%d", cityID)
 	if currentCityWeatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
-		log.Tracef("found current weather info for %s in cache", city.Name)
+		log.Tracef("found current weather info for %s in cache", cityName)
 		if err = json.Unmarshal(currentCityWeatherBytes, weatherApiResponse); err == nil {
-			return *weatherApiResponse, nil
+			return weatherApiResponse, nil
 		} else {
-			log.Errorf("failed to unmarshal current weather from cache for city %s: %s", city.Name, err)
+			log.Errorf("failed to unmarshal current weather from cache for city %s: %s", cityName, err)
 		}
 	} else {
-		log.Debugf("cached current weather for city %s not found: %s", city.Name, err)
+		log.Debugf("cached current weather for city %s not found: %s", cityName, err)
 	}
 
-	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?id=%d&appid=%s", city.ID, weatherApiKey)
+	weatherApiUrl := fmt.Sprintf("%s/weather?id=%d&appid=%s", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 
-	resp, err := http.Get(weatherApiUrl)
+	resp, err := w.httpClient.Get(weatherApiUrl)
 	if err != nil {
-		return WeatherApiResponse{}, fmt.Errorf("error getting weather api response: %s", err.Error())
+		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return WeatherApiResponse{}, fmt.Errorf("failed to read weather api response bytes: %s", err)
+		return nil, fmt.Errorf("failed to read weather api response bytes: %s", err)
 	}
 
 	err = json.Unmarshal(respBytes, weatherApiResponse)
 	if err != nil {
-		return WeatherApiResponse{}, fmt.Errorf("failed to unmarshal weather api response bytes: %s", err)
+		return nil, fmt.Errorf("failed to unmarshal weather api response bytes: %s", err)
 	}
 
 	// set cache
 	if err = w.cache.Set([]byte(cacheKey), respBytes, WeatherCacheExpire); err != nil {
-		log.Errorf("failed to write current weather cache for %s %d: %s", city.Name, city.ID, err)
+		log.Errorf("failed to write current weather cache for %s %d: %s", cityName, cityID, err)
 	} else {
-		log.Debugf("current weather cache set for city: %s", city.Name)
+		log.Debugf("current weather cache set for city: %s", cityName)
 	}
 
-	return *weatherApiResponse, nil
+	return weatherApiResponse, nil
 }
 
 // returns something like sunny, cloudy, etc
-func (w *WeatherApi) Get5DaysWeatherForecast(city WeatherCity, weatherApiKey string) ([]WeatherInfo, error) {
+func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry string) ([]WeatherInfo, error) {
 	weatherApiResponse := &WeatherApi5DaysResponse{}
 
-	cacheKey := fmt.Sprintf("5days::%d", city.ID)
+	cacheKey := fmt.Sprintf("5days::%d", cityID)
 	if weatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
-		log.Tracef("found 5 days weather info for %s in cache", city.Name)
+		log.Tracef("found 5 days weather info for %s in cache", cityName)
 		if err = json.Unmarshal(weatherBytes, weatherApiResponse); err == nil {
 			return weatherApiResponse.List, nil
 		} else {
-			log.Errorf("failed to unmarshal 5 days weather from cache for city %s: %s", city.Name, err)
+			log.Errorf("failed to unmarshal 5 days weather from cache for city %s: %s", cityName, err)
 		}
 	} else {
-		log.Debugf("cached 5 days weather for city %s not found: %s", city.Name, err)
+		log.Debugf("cached 5 days weather for city %s not found: %s", cityName, err)
 	}
 
-	log.Tracef("getting 5 days weather forecast for: %d %s, %s", city.ID, city.Name, city.Country)
+	log.Tracef("getting 5 days weather forecast for: %d %s, %s", cityID, cityName, cityCountry)
 
 	// info https://openweathermap.org/forecast5
-	weatherApiUrl := fmt.Sprintf("http://api.openweathermap.org/data/2.5/forecast?id=%d&appid=%s&units=metric", city.ID, weatherApiKey)
+	weatherApiUrl := fmt.Sprintf("%s/forecast?id=%d&appid=%s&units=metric", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api city info: %s", weatherApiUrl)
 
-	resp, err := http.Get(weatherApiUrl)
+	resp, err := w.httpClient.Get(weatherApiUrl)
 	if err != nil {
 		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
@@ -134,52 +134,32 @@ func (w *WeatherApi) Get5DaysWeatherForecast(city WeatherCity, weatherApiKey str
 
 	// set cache
 	if err = w.cache.Set([]byte(cacheKey), respBytes, WeatherCacheExpire); err != nil {
-		log.Errorf("failed to write 5 days weather for %s %d: %s", city.Name, city.ID, err)
+		log.Errorf("failed to write 5 days weather for %s %d: %s", cityName, cityID, err)
 	} else {
-		log.Debugf("5 days weather cache set for city: %s", city.Name)
+		log.Debugf("5 days weather cache set for city: %s", cityName)
 	}
 
 	return weatherApiResponse.List, nil
 }
 
-func (w *WeatherApi) GetWeatherCity(geoInfo *GeoIpInfo) (WeatherCity, error) {
-	cityName := strings.ToLower(geoInfo.City)
+func (w *WeatherApi) GetWeatherCity(city, countryCode string) (*WeatherCity, error) {
+	cityName := strings.ToLower(city)
 	citiesList, found := w.citiesData[cityName]
 	if !found {
-		return WeatherCity{}, ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	if len(*citiesList) == 1 {
-		return (*citiesList)[0], nil
+		return &(*citiesList)[0], nil
 	}
 
-	country := strings.ToLower(geoInfo.CountryCode)
+	country := strings.ToLower(countryCode)
 	for i := range *citiesList {
 		c := (*citiesList)[i]
 		if strings.ToLower(c.Country) == country {
-			return c, nil
+			return &c, nil
 		}
 	}
 
-	return WeatherCity{}, ErrNotFound
-}
-
-func LoadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
-	citiesJsonFile, err := os.Open(cityListDataPath)
-	if err != nil {
-		return []WeatherCity{}, err
-	}
-
-	citiesJsonFileData, err := ioutil.ReadAll(citiesJsonFile)
-	if err != nil {
-		return []WeatherCity{}, err
-	}
-
-	var cities []WeatherCity
-	err = json.Unmarshal(citiesJsonFileData, &cities)
-	if err != nil {
-		return []WeatherCity{}, err
-	}
-
-	return cities, nil
+	return nil, ErrNotFound
 }

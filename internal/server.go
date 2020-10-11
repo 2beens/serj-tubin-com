@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -21,10 +22,10 @@ const (
 
 type Server struct {
 	geoIp         *GeoIp
-	weatherApi    *WeatherApi
 	quotesManager *QuotesManager
 	board         *Board
 
+	openWeatherAPIUrl string
 	openWeatherApiKey string
 	muteRequestLogs   bool
 }
@@ -35,11 +36,16 @@ func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, open
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
 
+	if openWeatherApiKey == "" {
+		log.Errorf("error getting Weather info: open weather api key not set")
+		return nil, errors.New("open weather API key not set")
+	}
+
 	s := &Server{
+		openWeatherAPIUrl: "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(),
-		weatherApi:        NewWeatherApi("./assets/city.list.json"),
 		board:             board,
 	}
 
@@ -100,7 +106,7 @@ func (s *Server) routerSetup() (r *mux.Router) {
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
-	NewWeatherHandler(weatherRouter, s.geoIp, s.weatherApi, s.openWeatherApiKey)
+	NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey)
 	NewBoardHandler(boardRouter, s.board)
 
 	r.Use(s.loggingMiddleware())
