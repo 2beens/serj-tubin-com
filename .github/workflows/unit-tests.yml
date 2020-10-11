@@ -1,8 +1,8 @@
-name: unit-tests
+name: CI
 on:
   pull_request:
 jobs:
-  run:
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2 # checks-out the repository under $GITHUB_WORKSPACE
