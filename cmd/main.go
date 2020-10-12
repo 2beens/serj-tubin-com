@@ -17,7 +17,7 @@ func main() {
 	forceStart := flag.Bool("force-start", false, "try to force start, regardless of errors")
 	aeroHost := flag.String("ahost", "localhost", "hostanme of aerospike server")
 	aeroPort := flag.Int("aport", 3000, "aerospike server port number")
-	aeroBoardNamespace := flag.String("board-namespace", "serj-tubin-com", "namesapce of visitors board in aerospike server")
+	aeroNamespace := flag.String("aero-namespace", "serj-tubin-com", "aerospike namespace value (used in aerospike server)")
 	port := flag.Int("port", 8080, "port number")
 	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
 	flag.Parse()
@@ -31,7 +31,7 @@ func main() {
 		log.Errorf("open weather API key not set, use OPEN_WEATHER_API_KEY env var to set it")
 	}
 
-	server, err := internal.NewServer(*aeroHost, *aeroPort, *aeroBoardNamespace, openWeatherApiKey)
+	server, err := internal.NewServer(*aeroHost, *aeroPort, *aeroNamespace, openWeatherApiKey)
 	if err != nil && !*forceStart {
 		log.Fatal(err)
 	}

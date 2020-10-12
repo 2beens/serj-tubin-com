@@ -17,16 +17,18 @@ const (
 )
 
 type Board struct {
-	aeroClient     *as.Client
-	boardNamespace string
-	messagesSet    string
-	cache          *ristretto.Cache
+	// TODO: aerospike data model (namespace, set, record, bin, ...) infos:
+	// https://aerospike.com/docs/architecture/data-model.html
+	aeroClient    *as.Client
+	aeroNamespace string
+	messagesSet   string
+	cache         *ristretto.Cache
 }
 
-func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
+func NewBoard(aeroHost string, aeroPort int, aeroNamespace string) (*Board, error) {
 	log.Debugf("connecting to aerospike server %s:%d ...", aeroHost, aeroPort)
 
-	client, err := as.NewClient(aeroHost, aeroPort)
+	aeroClient, err := as.NewClient(aeroHost, aeroPort)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +43,10 @@ func NewBoard(aeroHost string, aeroPort int, namespace string) (*Board, error) {
 	}
 
 	b := &Board{
-		aeroClient:     client,
-		boardNamespace: namespace,
-		messagesSet:    "messages",
-		cache:          cache,
+		aeroClient:    aeroClient,
+		aeroNamespace: aeroNamespace,
+		messagesSet:   "messages",
+		cache:         cache,
 	}
 
 	go b.SetAllMessagesCacheFromAero()
@@ -81,7 +83,7 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 		return fmt.Errorf("aero client is nil")
 	}
 
-	key, err := as.NewKey(b.boardNamespace, b.messagesSet, message.Timestamp)
+	key, err := as.NewKey(b.aeroNamespace, b.messagesSet, message.Timestamp)
 	if err != nil {
 		return err
 	}
@@ -133,7 +135,7 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 	spolicy.Priority = as.LOW
 	spolicy.IncludeBinData = true
 
-	recs, err := b.aeroClient.ScanAll(spolicy, b.boardNamespace, b.messagesSet)
+	recs, err := b.aeroClient.ScanAll(spolicy, b.aeroNamespace, b.messagesSet)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +171,7 @@ func (b *Board) MessagesCount() (int, error) {
 	spolicy.Priority = as.LOW
 	spolicy.IncludeBinData = false
 
-	recs, err := b.aeroClient.ScanAll(spolicy, b.boardNamespace, b.messagesSet)
+	recs, err := b.aeroClient.ScanAll(spolicy, b.aeroNamespace, b.messagesSet)
 	if err != nil {
 		return -1, err
 	}
