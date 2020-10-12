@@ -91,9 +91,11 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 			http.Error(w, "invalid limit provided", http.StatusBadRequest)
 			return
 		}
+		log.Printf("getting last %d board messages ... ", limit)
+	} else {
+		limit = 0
+		log.Print("getting all board messages ... ")
 	}
-
-	log.Printf("getting last %d board messages ... ", limit)
 
 	allBboardMessages, err := handler.board.AllMessagesCache(true)
 	if err != nil {
