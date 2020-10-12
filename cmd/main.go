@@ -14,6 +14,7 @@ import (
 func main() {
 	fmt.Println("starting ...")
 
+	logLevel := flag.String("loglvl", "trace", "log level")
 	forceStart := flag.Bool("force-start", false, "try to force start, regardless of errors")
 	aeroHost := flag.String("ahost", "localhost", "hostanme of aerospike server")
 	aeroPort := flag.Int("aport", 3000, "aerospike server port number")
@@ -24,7 +25,7 @@ func main() {
 	log.Debugf("using port: %d", *port)
 	log.Debugf("using server logs path: %s", *logsPath)
 
-	loggingSetup(*logsPath, "trace")
+	loggingSetup(*logsPath, *logLevel)
 
 	openWeatherApiKey := os.Getenv("OPEN_WEATHER_API_KEY")
 	if openWeatherApiKey == "" {
