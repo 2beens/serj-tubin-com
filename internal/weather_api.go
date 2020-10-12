@@ -16,7 +16,7 @@ import (
 
 type WeatherApi struct {
 	cache             *freecache.Cache
-	openWeatherApiUrl string // http://api.openweathermap.org/data/2.5/weather
+	openWeatherApiUrl string // http://api.openweathermap.org/data/2.5
 	openWeatherApiKey string
 	citiesData        map[string]*[]WeatherCity
 	httpClient        *http.Client
