@@ -26,8 +26,49 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board) *BoardHandler {
 	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET")
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET")
 	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET")
+	boardRouter.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET")
 
 	return handler
+}
+
+func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	fromStr := vars["from"]
+	toStr := vars["to"]
+	from, err := strconv.ParseInt(fromStr, 10, 64)
+	if err != nil {
+		log.Errorf("handle get messages range, from <from> param: %s", err)
+		http.Error(w, "parse form error, parameter <from>", http.StatusInternalServerError)
+		return
+	}
+	to, err := strconv.ParseInt(toStr, 10, 64)
+	if err != nil {
+		log.Errorf("handle get messages range, from <to> param: %s", err)
+		http.Error(w, "parse form error, parameter <to>", http.StatusInternalServerError)
+		return
+	}
+
+	boardMessages, err := handler.board.GetMessagesWithRange(from, to)
+	if err != nil {
+		log.Errorf("get messages error: %s", err)
+		http.Error(w, "failed to get messages", http.StatusBadRequest)
+		return
+	}
+
+	if len(boardMessages) == 0 {
+		w.Write([]byte("[]"))
+		return
+	}
+
+	messagesJson, err := json.Marshal(boardMessages)
+	if err != nil {
+		log.Errorf("marshal messages error: %s", err)
+		http.Error(w, "marshal messages error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(messagesJson)
 }
 
 func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Request) {

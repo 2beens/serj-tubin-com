@@ -164,6 +164,36 @@ func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) 
 	return allMessages, nil
 }
 
+func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
+	log.Tracef("getting messages range from %d to %d", from, to)
+
+	rangeFilterStt := &as.Statement{
+		Namespace: b.aeroNamespace,
+		SetName:   b.messagesSet,
+		IndexName: "id",
+		Filter:    as.NewRangeFilter("id", from, to),
+	}
+
+	recordSet, err := b.aeroClient.Query(nil, rangeFilterStt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query aero for range filter set: %w", err)
+	}
+
+	var messages []*BoardMessage
+	for rec := range recordSet.Results() {
+		if rec.Err != nil {
+			log.Errorf("get all messages, record error: %s", rec.Err)
+			continue
+		}
+		m := MessageFromBins(rec.Record.Bins)
+		messages = append(messages, &m)
+	}
+
+	log.Tracef("received %d messages from aerospike", len(messages))
+
+	return messages, nil
+}
+
 func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 	if b.aeroClient == nil {
 		return nil, fmt.Errorf("aero client is nil")
