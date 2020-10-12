@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"sort"
+	"sync"
 
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/dgraph-io/ristretto"
@@ -10,7 +11,6 @@ import (
 )
 
 // TODO: unit tests <3
-// TODO: maybe better would be to persist board with SQLite, and CitiesData in Aerospike
 
 const (
 	AllMessagesCacheKey = "all-messages"
@@ -23,6 +23,9 @@ type Board struct {
 	aeroNamespace string
 	messagesSet   string
 	cache         *ristretto.Cache
+	messagesCount int
+
+	mutex sync.RWMutex
 }
 
 func NewBoard(aeroHost string, aeroPort int, aeroNamespace string) (*Board, error) {
@@ -48,6 +51,30 @@ func NewBoard(aeroHost string, aeroPort int, aeroNamespace string) (*Board, erro
 		messagesSet:   "messages",
 		cache:         cache,
 	}
+
+	messagesCount, err := b.MessagesCount()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all messages count: %w", err)
+	}
+	b.messagesCount = messagesCount
+
+	// https://www.aerospike.com/docs/client/go/usage/query/sindex.html
+	// TODO:
+	// check index created
+	//		create if not
+	// actually: create index once using AQL:
+	//		https://www.aerospike.com/docs/operations/manage/indexes/index.html
+	//aeroClient.CreateIndex()
+
+	// what I need for timestamps:
+	//	https://www.aerospike.com/docs/client/java/examples/application/queries.html#retrieve-all-user-records-using-tweetcount-
+
+	// TODO: testings
+	//f := as.Filter
+	//as.ListGetByIndexRangeCountOp()
+	//_ = f
+
+	//aeroClient.CreateIndex()
 
 	go b.SetAllMessagesCacheFromAero()
 
@@ -79,18 +106,22 @@ func (b *Board) Close() {
 }
 
 func (b *Board) StoreMessage(message BoardMessage) error {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
 	if b.aeroClient == nil {
 		return fmt.Errorf("aero client is nil")
 	}
 
-	key, err := as.NewKey(b.aeroNamespace, b.messagesSet, message.Timestamp)
+	key, err := as.NewKey(b.aeroNamespace, b.messagesSet, b.messagesCount)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("saving message: %+v: %s - %s", message.Timestamp, message.Author, message.Message)
+	log.Debugf("saving message %d: %+v: %s - %s", b.messagesCount, message.Timestamp, message.Author, message.Message)
 
 	bins := as.BinMap{
+		"id":        b.messagesCount,
 		"author":    message.Author,
 		"timestamp": message.Timestamp,
 		"message":   message.Message,
@@ -102,11 +133,15 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 		return err
 	}
 
+	// omg, fix this laziness
 	b.cache.Del(AllMessagesCacheKey)
+
+	b.messagesCount++
 
 	return nil
 }
 
+// TODO: check if sorting by timestamp even works
 func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
 	allMessagesRaw, found := b.cache.Get(AllMessagesCacheKey)
 	if !found {
@@ -118,10 +153,14 @@ func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) 
 		b.SetAllMessagesCache(allMessages)
 		return allMessages, nil
 	}
+
 	allMessages, ok := allMessagesRaw.([]*BoardMessage)
 	if !ok {
 		return nil, fmt.Errorf("failed to convert all messages cache, will get them from aerospike")
 	}
+
+	log.Tracef("all %d messages found in cache", len(allMessages))
+
 	return allMessages, nil
 }
 
@@ -130,12 +169,14 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 		return nil, fmt.Errorf("aero client is nil")
 	}
 
+	log.Tracef("getting all messages from Aerospike, namespace: %s, set: %s", b.aeroNamespace, b.messagesSet)
+
 	spolicy := as.NewScanPolicy()
 	spolicy.ConcurrentNodes = true
 	spolicy.Priority = as.LOW
 	spolicy.IncludeBinData = true
 
-	recs, err := b.aeroClient.ScanAll(spolicy, b.aeroNamespace, b.messagesSet)
+	recordSet, err := b.aeroClient.ScanAll(spolicy, b.aeroNamespace, b.messagesSet)
 	if err != nil {
 		return nil, err
 	}
@@ -143,14 +184,16 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 	// TODO: maybe try getting all keys first, and initiate a batch Read ?
 
 	var messages []*BoardMessage
-	for rec := range recs.Results() {
+	for rec := range recordSet.Results() {
 		if rec.Err != nil {
-			log.Errorf("get all messages, record error: %s", err)
+			log.Errorf("get all messages, record error: %s", rec.Err)
 			continue
 		}
 		m := MessageFromBins(rec.Record.Bins)
 		messages = append(messages, &m)
 	}
+
+	log.Tracef("received %d messages from aerospike", len(messages))
 
 	if sortByTimestamp {
 		sort.Slice(messages, func(i, j int) bool {

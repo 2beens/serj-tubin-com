@@ -97,7 +97,7 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		log.Print("getting all board messages ... ")
 	}
 
-	allBboardMessages, err := handler.board.AllMessagesCache(true)
+	allBoardMessages, err := handler.board.AllMessagesCache(false)
 	if err != nil {
 		log.Errorf("get all messages error: %s", err)
 		http.Error(w, "failed to get all messages", http.StatusBadRequest)
@@ -105,12 +105,12 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 	}
 
 	var boardMessages []*BoardMessage
-	if limit == 0 || limit >= len(allBboardMessages) {
-		boardMessages = allBboardMessages
+	if limit == 0 || limit >= len(allBoardMessages) {
+		boardMessages = allBoardMessages
 	} else {
-		msgCount := len(allBboardMessages)
-		for i := 0; i < limit; i++ {
-			boardMessages = append(boardMessages, allBboardMessages[msgCount-1-i])
+		msgCount := len(allBoardMessages)
+		for i := limit - 1; i >= 0; i-- {
+			boardMessages = append(boardMessages, allBoardMessages[msgCount-1-i])
 		}
 	}
 

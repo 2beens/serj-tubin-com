@@ -6,12 +6,17 @@ import (
 )
 
 type BoardMessage struct {
+	ID        int    `json:"id"`
 	Author    string `json:"author"`
 	Timestamp int64  `json:"timestamp"`
 	Message   string `json:"message"`
 }
 
 func MessageFromBins(bins as.BinMap) BoardMessage {
+	id, ok := bins["id"].(int)
+	if !ok {
+		log.Errorln("get all messages, convert id to int failed!")
+	}
 	author, ok := bins["author"].(string)
 	if !ok {
 		log.Errorln("get all messages, convert author to string failed!")
@@ -25,6 +30,7 @@ func MessageFromBins(bins as.BinMap) BoardMessage {
 		log.Errorln("get all messages, convert message to string failed!")
 	}
 	return BoardMessage{
+		ID:        id,
 		Author:    author,
 		Timestamp: int64(timestamp),
 		Message:   message,
