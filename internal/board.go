@@ -164,6 +164,51 @@ func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) 
 	return allMessages, nil
 }
 
+func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
+	log.Tracef("getting messages page %d, size %d", page, size)
+
+	if size >= b.messagesCount {
+		return b.AllMessagesCache(false)
+	}
+
+	pages := (b.messagesCount / size) + 1
+
+	var from, to int64
+	if page >= pages {
+		from = int64(b.messagesCount - size)
+		to = int64(b.messagesCount)
+	} else {
+		from = int64((page - 1) * size)
+		to = from + int64(size-1)
+	}
+
+	rangeFilterStt := &as.Statement{
+		Namespace: b.aeroNamespace,
+		SetName:   b.messagesSet,
+		IndexName: "id",
+		Filter:    as.NewRangeFilter("id", from, to),
+	}
+
+	recordSet, err := b.aeroClient.Query(nil, rangeFilterStt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query aero for range filter set: %w", err)
+	}
+
+	var messages []*BoardMessage
+	for rec := range recordSet.Results() {
+		if rec.Err != nil {
+			log.Errorf("get messages page, record error: %s", rec.Err)
+			continue
+		}
+		m := MessageFromBins(rec.Record.Bins)
+		messages = append(messages, &m)
+	}
+
+	log.Tracef("received %d messages from aerospike", len(messages))
+
+	return messages, nil
+}
+
 func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 	log.Tracef("getting messages range from %d to %d", from, to)
 
@@ -182,7 +227,7 @@ func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 	var messages []*BoardMessage
 	for rec := range recordSet.Results() {
 		if rec.Err != nil {
-			log.Errorf("get all messages, record error: %s", rec.Err)
+			log.Errorf("get messages range, record error: %s", rec.Err)
 			continue
 		}
 		m := MessageFromBins(rec.Record.Bins)

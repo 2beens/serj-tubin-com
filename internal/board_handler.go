@@ -27,8 +27,61 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board) *BoardHandler {
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET")
 	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET")
 	boardRouter.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET")
+	boardRouter.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET")
 
 	return handler
+}
+
+func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	// TODO: return JSON responses too (or better, check accept-content header)
+
+	pageStr := vars["page"]
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		log.Errorf("handle get messages page, from <page> param: %s", err)
+		http.Error(w, "parse form error, parameter <page>", http.StatusInternalServerError)
+		return
+	}
+	sizeStr := vars["size"]
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+		log.Errorf("handle get messages page, from <size> param: %s", err)
+		http.Error(w, "parse form error, parameter <size>", http.StatusInternalServerError)
+		return
+	}
+
+	log.Tracef("page %s size %s", pageStr, sizeStr)
+
+	if page < 1 {
+		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusInternalServerError)
+		return
+	}
+	if size < 1 {
+		http.Error(w, "invalid size (has to be non-zero value)", http.StatusInternalServerError)
+		return
+	}
+
+	boardMessages, err := handler.board.GetMessagesPage(page, size)
+	if err != nil {
+		log.Errorf("get messages error: %s", err)
+		http.Error(w, "failed to get messages", http.StatusBadRequest)
+		return
+	}
+
+	if len(boardMessages) == 0 {
+		w.Write([]byte("[]"))
+		return
+	}
+
+	messagesJson, err := json.Marshal(boardMessages)
+	if err != nil {
+		log.Errorf("marshal messages error: %s", err)
+		http.Error(w, "marshal messages error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(messagesJson)
 }
 
 func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.Request) {
