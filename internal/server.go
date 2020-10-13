@@ -104,6 +104,8 @@ func (s *Server) routerSetup() (r *mux.Router) {
 		w.Write([]byte(ip))
 	})
 
+	// TODO: maybe add version info, to return it to site pages header
+
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 	NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey)

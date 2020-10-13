@@ -13,7 +13,7 @@ import (
 // TODO: unit tests <3
 
 const (
-	AllMessagesCacheKey  = "all-messages"
+	allMessagesCacheKey  = "all-messages"
 	BoardMessagesSetName = "messages"
 )
 
@@ -24,8 +24,8 @@ type Board struct {
 
 	aeroNamespace string
 	messagesSet   string
-	cache         *ristretto.Cache
 	messagesCount int
+	cache         *ristretto.Cache
 
 	mutex sync.RWMutex
 }
@@ -72,15 +72,25 @@ func (b *Board) SetAllMessagesCacheFromAero() {
 		return
 	}
 	// TODO: this is a super lazy way to cache messages
-	b.SetAllMessagesCache(allMessages)
+	// not really sure, all messages should be really cached
+	b.CacheBoardMessages(allMessagesCacheKey, allMessages)
 }
 
-func (b *Board) SetAllMessagesCache(allMessages []*BoardMessage) {
-	if !b.cache.Set(AllMessagesCacheKey, allMessages, int64(len(allMessages)*3)) {
-		log.Errorf("failed to set all messages to cache... for some reason")
+func (b *Board) CacheBoardMessages(cacheKey string, messages []*BoardMessage) {
+	if !b.cache.Set(cacheKey, messages, int64(len(messages)*3)) {
+		log.Errorf("failed to set cache for [%s]... for some reason", cacheKey)
 	} else {
-		log.Debug("all board messages cache set")
+		log.Debugf("board messages cache set for [%s]", cacheKey)
 	}
+}
+
+func (b *Board) MessagesPageCacheKey(page, size int) string {
+	return fmt.Sprintf("messages::%d::%d", page, size)
+}
+
+func (b *Board) InvalidateCaches() {
+	log.Tracef("invalidating cache")
+	b.cache.Clear()
 }
 
 func (b *Board) Close() {
@@ -119,7 +129,7 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 	}
 
 	// omg, fix this laziness
-	b.cache.Del(AllMessagesCacheKey)
+	b.InvalidateCaches()
 
 	b.messagesCount++
 
@@ -135,6 +145,16 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 	if size >= b.messagesCount {
 		return b.AllMessagesCache(false)
 	}
+
+	cacheKey := b.MessagesPageCacheKey(page, size)
+	if cachedMessages, found := b.cache.Get(cacheKey); found {
+		if messages, ok := cachedMessages.([]*BoardMessage); ok {
+			log.Tracef("%d messages found for page %d and size %d", len(messages), page, size)
+			return messages, nil
+		}
+		return nil, fmt.Errorf("failed to convert messages cache")
+	}
+	// cache miss here, will get messages from aero and cache them
 
 	pages := (b.messagesCount / size) + 1
 
@@ -171,6 +191,8 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 
 	log.Tracef("received %d messages from aerospike", len(messages))
 
+	b.CacheBoardMessages(cacheKey, messages)
+
 	return messages, nil
 }
 
@@ -205,23 +227,21 @@ func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 }
 
 func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
-	allMessagesRaw, found := b.cache.Get(AllMessagesCacheKey)
-	if !found {
-		log.Errorf("failed to get all messages cache, will get them from aerospike")
-		allMessages, err := b.AllMessages(sortByTimestamp)
-		if err != nil {
-			return nil, err
+	if allMessagesCached, found := b.cache.Get(allMessagesCacheKey); found {
+		if allMessages, ok := allMessagesCached.([]*BoardMessage); ok {
+			log.Tracef("all %d messages found in cache", len(allMessages))
+			return allMessages, nil
 		}
-		b.SetAllMessagesCache(allMessages)
-		return allMessages, nil
+		return nil, fmt.Errorf("failed to convert all messages cache")
 	}
 
-	allMessages, ok := allMessagesRaw.([]*BoardMessage)
-	if !ok {
-		return nil, fmt.Errorf("failed to convert all messages cache, will get them from aerospike")
+	log.Errorf("failed to get all messages cache, will get them from aerospike")
+	allMessages, err := b.AllMessages(sortByTimestamp)
+	if err != nil {
+		return nil, err
 	}
 
-	log.Tracef("all %d messages found in cache", len(allMessages))
+	b.CacheBoardMessages(allMessagesCacheKey, allMessages)
 
 	return allMessages, nil
 }
