@@ -26,8 +26,102 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board) *BoardHandler {
 	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET")
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET")
 	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET")
+	boardRouter.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET")
+	boardRouter.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET")
 
 	return handler
+}
+
+func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	// TODO: return JSON responses too (or better, check accept-content header)
+
+	pageStr := vars["page"]
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		log.Errorf("handle get messages page, from <page> param: %s", err)
+		http.Error(w, "parse form error, parameter <page>", http.StatusInternalServerError)
+		return
+	}
+	sizeStr := vars["size"]
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+		log.Errorf("handle get messages page, from <size> param: %s", err)
+		http.Error(w, "parse form error, parameter <size>", http.StatusInternalServerError)
+		return
+	}
+
+	log.Tracef("page %s size %s", pageStr, sizeStr)
+
+	if page < 1 {
+		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusInternalServerError)
+		return
+	}
+	if size < 1 {
+		http.Error(w, "invalid size (has to be non-zero value)", http.StatusInternalServerError)
+		return
+	}
+
+	boardMessages, err := handler.board.GetMessagesPage(page, size)
+	if err != nil {
+		log.Errorf("get messages error: %s", err)
+		http.Error(w, "failed to get messages", http.StatusBadRequest)
+		return
+	}
+
+	if len(boardMessages) == 0 {
+		w.Write([]byte("[]"))
+		return
+	}
+
+	messagesJson, err := json.Marshal(boardMessages)
+	if err != nil {
+		log.Errorf("marshal messages error: %s", err)
+		http.Error(w, "marshal messages error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(messagesJson)
+}
+
+func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	fromStr := vars["from"]
+	toStr := vars["to"]
+	from, err := strconv.ParseInt(fromStr, 10, 64)
+	if err != nil {
+		log.Errorf("handle get messages range, from <from> param: %s", err)
+		http.Error(w, "parse form error, parameter <from>", http.StatusInternalServerError)
+		return
+	}
+	to, err := strconv.ParseInt(toStr, 10, 64)
+	if err != nil {
+		log.Errorf("handle get messages range, from <to> param: %s", err)
+		http.Error(w, "parse form error, parameter <to>", http.StatusInternalServerError)
+		return
+	}
+
+	boardMessages, err := handler.board.GetMessagesWithRange(from, to)
+	if err != nil {
+		log.Errorf("get messages error: %s", err)
+		http.Error(w, "failed to get messages", http.StatusBadRequest)
+		return
+	}
+
+	if len(boardMessages) == 0 {
+		w.Write([]byte("[]"))
+		return
+	}
+
+	messagesJson, err := json.Marshal(boardMessages)
+	if err != nil {
+		log.Errorf("marshal messages error: %s", err)
+		http.Error(w, "marshal messages error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(messagesJson)
 }
 
 func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Request) {
@@ -91,11 +185,13 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 			http.Error(w, "invalid limit provided", http.StatusBadRequest)
 			return
 		}
+		log.Printf("getting last %d board messages ... ", limit)
+	} else {
+		limit = 0
+		log.Print("getting all board messages ... ")
 	}
 
-	log.Printf("getting last %d board messages ... ", limit)
-
-	allBboardMessages, err := handler.board.AllMessagesCache(true)
+	allBoardMessages, err := handler.board.AllMessagesCache(true)
 	if err != nil {
 		log.Errorf("get all messages error: %s", err)
 		http.Error(w, "failed to get all messages", http.StatusBadRequest)
@@ -103,12 +199,12 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 	}
 
 	var boardMessages []*BoardMessage
-	if limit == 0 || limit >= len(allBboardMessages) {
-		boardMessages = allBboardMessages
+	if limit == 0 || limit >= len(allBoardMessages) {
+		boardMessages = allBoardMessages
 	} else {
-		msgCount := len(allBboardMessages)
-		for i := 0; i < limit; i++ {
-			boardMessages = append(boardMessages, allBboardMessages[msgCount-1-i])
+		msgCount := len(allBoardMessages)
+		for i := limit - 1; i >= 0; i-- {
+			boardMessages = append(boardMessages, allBoardMessages[msgCount-1-i])
 		}
 	}
 

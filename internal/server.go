@@ -30,8 +30,8 @@ type Server struct {
 	muteRequestLogs   bool
 }
 
-func NewServer(aerospikeHost string, aerospikePort int, aeroBoardNamespace, openWeatherApiKey string) (*Server, error) {
-	board, err := NewBoard(aerospikeHost, aerospikePort, aeroBoardNamespace)
+func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeatherApiKey string) (*Server, error) {
+	board, err := NewBoard(aerospikeHost, aerospikePort, aeroNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
@@ -103,6 +103,8 @@ func (s *Server) routerSetup() (r *mux.Router) {
 		}
 		w.Write([]byte(ip))
 	})
+
+	// TODO: maybe add version info, to return it to site pages header
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
