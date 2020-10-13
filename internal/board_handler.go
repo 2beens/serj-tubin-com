@@ -191,7 +191,7 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		log.Print("getting all board messages ... ")
 	}
 
-	allBoardMessages, err := handler.board.AllMessagesCache(false)
+	allBoardMessages, err := handler.board.AllMessagesCache(true)
 	if err != nil {
 		log.Errorf("get all messages error: %s", err)
 		http.Error(w, "failed to get all messages", http.StatusBadRequest)

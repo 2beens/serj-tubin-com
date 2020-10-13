@@ -13,13 +13,15 @@ import (
 // TODO: unit tests <3
 
 const (
-	AllMessagesCacheKey = "all-messages"
+	AllMessagesCacheKey  = "all-messages"
+	BoardMessagesSetName = "messages"
 )
 
 type Board struct {
-	// TODO: aerospike data model (namespace, set, record, bin, ...) infos:
+	// aerospike data model (namespace, set, record, bin, ...) infos:
 	// https://aerospike.com/docs/architecture/data-model.html
-	aeroClient    *as.Client
+	aeroClient *as.Client
+
 	aeroNamespace string
 	messagesSet   string
 	cache         *ristretto.Cache
@@ -48,7 +50,7 @@ func NewBoard(aeroHost string, aeroPort int, aeroNamespace string) (*Board, erro
 	b := &Board{
 		aeroClient:    aeroClient,
 		aeroNamespace: aeroNamespace,
-		messagesSet:   "messages",
+		messagesSet:   BoardMessagesSetName,
 		cache:         cache,
 	}
 
@@ -57,24 +59,6 @@ func NewBoard(aeroHost string, aeroPort int, aeroNamespace string) (*Board, erro
 		return nil, fmt.Errorf("failed to get all messages count: %w", err)
 	}
 	b.messagesCount = messagesCount
-
-	// https://www.aerospike.com/docs/client/go/usage/query/sindex.html
-	// TODO:
-	// check index created
-	//		create if not
-	// actually: create index once using AQL:
-	//		https://www.aerospike.com/docs/operations/manage/indexes/index.html
-	//aeroClient.CreateIndex()
-
-	// what I need for timestamps:
-	//	https://www.aerospike.com/docs/client/java/examples/application/queries.html#retrieve-all-user-records-using-tweetcount-
-
-	// TODO: testings
-	//f := as.Filter
-	//as.ListGetByIndexRangeCountOp()
-	//_ = f
-
-	//aeroClient.CreateIndex()
 
 	go b.SetAllMessagesCacheFromAero()
 
@@ -127,6 +111,7 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 		"message":   message.Message,
 	}
 
+	// TODO: check write/read policies, and whether I need them
 	writePolicy := as.NewWritePolicy(0, 0)
 	err = b.aeroClient.Put(writePolicy, key, bins)
 	if err != nil {
@@ -141,30 +126,10 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 	return nil
 }
 
-// TODO: check if sorting by timestamp even works
-func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
-	allMessagesRaw, found := b.cache.Get(AllMessagesCacheKey)
-	if !found {
-		log.Errorf("failed to get all messages cache, will get them from aerospike")
-		allMessages, err := b.AllMessages(sortByTimestamp)
-		if err != nil {
-			return nil, err
-		}
-		b.SetAllMessagesCache(allMessages)
-		return allMessages, nil
-	}
-
-	allMessages, ok := allMessagesRaw.([]*BoardMessage)
-	if !ok {
-		return nil, fmt.Errorf("failed to convert all messages cache, will get them from aerospike")
-	}
-
-	log.Tracef("all %d messages found in cache", len(allMessages))
-
-	return allMessages, nil
-}
-
 func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
 	log.Tracef("getting messages page %d, size %d", page, size)
 
 	if size >= b.messagesCount {
@@ -237,6 +202,28 @@ func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 	log.Tracef("received %d messages from aerospike", len(messages))
 
 	return messages, nil
+}
+
+func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
+	allMessagesRaw, found := b.cache.Get(AllMessagesCacheKey)
+	if !found {
+		log.Errorf("failed to get all messages cache, will get them from aerospike")
+		allMessages, err := b.AllMessages(sortByTimestamp)
+		if err != nil {
+			return nil, err
+		}
+		b.SetAllMessagesCache(allMessages)
+		return allMessages, nil
+	}
+
+	allMessages, ok := allMessagesRaw.([]*BoardMessage)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert all messages cache, will get them from aerospike")
+	}
+
+	log.Tracef("all %d messages found in cache", len(allMessages))
+
+	return allMessages, nil
 }
 
 func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
