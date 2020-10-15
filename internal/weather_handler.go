@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -19,12 +20,11 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
-func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUrl, openWeatherApiKey string) *WeatherHandler {
+func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUrl, openWeatherApiKey string) (*WeatherHandler, error) {
 	citiesData, err := LoadCitiesData("./assets/city.list.json")
 	if err != nil {
 		log.Errorf("failed to load weather cities data: %s", err)
-		// TODO: I forgot, can it work without this city data?
-		citiesData = []WeatherCity{}
+		return nil, fmt.Errorf("failed to load weather cities data: %s", err)
 	}
 
 	handler := &WeatherHandler{
@@ -41,7 +41,7 @@ func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUr
 	weatherRouter.HandleFunc("/tomorrow", handler.handleTomorrow).Methods("GET")
 	weatherRouter.HandleFunc("/5days", handler.handle5Days).Methods("GET")
 
-	return handler
+	return handler, nil
 }
 
 func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Request) {

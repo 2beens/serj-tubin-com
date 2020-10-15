@@ -59,8 +59,8 @@ func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeath
 	return s, nil
 }
 
-func (s *Server) routerSetup() (r *mux.Router) {
-	r = mux.NewRouter()
+func (s *Server) routerSetup() (*mux.Router, error) {
+	r := mux.NewRouter()
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("I'm OK, thanks :)"))
@@ -108,17 +108,28 @@ func (s *Server) routerSetup() (r *mux.Router) {
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
-	NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey)
-	NewBoardHandler(boardRouter, s.board)
+
+	if NewBoardHandler(boardRouter, s.board) == nil {
+		return nil, errors.New("board handler is nil")
+	}
+
+	if err, weatherHandler := NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
+		return nil, fmt.Errorf("failed to create weather handler: %w", err)
+	} else if weatherHandler == nil {
+		return nil, errors.New("weather handler is nil")
+	}
 
 	r.Use(s.loggingMiddleware())
 	r.Use(s.corsMiddleware())
 
-	return r
+	return r, nil
 }
 
 func (s *Server) Serve(port int) {
-	router := s.routerSetup()
+	router, err := s.routerSetup()
+	if err != nil {
+		log.Fatalf("failed to setup router: %s", err)
+	}
 
 	ipAndPort := fmt.Sprintf("%s:%d", "localhost", port)
 
