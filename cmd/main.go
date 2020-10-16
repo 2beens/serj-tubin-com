@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal"
+	"github.com/2beens/serjtubincom/internal/aerospike"
 	as "github.com/aerospike/aerospike-client-go"
 	log "github.com/sirupsen/logrus"
 )
@@ -121,7 +122,7 @@ func fixAerospikeData(namespace, host string, port int) error {
 			return fmt.Errorf("get all messages, record error: %w", rec.Err)
 		}
 
-		m := internal.MessageFromBins(rec.Record.Bins)
+		m := internal.MessageFromBins(aerospike.AeroBinMap(rec.Record.Bins))
 		messages = append(messages, &m)
 		records = append(records, rec)
 	}

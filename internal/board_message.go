@@ -1,7 +1,7 @@
 package internal
 
 import (
-	as "github.com/aerospike/aerospike-client-go"
+	"github.com/2beens/serjtubincom/internal/aerospike"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -12,7 +12,7 @@ type BoardMessage struct {
 	Message   string `json:"message"`
 }
 
-func MessageFromBins(bins as.BinMap) BoardMessage {
+func MessageFromBins(bins aerospike.AeroBinMap) BoardMessage {
 	id, ok := bins["id"].(int)
 	if !ok {
 		log.Errorln("get all messages, convert id to int failed!")

@@ -3,14 +3,13 @@ package internal
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 
-	as "github.com/aerospike/aerospike-client-go"
+	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/dgraph-io/ristretto"
 	log "github.com/sirupsen/logrus"
 )
-
-// TODO: unit tests <3
 
 const (
 	allMessagesCacheKey  = "all-messages"
@@ -18,9 +17,7 @@ const (
 )
 
 type Board struct {
-	// aerospike data model (namespace, set, record, bin, ...) infos:
-	// https://aerospike.com/docs/architecture/data-model.html
-	aeroClient *as.Client
+	aeroClient aerospike.Client
 
 	aeroNamespace string
 	messagesSet   string
@@ -30,14 +27,7 @@ type Board struct {
 	mutex sync.RWMutex
 }
 
-func NewBoard(aeroHost string, aeroPort int, aeroNamespace string) (*Board, error) {
-	log.Debugf("connecting to aerospike server %s:%d ...", aeroHost, aeroPort)
-
-	aeroClient, err := as.NewClient(aeroHost, aeroPort)
-	if err != nil {
-		return nil, err
-	}
-
+func NewBoard(aeroClient aerospike.Client, aeroNamespace string) (*Board, error) {
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e7,     // number of keys to track frequency of (10M)
 		MaxCost:     1 << 28, // maximum cost of cache (~268M)
@@ -105,27 +95,22 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 
 	if b.aeroClient == nil {
 		return fmt.Errorf("aero client is nil")
+	} else if !b.aeroClient.IsConnected() {
+		return fmt.Errorf("aero client is not connected")
 	}
 
-	key, err := as.NewKey(b.aeroNamespace, b.messagesSet, b.messagesCount)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("saving message %d: %+v: %s - %s", b.messagesCount, message.Timestamp, message.Author, message.Message)
-
-	bins := as.BinMap{
+	bins := aerospike.AeroBinMap{
 		"id":        b.messagesCount,
 		"author":    message.Author,
 		"timestamp": message.Timestamp,
 		"message":   message.Message,
 	}
 
-	// TODO: check write/read policies, and whether I need them
-	writePolicy := as.NewWritePolicy(0, 0)
-	err = b.aeroClient.Put(writePolicy, key, bins)
-	if err != nil {
-		return err
+	log.Debugf("saving message %d: %+v: %s - %s", b.messagesCount, message.Timestamp, message.Author, message.Message)
+
+	messageKey := strconv.Itoa(b.messagesCount)
+	if err := b.aeroClient.Put(b.messagesSet, messageKey, bins); err != nil {
+		return fmt.Errorf("failed to do aero put: %w", err)
 	}
 
 	// omg, fix this laziness
@@ -167,25 +152,14 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 		to = from + int64(size-1)
 	}
 
-	rangeFilterStt := &as.Statement{
-		Namespace: b.aeroNamespace,
-		SetName:   b.messagesSet,
-		IndexName: "id",
-		Filter:    as.NewRangeFilter("id", from, to),
-	}
-
-	recordSet, err := b.aeroClient.Query(nil, rangeFilterStt)
+	messagesBins, err := b.aeroClient.QueryByRange(b.messagesSet, "id", from, to)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query aero for range filter set: %w", err)
+		return nil, fmt.Errorf("failed to query aero spike for messages: %w", err)
 	}
 
 	var messages []*BoardMessage
-	for rec := range recordSet.Results() {
-		if rec.Err != nil {
-			log.Errorf("get messages page, record error: %s", rec.Err)
-			continue
-		}
-		m := MessageFromBins(rec.Record.Bins)
+	for _, mBin := range messagesBins {
+		m := MessageFromBins(mBin)
 		messages = append(messages, &m)
 	}
 
@@ -199,25 +173,14 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 	log.Tracef("getting messages range from %d to %d", from, to)
 
-	rangeFilterStt := &as.Statement{
-		Namespace: b.aeroNamespace,
-		SetName:   b.messagesSet,
-		IndexName: "id",
-		Filter:    as.NewRangeFilter("id", from, to),
-	}
-
-	recordSet, err := b.aeroClient.Query(nil, rangeFilterStt)
+	messagesBins, err := b.aeroClient.QueryByRange(b.messagesSet, "id", from, to)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query aero for range filter set: %w", err)
+		return nil, fmt.Errorf("failed to query aero spike for messages: %w", err)
 	}
 
 	var messages []*BoardMessage
-	for rec := range recordSet.Results() {
-		if rec.Err != nil {
-			log.Errorf("get messages range, record error: %s", rec.Err)
-			continue
-		}
-		m := MessageFromBins(rec.Record.Bins)
+	for _, mBin := range messagesBins {
+		m := MessageFromBins(mBin)
 		messages = append(messages, &m)
 	}
 
@@ -247,31 +210,23 @@ func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) 
 }
 
 func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
+	// TODO: check if these checks are necessary
 	if b.aeroClient == nil {
 		return nil, fmt.Errorf("aero client is nil")
+	} else if !b.aeroClient.IsConnected() {
+		return nil, fmt.Errorf("aero client is not connected")
 	}
 
 	log.Tracef("getting all messages from Aerospike, namespace: %s, set: %s", b.aeroNamespace, b.messagesSet)
 
-	spolicy := as.NewScanPolicy()
-	spolicy.ConcurrentNodes = true
-	spolicy.Priority = as.LOW
-	spolicy.IncludeBinData = true
-
-	recordSet, err := b.aeroClient.ScanAll(spolicy, b.aeroNamespace, b.messagesSet)
+	messagesBins, err := b.aeroClient.ScanAll(b.messagesSet)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query aero spike for messages: %w", err)
 	}
 
-	// TODO: maybe try getting all keys first, and initiate a batch Read ?
-
 	var messages []*BoardMessage
-	for rec := range recordSet.Results() {
-		if rec.Err != nil {
-			log.Errorf("get all messages, record error: %s", rec.Err)
-			continue
-		}
-		m := MessageFromBins(rec.Record.Bins)
+	for _, mBin := range messagesBins {
+		m := MessageFromBins(mBin)
 		messages = append(messages, &m)
 	}
 
@@ -291,20 +246,5 @@ func (b *Board) MessagesCount() (int, error) {
 		return -1, fmt.Errorf("aero client is nil")
 	}
 
-	spolicy := as.NewScanPolicy()
-	spolicy.ConcurrentNodes = true
-	spolicy.Priority = as.LOW
-	spolicy.IncludeBinData = false
-
-	recs, err := b.aeroClient.ScanAll(spolicy, b.aeroNamespace, b.messagesSet)
-	if err != nil {
-		return -1, err
-	}
-
-	count := 0
-	for _ = range recs.Results() {
-		count++
-	}
-
-	return count, nil
+	return b.aeroClient.CountAll(b.messagesSet)
 }

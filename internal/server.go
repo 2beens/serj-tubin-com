@@ -10,6 +10,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/aerospike"
+	as "github.com/aerospike/aerospike-client-go"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -31,7 +33,15 @@ type Server struct {
 }
 
 func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeatherApiKey string) (*Server, error) {
-	board, err := NewBoard(aerospikeHost, aerospikePort, aeroNamespace)
+	log.Debugf("connecting to aerospike server %s:%d ...", aerospikeHost, aerospikePort)
+
+	aeroClient, err := as.NewClient(aerospikeHost, aerospikePort)
+	if err != nil {
+		return nil, err
+	}
+	boardAeroClient, err := aerospike.NewBoardAeroClient(aeroClient, aeroNamespace)
+
+	board, err := NewBoard(boardAeroClient, aeroNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
@@ -113,7 +123,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("board handler is nil")
 	}
 
-	if err, weatherHandler := NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
+	if weatherHandler, err := NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
 		return nil, fmt.Errorf("failed to create weather handler: %w", err)
 	} else if weatherHandler == nil {
 		return nil, errors.New("weather handler is nil")
