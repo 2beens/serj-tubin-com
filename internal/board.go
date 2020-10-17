@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
-	"github.com/dgraph-io/ristretto"
+	"github.com/2beens/serjtubincom/internal/cache"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -20,23 +20,14 @@ type Board struct {
 
 	aeroNamespace string
 	messagesCount int
-	cache         *ristretto.Cache
+	cache         cache.Cache
 
 	mutex sync.RWMutex
 }
 
-func NewBoard(aeroClient aerospike.Client, aeroNamespace string) (*Board, error) {
+func NewBoard(aeroClient aerospike.Client, cache cache.Cache, aeroNamespace string) (*Board, error) {
 	if aeroClient == nil {
 		return nil, aerospike.ErrAeroClientNil
-	}
-
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e7,     // number of keys to track frequency of (10M)
-		MaxCost:     1 << 28, // maximum cost of cache (~268M)
-		BufferItems: 64,      // number of keys per Get buffer
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create cache: %s", err)
 	}
 
 	b := &Board{

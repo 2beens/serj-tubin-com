@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/cache"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -46,11 +47,16 @@ func NewServer(
 
 	aeroClient, err := as.NewClient(aerospikeHost, aerospikePort)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create aero client: %w", err)
 	}
 	boardAeroClient, err := aerospike.NewBoardAeroClient(aeroClient, aeroNamespace, aeroMessagesSet)
 
-	board, err := NewBoard(boardAeroClient, aeroNamespace)
+	boardCache, err := cache.NewBoardCache()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create board cache: %w", err)
+	}
+
+	board, err := NewBoard(boardAeroClient, boardCache, aeroNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
