@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	allMessagesCacheKey = "all-messages"
+	AllMessagesCacheKey = "all-messages"
 )
 
 type Board struct {
@@ -66,7 +66,7 @@ func (b *Board) SetAllMessagesCacheFromAero() {
 	}
 	// TODO: this is a super lazy way to cache messages
 	// not really sure, all messages should be really cached
-	b.CacheBoardMessages(allMessagesCacheKey, allMessages)
+	b.CacheBoardMessages(AllMessagesCacheKey, allMessages)
 }
 
 func (b *Board) CacheBoardMessages(cacheKey string, messages []*BoardMessage) {
@@ -207,7 +207,7 @@ func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 }
 
 func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
-	if allMessagesCached, found := b.cache.Get(allMessagesCacheKey); found {
+	if allMessagesCached, found := b.cache.Get(AllMessagesCacheKey); found {
 		if allMessages, ok := allMessagesCached.([]*BoardMessage); ok {
 			log.Tracef("all %d messages found in cache", len(allMessages))
 			return allMessages, nil
@@ -221,7 +221,7 @@ func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) 
 		return nil, err
 	}
 
-	b.CacheBoardMessages(allMessagesCacheKey, allMessages)
+	b.CacheBoardMessages(AllMessagesCacheKey, allMessages)
 
 	return allMessages, nil
 }
