@@ -26,6 +26,10 @@ type Board struct {
 }
 
 func NewBoard(aeroClient aerospike.Client, aeroNamespace string) (*Board, error) {
+	if aeroClient == nil {
+		return nil, aerospike.ErrAeroClientNil
+	}
+
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e7,     // number of keys to track frequency of (10M)
 		MaxCost:     1 << 28, // maximum cost of cache (~268M)
@@ -52,6 +56,15 @@ func NewBoard(aeroClient aerospike.Client, aeroNamespace string) (*Board, error)
 	}
 
 	return b, nil
+}
+
+func (b *Board) CheckAero() error {
+	if b.aeroClient == nil {
+		return aerospike.ErrAeroClientNil
+	} else if !b.aeroClient.IsConnected() {
+		return aerospike.ErrAeroClientNotConnected
+	}
+	return nil
 }
 
 func (b *Board) SetAllMessagesCacheFromAero() {
@@ -89,14 +102,12 @@ func (b *Board) Close() {
 }
 
 func (b *Board) StoreMessage(message BoardMessage) error {
+	if err := b.CheckAero(); err != nil {
+		return err
+	}
+
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
-
-	if b.aeroClient == nil {
-		return fmt.Errorf("aero client is nil")
-	} else if !b.aeroClient.IsConnected() {
-		return fmt.Errorf("aero client is not connected")
-	}
 
 	bins := aerospike.AeroBinMap{
 		"id":        b.messagesCount,
@@ -121,12 +132,19 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 }
 
 func (b *Board) DeleteMessage(messageId string) (bool, error) {
+	if err := b.CheckAero(); err != nil {
+		return false, err
+	}
 	log.Tracef("board - about to delete message: %s", messageId)
 	b.InvalidateCaches()
 	return b.aeroClient.Delete(messageId)
 }
 
 func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
+	if err := b.CheckAero(); err != nil {
+		return nil, err
+	}
+
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
@@ -176,6 +194,9 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 }
 
 func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
+	if err := b.CheckAero(); err != nil {
+		return nil, err
+	}
 	log.Tracef("getting messages range from %d to %d", from, to)
 
 	messagesBins, err := b.aeroClient.QueryByRange("id", from, to)
@@ -215,13 +236,9 @@ func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) 
 }
 
 func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
-	// TODO: check if these checks are necessary
-	if b.aeroClient == nil {
-		return nil, fmt.Errorf("aero client is nil")
-	} else if !b.aeroClient.IsConnected() {
-		return nil, fmt.Errorf("aero client is not connected")
+	if err := b.CheckAero(); err != nil {
+		return nil, err
 	}
-
 	log.Tracef("getting all messages from Aerospike, namespace: %s", b.aeroNamespace)
 
 	messagesBins, err := b.aeroClient.ScanAll()
@@ -247,9 +264,8 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 }
 
 func (b *Board) MessagesCount() (int, error) {
-	if b.aeroClient == nil {
-		return -1, fmt.Errorf("aero client is nil")
+	if err := b.CheckAero(); err != nil {
+		return -1, err
 	}
-
 	return b.aeroClient.CountAll()
 }

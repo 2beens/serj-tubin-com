@@ -12,6 +12,12 @@ import (
 // compile time check - ensure that BoardAeroClients implements Client interface
 var _ Client = (*BoardAeroClient)(nil)
 
+var (
+	ErrAeroClientNil          = errors.New("aero client is nil")
+	ErrAeroClientNotConnected = errors.New("aero client is not connected")
+	ErrEmptyNamespace         = errors.New("namespace cannot be empty")
+)
+
 // aerospike data model (namespace, set, record, bin, ...) infos:
 // https://aerospike.com/docs/architecture/data-model.html
 type BoardAeroClient struct {
@@ -22,10 +28,10 @@ type BoardAeroClient struct {
 
 func NewBoardAeroClient(aeroClient *as.Client, namespace, set string) (*BoardAeroClient, error) {
 	if aeroClient == nil {
-		return nil, errors.New("aero client is nil")
+		return nil, ErrAeroClientNil
 	}
 	if namespace == "" {
-		return nil, errors.New("namespace cannot be empty")
+		return nil, ErrEmptyNamespace
 	}
 
 	return &BoardAeroClient{
