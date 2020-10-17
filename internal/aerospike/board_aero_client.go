@@ -16,10 +16,11 @@ var _ Client = (*BoardAeroClient)(nil)
 // https://aerospike.com/docs/architecture/data-model.html
 type BoardAeroClient struct {
 	namespace  string
+	set        string
 	aeroClient *as.Client
 }
 
-func NewBoardAeroClient(aeroClient *as.Client, namespace string) (*BoardAeroClient, error) {
+func NewBoardAeroClient(aeroClient *as.Client, namespace, set string) (*BoardAeroClient, error) {
 	if aeroClient == nil {
 		return nil, errors.New("aero client is nil")
 	}
@@ -29,17 +30,18 @@ func NewBoardAeroClient(aeroClient *as.Client, namespace string) (*BoardAeroClie
 
 	return &BoardAeroClient{
 		namespace:  namespace,
+		set:        set,
 		aeroClient: aeroClient,
 	}, nil
 }
 
-func (bc *BoardAeroClient) Put(set, key string, binMap AeroBinMap) error {
+func (bc *BoardAeroClient) Put(key string, binMap AeroBinMap) error {
 	messageId, err := strconv.Atoi(key)
 	if err != nil {
 		return errors.New("failed to parse message id")
 	}
 
-	aeroKey, err := as.NewKey(bc.namespace, set, messageId)
+	aeroKey, err := as.NewKey(bc.namespace, bc.set, messageId)
 	if err != nil {
 		return err
 	}
@@ -52,13 +54,13 @@ func (bc *BoardAeroClient) Put(set, key string, binMap AeroBinMap) error {
 	return nil
 }
 
-func (bc *BoardAeroClient) Delete(set, key string) (bool, error) {
+func (bc *BoardAeroClient) Delete(key string) (bool, error) {
 	messageId, err := strconv.Atoi(key)
 	if err != nil {
 		return false, errors.New("failed to parse message id")
 	}
 
-	aeroKey, err := as.NewKey(bc.namespace, set, messageId)
+	aeroKey, err := as.NewKey(bc.namespace, bc.set, messageId)
 	if err != nil {
 		return false, err
 	}
@@ -80,10 +82,10 @@ func (bc *BoardAeroClient) Delete(set, key string) (bool, error) {
 	return removed, nil
 }
 
-func (bc *BoardAeroClient) QueryByRange(set string, index string, from, to int64) ([]AeroBinMap, error) {
+func (bc *BoardAeroClient) QueryByRange(index string, from, to int64) ([]AeroBinMap, error) {
 	rangeFilterStt := &as.Statement{
 		Namespace: bc.namespace,
-		SetName:   set,
+		SetName:   bc.set,
 		IndexName: index,
 		Filter:    as.NewRangeFilter(index, from, to),
 	}
@@ -96,13 +98,13 @@ func (bc *BoardAeroClient) QueryByRange(set string, index string, from, to int64
 	return bc.RecordSet2AeroBinMaps(recordSet)
 }
 
-func (bc *BoardAeroClient) ScanAll(set string) ([]AeroBinMap, error) {
+func (bc *BoardAeroClient) ScanAll() ([]AeroBinMap, error) {
 	spolicy := as.NewScanPolicy()
 	spolicy.ConcurrentNodes = true
 	spolicy.Priority = as.LOW
 	spolicy.IncludeBinData = true
 
-	recordSet, err := bc.aeroClient.ScanAll(spolicy, bc.namespace, set)
+	recordSet, err := bc.aeroClient.ScanAll(spolicy, bc.namespace, bc.set)
 	if err != nil {
 		return nil, err
 	}
@@ -110,13 +112,13 @@ func (bc *BoardAeroClient) ScanAll(set string) ([]AeroBinMap, error) {
 	return bc.RecordSet2AeroBinMaps(recordSet)
 }
 
-func (bc *BoardAeroClient) CountAll(set string) (int, error) {
+func (bc *BoardAeroClient) CountAll() (int, error) {
 	spolicy := as.NewScanPolicy()
 	spolicy.ConcurrentNodes = true
 	spolicy.Priority = as.LOW
 	spolicy.IncludeBinData = false
 
-	recs, err := bc.aeroClient.ScanAll(spolicy, bc.namespace, set)
+	recs, err := bc.aeroClient.ScanAll(spolicy, bc.namespace, bc.set)
 	if err != nil {
 		return -1, err
 	}

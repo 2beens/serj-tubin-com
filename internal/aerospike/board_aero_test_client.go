@@ -1,6 +1,7 @@
 package aerospike
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -8,28 +9,37 @@ import (
 var _ Client = (*BoardAeroTestClient)(nil)
 
 type BoardAeroTestClient struct {
-	ReadBinMaps map[string]AeroBinMap
+	aeroBinMaps map[string]AeroBinMap
 	mutex       sync.Mutex
 }
 
-func (tc *BoardAeroTestClient) Put(set, key string, binMap AeroBinMap) error {
+func NewBoardAeroTestClient() *BoardAeroTestClient {
+	return &BoardAeroTestClient{
+		aeroBinMaps: make(map[string]AeroBinMap),
+	}
+}
+
+func (tc *BoardAeroTestClient) Put(key string, binMap AeroBinMap) error {
 	panic("implement me")
 }
 
-func (tc *BoardAeroTestClient) Delete(set, key string) (bool, error) {
+func (tc *BoardAeroTestClient) Delete(key string) (bool, error) {
 	panic("implement me")
 }
 
-func (tc *BoardAeroTestClient) QueryByRange(set string, index string, from, to int64) ([]AeroBinMap, error) {
+func (tc *BoardAeroTestClient) QueryByRange(index string, from, to int64) ([]AeroBinMap, error) {
 	panic("implement me")
 }
 
-func (tc *BoardAeroTestClient) ScanAll(set string) ([]AeroBinMap, error) {
+func (tc *BoardAeroTestClient) ScanAll() ([]AeroBinMap, error) {
 	panic("implement me")
 }
 
-func (tc *BoardAeroTestClient) CountAll(set string) (int, error) {
-	panic("implement me")
+func (tc *BoardAeroTestClient) CountAll() (int, error) {
+	if tc.aeroBinMaps == nil {
+		return -1, errors.New("nil aero bin maps")
+	}
+	return len(tc.aeroBinMaps), nil
 }
 
 func (tc *BoardAeroTestClient) IsConnected() bool {

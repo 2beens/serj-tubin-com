@@ -12,15 +12,13 @@ import (
 )
 
 const (
-	allMessagesCacheKey  = "all-messages"
-	BoardMessagesSetName = "messages"
+	allMessagesCacheKey = "all-messages"
 )
 
 type Board struct {
 	aeroClient aerospike.Client
 
 	aeroNamespace string
-	messagesSet   string
 	messagesCount int
 	cache         *ristretto.Cache
 
@@ -40,7 +38,6 @@ func NewBoard(aeroClient aerospike.Client, aeroNamespace string) (*Board, error)
 	b := &Board{
 		aeroClient:    aeroClient,
 		aeroNamespace: aeroNamespace,
-		messagesSet:   BoardMessagesSetName,
 		cache:         cache,
 	}
 
@@ -50,7 +47,9 @@ func NewBoard(aeroClient aerospike.Client, aeroNamespace string) (*Board, error)
 	}
 	b.messagesCount = messagesCount
 
-	go b.SetAllMessagesCacheFromAero()
+	if messagesCount > 0 {
+		go b.SetAllMessagesCacheFromAero()
+	}
 
 	return b, nil
 }
@@ -109,7 +108,7 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 	log.Debugf("saving message %d: %+v: %s - %s", b.messagesCount, message.Timestamp, message.Author, message.Message)
 
 	messageKey := strconv.Itoa(b.messagesCount)
-	if err := b.aeroClient.Put(b.messagesSet, messageKey, bins); err != nil {
+	if err := b.aeroClient.Put(messageKey, bins); err != nil {
 		return fmt.Errorf("failed to do aero put: %w", err)
 	}
 
@@ -124,7 +123,7 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 func (b *Board) DeleteMessage(messageId string) (bool, error) {
 	log.Tracef("board - about to delete message: %s", messageId)
 	b.InvalidateCaches()
-	return b.aeroClient.Delete(b.messagesSet, messageId)
+	return b.aeroClient.Delete(messageId)
 }
 
 func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
@@ -158,7 +157,7 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 		to = from + int64(size-1)
 	}
 
-	messagesBins, err := b.aeroClient.QueryByRange(b.messagesSet, "id", from, to)
+	messagesBins, err := b.aeroClient.QueryByRange("id", from, to)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query aero spike for messages: %w", err)
 	}
@@ -179,7 +178,7 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 	log.Tracef("getting messages range from %d to %d", from, to)
 
-	messagesBins, err := b.aeroClient.QueryByRange(b.messagesSet, "id", from, to)
+	messagesBins, err := b.aeroClient.QueryByRange("id", from, to)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query aero spike for messages: %w", err)
 	}
@@ -223,9 +222,9 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 		return nil, fmt.Errorf("aero client is not connected")
 	}
 
-	log.Tracef("getting all messages from Aerospike, namespace: %s, set: %s", b.aeroNamespace, b.messagesSet)
+	log.Tracef("getting all messages from Aerospike, namespace: %s", b.aeroNamespace)
 
-	messagesBins, err := b.aeroClient.ScanAll(b.messagesSet)
+	messagesBins, err := b.aeroClient.ScanAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query aero spike for messages: %w", err)
 	}
@@ -252,5 +251,5 @@ func (b *Board) MessagesCount() (int, error) {
 		return -1, fmt.Errorf("aero client is nil")
 	}
 
-	return b.aeroClient.CountAll(b.messagesSet)
+	return b.aeroClient.CountAll()
 }

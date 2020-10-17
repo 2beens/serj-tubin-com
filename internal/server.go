@@ -33,14 +33,22 @@ type Server struct {
 	secretWord        string
 }
 
-func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeatherApiKey, secretWord string) (*Server, error) {
-	log.Debugf("connecting to aerospike server %s:%d ...", aerospikeHost, aerospikePort)
+func NewServer(
+	aerospikeHost string,
+	aerospikePort int,
+	aeroNamespace string,
+	aeroMessagesSet string,
+	openWeatherApiKey string,
+	secretWord string,
+) (*Server, error) {
+	log.Debugf("connecting to aerospike server %s:%d [namespace:%s, set:%s] ...",
+		aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
 
 	aeroClient, err := as.NewClient(aerospikeHost, aerospikePort)
 	if err != nil {
 		return nil, err
 	}
-	boardAeroClient, err := aerospike.NewBoardAeroClient(aeroClient, aeroNamespace)
+	boardAeroClient, err := aerospike.NewBoardAeroClient(aeroClient, aeroNamespace, aeroMessagesSet)
 
 	board, err := NewBoard(boardAeroClient, aeroNamespace)
 	if err != nil {
