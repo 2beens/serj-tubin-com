@@ -9,10 +9,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBoard_CheckAero(t *testing.T) {
+func TestNewBoard(t *testing.T) {
 	board, err := NewBoard(nil, "aero-test")
-	require.Equal(t, aerospike.ErrAeroClientNil, err)
+	assert.Equal(t, aerospike.ErrAeroClientNil, err)
 	assert.Nil(t, board)
+
+	aeroTestClient := aerospike.NewBoardAeroTestClient()
+	board, err = NewBoard(aeroTestClient, "aero-test")
+	require.NoError(t, err)
+	require.NotNil(t, board)
+
+	assert.Equal(t, nil, board.CheckAero())
+}
+
+func TestBoard_CheckAero(t *testing.T) {
+	aeroTestClient := aerospike.NewBoardAeroTestClient()
+
+	board, err := NewBoard(aeroTestClient, "aero-test")
+	require.NoError(t, err)
+	require.NotNil(t, board)
+
+	aeroTestClient.IsConnectedValue = false
+	assert.Equal(t, aerospike.ErrAeroClientNotConnected, board.CheckAero())
 }
 
 func TestBoard_AllMessages(t *testing.T) {

@@ -11,21 +11,28 @@ var _ Client = (*BoardAeroTestClient)(nil)
 type BoardAeroTestClient struct {
 	aeroBinMaps map[string]AeroBinMap
 	mutex       sync.Mutex
+
+	IsConnectedValue bool
 }
 
 func NewBoardAeroTestClient() *BoardAeroTestClient {
 	return &BoardAeroTestClient{
-		aeroBinMaps: make(map[string]AeroBinMap),
+		aeroBinMaps:      make(map[string]AeroBinMap),
+		IsConnectedValue: true,
 	}
 }
 
 func NewBoardAeroTestClientWithBins(aeroBinMaps map[string]AeroBinMap) *BoardAeroTestClient {
 	return &BoardAeroTestClient{
-		aeroBinMaps: aeroBinMaps,
+		aeroBinMaps:      aeroBinMaps,
+		IsConnectedValue: true,
 	}
 }
 
 func (tc *BoardAeroTestClient) Put(key string, binMap AeroBinMap) error {
+	tc.mutex.Lock()
+	defer tc.mutex.Unlock()
+
 	switch {
 	case key == "":
 		return errors.New("empty key")
@@ -37,6 +44,9 @@ func (tc *BoardAeroTestClient) Put(key string, binMap AeroBinMap) error {
 }
 
 func (tc *BoardAeroTestClient) Delete(key string) (bool, error) {
+	tc.mutex.Lock()
+	defer tc.mutex.Unlock()
+
 	if key == "" {
 		return false, errors.New("empty key")
 	}
@@ -52,6 +62,9 @@ func (tc *BoardAeroTestClient) Delete(key string) (bool, error) {
 }
 
 func (tc *BoardAeroTestClient) QueryByRange(index string, from, to int64) ([]AeroBinMap, error) {
+	tc.mutex.Lock()
+	defer tc.mutex.Unlock()
+
 	var binMaps []AeroBinMap
 	for _, binMap := range tc.aeroBinMaps {
 		val, indexFound := binMap[index]
@@ -70,6 +83,9 @@ func (tc *BoardAeroTestClient) QueryByRange(index string, from, to int64) ([]Aer
 }
 
 func (tc *BoardAeroTestClient) ScanAll() ([]AeroBinMap, error) {
+	tc.mutex.Lock()
+	defer tc.mutex.Unlock()
+
 	var binMaps []AeroBinMap
 	for _, binMap := range tc.aeroBinMaps {
 		binMaps = append(binMaps, binMap)
@@ -78,6 +94,9 @@ func (tc *BoardAeroTestClient) ScanAll() ([]AeroBinMap, error) {
 }
 
 func (tc *BoardAeroTestClient) CountAll() (int, error) {
+	tc.mutex.Lock()
+	defer tc.mutex.Unlock()
+
 	if tc.aeroBinMaps == nil {
 		return -1, errors.New("nil aero bin maps")
 	}
@@ -85,7 +104,7 @@ func (tc *BoardAeroTestClient) CountAll() (int, error) {
 }
 
 func (tc *BoardAeroTestClient) IsConnected() bool {
-	return true
+	return tc.IsConnectedValue
 }
 
 func (tc *BoardAeroTestClient) Close() {

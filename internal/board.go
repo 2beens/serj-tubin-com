@@ -70,7 +70,7 @@ func (b *Board) CheckAero() error {
 func (b *Board) SetAllMessagesCacheFromAero() {
 	allMessages, err := b.AllMessages(true)
 	if err != nil {
-		log.Errorf("failed to prepare visitor board cache: %s", err)
+		log.Errorf("failed to set all messages cache from aero cache: %s", err)
 		return
 	}
 	// TODO: this is a super lazy way to cache messages
