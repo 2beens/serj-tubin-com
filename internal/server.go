@@ -30,9 +30,10 @@ type Server struct {
 	openWeatherAPIUrl string
 	openWeatherApiKey string
 	muteRequestLogs   bool
+	secretWord        string
 }
 
-func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeatherApiKey string) (*Server, error) {
+func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeatherApiKey, secretWord string) (*Server, error) {
 	log.Debugf("connecting to aerospike server %s:%d ...", aerospikeHost, aerospikePort)
 
 	aeroClient, err := as.NewClient(aerospikeHost, aerospikePort)
@@ -57,6 +58,7 @@ func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeath
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(),
 		board:             board,
+		secretWord:        secretWord,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -119,7 +121,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 
-	if NewBoardHandler(boardRouter, s.board) == nil {
+	if NewBoardHandler(boardRouter, s.board, s.secretWord) == nil {
 		return nil, errors.New("board handler is nil")
 	}
 

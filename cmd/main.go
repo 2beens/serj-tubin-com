@@ -58,7 +58,12 @@ func main() {
 		log.Errorf("open weather API key not set, use OPEN_WEATHER_API_KEY env var to set it")
 	}
 
-	server, err := internal.NewServer(*aeroHost, *aeroPort, *aeroNamespace, openWeatherApiKey)
+	secretWord := os.Getenv("SERJ_TUBIN_COM_SECRET_WORD")
+	if secretWord == "" {
+		log.Errorf("secret not set, use SERJ_TUBIN_COM_SECRET_WORD env var to set it")
+	}
+
+	server, err := internal.NewServer(*aeroHost, *aeroPort, *aeroNamespace, openWeatherApiKey, secretWord)
 	if err != nil && !*forceStart {
 		log.Fatal(err)
 	}
