@@ -23,6 +23,7 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board) *BoardHandler {
 	}
 
 	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS")
+	boardRouter.HandleFunc("/messages/delete/{id}", handler.handleDeleteMessage).Methods("GET")
 	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET")
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET")
 	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET")
@@ -34,7 +35,9 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board) *BoardHandler {
 
 func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	// TODO: return JSON responses too (or better, check accept-content header)
+
+	// TODO: return JSON responses for errors too (or better, check accept-content header)
+	// in all handlers!
 
 	pageStr := vars["page"]
 	page, err := strconv.Atoi(pageStr)
@@ -82,6 +85,30 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 	}
 
 	w.Write(messagesJson)
+}
+
+func (handler *BoardHandler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	messageIdStr := vars["id"]
+	if messageIdStr == "" {
+		log.Errorf("handle delete message: received empty message id")
+		http.Error(w, "message id is empty", http.StatusInternalServerError)
+		return
+	}
+
+	deleted, err := handler.board.DeleteMessage(messageIdStr)
+	if err != nil {
+		log.Errorf("handle delete message error: %s", err)
+		http.Error(w, "failed to delete message", http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: again - return proper JSON / requested response format
+	if deleted {
+		w.Write([]byte("true"))
+	} else {
+		w.Write([]byte("false"))
+	}
 }
 
 func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.Request) {

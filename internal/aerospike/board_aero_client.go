@@ -3,8 +3,10 @@ package aerospike
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	as "github.com/aerospike/aerospike-client-go"
+	log "github.com/sirupsen/logrus"
 )
 
 // compile time check - ensure that BoardAeroClients implements Client interface
@@ -32,7 +34,12 @@ func NewBoardAeroClient(aeroClient *as.Client, namespace string) (*BoardAeroClie
 }
 
 func (bc *BoardAeroClient) Put(set, key string, binMap AeroBinMap) error {
-	aeroKey, err := as.NewKey(bc.namespace, set, key)
+	messageId, err := strconv.Atoi(key)
+	if err != nil {
+		return errors.New("failed to parse message id")
+	}
+
+	aeroKey, err := as.NewKey(bc.namespace, set, messageId)
 	if err != nil {
 		return err
 	}
@@ -43,6 +50,34 @@ func (bc *BoardAeroClient) Put(set, key string, binMap AeroBinMap) error {
 	}
 
 	return nil
+}
+
+func (bc *BoardAeroClient) Delete(set, key string) (bool, error) {
+	messageId, err := strconv.Atoi(key)
+	if err != nil {
+		return false, errors.New("failed to parse message id")
+	}
+
+	aeroKey, err := as.NewKey(bc.namespace, set, messageId)
+	if err != nil {
+		return false, err
+	}
+
+	exists, err := bc.aeroClient.Exists(nil, aeroKey)
+	if err != nil {
+		return false, fmt.Errorf("failed to check key existance on aerospike: %w", err)
+	} else if !exists {
+		return false, errors.New("record does not exist")
+	}
+
+	removed, err := bc.aeroClient.Delete(nil, aeroKey)
+	if err != nil {
+		return false, fmt.Errorf("failed to run delete on aerospike: %w", err)
+	}
+
+	log.Tracef("message [%v] deleted: %t", aeroKey.String(), removed)
+
+	return removed, nil
 }
 
 func (bc *BoardAeroClient) QueryByRange(set string, index string, from, to int64) ([]AeroBinMap, error) {

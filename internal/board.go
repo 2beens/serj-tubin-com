@@ -121,6 +121,12 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 	return nil
 }
 
+func (b *Board) DeleteMessage(messageId string) (bool, error) {
+	log.Tracef("board - about to delete message: %s", messageId)
+	b.InvalidateCaches()
+	return b.aeroClient.Delete(b.messagesSet, messageId)
+}
+
 func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()

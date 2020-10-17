@@ -16,6 +16,10 @@ func (tc *BoardAeroTestClient) Put(set, key string, binMap AeroBinMap) error {
 	panic("implement me")
 }
 
+func (tc *BoardAeroTestClient) Delete(set, key string) (bool, error) {
+	panic("implement me")
+}
+
 func (tc *BoardAeroTestClient) QueryByRange(set string, index string, from, to int64) ([]AeroBinMap, error) {
 	panic("implement me")
 }
