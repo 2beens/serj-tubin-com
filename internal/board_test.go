@@ -202,3 +202,37 @@ func TestBoard_SetAllMessagesCacheFromAero(t *testing.T) {
 	require.True(t, ok)
 	assert.Len(t, allMessages, initialMessagesCount)
 }
+
+func TestBoard_CacheBoardMessages(t *testing.T) {
+	internals, board := newTestingInternals()
+
+	// cache empty
+	require.Equal(t, 0, internals.boardCache.ElementsCount())
+
+	messages := []*BoardMessage{
+		{
+			ID:        0,
+			Author:    "a0",
+			Timestamp: time.Now().Unix(),
+			Message:   "m0",
+		},
+		{
+			ID:        1,
+			Author:    "a1",
+			Timestamp: time.Now().Unix(),
+			Message:   "m1",
+		},
+	}
+
+	board.CacheBoardMessages("messages", messages)
+
+	// cache empty
+	require.Equal(t, 1, internals.boardCache.ElementsCount())
+
+	allMessagesFromCache, found := internals.boardCache.Get("messages")
+	require.True(t, found)
+	require.NotNil(t, allMessagesFromCache)
+	allMessages, ok := allMessagesFromCache.([]*BoardMessage)
+	require.True(t, ok)
+	assert.Len(t, allMessages, 2)
+}
