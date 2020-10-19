@@ -305,10 +305,16 @@ func TestBoard_StoreMessage(t *testing.T) {
 }
 
 func TestBoard_GetMessagesWithRange(t *testing.T) {
-	_, board := newTestingInternals()
+	internals, board := newTestingInternals()
+
+	// cache empty at the beginning
+	require.Equal(t, 0, internals.boardCache.ElementsCount())
 
 	messages, err := board.GetMessagesWithRange(1, 3)
 	require.NoError(t, err)
+
+	// cache empty after - GetMessagesWithRange does not cache atm
+	require.Equal(t, 0, internals.boardCache.ElementsCount())
 
 	require.Len(t, messages, 3)
 	assert.Equal(t, "test message gragra", messages[0].Message)
