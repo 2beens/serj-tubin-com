@@ -184,3 +184,21 @@ func TestBoard_DeleteMessage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, initialMessagesCount-1, messagesCount)
 }
+
+func TestBoard_SetAllMessagesCacheFromAero(t *testing.T) {
+	internals, board := newTestingInternals()
+
+	// cache empty
+	require.Equal(t, 0, internals.boardCache.ElementsCount())
+
+	assert.NoError(t, board.SetAllMessagesCacheFromAero())
+
+	// cache filled
+	require.Equal(t, 1, internals.boardCache.ElementsCount())
+	allMessagesFromCache, found := internals.boardCache.Get(AllMessagesCacheKey)
+	require.True(t, found)
+	require.NotNil(t, allMessagesFromCache)
+	allMessages, ok := allMessagesFromCache.([]*BoardMessage)
+	require.True(t, ok)
+	assert.Len(t, allMessages, initialMessagesCount)
+}

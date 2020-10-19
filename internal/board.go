@@ -43,7 +43,11 @@ func NewBoard(aeroClient aerospike.Client, cache cache.Cache, aeroNamespace stri
 	b.messagesCount = messagesCount
 
 	if messagesCount > 0 {
-		go b.SetAllMessagesCacheFromAero()
+		go func() {
+			if err := b.SetAllMessagesCacheFromAero(); err != nil {
+				log.Errorf("failed to set all messages cache from aero cache: %s", err)
+			}
+		}()
 	}
 
 	return b, nil
@@ -58,15 +62,20 @@ func (b *Board) CheckAero() error {
 	return nil
 }
 
-func (b *Board) SetAllMessagesCacheFromAero() {
+func (b *Board) SetAllMessagesCacheFromAero() error {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
 	allMessages, err := b.AllMessages(true)
 	if err != nil {
-		log.Errorf("failed to set all messages cache from aero cache: %s", err)
-		return
+		return err
 	}
+
 	// TODO: this is a super lazy way to cache messages
 	// not really sure, all messages should be really cached
 	b.CacheBoardMessages(AllMessagesCacheKey, allMessages)
+
+	return nil
 }
 
 func (b *Board) CacheBoardMessages(cacheKey string, messages []*BoardMessage) {
