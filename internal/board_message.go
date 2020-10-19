@@ -12,6 +12,7 @@ type BoardMessage struct {
 	Message   string `json:"message"`
 }
 
+// TODO: maybe better return error on fail ot get any of the fields
 func MessageFromBins(bins aerospike.AeroBinMap) BoardMessage {
 	id, ok := bins["id"].(int)
 	if !ok {
