@@ -1,7 +1,7 @@
 package internal
 
 import (
-	as "github.com/aerospike/aerospike-client-go"
+	"github.com/2beens/serjtubincom/internal/aerospike"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -12,7 +12,8 @@ type BoardMessage struct {
 	Message   string `json:"message"`
 }
 
-func MessageFromBins(bins as.BinMap) BoardMessage {
+// TODO: maybe better return error on fail ot get any of the fields
+func MessageFromBins(bins aerospike.AeroBinMap) BoardMessage {
 	id, ok := bins["id"].(int)
 	if !ok {
 		log.Errorln("get all messages, convert id to int failed!")
@@ -21,18 +22,24 @@ func MessageFromBins(bins as.BinMap) BoardMessage {
 	if !ok {
 		log.Errorln("get all messages, convert author to string failed!")
 	}
-	timestamp, ok := bins["timestamp"].(int)
-	if !ok {
-		log.Errorln("get all messages, convert timestamp to int failed!")
-	}
 	message, ok := bins["message"].(string)
 	if !ok {
 		log.Errorln("get all messages, convert message to string failed!")
 	}
-	return BoardMessage{
-		ID:        id,
-		Author:    author,
-		Timestamp: int64(timestamp),
-		Message:   message,
+
+	boardMessage := BoardMessage{
+		ID:      id,
+		Author:  author,
+		Message: message,
 	}
+
+	if timestamp, ok := bins["timestamp"].(int); ok {
+		boardMessage.Timestamp = int64(timestamp)
+	} else if timestamp, ok := bins["timestamp"].(int64); ok {
+		boardMessage.Timestamp = timestamp
+	} else {
+		log.Errorln("get all messages, convert timestamp to int/int64 failed!")
+	}
+
+	return boardMessage
 }

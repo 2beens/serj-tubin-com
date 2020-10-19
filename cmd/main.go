@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal"
+	"github.com/2beens/serjtubincom/internal/aerospike"
 	as "github.com/aerospike/aerospike-client-go"
 	log "github.com/sirupsen/logrus"
 )
@@ -23,6 +24,7 @@ func main() {
 	aeroHost := flag.String("ahost", "localhost", "hostanme of aerospike server")
 	aeroPort := flag.Int("aport", 3000, "aerospike server port number")
 	aeroNamespace := flag.String("aero-namespace", "serj-tubin-com", "aerospike namespace value (used in aerospike server)")
+	aeroMessagesSet := flag.String("aero-messages-set", "messages", "aerospike set name for board messages (used in aerospike server)")
 	port := flag.Int("port", 8080, "port number")
 	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
 
@@ -32,14 +34,14 @@ func main() {
 	flag.Parse()
 
 	if *aeroSetup {
-		if err := setupAeroDb(*aeroNamespace, *aeroHost, *aeroPort); err != nil {
+		if err := setupAeroDb(*aeroNamespace, *aeroMessagesSet, *aeroHost, *aeroPort); err != nil {
 			fmt.Printf("aero setup failed: %s\n", err)
 			os.Exit(1)
 		}
 		fmt.Println("\naero setup complete")
 		os.Exit(0)
 	} else if *aeroDataFix {
-		if err := fixAerospikeData(*aeroNamespace, *aeroHost, *aeroPort); err != nil {
+		if err := fixAerospikeData(*aeroNamespace, *aeroMessagesSet, *aeroHost, *aeroPort); err != nil {
 			fmt.Printf("aero data fix failed: %s\n", err)
 			os.Exit(1)
 		}
@@ -57,7 +59,19 @@ func main() {
 		log.Errorf("open weather API key not set, use OPEN_WEATHER_API_KEY env var to set it")
 	}
 
-	server, err := internal.NewServer(*aeroHost, *aeroPort, *aeroNamespace, openWeatherApiKey)
+	secretWord := os.Getenv("SERJ_TUBIN_COM_SECRET_WORD")
+	if secretWord == "" {
+		log.Errorf("secret not set, use SERJ_TUBIN_COM_SECRET_WORD env var to set it")
+	}
+
+	server, err := internal.NewServer(
+		*aeroHost,
+		*aeroPort,
+		*aeroNamespace,
+		*aeroMessagesSet,
+		openWeatherApiKey,
+		secretWord,
+	)
 	if err != nil && !*forceStart {
 		log.Fatal(err)
 	}
@@ -101,7 +115,7 @@ func loggingSetup(logFileName string, logLevel string) {
 	log.SetOutput(logFile)
 }
 
-func fixAerospikeData(namespace, host string, port int) error {
+func fixAerospikeData(namespace, set, host string, port int) error {
 	fmt.Println("staring aero data fix ...")
 
 	aeroClient, err := as.NewClient(host, port)
@@ -109,7 +123,7 @@ func fixAerospikeData(namespace, host string, port int) error {
 		return fmt.Errorf("failed to create aero client: %w", err)
 	}
 
-	recordSet, err := aeroClient.ScanAll(nil, namespace, internal.BoardMessagesSetName)
+	recordSet, err := aeroClient.ScanAll(nil, namespace, set)
 	if err != nil {
 		return fmt.Errorf("failed to scan all messages: %w", err)
 	}
@@ -121,7 +135,7 @@ func fixAerospikeData(namespace, host string, port int) error {
 			return fmt.Errorf("get all messages, record error: %w", rec.Err)
 		}
 
-		m := internal.MessageFromBins(rec.Record.Bins)
+		m := internal.MessageFromBins(aerospike.AeroBinMap(rec.Record.Bins))
 		messages = append(messages, &m)
 		records = append(records, rec)
 	}
@@ -152,7 +166,7 @@ func fixAerospikeData(namespace, host string, port int) error {
 			"message":   message.Message,
 		}
 
-		key, err := as.NewKey(namespace, internal.BoardMessagesSetName, i)
+		key, err := as.NewKey(namespace, set, i)
 		if err != nil {
 			return fmt.Errorf("failed to create a new message key: %w", err)
 		}
@@ -199,7 +213,7 @@ func fixAerospikeData(namespace, host string, port int) error {
 	return nil
 }
 
-func setupAeroDb(namespace, host string, port int) error {
+func setupAeroDb(namespace, set, host string, port int) error {
 	fmt.Println("staring aero setup ...")
 
 	aeroClient, err := as.NewClient(host, port)
@@ -210,7 +224,7 @@ func setupAeroDb(namespace, host string, port int) error {
 	// TODO: maybe drop index first ?
 	// aeroClient.DropIndex(...)
 
-	if err := createBoardMessagesSecondaryIndex(aeroClient, namespace); err != nil {
+	if err := createBoardMessagesSecondaryIndex(aeroClient, namespace, set); err != nil {
 		return err
 	}
 
@@ -219,11 +233,11 @@ func setupAeroDb(namespace, host string, port int) error {
 	return nil
 }
 
-func createBoardMessagesSecondaryIndex(aeroClient *as.Client, namespace string) error {
+func createBoardMessagesSecondaryIndex(aeroClient *as.Client, namespace, set string) error {
 	task, err := aeroClient.CreateIndex(
 		nil,
 		namespace,
-		internal.BoardMessagesSetName,
+		set,
 		"id_index",
 		"id",
 		as.NUMERIC,

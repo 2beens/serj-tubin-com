@@ -10,6 +10,9 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/cache"
+	as "github.com/aerospike/aerospike-client-go"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -28,10 +31,32 @@ type Server struct {
 	openWeatherAPIUrl string
 	openWeatherApiKey string
 	muteRequestLogs   bool
+	secretWord        string
 }
 
-func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeatherApiKey string) (*Server, error) {
-	board, err := NewBoard(aerospikeHost, aerospikePort, aeroNamespace)
+func NewServer(
+	aerospikeHost string,
+	aerospikePort int,
+	aeroNamespace string,
+	aeroMessagesSet string,
+	openWeatherApiKey string,
+	secretWord string,
+) (*Server, error) {
+	log.Debugf("connecting to aerospike server %s:%d [namespace:%s, set:%s] ...",
+		aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
+
+	aeroClient, err := as.NewClient(aerospikeHost, aerospikePort)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create aero client: %w", err)
+	}
+	boardAeroClient, err := aerospike.NewBoardAeroClient(aeroClient, aeroNamespace, aeroMessagesSet)
+
+	boardCache, err := cache.NewBoardCache()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create board cache: %w", err)
+	}
+
+	board, err := NewBoard(boardAeroClient, boardCache, aeroNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
@@ -47,6 +72,7 @@ func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeath
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp(),
 		board:             board,
+		secretWord:        secretWord,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -59,8 +85,8 @@ func NewServer(aerospikeHost string, aerospikePort int, aeroNamespace, openWeath
 	return s, nil
 }
 
-func (s *Server) routerSetup() (r *mux.Router) {
-	r = mux.NewRouter()
+func (s *Server) routerSetup() (*mux.Router, error) {
+	r := mux.NewRouter()
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("I'm OK, thanks :)"))
@@ -108,17 +134,28 @@ func (s *Server) routerSetup() (r *mux.Router) {
 
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
-	NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey)
-	NewBoardHandler(boardRouter, s.board)
+
+	if NewBoardHandler(boardRouter, s.board, s.secretWord) == nil {
+		return nil, errors.New("board handler is nil")
+	}
+
+	if weatherHandler, err := NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
+		return nil, fmt.Errorf("failed to create weather handler: %w", err)
+	} else if weatherHandler == nil {
+		return nil, errors.New("weather handler is nil")
+	}
 
 	r.Use(s.loggingMiddleware())
 	r.Use(s.corsMiddleware())
 
-	return r
+	return r, nil
 }
 
 func (s *Server) Serve(port int) {
-	router := s.routerSetup()
+	router, err := s.routerSetup()
+	if err != nil {
+		log.Fatalf("failed to setup router: %s", err)
+	}
 
 	ipAndPort := fmt.Sprintf("%s:%d", "localhost", port)
 
