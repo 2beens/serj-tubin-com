@@ -9,7 +9,7 @@ import (
 var _ Client = (*BoardAeroTestClient)(nil)
 
 type BoardAeroTestClient struct {
-	aeroBinMaps map[string]AeroBinMap
+	AeroBinMaps map[string]AeroBinMap
 	mutex       sync.Mutex
 
 	IsConnectedValue bool
@@ -17,14 +17,14 @@ type BoardAeroTestClient struct {
 
 func NewBoardAeroTestClient() *BoardAeroTestClient {
 	return &BoardAeroTestClient{
-		aeroBinMaps:      make(map[string]AeroBinMap),
+		AeroBinMaps:      make(map[string]AeroBinMap),
 		IsConnectedValue: true,
 	}
 }
 
 func NewBoardAeroTestClientWithBins(aeroBinMaps map[string]AeroBinMap) *BoardAeroTestClient {
 	return &BoardAeroTestClient{
-		aeroBinMaps:      aeroBinMaps,
+		AeroBinMaps:      aeroBinMaps,
 		IsConnectedValue: true,
 	}
 }
@@ -39,7 +39,7 @@ func (tc *BoardAeroTestClient) Put(key string, binMap AeroBinMap) error {
 	case binMap == nil:
 		return errors.New("nil bin map")
 	}
-	tc.aeroBinMaps[key] = binMap
+	tc.AeroBinMaps[key] = binMap
 	return nil
 }
 
@@ -51,12 +51,12 @@ func (tc *BoardAeroTestClient) Delete(key string) (bool, error) {
 		return false, errors.New("empty key")
 	}
 
-	_, found := tc.aeroBinMaps[key]
+	_, found := tc.AeroBinMaps[key]
 	if !found {
 		return false, nil
 	}
 
-	delete(tc.aeroBinMaps, key)
+	delete(tc.AeroBinMaps, key)
 
 	return true, nil
 }
@@ -66,7 +66,7 @@ func (tc *BoardAeroTestClient) QueryByRange(index string, from, to int64) ([]Aer
 	defer tc.mutex.Unlock()
 
 	var binMaps []AeroBinMap
-	for _, binMap := range tc.aeroBinMaps {
+	for _, binMap := range tc.AeroBinMaps {
 		val, indexFound := binMap[index]
 		if !indexFound {
 			continue
@@ -87,7 +87,7 @@ func (tc *BoardAeroTestClient) ScanAll() ([]AeroBinMap, error) {
 	defer tc.mutex.Unlock()
 
 	var binMaps []AeroBinMap
-	for _, binMap := range tc.aeroBinMaps {
+	for _, binMap := range tc.AeroBinMaps {
 		binMaps = append(binMaps, binMap)
 	}
 	return binMaps, nil
@@ -97,10 +97,10 @@ func (tc *BoardAeroTestClient) CountAll() (int, error) {
 	tc.mutex.Lock()
 	defer tc.mutex.Unlock()
 
-	if tc.aeroBinMaps == nil {
+	if tc.AeroBinMaps == nil {
 		return -1, errors.New("nil aero bin maps")
 	}
-	return len(tc.aeroBinMaps), nil
+	return len(tc.AeroBinMaps), nil
 }
 
 func (tc *BoardAeroTestClient) IsConnected() bool {

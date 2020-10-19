@@ -17,6 +17,8 @@ type TestingInternals struct {
 	board          *Board
 }
 
+var initialMessagesCount int
+
 func newTestingInternals() (*TestingInternals, *Board) {
 	aeroClient := aerospike.NewBoardAeroTestClient()
 	boardCache := cache.NewBoardTestCache()
@@ -51,6 +53,24 @@ func newTestingInternals() (*TestingInternals, *Board) {
 	}); err != nil {
 		panic(err)
 	}
+	if err := aeroClient.Put("3", aerospike.AeroBinMap{
+		"id":        3,
+		"author":    "drago",
+		"message":   "drago's test message aaaaa sve",
+		"timestamp": now.Add(-5 * 24 * time.Hour).Unix(),
+	}); err != nil {
+		panic(err)
+	}
+	if err := aeroClient.Put("4", aerospike.AeroBinMap{
+		"id":        4,
+		"author":    "rodjak nenad",
+		"message":   "ja se mislim sta'e bilo",
+		"timestamp": now.Add(-2 * time.Minute).Unix(),
+	}); err != nil {
+		panic(err)
+	}
+
+	initialMessagesCount = len(aeroClient.AeroBinMaps)
 
 	return &TestingInternals{
 		aeroTestClient: aeroClient,
@@ -86,7 +106,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 
 	messages, err := board.AllMessagesCache(true)
 	require.NoError(t, err)
-	assert.Len(t, messages, 3)
+	assert.Len(t, messages, initialMessagesCount)
 
 	// 1 cache entry - all messages (in that entry are all 3 messages)
 	require.Equal(t, 1, internals.boardCache.ElementsCount())
@@ -95,7 +115,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 	require.NotNil(t, messagesFromCacheRaw)
 	messagesFromCache, ok := messagesFromCacheRaw.([]*BoardMessage)
 	require.True(t, ok)
-	require.Len(t, messagesFromCache, 3)
+	require.Len(t, messagesFromCache, initialMessagesCount)
 
 	funcCallsLog := internals.boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 3)
@@ -108,7 +128,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 	// called again - should get it from cache right away
 	messages, err = board.AllMessagesCache(true)
 	require.NoError(t, err)
-	assert.Len(t, messages, 3)
+	assert.Len(t, messages, initialMessagesCount)
 
 	require.Equal(t, 1, internals.boardCache.ElementsCount())
 	messagesFromCacheRaw, found = internals.boardCache.Get(AllMessagesCacheKey)
@@ -116,7 +136,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 	require.NotNil(t, messagesFromCacheRaw)
 	messagesFromCache, ok = messagesFromCacheRaw.([]*BoardMessage)
 	require.True(t, ok)
-	assert.Len(t, messagesFromCache, 3)
+	assert.Len(t, messagesFromCache, initialMessagesCount)
 
 	funcCallsLog = internals.boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 2)
@@ -127,21 +147,20 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 func TestBoard_AllMessages(t *testing.T) {
 	_, board := newTestingInternals()
 
-	messages, err := board.AllMessages(true)
+	messages, err := board.AllMessages(false)
 	require.NoError(t, err)
-	assert.Len(t, messages, 3)
-	// sorted by timestamp
-	assert.Equal(t, 2, messages[0].ID)
-	assert.Equal(t, 0, messages[1].ID)
-	assert.Equal(t, 1, messages[2].ID)
+	assert.Len(t, messages, initialMessagesCount)
 
-	messages, err = board.AllMessages(false)
+	messages, err = board.AllMessages(true)
 	require.NoError(t, err)
-	assert.Len(t, messages, 3)
-	// not sorted by timestamp
-	assert.Equal(t, 0, messages[0].ID)
-	assert.Equal(t, 1, messages[1].ID)
-	assert.Equal(t, 2, messages[2].ID)
+	assert.Len(t, messages, initialMessagesCount)
+	// sorted by timestamp
+	assert.Equal(t, 3, messages[0].ID)
+	assert.Equal(t, 2, messages[1].ID)
+	assert.Equal(t, 0, messages[2].ID)
+	assert.Equal(t, 4, messages[3].ID)
+	assert.Equal(t, 1, messages[4].ID)
+
 }
 
 func TestBoard_DeleteMessage(t *testing.T) {
@@ -155,7 +174,7 @@ func TestBoard_DeleteMessage(t *testing.T) {
 	// existent message
 	messagesCount, err := board.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, 3, messagesCount)
+	require.Equal(t, initialMessagesCount, messagesCount)
 
 	removed, err = board.DeleteMessage("1")
 	require.NoError(t, err)
@@ -163,5 +182,5 @@ func TestBoard_DeleteMessage(t *testing.T) {
 
 	messagesCount, err = board.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, 2, messagesCount)
+	require.Equal(t, initialMessagesCount-1, messagesCount)
 }
