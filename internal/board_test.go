@@ -315,3 +315,51 @@ func TestBoard_GetMessagesWithRange(t *testing.T) {
 	assert.Equal(t, "test message aaaaa", messages[1].Message)
 	assert.Equal(t, "drago's test message aaaaa sve", messages[2].Message)
 }
+
+func TestBoard_GetMessagesPage(t *testing.T) {
+	internals, board := newTestingInternals()
+
+	// cache empty at the beginning
+	require.Equal(t, 0, internals.boardCache.ElementsCount())
+
+	messages, err := board.GetMessagesPage(2, 2)
+	require.NoError(t, err)
+
+	require.Len(t, messages, 2)
+	assert.Equal(t, "test message aaaaa", messages[0].Message)
+	assert.Equal(t, "drago's test message aaaaa sve", messages[1].Message)
+
+	// cache calls check
+	funcCallsLog := internals.boardCache.FunctionCallsLog
+	require.Len(t, funcCallsLog, 2)
+	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[0])
+	assert.Equal(t, cache.FuncSet, funcCallsLog[1])
+
+	// size greater than total - get all messages
+	messages, err = board.GetMessagesPage(2, 12)
+	require.NoError(t, err)
+	require.Len(t, messages, 5)
+
+	// page greater than total pages - get last page
+	messages, err = board.GetMessagesPage(10, 2)
+	require.NoError(t, err)
+	require.Len(t, messages, 2)
+
+	// first case again
+	messages, err = board.GetMessagesPage(2, 2)
+	require.NoError(t, err)
+	require.Len(t, messages, 2)
+	assert.Equal(t, "test message aaaaa", messages[0].Message)
+	assert.Equal(t, "drago's test message aaaaa sve", messages[1].Message)
+
+	// cache calls check
+	funcCallsLog = internals.boardCache.FunctionCallsLog
+	require.Len(t, funcCallsLog, 7)
+	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[0])
+	assert.Equal(t, cache.FuncSet, funcCallsLog[1])
+	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[2])
+	assert.Equal(t, cache.FuncSet, funcCallsLog[3])
+	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[4])
+	assert.Equal(t, cache.FuncSet, funcCallsLog[5])
+	assert.Equal(t, cache.FuncGetHit, funcCallsLog[6])
+}
