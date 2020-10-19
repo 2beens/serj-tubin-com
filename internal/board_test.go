@@ -2,6 +2,7 @@ package internal
 
 import (
 	"log"
+	"strconv"
 	"testing"
 	"time"
 
@@ -71,6 +72,7 @@ func newTestingInternals() (*TestingInternals, *Board) {
 	}
 
 	initialMessagesCount = len(aeroClient.AeroBinMaps)
+	board.messagesCount = initialMessagesCount
 
 	return &TestingInternals{
 		aeroTestClient: aeroClient,
@@ -258,4 +260,46 @@ func TestBoard_InvalidateCaches(t *testing.T) {
 	board.InvalidateCaches()
 	// cache empty
 	require.Equal(t, 0, internals.boardCache.ElementsCount())
+}
+
+func TestBoard_StoreMessage(t *testing.T) {
+	internals, board := newTestingInternals()
+
+	messagesCount, err := board.MessagesCount()
+	require.NoError(t, err)
+	require.Equal(t, initialMessagesCount, messagesCount)
+
+	now := time.Now()
+	m1 := BoardMessage{
+		ID:        initialMessagesCount,
+		Author:    "ana",
+		Timestamp: now.Unix(),
+		Message:   "lixo",
+	}
+	err = board.StoreMessage(m1)
+	require.NoError(t, err)
+
+	m2 := BoardMessage{
+		ID:        initialMessagesCount + 1,
+		Author:    "serj",
+		Timestamp: now.Add(-time.Hour).Unix(),
+		Message:   "a message",
+	}
+	err = board.StoreMessage(m2)
+	require.NoError(t, err)
+
+	messagesCount, err = board.MessagesCount()
+	require.NoError(t, err)
+	require.Equal(t, initialMessagesCount+2, messagesCount)
+
+	allMessages, err := board.AllMessages(true)
+	require.NoError(t, err)
+	assert.Len(t, allMessages, initialMessagesCount+2)
+
+	m1binMap := internals.aeroTestClient.AeroBinMaps[strconv.Itoa(m1.ID)]
+	require.NotNil(t, m1binMap)
+	assert.Equal(t, m1.Message, m1binMap["message"])
+	m2binMap := internals.aeroTestClient.AeroBinMaps[strconv.Itoa(m2.ID)]
+	require.NotNil(t, m2binMap)
+	assert.Equal(t, m2.Message, m2binMap["message"])
 }
