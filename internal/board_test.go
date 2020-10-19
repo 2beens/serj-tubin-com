@@ -226,7 +226,7 @@ func TestBoard_CacheBoardMessages(t *testing.T) {
 
 	board.CacheBoardMessages("messages", messages)
 
-	// cache empty
+	// cache filled
 	require.Equal(t, 1, internals.boardCache.ElementsCount())
 
 	allMessagesFromCache, found := internals.boardCache.Get("messages")
@@ -235,4 +235,27 @@ func TestBoard_CacheBoardMessages(t *testing.T) {
 	allMessages, ok := allMessagesFromCache.([]*BoardMessage)
 	require.True(t, ok)
 	assert.Len(t, allMessages, 2)
+}
+
+func TestBoard_InvalidateCaches(t *testing.T) {
+	internals, board := newTestingInternals()
+
+	// cache empty
+	require.Equal(t, 0, internals.boardCache.ElementsCount())
+
+	board.CacheBoardMessages("messages", []*BoardMessage{
+		{
+			ID:        0,
+			Author:    "a0",
+			Timestamp: time.Now().Unix(),
+			Message:   "m0",
+		},
+	})
+
+	// cache filled
+	require.Equal(t, 1, internals.boardCache.ElementsCount())
+
+	board.InvalidateCaches()
+	// cache empty
+	require.Equal(t, 0, internals.boardCache.ElementsCount())
 }
