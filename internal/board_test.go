@@ -20,10 +20,38 @@ type TestingInternals struct {
 func newTestingInternals() (*TestingInternals, *Board) {
 	aeroClient := aerospike.NewBoardAeroTestClient()
 	boardCache := cache.NewBoardTestCache()
+
 	board, err := NewBoard(aeroClient, boardCache, "aero-test")
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	now := time.Now()
+	if err := aeroClient.Put("0", aerospike.AeroBinMap{
+		"id":        0,
+		"author":    "serj",
+		"message":   "test message blabla",
+		"timestamp": now.Add(-time.Hour).Unix(),
+	}); err != nil {
+		panic(err)
+	}
+	if err := aeroClient.Put("1", aerospike.AeroBinMap{
+		"id":        1,
+		"author":    "serj",
+		"message":   "test message gragra",
+		"timestamp": now.Unix(),
+	}); err != nil {
+		panic(err)
+	}
+	if err := aeroClient.Put("2", aerospike.AeroBinMap{
+		"id":        2,
+		"author":    "ana",
+		"message":   "test message aaaaa",
+		"timestamp": now.Add(-2 * time.Hour).Unix(),
+	}); err != nil {
+		panic(err)
+	}
+
 	return &TestingInternals{
 		aeroTestClient: aeroClient,
 		boardCache:     boardCache,
@@ -52,28 +80,6 @@ func TestBoard_CheckAero(t *testing.T) {
 
 func TestBoard_AllMessagesCache(t *testing.T) {
 	internals, board := newTestingInternals()
-	now := time.Now()
-
-	err := internals.aeroTestClient.Put("0", aerospike.AeroBinMap{
-		"id":        0,
-		"author":    "serj",
-		"message":   "test message blabla",
-		"timestamp": now.Add(-time.Hour).Unix(),
-	})
-	require.NoError(t, err)
-	err = internals.aeroTestClient.Put("1", aerospike.AeroBinMap{
-		"id":        1,
-		"author":    "serj",
-		"message":   "test message gragra",
-		"timestamp": now.Unix(),
-	})
-	err = internals.aeroTestClient.Put("2", aerospike.AeroBinMap{
-		"id":        2,
-		"author":    "ana",
-		"message":   "test message aaaaa",
-		"timestamp": now.Add(-2 * time.Hour).Unix(),
-	})
-	require.NoError(t, err)
 
 	// cache empty at the beginning
 	require.Equal(t, 0, internals.boardCache.ElementsCount())
@@ -119,29 +125,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 }
 
 func TestBoard_AllMessages(t *testing.T) {
-	internals, board := newTestingInternals()
-	now := time.Now()
-
-	err := internals.aeroTestClient.Put("0", aerospike.AeroBinMap{
-		"id":        0,
-		"author":    "serj",
-		"message":   "test message blabla",
-		"timestamp": now.Add(-time.Hour).Unix(),
-	})
-	require.NoError(t, err)
-	err = internals.aeroTestClient.Put("1", aerospike.AeroBinMap{
-		"id":        1,
-		"author":    "serj",
-		"message":   "test message gragra",
-		"timestamp": now.Unix(),
-	})
-	err = internals.aeroTestClient.Put("2", aerospike.AeroBinMap{
-		"id":        2,
-		"author":    "ana",
-		"message":   "test message aaaaa",
-		"timestamp": now.Add(-2 * time.Hour).Unix(),
-	})
-	require.NoError(t, err)
+	_, board := newTestingInternals()
 
 	messages, err := board.AllMessages(true)
 	require.NoError(t, err)
@@ -158,4 +142,26 @@ func TestBoard_AllMessages(t *testing.T) {
 	assert.Equal(t, 0, messages[0].ID)
 	assert.Equal(t, 1, messages[1].ID)
 	assert.Equal(t, 2, messages[2].ID)
+}
+
+func TestBoard_DeleteMessage(t *testing.T) {
+	_, board := newTestingInternals()
+
+	// non existent message
+	removed, err := board.DeleteMessage("100")
+	require.NoError(t, err)
+	assert.False(t, removed)
+
+	// existent message
+	messagesCount, err := board.MessagesCount()
+	require.NoError(t, err)
+	require.Equal(t, 3, messagesCount)
+
+	removed, err = board.DeleteMessage("1")
+	require.NoError(t, err)
+	assert.True(t, removed)
+
+	messagesCount, err = board.MessagesCount()
+	require.NoError(t, err)
+	require.Equal(t, 2, messagesCount)
 }
