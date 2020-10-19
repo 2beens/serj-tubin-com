@@ -2,6 +2,7 @@ package aerospike
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -71,14 +72,23 @@ func (tc *BoardAeroTestClient) QueryByRange(index string, from, to int64) ([]Aer
 		if !indexFound {
 			continue
 		}
-		valInt64, ok := val.(int64)
-		if !ok {
+
+		var valInt64 int64
+		switch valType := val.(type) {
+		case int:
+			valInt64 = int64(val.(int))
+		case int64:
+			valInt64 = val.(int64)
+		default:
+			fmt.Printf("aero test - query by range, unknown type %T!\n", valType)
 			continue
 		}
+
 		if valInt64 >= from && valInt64 <= to {
 			binMaps = append(binMaps, binMap)
 		}
 	}
+
 	return binMaps, nil
 }
 

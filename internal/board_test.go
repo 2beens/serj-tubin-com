@@ -303,3 +303,15 @@ func TestBoard_StoreMessage(t *testing.T) {
 	require.NotNil(t, m2binMap)
 	assert.Equal(t, m2.Message, m2binMap["message"])
 }
+
+func TestBoard_GetMessagesWithRange(t *testing.T) {
+	_, board := newTestingInternals()
+
+	messages, err := board.GetMessagesWithRange(1, 3)
+	require.NoError(t, err)
+
+	require.Len(t, messages, 3)
+	assert.Equal(t, "test message gragra", messages[0].Message)
+	assert.Equal(t, "test message aaaaa", messages[1].Message)
+	assert.Equal(t, "drago's test message aaaaa sve", messages[2].Message)
+}
