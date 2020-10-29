@@ -1,8 +1,17 @@
 some ideas:
     - utils page with things like;
-        - your location, user agent, ip
-        - weather tomorrow
-        - some quotes
+        - (done ✅) your location, user agent, ip
+        - (done ✅) weather tomorrow
+        - (done ✅) some quotes
+        - add URL shortener
+            - with auto generated path
+            - manually enter path
+        - (tried ✅) use elastic search somehow somewhere (logs??)
+            - https://logz.io/learn/complete-guide-elk-stack/#elasticsearch
+            - https://www.elastic.co/start
+            - go client:
+                - https://github.com/elastic/go-elasticsearch
+        - add metrics (graphite + grafana)
         - etc
 
 31-may-2020 serj-tubin-backend service:

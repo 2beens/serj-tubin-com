@@ -68,7 +68,7 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 
 	geoIpResponse := &GeoIpInfo{}
 
-	// TODO: seems like freechache already solves sync issues (can be removed?)
+	// TODO: seems like freecache already solves sync issues (can be removed?)
 	gi.mutex.RLock()
 	if geoIpInfoBytes, err := gi.cache.Get([]byte(userIp)); err == nil {
 		log.Tracef("found geo ip info for %s in cache", userIp)
