@@ -18,22 +18,20 @@ const (
 type Board struct {
 	aeroClient aerospike.Client
 
-	aeroNamespace string
 	messagesCount int
 	cache         cache.Cache
 
 	mutex sync.RWMutex
 }
 
-func NewBoard(aeroClient aerospike.Client, cache cache.Cache, aeroNamespace string) (*Board, error) {
+func NewBoard(aeroClient aerospike.Client, cache cache.Cache) (*Board, error) {
 	if aeroClient == nil {
 		return nil, aerospike.ErrAeroClientNil
 	}
 
 	b := &Board{
-		aeroClient:    aeroClient,
-		aeroNamespace: aeroNamespace,
-		cache:         cache,
+		aeroClient: aeroClient,
+		cache:      cache,
 	}
 
 	messagesCount, err := b.MessagesCount()
@@ -239,7 +237,7 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 	if err := b.CheckAero(); err != nil {
 		return nil, err
 	}
-	log.Tracef("getting all messages from Aerospike, namespace: %s", b.aeroNamespace)
+	log.Tracef("getting all messages from Aerospike")
 
 	messagesBins, err := b.aeroClient.ScanAll()
 	if err != nil {
