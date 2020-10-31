@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"log"
 	"strconv"
 	"testing"
 	"time"
@@ -11,75 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type TestingInternals struct {
-	aeroTestClient *aerospike.BoardAeroTestClient
-	boardCache     *cache.BoardTestCache
-	board          *Board
-}
-
-var initialMessagesCount int
-
-func newTestingInternals() (*TestingInternals, *Board) {
-	aeroClient := aerospike.NewBoardAeroTestClient()
-	boardCache := cache.NewBoardTestCache()
-
-	board, err := NewBoard(aeroClient, boardCache)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	now := time.Now()
-	if err := aeroClient.Put("0", aerospike.AeroBinMap{
-		"id":        0,
-		"author":    "serj",
-		"message":   "test message blabla",
-		"timestamp": now.Add(-time.Hour).Unix(),
-	}); err != nil {
-		panic(err)
-	}
-	if err := aeroClient.Put("1", aerospike.AeroBinMap{
-		"id":        1,
-		"author":    "serj",
-		"message":   "test message gragra",
-		"timestamp": now.Unix(),
-	}); err != nil {
-		panic(err)
-	}
-	if err := aeroClient.Put("2", aerospike.AeroBinMap{
-		"id":        2,
-		"author":    "ana",
-		"message":   "test message aaaaa",
-		"timestamp": now.Add(-2 * time.Hour).Unix(),
-	}); err != nil {
-		panic(err)
-	}
-	if err := aeroClient.Put("3", aerospike.AeroBinMap{
-		"id":        3,
-		"author":    "drago",
-		"message":   "drago's test message aaaaa sve",
-		"timestamp": now.Add(-5 * 24 * time.Hour).Unix(),
-	}); err != nil {
-		panic(err)
-	}
-	if err := aeroClient.Put("4", aerospike.AeroBinMap{
-		"id":        4,
-		"author":    "rodjak nenad",
-		"message":   "ja se mislim sta'e bilo",
-		"timestamp": now.Add(-2 * time.Minute).Unix(),
-	}); err != nil {
-		panic(err)
-	}
-
-	initialMessagesCount = len(aeroClient.AeroBinMaps)
-	board.messagesCount = initialMessagesCount
-
-	return &TestingInternals{
-		aeroTestClient: aeroClient,
-		boardCache:     boardCache,
-		board:          board,
-	}, board
-}
 
 func TestNewBoard(t *testing.T) {
 	board, err := NewBoard(nil, cache.NewBoardTestCache())
@@ -108,7 +38,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 
 	messages, err := board.AllMessagesCache(true)
 	require.NoError(t, err)
-	assert.Len(t, messages, initialMessagesCount)
+	assert.Len(t, messages, initialTestMessagesCount)
 
 	// 1 cache entry - all messages (in that entry are all 3 messages)
 	require.Equal(t, 1, internals.boardCache.ElementsCount())
@@ -117,7 +47,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 	require.NotNil(t, messagesFromCacheRaw)
 	messagesFromCache, ok := messagesFromCacheRaw.([]*BoardMessage)
 	require.True(t, ok)
-	require.Len(t, messagesFromCache, initialMessagesCount)
+	require.Len(t, messagesFromCache, initialTestMessagesCount)
 
 	funcCallsLog := internals.boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 3)
@@ -130,7 +60,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 	// called again - should get it from cache right away
 	messages, err = board.AllMessagesCache(true)
 	require.NoError(t, err)
-	assert.Len(t, messages, initialMessagesCount)
+	assert.Len(t, messages, initialTestMessagesCount)
 
 	require.Equal(t, 1, internals.boardCache.ElementsCount())
 	messagesFromCacheRaw, found = internals.boardCache.Get(AllMessagesCacheKey)
@@ -138,7 +68,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 	require.NotNil(t, messagesFromCacheRaw)
 	messagesFromCache, ok = messagesFromCacheRaw.([]*BoardMessage)
 	require.True(t, ok)
-	assert.Len(t, messagesFromCache, initialMessagesCount)
+	assert.Len(t, messagesFromCache, initialTestMessagesCount)
 
 	funcCallsLog = internals.boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 2)
@@ -151,11 +81,11 @@ func TestBoard_AllMessages(t *testing.T) {
 
 	messages, err := board.AllMessages(false)
 	require.NoError(t, err)
-	assert.Len(t, messages, initialMessagesCount)
+	assert.Len(t, messages, initialTestMessagesCount)
 
 	messages, err = board.AllMessages(true)
 	require.NoError(t, err)
-	assert.Len(t, messages, initialMessagesCount)
+	assert.Len(t, messages, initialTestMessagesCount)
 	// sorted by timestamp
 	assert.Equal(t, 3, messages[0].ID)
 	assert.Equal(t, 2, messages[1].ID)
@@ -176,7 +106,7 @@ func TestBoard_DeleteMessage(t *testing.T) {
 	// existent message
 	messagesCount, err := board.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, initialMessagesCount, messagesCount)
+	require.Equal(t, initialTestMessagesCount, messagesCount)
 
 	removed, err = board.DeleteMessage("1")
 	require.NoError(t, err)
@@ -184,7 +114,7 @@ func TestBoard_DeleteMessage(t *testing.T) {
 
 	messagesCount, err = board.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, initialMessagesCount-1, messagesCount)
+	require.Equal(t, initialTestMessagesCount-1, messagesCount)
 }
 
 func TestBoard_SetAllMessagesCacheFromAero(t *testing.T) {
@@ -202,7 +132,7 @@ func TestBoard_SetAllMessagesCacheFromAero(t *testing.T) {
 	require.NotNil(t, allMessagesFromCache)
 	allMessages, ok := allMessagesFromCache.([]*BoardMessage)
 	require.True(t, ok)
-	assert.Len(t, allMessages, initialMessagesCount)
+	assert.Len(t, allMessages, initialTestMessagesCount)
 }
 
 func TestBoard_CacheBoardMessages(t *testing.T) {
@@ -267,11 +197,11 @@ func TestBoard_StoreMessage(t *testing.T) {
 
 	messagesCount, err := board.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, initialMessagesCount, messagesCount)
+	require.Equal(t, initialTestMessagesCount, messagesCount)
 
 	now := time.Now()
 	m1 := BoardMessage{
-		ID:        initialMessagesCount,
+		ID:        initialTestMessagesCount,
 		Author:    "ana",
 		Timestamp: now.Unix(),
 		Message:   "lixo",
@@ -280,7 +210,7 @@ func TestBoard_StoreMessage(t *testing.T) {
 	require.NoError(t, err)
 
 	m2 := BoardMessage{
-		ID:        initialMessagesCount + 1,
+		ID:        initialTestMessagesCount + 1,
 		Author:    "serj",
 		Timestamp: now.Add(-time.Hour).Unix(),
 		Message:   "a message",
@@ -290,11 +220,11 @@ func TestBoard_StoreMessage(t *testing.T) {
 
 	messagesCount, err = board.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, initialMessagesCount+2, messagesCount)
+	require.Equal(t, initialTestMessagesCount+2, messagesCount)
 
 	allMessages, err := board.AllMessages(true)
 	require.NoError(t, err)
-	assert.Len(t, allMessages, initialMessagesCount+2)
+	assert.Len(t, allMessages, initialTestMessagesCount+2)
 
 	m1binMap := internals.aeroTestClient.AeroBinMaps[strconv.Itoa(m1.ID)]
 	require.NotNil(t, m1binMap)
