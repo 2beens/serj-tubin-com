@@ -24,7 +24,7 @@ func newTestingInternals() (*TestingInternals, *Board) {
 	aeroClient := aerospike.NewBoardAeroTestClient()
 	boardCache := cache.NewBoardTestCache()
 
-	board, err := NewBoard(aeroClient, boardCache, "aero-test")
+	board, err := NewBoard(aeroClient, boardCache)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,12 +82,12 @@ func newTestingInternals() (*TestingInternals, *Board) {
 }
 
 func TestNewBoard(t *testing.T) {
-	board, err := NewBoard(nil, cache.NewBoardTestCache(), "aero-test")
+	board, err := NewBoard(nil, cache.NewBoardTestCache())
 	assert.Equal(t, aerospike.ErrAeroClientNil, err)
 	assert.Nil(t, board)
 
 	aeroTestClient := aerospike.NewBoardAeroTestClient()
-	board, err = NewBoard(aeroTestClient, cache.NewBoardTestCache(), "aero-test")
+	board, err = NewBoard(aeroTestClient, cache.NewBoardTestCache())
 	require.NoError(t, err)
 	require.NotNil(t, board)
 
