@@ -207,7 +207,10 @@ func (handler *BoardHandler) handleMessagesCount(w http.ResponseWriter, r *http.
 		http.Error(w, "failed to get messages count", http.StatusInternalServerError)
 		return
 	}
+
 	resp := fmt.Sprintf(`{"count":%d}`, count)
+	// TODO: application/json is always returned, maybe add middleware which will add it to every request
+	w.Header().Add("Content-Type", "application/json")
 	w.Write([]byte(resp))
 }
 
@@ -257,5 +260,6 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
 	w.Write(messagesJson)
 }

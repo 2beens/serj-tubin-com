@@ -1,9 +1,10 @@
 package internal
 
 import (
-	"testing"
-
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"testing"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -72,5 +73,47 @@ func TestNewBoardHandler(t *testing.T) {
 			isMatch := r.Get(route.name).Match(req, routeMatch)
 			assert.True(t, isMatch, caseName)
 		})
+	}
+}
+
+func TestBoardHandler_handleMessagesCount(t *testing.T) {
+	internals := newTestingInternals()
+
+	handler := NewBoardHandler(mux.NewRouter(), internals.board, "secret")
+	require.NotNil(t, handler)
+
+	req, err := http.NewRequest("-", "-", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	handler.handleMessagesCount(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, `{"count":5}`, rr.Body.String())
+	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+}
+
+func TestBoardHandler_handleGetAllMessages(t *testing.T) {
+	internals := newTestingInternals()
+
+	handler := NewBoardHandler(mux.NewRouter(), internals.board, "secret")
+	require.NotNil(t, handler)
+
+	req, err := http.NewRequest("-", "-", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	handler.handleGetAllMessages(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+
+	var boardMessages []*BoardMessage
+	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
+	require.NoError(t, err)
+	require.NotNil(t, boardMessages)
+
+	// check all messages there
+	require.Len(t, boardMessages, len(internals.initialBoardMessages))
+	for i := range boardMessages {
+		assert.NotNil(t, internals.initialBoardMessages[boardMessages[i].ID])
 	}
 }
