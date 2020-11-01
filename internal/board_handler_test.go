@@ -95,14 +95,15 @@ func TestBoardHandler_handleMessagesCount(t *testing.T) {
 func TestBoardHandler_handleGetAllMessages(t *testing.T) {
 	internals := newTestingInternals()
 
-	handler := NewBoardHandler(mux.NewRouter(), internals.board, "secret")
+	r := mux.NewRouter()
+	handler := NewBoardHandler(r, internals.board, "secret")
 	require.NotNil(t, handler)
 
-	req, err := http.NewRequest("-", "-", nil)
+	req, err := http.NewRequest("GET", "/messages/all", nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	handler.handleGetAllMessages(rr, req)
+	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
@@ -116,4 +117,55 @@ func TestBoardHandler_handleGetAllMessages(t *testing.T) {
 	for i := range boardMessages {
 		assert.NotNil(t, internals.initialBoardMessages[boardMessages[i].ID])
 	}
+}
+
+func TestBoardHandler_handleGetLastMessages(t *testing.T) {
+	internals := newTestingInternals()
+
+	r := mux.NewRouter()
+	handler := NewBoardHandler(r, internals.board, "secret")
+	require.NotNil(t, handler)
+
+	req, err := http.NewRequest("GET", "/messages/last/2", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+
+	var boardMessages []*BoardMessage
+	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
+	require.NoError(t, err)
+	require.NotNil(t, boardMessages)
+
+	// check all messages there
+	require.Len(t, boardMessages, 2)
+	assert.Equal(t, 4, boardMessages[0].ID)
+	assert.Equal(t, 1, boardMessages[1].ID)
+}
+
+func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
+	internals := newTestingInternals()
+
+	r := mux.NewRouter()
+	handler := NewBoardHandler(r, internals.board, "secret")
+	require.NotNil(t, handler)
+
+	req, err := http.NewRequest("GET", "/messages/page/2/size/2", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+
+	var boardMessages []*BoardMessage
+	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
+	require.NoError(t, err)
+	require.NotNil(t, boardMessages)
+
+	require.Len(t, boardMessages, 2)
+	assert.Equal(t, 2, boardMessages[0].ID)
+	assert.Equal(t, 3, boardMessages[1].ID)
 }

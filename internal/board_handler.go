@@ -74,6 +74,8 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
+
 	if len(boardMessages) == 0 {
 		w.Write([]byte("[]"))
 		return
@@ -158,6 +160,7 @@ func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
 	w.Write(messagesJson)
 }
 
