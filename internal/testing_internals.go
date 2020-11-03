@@ -13,6 +13,7 @@ type testingInternals struct {
 	board                *Board
 	boardCache           *cache.BoardTestCache
 	initialBoardMessages map[int]*BoardMessage
+	lastInitialMessage   *BoardMessage
 }
 
 func newTestingInternals() *testingInternals {
@@ -89,5 +90,6 @@ func newTestingInternals() *testingInternals {
 		board:                board,
 		boardCache:           boardCache,
 		initialBoardMessages: initialBoardMessages,
+		lastInitialMessage:   initialBoardMessages[1],
 	}
 }

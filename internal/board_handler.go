@@ -200,6 +200,7 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// TODO: refactor and unify responses
 	w.Write([]byte("added"))
 }
 

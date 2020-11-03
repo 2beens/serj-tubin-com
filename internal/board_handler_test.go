@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -155,7 +157,6 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	req, err := http.NewRequest("GET", "/messages/page/2/size/2", nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
-
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
@@ -168,4 +169,85 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	require.Len(t, boardMessages, 2)
 	assert.Equal(t, 2, boardMessages[0].ID)
 	assert.Equal(t, 3, boardMessages[1].ID)
+
+	// big size
+	req, err = http.NewRequest("GET", "/messages/page/2/size/200", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+
+	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
+	require.NoError(t, err)
+	require.NotNil(t, boardMessages)
+	require.Len(t, boardMessages, len(internals.initialBoardMessages))
+}
+
+func TestBoardHandler_handleNewMessage(t *testing.T) {
+	internals := newTestingInternals()
+
+	r := mux.NewRouter()
+	handler := NewBoardHandler(r, internals.board, "secret")
+	require.NotNil(t, handler)
+
+	req, err := http.NewRequest("POST", "/messages/new", nil)
+	require.NoError(t, err)
+	req.PostForm = url.Values{}
+	req.PostForm.Add("message", "yaba")
+	req.PostForm.Add("author", "chris")
+	rr := httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, "added", rr.Body.String())
+	assert.Equal(t, len(internals.initialBoardMessages)+1, internals.board.messagesCount)
+	assert.Equal(t, len(internals.initialBoardMessages)+1, len(internals.aeroTestClient.AeroBinMaps))
+
+	// add new message with empty author
+	req, err = http.NewRequest("POST", "/messages/new", nil)
+	require.NoError(t, err)
+	req.PostForm = url.Values{}
+	req.PostForm.Add("message", "yaba2")
+	rr = httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, "added", rr.Body.String())
+	assert.Equal(t, len(internals.initialBoardMessages)+2, internals.board.messagesCount)
+	assert.Equal(t, len(internals.initialBoardMessages)+2, len(internals.aeroTestClient.AeroBinMaps))
+
+	// check messages created
+	req, err = http.NewRequest("GET", "/messages/all", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+
+	var boardMessages []*BoardMessage
+	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
+	require.NoError(t, err)
+	require.NotNil(t, boardMessages)
+	require.Equal(t, len(internals.initialBoardMessages)+2, len(boardMessages))
+
+	// check messages are there and came after the previously last one
+	lastMsgTime := time.Unix(internals.lastInitialMessage.Timestamp, 0)
+	var firstFound, secondFound bool
+	for i := range boardMessages {
+		msgTime := time.Unix(boardMessages[i].Timestamp, 0)
+		if boardMessages[i].Message == "yaba" && boardMessages[i].Author == "chris" {
+			if msgTime.After(lastMsgTime) || msgTime.Equal(lastMsgTime) {
+				firstFound = true
+			}
+		}
+		if boardMessages[i].Message == "yaba2" && boardMessages[i].Author == "anon" {
+			if msgTime.After(lastMsgTime) || msgTime.Equal(lastMsgTime) {
+				secondFound = true
+			}
+		}
+	}
+	assert.True(t, firstFound)
+	assert.True(t, secondFound)
 }
