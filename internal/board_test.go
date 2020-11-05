@@ -248,11 +248,25 @@ func TestBoard_GetMessagesWithRange(t *testing.T) {
 
 	// cache empty after - GetMessagesWithRange does not cache atm
 	require.Equal(t, 0, internals.boardCache.ElementsCount())
-
 	require.Len(t, messages, 3)
-	assert.Equal(t, "test message gragra", messages[0].Message)
-	assert.Equal(t, "test message aaaaa", messages[1].Message)
-	assert.Equal(t, "drago's test message aaaaa sve", messages[2].Message)
+
+	// order not guaranteed
+	var found1, found2, found3 bool
+	for i := range messages {
+		if messages[i].Message == "test message gragra" {
+			found1 = true
+		}
+		if messages[i].Message == "test message aaaaa" {
+			found2 = true
+		}
+		if messages[i].Message == "drago's test message aaaaa sve" {
+			found3 = true
+		}
+	}
+
+	assert.True(t, found1)
+	assert.True(t, found2)
+	assert.True(t, found3)
 }
 
 func TestBoard_GetMessagesPage(t *testing.T) {
@@ -264,11 +278,20 @@ func TestBoard_GetMessagesPage(t *testing.T) {
 
 	messages, err := board.GetMessagesPage(2, 2)
 	require.NoError(t, err)
-
-	// FIXME: flaky
 	require.Len(t, messages, 2)
-	assert.Equal(t, "test message aaaaa", messages[0].Message)
-	assert.Equal(t, "drago's test message aaaaa sve", messages[1].Message)
+
+	// order not guaranteed
+	var found1, found2 bool
+	for i := range messages {
+		if messages[i].Message == "test message aaaaa" {
+			found1 = true
+		}
+		if messages[i].Message == "drago's test message aaaaa sve" {
+			found2 = true
+		}
+	}
+	assert.True(t, found1)
+	assert.True(t, found2)
 
 	// cache calls check
 	funcCallsLog := internals.boardCache.FunctionCallsLog
@@ -290,8 +313,19 @@ func TestBoard_GetMessagesPage(t *testing.T) {
 	messages, err = board.GetMessagesPage(2, 2)
 	require.NoError(t, err)
 	require.Len(t, messages, 2)
-	assert.Equal(t, "test message aaaaa", messages[0].Message)
-	assert.Equal(t, "drago's test message aaaaa sve", messages[1].Message)
+
+	found1 = false
+	found2 = false
+	for i := range messages {
+		if messages[i].Message == "test message aaaaa" {
+			found1 = true
+		}
+		if messages[i].Message == "drago's test message aaaaa sve" {
+			found2 = true
+		}
+	}
+	assert.True(t, found1)
+	assert.True(t, found2)
 
 	// cache calls check
 	funcCallsLog = internals.boardCache.FunctionCallsLog

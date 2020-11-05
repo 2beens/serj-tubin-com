@@ -167,10 +167,18 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
 
-	// FIXME: flaky
 	require.Len(t, boardMessages, 2)
-	assert.Equal(t, 2, boardMessages[0].ID)
-	assert.Equal(t, 3, boardMessages[1].ID)
+	var found1, found2 bool
+	for i := range boardMessages {
+		if boardMessages[i].ID == 2 {
+			found1 = true
+		}
+		if boardMessages[i].ID == 3 {
+			found2 = true
+		}
+	}
+	assert.True(t, found1)
+	assert.True(t, found2)
 
 	// big size
 	req, err = http.NewRequest("GET", "/messages/page/2/size/200", nil)
