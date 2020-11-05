@@ -24,13 +24,13 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board, secretWord string) *
 		secretWord: secretWord,
 	}
 
-	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS")
-	boardRouter.HandleFunc("/messages/delete/{id}/{secret}", handler.handleDeleteMessage).Methods("GET")
-	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET")
-	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET")
-	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET")
-	boardRouter.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET")
-	boardRouter.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET")
+	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
+	boardRouter.HandleFunc("/messages/delete/{id}/{secret}", handler.handleDeleteMessage).Methods("GET").Name("delete-message")
+	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
+	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET").Name("all-messages")
+	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
+	boardRouter.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET").Name("messages-range")
+	boardRouter.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET").Name("messages-page")
 
 	return handler
 }
@@ -73,6 +73,8 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 		http.Error(w, "failed to get messages", http.StatusBadRequest)
 		return
 	}
+
+	w.Header().Add("Content-Type", "application/json")
 
 	if len(boardMessages) == 0 {
 		w.Write([]byte("[]"))
@@ -158,6 +160,7 @@ func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
 	w.Write(messagesJson)
 }
 
@@ -197,6 +200,7 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// TODO: refactor and unify responses
 	w.Write([]byte("added"))
 }
 
@@ -207,7 +211,10 @@ func (handler *BoardHandler) handleMessagesCount(w http.ResponseWriter, r *http.
 		http.Error(w, "failed to get messages count", http.StatusInternalServerError)
 		return
 	}
+
 	resp := fmt.Sprintf(`{"count":%d}`, count)
+	// TODO: application/json is always returned, maybe add middleware which will add it to every request
+	w.Header().Add("Content-Type", "application/json")
 	w.Write([]byte(resp))
 }
 
@@ -257,5 +264,6 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
 	w.Write(messagesJson)
 }

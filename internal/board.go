@@ -18,8 +18,8 @@ const (
 type Board struct {
 	aeroClient aerospike.Client
 
-	messagesCount int
-	cache         cache.Cache
+	messagesCounter int
+	cache           cache.Cache
 
 	mutex sync.RWMutex
 }
@@ -38,7 +38,7 @@ func NewBoard(aeroClient aerospike.Client, cache cache.Cache) (*Board, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all messages count: %w", err)
 	}
-	b.messagesCount = messagesCount
+	b.messagesCounter = messagesCount
 
 	if messagesCount > 0 {
 		go func() {
@@ -108,15 +108,15 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 	defer b.mutex.Unlock()
 
 	bins := aerospike.AeroBinMap{
-		"id":        b.messagesCount,
+		"id":        b.messagesCounter,
 		"author":    message.Author,
 		"timestamp": message.Timestamp,
 		"message":   message.Message,
 	}
 
-	log.Debugf("saving message %d: %+v: %s - %s", b.messagesCount, message.Timestamp, message.Author, message.Message)
+	log.Debugf("saving message %d: %+v: %s - %s", b.messagesCounter, message.Timestamp, message.Author, message.Message)
 
-	messageKey := strconv.Itoa(b.messagesCount)
+	messageKey := strconv.Itoa(b.messagesCounter)
 	if err := b.aeroClient.Put(messageKey, bins); err != nil {
 		return fmt.Errorf("failed to do aero put: %w", err)
 	}
@@ -124,7 +124,7 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 	// omg, fix this laziness
 	b.InvalidateCaches()
 
-	b.messagesCount++
+	b.messagesCounter++
 
 	return nil
 }
@@ -148,7 +148,7 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 
 	log.Tracef("getting messages page %d, size %d", page, size)
 
-	if size >= b.messagesCount {
+	if size >= b.messagesCounter {
 		return b.AllMessagesCache(false)
 	}
 
@@ -162,12 +162,12 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 	}
 	// cache miss here, will get messages from aero and cache them
 
-	pages := (b.messagesCount / size) + 1
+	pages := (b.messagesCounter / size) + 1
 
 	var from, to int64
 	if page >= pages {
-		from = int64(b.messagesCount - size)
-		to = int64(b.messagesCount)
+		from = int64(b.messagesCounter - size)
+		to = int64(b.messagesCounter)
 	} else {
 		from = int64((page - 1) * size)
 		to = from + int64(size-1)
