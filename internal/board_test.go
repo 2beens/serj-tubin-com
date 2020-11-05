@@ -265,6 +265,7 @@ func TestBoard_GetMessagesPage(t *testing.T) {
 	messages, err := board.GetMessagesPage(2, 2)
 	require.NoError(t, err)
 
+	// FIXME: flaky
 	require.Len(t, messages, 2)
 	assert.Equal(t, "test message aaaaa", messages[0].Message)
 	assert.Equal(t, "drago's test message aaaaa sve", messages[1].Message)

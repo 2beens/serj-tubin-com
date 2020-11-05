@@ -81,14 +81,15 @@ func TestNewBoardHandler(t *testing.T) {
 func TestBoardHandler_handleMessagesCount(t *testing.T) {
 	internals := newTestingInternals()
 
-	handler := NewBoardHandler(mux.NewRouter(), internals.board, "secret")
+	r := mux.NewRouter()
+	handler := NewBoardHandler(r, internals.board, "secret")
 	require.NotNil(t, handler)
 
-	req, err := http.NewRequest("-", "-", nil)
+	req, err := http.NewRequest("GET", "/messages/count", nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	handler.handleMessagesCount(rr, req)
+	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, `{"count":5}`, rr.Body.String())
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
@@ -166,6 +167,7 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
 
+	// FIXME: flaky
 	require.Len(t, boardMessages, 2)
 	assert.Equal(t, 2, boardMessages[0].ID)
 	assert.Equal(t, 3, boardMessages[1].ID)
@@ -182,6 +184,89 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
 	require.Len(t, boardMessages, len(internals.initialBoardMessages))
+
+	// invalid arguments
+	req, err = http.NewRequest("GET", "/messages/page/invalid/size/2", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	assert.Equal(t, "text/plain; charset=utf-8", rr.Header().Get("Content-Type"))
+	assert.Equal(t, "parse form error, parameter <page>\n", rr.Body.String())
+}
+
+func TestBoardHandler_handleDeleteMessage(t *testing.T) {
+	internals := newTestingInternals()
+
+	r := mux.NewRouter()
+	handler := NewBoardHandler(r, internals.board, "secret-word")
+	require.NotNil(t, handler)
+
+	// wrong secret
+	req, err := http.NewRequest("GET", "/messages/delete/2/secret-word-blabla", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusForbidden, rr.Code)
+	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messagesCounter)
+
+	// correct secret - messages should get removed
+	req, err = http.NewRequest("GET", "/messages/delete/2/secret-word", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	newCount, err := internals.board.aeroClient.CountAll()
+	require.NoError(t, err)
+	assert.Equal(t, "true", rr.Body.String())
+	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
+
+	// delete same message again - and fail to do so
+	req, err = http.NewRequest("GET", "/messages/delete/2/secret-word", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	newCount, err = internals.board.aeroClient.CountAll()
+	require.NoError(t, err)
+	assert.Equal(t, "false", rr.Body.String())
+	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
+
+	// delete another one
+	req, err = http.NewRequest("GET", "/messages/delete/3/secret-word", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	newCount, err = internals.board.aeroClient.CountAll()
+	require.NoError(t, err)
+	assert.Equal(t, "true", rr.Body.String())
+	assert.Equal(t, len(internals.initialBoardMessages)-2, newCount)
+
+	// get all
+	req, err = http.NewRequest("GET", "/messages/all", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+
+	var boardMessages []*BoardMessage
+	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
+	require.NoError(t, err)
+	require.NotNil(t, boardMessages)
+	require.Len(t, boardMessages, len(internals.initialBoardMessages)-2)
+
+	for i := range boardMessages {
+		// check deleted messages not received
+		assert.NotEqual(t, 2, boardMessages[i].ID)
+		assert.NotEqual(t, 3, boardMessages[i].ID)
+	}
 }
 
 func TestBoardHandler_handleNewMessage(t *testing.T) {
@@ -201,7 +286,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "added", rr.Body.String())
-	assert.Equal(t, len(internals.initialBoardMessages)+1, internals.board.messagesCount)
+	assert.Equal(t, len(internals.initialBoardMessages)+1, internals.board.messagesCounter)
 	assert.Equal(t, len(internals.initialBoardMessages)+1, len(internals.aeroTestClient.AeroBinMaps))
 
 	// add new message with empty author
@@ -214,7 +299,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "added", rr.Body.String())
-	assert.Equal(t, len(internals.initialBoardMessages)+2, internals.board.messagesCount)
+	assert.Equal(t, len(internals.initialBoardMessages)+2, internals.board.messagesCounter)
 	assert.Equal(t, len(internals.initialBoardMessages)+2, len(internals.aeroTestClient.AeroBinMaps))
 
 	// check messages created

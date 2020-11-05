@@ -3,6 +3,7 @@ some ideas:
         - (done ✅) your location, user agent, ip
         - (done ✅) weather tomorrow
         - (done ✅) some quotes
+        - add linter (golang ci)
         - add URL shortener
             - with auto generated path
             - manually enter path
