@@ -130,7 +130,7 @@ func (bc *BoardAeroClient) CountAll() (int, error) {
 	}
 
 	count := 0
-	for _ = range recs.Results() {
+	for range recs.Results() {
 		count++
 	}
 

@@ -73,7 +73,7 @@ func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 		apiCallsCount++
 		assert.Equal(t, fmt.Sprintf("/weather?id=%d&appid=open_weather_test_key", londonCityId), r.RequestURI)
 		assert.Equal(t, http.MethodGet, r.Method)
-		w.Write([]byte(weatherApiTestResponses[londonCityId]))
+		WriteResponse(w, "application/json", weatherApiTestResponses[londonCityId])
 	})
 	testServer := httptest.NewServer(testServerHander)
 	defer testServer.Close()
@@ -122,7 +122,7 @@ func TestWeatherApi_Get5DaysWeatherForecast(t *testing.T) {
 		fmt.Println(r.RequestURI)
 		assert.Equal(t, fmt.Sprintf("/forecast?id=%d&appid=open_weather_test_key&units=metric", altstadtCityId), r.RequestURI)
 		assert.Equal(t, http.MethodGet, r.Method)
-		w.Write([]byte(weatherApiForecastTestResponses[altstadtCityId]))
+		WriteResponse(w, "application/json", weatherApiForecastTestResponses[altstadtCityId])
 	})
 	testServer := httptest.NewServer(testServerHander)
 	defer testServer.Close()
