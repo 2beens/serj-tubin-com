@@ -141,7 +141,7 @@ func fixAerospikeData(namespace, set, host string, port int) error {
 	}
 
 	fmt.Printf("received %d messages from aerospike:\n", len(messages))
-	for i, _ := range messages {
+	for i := range messages {
 		msg := messages[i]
 		fmt.Printf("%d: %s\n", msg.ID, time.Unix(msg.Timestamp, 0))
 	}
@@ -155,7 +155,7 @@ func fixAerospikeData(namespace, set, host string, port int) error {
 	fmt.Println()
 
 	skipDelete := make(map[int64]bool)
-	for i, _ := range messages {
+	for i := range messages {
 		message := messages[i]
 		fmt.Printf("saving message %d: %+v: %s - %s\n", i, time.Unix(message.Timestamp, 0), message.Author, message.Message)
 
@@ -190,7 +190,7 @@ func fixAerospikeData(namespace, set, host string, port int) error {
 	fmt.Println()
 
 	fmt.Println("deleting old records ...")
-	for i, _ := range records {
+	for i := range records {
 		r := records[i]
 		timestamp, ok := r.Record.Bins["timestamp"].(int)
 		if !ok {

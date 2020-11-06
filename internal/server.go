@@ -50,6 +50,9 @@ func NewServer(
 		return nil, fmt.Errorf("failed to create aero client: %w", err)
 	}
 	boardAeroClient, err := aerospike.NewBoardAeroClient(aeroClient, aeroNamespace, aeroMessagesSet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create board aero client: %w", err)
+	}
 
 	boardCache, err := cache.NewBoardCache()
 	if err != nil {
@@ -89,7 +92,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("I'm OK, thanks :)"))
+		WriteResponse(w, "", "I'm OK, thanks")
 	})
 
 	r.HandleFunc("/quote/random", func(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +106,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 			return
 		}
 
-		w.Write(qBytes)
+		WriteResponseBytes(w, "", qBytes)
 	})
 
 	r.HandleFunc("/whereami", func(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +120,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		}
 
 		geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.City, geoIpInfo.CountryName)
-		w.Write([]byte(geoResp))
+		WriteResponse(w, "application/json", geoResp)
 	})
 
 	// TODO: move in util handler
@@ -127,7 +130,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 			log.Errorf("failed to get user IP address: %s", err)
 			http.Error(w, "failed to get IP", http.StatusInternalServerError)
 		}
-		w.Write([]byte(ip))
+		WriteResponse(w, "", ip)
 	})
 
 	// TODO: maybe add version info, to return it to site pages header

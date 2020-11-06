@@ -77,7 +77,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 	w.Header().Add("Content-Type", "application/json")
 
 	if len(boardMessages) == 0 {
-		w.Write([]byte("[]"))
+		WriteResponse(w, "application/json", "[]")
 		return
 	}
 
@@ -88,7 +88,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 		return
 	}
 
-	w.Write(messagesJson)
+	WriteResponseBytes(w, "application/json", messagesJson)
 }
 
 func (handler *BoardHandler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
@@ -117,9 +117,9 @@ func (handler *BoardHandler) handleDeleteMessage(w http.ResponseWriter, r *http.
 
 	// TODO: again - return proper JSON / requested response format
 	if deleted {
-		w.Write([]byte("true"))
+		WriteResponse(w, "", "true")
 	} else {
-		w.Write([]byte("false"))
+		WriteResponse(w, "", "false")
 	}
 }
 
@@ -149,7 +149,7 @@ func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.
 	}
 
 	if len(boardMessages) == 0 {
-		w.Write([]byte("[]"))
+		WriteResponse(w, "application/json", "[]")
 		return
 	}
 
@@ -160,8 +160,7 @@ func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.
 		return
 	}
 
-	w.Header().Add("Content-Type", "application/json")
-	w.Write(messagesJson)
+	WriteResponseBytes(w, "application/json", messagesJson)
 }
 
 func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +200,7 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 	}
 
 	// TODO: refactor and unify responses
-	w.Write([]byte("added"))
+	WriteResponse(w, "", "added")
 }
 
 func (handler *BoardHandler) handleMessagesCount(w http.ResponseWriter, r *http.Request) {
@@ -214,13 +213,12 @@ func (handler *BoardHandler) handleMessagesCount(w http.ResponseWriter, r *http.
 
 	resp := fmt.Sprintf(`{"count":%d}`, count)
 	// TODO: application/json is always returned, maybe add middleware which will add it to every request
-	w.Header().Add("Content-Type", "application/json")
-	w.Write([]byte(resp))
+	WriteResponse(w, "application/json", resp)
 }
 
 func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	limit := -1
+	var limit int
 	limitStr := vars["limit"]
 	if limitStr != "" {
 		var err error
@@ -253,7 +251,7 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 	}
 
 	if len(boardMessages) == 0 {
-		w.Write([]byte("[]"))
+		WriteResponse(w, "application/json", "[]")
 		return
 	}
 
@@ -264,6 +262,5 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		return
 	}
 
-	w.Header().Add("Content-Type", "application/json")
-	w.Write(messagesJson)
+	WriteResponseBytes(w, "application/json", messagesJson)
 }
