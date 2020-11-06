@@ -2,7 +2,22 @@ name: CI
 on:
   pull_request:
 jobs:
+  golangci:
+    name: linter checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v2
+        with:
+          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
+          version: v1.31
+          only-new-issues: true
+        run: golangci-lint run
   unit-tests:
+    name: unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2 # checks-out the repository under $GITHUB_WORKSPACE
