@@ -1,9 +1,12 @@
 some ideas:
     - utils page with things like;
+        - migrate to new Hetzner server
         - (done ✅) your location, user agent, ip
         - (done ✅) weather tomorrow
         - (done ✅) some quotes
-        - add linter (golang ci)
+        - (done ✅) add linter (golang ci)
+        - add some sort of versioning (last commit count or hash?)
+        - use ansible?
         - add URL shortener
             - with auto generated path
             - manually enter path
