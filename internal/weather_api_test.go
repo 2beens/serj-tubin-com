@@ -81,7 +81,7 @@ func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 	citiesData := getTestCitiesData()
 	openWeatherTestKey := "open_weather_test_key"
 	weatherApi := NewWeatherApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
-	assert.NotNil(t, weatherApi)
+	require.NotNil(t, weatherApi)
 
 	// with cache miss
 	weather, err := weatherApi.GetWeatherCurrent(londonCityId, "London")

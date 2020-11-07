@@ -28,16 +28,36 @@ type GeoIpInfo struct {
 }
 
 type GeoIp struct {
-	cache *freecache.Cache
-	mutex sync.RWMutex
+	freeGeoipAPIUrl string
+	httpClient      *http.Client
+	cache           *freecache.Cache
+	mutex           sync.RWMutex
 }
 
-func NewGeoIp() *GeoIp {
+var (
+	devGeoIpInfo = GeoIpInfo{
+		Ip:          "127.0.0.1",
+		CountryCode: "de",
+		CountryName: "Germany",
+		RegionCode:  "",
+		RegionName:  "",
+		City:        "Berlin",
+		ZipCode:     "12099",
+		TimeZone:    "",
+		Latitude:    0,
+		Longitude:   0,
+		MetroCode:   0,
+	}
+)
+
+func NewGeoIp(freeGeoipAPIUrl string, httpClient *http.Client) *GeoIp {
 	megabyte := 1024 * 1024
 	cacheSize := 50 * megabyte
 
 	return &GeoIp{
-		cache: freecache.NewCache(cacheSize),
+		freeGeoipAPIUrl: freeGeoipAPIUrl,
+		httpClient:      httpClient,
+		cache:           freecache.NewCache(cacheSize),
 	}
 }
 
@@ -47,23 +67,10 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 		return nil, fmt.Errorf("error getting user ip: %s", err.Error())
 	}
 
-	// TODO: control this with config and environment
 	// used for development
 	if userIp == "127.0.0.1" {
 		log.Debugf("request geo info: returning development 127.0.0.1 / Berlin")
-		return &GeoIpInfo{
-			Ip:          "127.0.0.1",
-			CountryCode: "de",
-			CountryName: "Germany",
-			RegionCode:  "",
-			RegionName:  "",
-			City:        "Berlin",
-			ZipCode:     "12099",
-			TimeZone:    "",
-			Latitude:    0,
-			Longitude:   0,
-			MetroCode:   0,
-		}, nil
+		return &devGeoIpInfo, nil
 	}
 
 	geoIpResponse := &GeoIpInfo{}
@@ -86,10 +93,10 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 
 	// allowed up to 15,000 queries per hour
 	// https://freegeoip.app/
-	geoIpUrl := fmt.Sprintf("https://freegeoip.app/json/%s", userIp)
+	geoIpUrl := fmt.Sprintf("%s/json/%s", gi.freeGeoipAPIUrl, userIp)
 	log.Debugf("calling geo ip info: %s", geoIpUrl)
 
-	resp, err := http.Get(geoIpUrl)
+	resp, err := gi.httpClient.Get(geoIpUrl)
 	if err != nil {
 		return nil, fmt.Errorf("error getting freegeoip response: %s", err.Error())
 	}

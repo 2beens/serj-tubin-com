@@ -73,7 +73,7 @@ func NewServer(
 		openWeatherAPIUrl: "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
-		geoIp:             NewGeoIp(),
+		geoIp:             NewGeoIp("https://freegeoip.app", http.DefaultClient),
 		board:             board,
 		secretWord:        secretWord,
 	}

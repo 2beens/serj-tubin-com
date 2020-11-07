@@ -76,6 +76,7 @@ func newTestingInternals() *testingInternals {
 	}
 
 	// FIXME: when storing messages in a loop, we got some race condition
+	// indication of a design smell
 	//for _, m := range initialBoardMessages {
 	//	fmt.Printf("++ %d %s: %d\n", m.ID, m.Author, m.Timestamp)
 	//	if err := board.StoreMessage(*m); err != nil {
