@@ -132,9 +132,8 @@ func (gi *GeoIp) ReadUserIP(r *http.Request) (string, error) {
 		ipAddr = r.RemoteAddr
 	}
 
-	// TODO: control this with config and environment
 	// used for development
-	if strings.HasPrefix(ipAddr, "127.0.0.1") {
+	if ipAddr == "127.0.0.1" {
 		log.Debugf("read user IP: returning development 127.0.0.1 / Berlin")
 		return "127.0.0.1", nil
 	}

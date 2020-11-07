@@ -73,5 +73,30 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 }
 
 func TestGeoIp_ReadUserIP(t *testing.T) {
+	geoIp := NewGeoIp("not-needed", nil)
+	require.NotNil(t, geoIp)
 
+	req, err := http.NewRequest("-", "-", nil)
+	require.NoError(t, err)
+
+	// X-Real-Ip
+	ip := "127.0.0.10"
+	req.Header.Add("X-Real-Ip", ip)
+	userIp, err := geoIp.ReadUserIP(req)
+	require.NoError(t, err)
+	assert.Equal(t, ip, userIp)
+
+	// X-Forwarded-For
+	req, err = http.NewRequest("-", "-", nil)
+	require.NoError(t, err)
+	req.Header.Set("X-Forwarded-For", ip)
+	userIp, err = geoIp.ReadUserIP(req)
+	require.NoError(t, err)
+	assert.Equal(t, ip, userIp)
+
+	// headers empty
+	req, err = http.NewRequest("-", "-", nil)
+	require.NoError(t, err)
+	userIp, err = geoIp.ReadUserIP(req)
+	require.EqualError(t, err, "ip addr  is invalid")
 }
