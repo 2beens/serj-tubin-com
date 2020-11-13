@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -91,52 +90,10 @@ func NewServer(
 func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		WriteResponse(w, "", "I'm OK, thanks")
-	})
-
-	r.HandleFunc("/quote/random", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		q := s.quotesManager.RandomQuote()
-		qBytes, err := json.Marshal(q)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			log.Errorf("marshal quote error: %s", err)
-			return
-		}
-
-		WriteResponseBytes(w, "", qBytes)
-	})
-
-	r.HandleFunc("/whereami", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		geoIpInfo, err := s.geoIp.GetRequestGeoInfo(r)
-		if err != nil {
-			log.Errorf("error getting geo ip info: %s", err)
-			http.Error(w, "geo ip info error", http.StatusInternalServerError)
-			return
-		}
-
-		geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.City, geoIpInfo.CountryName)
-		WriteResponse(w, "application/json", geoResp)
-	})
-
-	// TODO: move in util handler
-	r.HandleFunc("/myip", func(w http.ResponseWriter, r *http.Request) {
-		ip, err := s.geoIp.ReadUserIP(r)
-		if err != nil {
-			log.Errorf("failed to get user IP address: %s", err)
-			http.Error(w, "failed to get IP", http.StatusInternalServerError)
-		}
-		WriteResponse(w, "", ip)
-	})
-
-	// TODO: maybe add version info, to return it to site pages header
-
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
+
+	NewMiscHandler(r, s.geoIp, s.quotesManager)
 
 	if NewBoardHandler(boardRouter, s.board, s.secretWord) == nil {
 		return nil, errors.New("board handler is nil")
