@@ -93,8 +93,6 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 
-	NewMiscHandler(r, s.geoIp, s.quotesManager)
-
 	if NewBoardHandler(boardRouter, s.board, s.secretWord) == nil {
 		return nil, errors.New("board handler is nil")
 	}
@@ -103,6 +101,10 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, fmt.Errorf("failed to create weather handler: %w", err)
 	} else if weatherHandler == nil {
 		return nil, errors.New("weather handler is nil")
+	}
+
+	if NewMiscHandler(r, s.geoIp, s.quotesManager) == nil {
+		panic("misc handler is nil")
 	}
 
 	r.Use(s.loggingMiddleware())

@@ -15,7 +15,6 @@ type MiscHandler struct {
 }
 
 func NewMiscHandler(mainRouter *mux.Router, geoIp *GeoIp, quotesManager *QuotesManager) *MiscHandler {
-	// TODO: add route that catches all unknowns
 	handler := &MiscHandler{
 		geoIp:         geoIp,
 		quotesManager: quotesManager,
@@ -25,6 +24,9 @@ func NewMiscHandler(mainRouter *mux.Router, geoIp *GeoIp, quotesManager *QuotesM
 	mainRouter.HandleFunc("/quote/random", handler.handleGetRandomQuote).Methods("GET").Name("quote")
 	mainRouter.HandleFunc("/whereami", handler.handleWhereAmI).Methods("GET").Name("whereami")
 	mainRouter.HandleFunc("/myip", handler.handleGetMyIp).Methods("GET").Name("myip")
+
+	// all the rest - unhandled paths
+	mainRouter.HandleFunc("/{unknown}", handler.handleUnknownPath).Methods("GET", "POST", "PUT", "OPTIONS").Name("unknown")
 
 	return handler
 }
@@ -68,4 +70,8 @@ func (handler *MiscHandler) handleGetMyIp(w http.ResponseWriter, r *http.Request
 		http.Error(w, "failed to get IP", http.StatusInternalServerError)
 	}
 	WriteResponse(w, "", ip)
+}
+
+func (handler *MiscHandler) handleUnknownPath(w http.ResponseWriter, r *http.Request) {
+	http.NotFound(w, r)
 }
