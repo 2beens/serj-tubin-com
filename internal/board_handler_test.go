@@ -72,7 +72,9 @@ func TestNewBoardHandler(t *testing.T) {
 			require.NoError(t, err)
 
 			routeMatch := &mux.RouteMatch{}
-			isMatch := r.Get(route.name).Match(req, routeMatch)
+			route := r.Get(route.name)
+			require.NotNil(t, route)
+			isMatch := route.Match(req, routeMatch)
 			assert.True(t, isMatch, caseName)
 		})
 	}

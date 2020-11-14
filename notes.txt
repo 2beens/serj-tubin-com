@@ -7,6 +7,8 @@ some ideas:
         - (done ✅) add linter (golang ci)
         - add some sort of versioning (last commit count or hash?)
         - use ansible?
+        - use monit?
+        - maybe add version info, to return it to site pages header
         - add URL shortener
             - with auto generated path
             - manually enter path
