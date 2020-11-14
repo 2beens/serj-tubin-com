@@ -97,6 +97,6 @@ func TestGeoIp_ReadUserIP(t *testing.T) {
 	// headers empty
 	req, err = http.NewRequest("-", "-", nil)
 	require.NoError(t, err)
-	userIp, err = geoIp.ReadUserIP(req)
+	_, err = geoIp.ReadUserIP(req)
 	require.EqualError(t, err, "ip addr  is invalid")
 }
