@@ -5,7 +5,8 @@ some ideas:
         - (done ✅) weather tomorrow
         - (done ✅) some quotes
         - (done ✅) add linter (golang ci)
-        - add some sort of versioning (last commit count or hash?)
+        - (done ✅) add some sort of versioning (last commit count or hash?)
+            - add to frontend
         - use ansible?
         - use monit?
         - maybe add version info, to return it to site pages header
