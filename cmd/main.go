@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 	"time"
@@ -64,6 +65,13 @@ func main() {
 		log.Errorf("secret not set, use SERJ_TUBIN_COM_SECRET_WORD env var to set it")
 	}
 
+	versionInfo, err := tryGetLastCommitHash()
+	if err != nil {
+		log.Tracef("failed to get last commit hash / version info: %s", err)
+	} else {
+		log.Tracef("running version: %s", versionInfo)
+	}
+
 	server, err := internal.NewServer(
 		*aeroHost,
 		*aeroPort,
@@ -71,6 +79,7 @@ func main() {
 		*aeroMessagesSet,
 		openWeatherApiKey,
 		secretWord,
+		versionInfo,
 	)
 	if err != nil && !*forceStart {
 		log.Fatal(err)
@@ -78,6 +87,17 @@ func main() {
 	if server != nil {
 		server.Serve(*port)
 	}
+}
+
+// tryGetLastCommitHash will try to get the last commit hash
+// assumes that the built main executable is in project root
+func tryGetLastCommitHash() (string, error) {
+	cmd := exec.Command("/usr/bin/git", "rev-parse", "HEAD")
+	stdout, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(stdout), nil
 }
 
 func loggingSetup(logFileName string, logLevel string) {

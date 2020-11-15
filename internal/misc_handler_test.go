@@ -11,7 +11,7 @@ import (
 
 func TestNewMiscHandler(t *testing.T) {
 	mainRouter := mux.NewRouter()
-	handler := NewMiscHandler(mainRouter, nil, nil)
+	handler := NewMiscHandler(mainRouter, nil, nil, "dummy")
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
 
@@ -48,6 +48,11 @@ func TestNewMiscHandler(t *testing.T) {
 		"myip": {
 			name:   "myip",
 			path:   "/myip",
+			method: "GET",
+		},
+		"version": {
+			name:   "version",
+			path:   "/version",
 			method: "GET",
 		},
 	} {

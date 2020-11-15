@@ -12,18 +12,26 @@ import (
 type MiscHandler struct {
 	geoIp         *GeoIp
 	quotesManager *QuotesManager
+	versionInfo   string
 }
 
-func NewMiscHandler(mainRouter *mux.Router, geoIp *GeoIp, quotesManager *QuotesManager) *MiscHandler {
+func NewMiscHandler(
+	mainRouter *mux.Router,
+	geoIp *GeoIp,
+	quotesManager *QuotesManager,
+	versionInfo string,
+) *MiscHandler {
 	handler := &MiscHandler{
 		geoIp:         geoIp,
 		quotesManager: quotesManager,
+		versionInfo:   versionInfo,
 	}
 
 	mainRouter.HandleFunc("/", handler.handleRoot).Methods("GET", "POST", "OPTIONS").Name("root")
 	mainRouter.HandleFunc("/quote/random", handler.handleGetRandomQuote).Methods("GET").Name("quote")
 	mainRouter.HandleFunc("/whereami", handler.handleWhereAmI).Methods("GET").Name("whereami")
 	mainRouter.HandleFunc("/myip", handler.handleGetMyIp).Methods("GET").Name("myip")
+	mainRouter.HandleFunc("/version", handler.handleGetVersionInfo).Methods("GET").Name("version")
 
 	// all the rest - unhandled paths
 	mainRouter.HandleFunc("/{unknown}", handler.handleUnknownPath).Methods("GET", "POST", "PUT", "OPTIONS").Name("unknown")
@@ -70,6 +78,10 @@ func (handler *MiscHandler) handleGetMyIp(w http.ResponseWriter, r *http.Request
 		http.Error(w, "failed to get IP", http.StatusInternalServerError)
 	}
 	WriteResponse(w, "", ip)
+}
+
+func (handler *MiscHandler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
+	WriteResponse(w, "", handler.versionInfo)
 }
 
 func (handler *MiscHandler) handleUnknownPath(w http.ResponseWriter, r *http.Request) {

@@ -31,6 +31,7 @@ type Server struct {
 	openWeatherApiKey string
 	muteRequestLogs   bool
 	secretWord        string
+	versionInfo       string
 }
 
 func NewServer(
@@ -40,6 +41,7 @@ func NewServer(
 	aeroMessagesSet string,
 	openWeatherApiKey string,
 	secretWord string,
+	versionInfo string,
 ) (*Server, error) {
 	log.Debugf("connecting to aerospike server %s:%d [namespace:%s, set:%s] ...",
 		aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
@@ -75,6 +77,7 @@ func NewServer(
 		geoIp:             NewGeoIp("https://freegeoip.app", http.DefaultClient),
 		board:             board,
 		secretWord:        secretWord,
+		versionInfo:       versionInfo,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -103,7 +106,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("weather handler is nil")
 	}
 
-	if NewMiscHandler(r, s.geoIp, s.quotesManager) == nil {
+	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo) == nil {
 		panic("misc handler is nil")
 	}
 

@@ -7,6 +7,7 @@ Restart=always
 RestartSec=5
 User=serj
 Environment="OPEN_WEATHER_API_KEY=key goes here"
+Environment="SERJ_TUBIN_COM_SECRET_WORD=secret goes here"
 WorkingDirectory=/home/serj/serj-tubin-com
 ExecStart=/home/serj/serj-tubin-com/main -port 1988 -logs-path /home/serj/serj-tubin-com/server-logs.log
 
