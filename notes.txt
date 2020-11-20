@@ -1,26 +1,26 @@
 some ideas:
-    - utils page with things like;
-        - migrate to new Hetzner server
-        - (done ✅) your location, user agent, ip
-        - (done ✅) weather tomorrow
-        - (done ✅) some quotes
-        - (done ✅) add linter (golang ci)
-        - (done ✅) add some sort of versioning (last commit count or hash?)
-            - add to frontend
-        - use ansible?
-        - use monit?
-        - maybe add version info, to return it to site pages header
-        - alarming (metrics), e.g. on too many requests, etc.
-        - add URL shortener
-            - with auto generated path
-            - manually enter path
-        - (tried ✅) use elastic search somehow somewhere (logs??)
-            - https://logz.io/learn/complete-guide-elk-stack/#elasticsearch
-            - https://www.elastic.co/start
-            - go client:
-                - https://github.com/elastic/go-elasticsearch
-        - add metrics (graphite + grafana)
-        - etc
+    - ability to ✍️ blog❗️
+    - (done ✅) migrate to new Hetzner server
+    - (done ✅) your location, user agent, ip
+    - (done ✅) weather tomorrow
+    - (done ✅) some quotes
+    - (done ✅) add linter (golang ci)
+    - (done ✅) add some sort of versioning (last commit count or hash?)
+        - (done ✅) add to frontend
+    - logrotate
+    - use ansible?
+    - use monit?
+    - alarming (metrics), e.g. on too many requests, etc.
+    - add URL shortener
+        - with auto generated path
+        - manually enter path
+    - (tried ✅) use elastic search somehow somewhere (logs??)
+        - https://logz.io/learn/complete-guide-elk-stack/#elasticsearch
+        - https://www.elastic.co/start
+        - go client:
+            - https://github.com/elastic/go-elasticsearch
+    - add metrics (graphite + grafana)
+    - etc
 
 31-may-2020 serj-tubin-backend service:
     Backend is now ran not by "go run ...", but first built, and ran via systemd
