@@ -29,8 +29,8 @@ func main() {
 	port := flag.Int("port", 8080, "port number")
 	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
 
-	aeroSetup := flag.Bool("aero-setup", false, "run aerospike db setup")
-	aeroDataFix := flag.Bool("aero-data-fix", false, "run aerospike db data fixing / migration")
+	aeroSetup := flag.Bool("aero-setup", false, "run aerospike sql setup")
+	aeroDataFix := flag.Bool("aero-data-fix", false, "run aerospike sql data fixing / migration")
 
 	flag.Parse()
 

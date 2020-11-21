@@ -43,6 +43,12 @@ func NewServer(
 	secretWord string,
 	versionInfo string,
 ) (*Server, error) {
+	blogApi, err := NewBlogApi()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer blogApi.CloseDB()
+
 	log.Debugf("connecting to aerospike server %s:%d [namespace:%s, set:%s] ...",
 		aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
 
