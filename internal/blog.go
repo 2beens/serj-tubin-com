@@ -5,7 +5,8 @@ import (
 )
 
 type Blog struct {
-	Title     string
-	Timestamp time.Time
-	Text      string
+	Id        int       `json:"id"`
+	Title     string    `json:"title"`
+	CreatedAt time.Time `json:"created_at"`
+	Content   string    `json:"content"`
 }

@@ -23,6 +23,7 @@ const (
 )
 
 type Server struct {
+	blogApi       *BlogApi
 	geoIp         *GeoIp
 	quotesManager *QuotesManager
 	board         *Board
@@ -43,12 +44,6 @@ func NewServer(
 	secretWord string,
 	versionInfo string,
 ) (*Server, error) {
-	blogApi, err := NewBlogApi()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer blogApi.CloseDB()
-
 	log.Debugf("connecting to aerospike server %s:%d [namespace:%s, set:%s] ...",
 		aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
 
@@ -76,7 +71,13 @@ func NewServer(
 		return nil, errors.New("open weather API key not set")
 	}
 
+	blogApi, err := NewBlogApi()
+	if err != nil {
+		log.Fatalf("failed to create blog api: %s", err)
+	}
+
 	s := &Server{
+		blogApi:           blogApi,
 		openWeatherAPIUrl: "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
@@ -99,8 +100,13 @@ func NewServer(
 func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
 
+	blogRouter := r.PathPrefix("/blog").Subrouter()
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
+
+	if NewBlogHandler(blogRouter, s.blogApi) == nil {
+		return nil, errors.New("blog handler is nil")
+	}
 
 	if NewBoardHandler(boardRouter, s.board, s.secretWord) == nil {
 		return nil, errors.New("board handler is nil")
@@ -156,6 +162,10 @@ func (s *Server) gracefulShutdown(httpServer *http.Server) {
 	log.Debug("graceful shutdown initiated ...")
 
 	s.board.Close()
+
+	if s.blogApi != nil {
+		s.blogApi.CloseDB()
+	}
 
 	maxWaitDuration := time.Second * 15
 	ctx, cancel := context.WithTimeout(context.Background(), maxWaitDuration)

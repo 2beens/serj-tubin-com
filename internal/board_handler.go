@@ -45,7 +45,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
 		log.Errorf("handle get messages page, from <page> param: %s", err)
-		http.Error(w, "parse form error, parameter <page>", http.StatusInternalServerError)
+		http.Error(w, "parse form error, parameter <page>", http.StatusBadRequest)
 		return
 	}
 	sizeStr := vars["size"]
