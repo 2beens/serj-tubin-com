@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	log "github.com/sirupsen/logrus"
 )
 
 type BlogApi struct {
@@ -26,23 +27,6 @@ func NewBlogApi() (*BlogApi, error) {
 	blogApi := &BlogApi{
 		db: dbpool,
 	}
-
-	// add test blog
-	//blogApi.AddBlog(&Blog{
-	//	Title:     "aaa bbb",
-	//	CreatedAt: time.Now(),
-	//	Content:   "bla bla bla 1243",
-	//})
-
-	// get all blogs
-	//allBlogs, err := blogApi.All()
-	//if err != nil {
-	//	log.Fatalln(err)
-	//}
-	//log.Println("all blogs:")
-	//for _, b := range allBlogs {
-	//	log.Println(b)
-	//}
 
 	return blogApi, nil
 }
@@ -81,6 +65,42 @@ func (b *BlogApi) AddBlog(blog *Blog) error {
 	}
 
 	return errors.New("unexpected error, failed to insert blog")
+}
+
+func (b *BlogApi) UpdateBlog(blog *Blog) error {
+	if blog.Content == "" || blog.Title == "" {
+		return errors.New("blog title or content empty")
+	}
+
+	tag, err := b.db.Exec(
+		context.Background(),
+		`UPDATE blog SET title = $1, content = $2 WHERE id = $3;`,
+		blog.Title, blog.Content, blog.Id,
+	)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		log.Tracef("blog %d not updated", blog.Id)
+	}
+
+	return nil
+}
+
+func (b *BlogApi) DeleteBlog(id int) (bool, error) {
+	tag, err := b.db.Exec(
+		context.Background(),
+		`DELETE FROM blog WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		return false, err
+	}
+	if tag.RowsAffected() == 0 {
+		return false, nil
+	}
+	return true, nil
 }
 
 func (b *BlogApi) All() ([]*Blog, error) {
