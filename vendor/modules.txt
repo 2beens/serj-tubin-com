@@ -68,6 +68,9 @@ github.com/yuin/gopher-lua/ast
 github.com/yuin/gopher-lua/parse
 github.com/yuin/gopher-lua/pm
 # golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+## explicit
+golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blowfish
 golang.org/x/crypto/pbkdf2
 # golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 ## explicit

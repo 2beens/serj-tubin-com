@@ -9,6 +9,7 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func WriteResponse(w http.ResponseWriter, contentType, message string) {
@@ -44,6 +45,16 @@ func LoadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
 	}
 
 	return cities, nil
+}
+
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
 
 // GenerateRandomBytes returns securely generated random bytes.

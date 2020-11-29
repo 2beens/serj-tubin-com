@@ -70,6 +70,18 @@ func main() {
 		log.Tracef("running version: %s", versionInfo)
 	}
 
+	adminUsername := os.Getenv("SERJ_TUBIN_COM_ADMIN_USERNAME")
+	adminPasswordHash := os.Getenv("SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH")
+	if adminUsername == "" || adminPasswordHash == "" {
+		log.Errorf("admin username and password not set. use SERJ_TUBIN_COM_ADMIN_USERNAME and SERJ_TUBIN_COM_ADMIN_USERNAME")
+		return
+	}
+
+	admin := &internal.Admin{
+		Username:     adminUsername,
+		PasswordHash: adminPasswordHash,
+	}
+
 	server, err := internal.NewServer(
 		*aeroHost,
 		*aeroPort,
@@ -78,6 +90,7 @@ func main() {
 		openWeatherApiKey,
 		secretWord,
 		versionInfo,
+		admin,
 	)
 	if err != nil && !*forceStart {
 		log.Fatal(err)

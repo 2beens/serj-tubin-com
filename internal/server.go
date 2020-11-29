@@ -35,6 +35,7 @@ type Server struct {
 	versionInfo       string
 
 	session *LoginSession
+	admin   *Admin
 }
 
 func NewServer(
@@ -45,6 +46,7 @@ func NewServer(
 	openWeatherApiKey string,
 	secretWord string,
 	versionInfo string,
+	admin *Admin,
 ) (*Server, error) {
 	log.Debugf("connecting to aerospike server %s:%d [namespace:%s, set:%s] ...",
 		aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
@@ -88,6 +90,7 @@ func NewServer(
 		secretWord:        secretWord,
 		versionInfo:       versionInfo,
 		session:           &LoginSession{},
+		admin:             admin,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -121,7 +124,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("weather handler is nil")
 	}
 
-	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.session) == nil {
+	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.session, s.admin) == nil {
 		panic("misc handler is nil")
 	}
 

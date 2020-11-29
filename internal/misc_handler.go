@@ -15,6 +15,7 @@ type MiscHandler struct {
 	quotesManager *QuotesManager
 	versionInfo   string
 	session       *LoginSession
+	admin         *Admin
 }
 
 func NewMiscHandler(
@@ -23,12 +24,14 @@ func NewMiscHandler(
 	quotesManager *QuotesManager,
 	versionInfo string,
 	session *LoginSession,
+	admin *Admin,
 ) *MiscHandler {
 	handler := &MiscHandler{
 		geoIp:         geoIp,
 		quotesManager: quotesManager,
 		versionInfo:   versionInfo,
 		session:       session,
+		admin:         admin,
 	}
 
 	mainRouter.HandleFunc("/", handler.handleRoot).Methods("GET", "POST", "OPTIONS").Name("root")
@@ -109,16 +112,23 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// TODO: don't send plain password text
 	password := r.Form.Get("password")
 	if password == "" {
 		http.Error(w, "error, password empty", http.StatusBadRequest)
 		return
 	}
 
-	// TODO: check username and password
-	if username != "sr" && password != "sr" {
-		http.Error(w, "error, wrong creentials", http.StatusBadRequest)
+	if !CheckPasswordHash(password, handler.admin.PasswordHash) {
+		log.Tracef("[password] failed login attempt: %s - %s", username, password)
+		log.Println(handler.admin)
+		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
+		return
+	}
+
+	if username != handler.admin.Username {
+		log.Tracef("[username] failed login attempt: %s - %s", username, password)
+		log.Println(handler.admin)
+		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
 		return
 	}
 
