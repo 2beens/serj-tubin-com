@@ -15,8 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TODO: add aerospike data migration
-
 func main() {
 	fmt.Println("starting ...")
 

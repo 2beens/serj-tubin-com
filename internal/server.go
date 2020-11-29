@@ -33,6 +33,8 @@ type Server struct {
 	muteRequestLogs   bool
 	secretWord        string
 	versionInfo       string
+
+	session *LoginSession
 }
 
 func NewServer(
@@ -85,6 +87,7 @@ func NewServer(
 		board:             board,
 		secretWord:        secretWord,
 		versionInfo:       versionInfo,
+		session:           &LoginSession{},
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -104,7 +107,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 
-	if NewBlogHandler(blogRouter, s.blogApi) == nil {
+	if NewBlogHandler(blogRouter, s.blogApi, s.session) == nil {
 		return nil, errors.New("blog handler is nil")
 	}
 
@@ -118,7 +121,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("weather handler is nil")
 	}
 
-	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo) == nil {
+	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.session) == nil {
 		panic("misc handler is nil")
 	}
 

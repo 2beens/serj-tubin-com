@@ -13,17 +13,25 @@ import (
 
 type BlogHandler struct {
 	blogApi *BlogApi
+	session *LoginSession
 }
 
-func NewBlogHandler(blogRouter *mux.Router, blogApi *BlogApi) *BlogHandler {
+func NewBlogHandler(
+	blogRouter *mux.Router,
+	blogApi *BlogApi,
+	session *LoginSession,
+) *BlogHandler {
 	handler := &BlogHandler{
 		blogApi: blogApi,
+		session: session,
 	}
 
-	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST").Name("new-blog")
-	blogRouter.HandleFunc("/update", handler.handleUpdateBlog).Methods("POST").Name("update-blog")
-	blogRouter.HandleFunc("/delete/{id}", handler.handleDeleteBlog).Methods("GET").Name("delete-blog")
+	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
+	blogRouter.HandleFunc("/update", handler.handleUpdateBlog).Methods("POST", "OPTIONS").Name("update-blog")
+	blogRouter.HandleFunc("/delete/{id}", handler.handleDeleteBlog).Methods("GET", "OPTIONS").Name("delete-blog")
 	blogRouter.HandleFunc("/all", handler.handleAll).Methods("GET").Name("all-blogs")
+
+	blogRouter.Use(handler.authMiddleware())
 
 	return handler
 }
@@ -157,4 +165,35 @@ func (handler *BlogHandler) handleAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteResponseBytes(w, "application/json", allBlogsJson)
+}
+
+func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == "OPTIONS" {
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			// allow getting all blog posts, but not editing
+			if r.URL.Path == "/blog/all" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			authToken := r.Header.Get("X-SERJ-TOKEN")
+			if authToken == "" || handler.session.Token == "" {
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+
+			if handler.session.Token != authToken {
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
