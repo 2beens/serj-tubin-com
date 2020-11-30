@@ -70,7 +70,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 	boardMessages, err := handler.board.GetMessagesPage(page, size)
 	if err != nil {
 		log.Errorf("get messages error: %s", err)
-		http.Error(w, "failed to get messages", http.StatusBadRequest)
+		http.Error(w, "failed to get messages", http.StatusInternalServerError)
 		return
 	}
 
@@ -84,7 +84,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 	messagesJson, err := json.Marshal(boardMessages)
 	if err != nil {
 		log.Errorf("marshal messages error: %s", err)
-		http.Error(w, "marshal messages error", http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 

@@ -10,6 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// TODO: add caching
+
 type BlogApi struct {
 	db *pgxpool.Pool
 }
@@ -135,4 +137,12 @@ func (b *BlogApi) All() ([]*Blog, error) {
 	}
 
 	return blogs, nil
+}
+
+func (b *BlogApi) GetBlogsPage(page, size int) ([]*Blog, error) {
+	log.Tracef("getting blogs page %d, size %d", page, size)
+
+	// https://www.postgresql.org/docs/8.3/queries-limit.html
+
+	return nil, nil
 }

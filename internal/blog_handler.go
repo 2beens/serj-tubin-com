@@ -30,6 +30,7 @@ func NewBlogHandler(
 	blogRouter.HandleFunc("/update", handler.handleUpdateBlog).Methods("POST", "OPTIONS").Name("update-blog")
 	blogRouter.HandleFunc("/delete/{id}", handler.handleDeleteBlog).Methods("GET", "OPTIONS").Name("delete-blog")
 	blogRouter.HandleFunc("/all", handler.handleAll).Methods("GET").Name("all-blogs")
+	blogRouter.HandleFunc("/all/page/{page}/size/{size}", handler.handleGetPage).Methods("GET").Name("blogs-page")
 
 	blogRouter.Use(handler.authMiddleware())
 
@@ -165,6 +166,59 @@ func (handler *BlogHandler) handleAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteResponseBytes(w, "application/json", allBlogsJson)
+}
+
+func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	pageStr := vars["page"]
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		log.Errorf("handle get blogs page, from <page> param: %s", err)
+		http.Error(w, "parse form error, parameter <page>", http.StatusBadRequest)
+		return
+	}
+	sizeStr := vars["size"]
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+		log.Errorf("handle get blogs page, from <size> param: %s", err)
+		http.Error(w, "parse form error, parameter <size>", http.StatusInternalServerError)
+		return
+	}
+
+	log.Tracef("get blogs - page %s size %s", pageStr, sizeStr)
+
+	if page < 1 {
+		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusInternalServerError)
+		return
+	}
+	if size < 1 {
+		http.Error(w, "invalid size (has to be non-zero value)", http.StatusInternalServerError)
+		return
+	}
+
+	blogPosts, err := handler.blogApi.GetBlogsPage(page, size)
+	if err != nil {
+		log.Errorf("get blogs error: %s", err)
+		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+
+	if len(blogPosts) == 0 {
+		WriteResponse(w, "application/json", "[]")
+		return
+	}
+
+	blogPostsJson, err := json.Marshal(blogPosts)
+	if err != nil {
+		log.Errorf("marshal blogs error: %s", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	WriteResponseBytes(w, "application/json", blogPostsJson)
 }
 
 func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handler {
