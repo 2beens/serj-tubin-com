@@ -73,7 +73,7 @@ func main() {
 	adminUsername := os.Getenv("SERJ_TUBIN_COM_ADMIN_USERNAME")
 	adminPasswordHash := os.Getenv("SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH")
 	if adminUsername == "" || adminPasswordHash == "" {
-		log.Errorf("admin username and password not set. use SERJ_TUBIN_COM_ADMIN_USERNAME and SERJ_TUBIN_COM_ADMIN_USERNAME")
+		log.Errorf("admin username and password not set. use SERJ_TUBIN_COM_ADMIN_USERNAME and SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH")
 		return
 	}
 

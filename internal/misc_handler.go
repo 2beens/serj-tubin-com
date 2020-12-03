@@ -90,14 +90,6 @@ func (handler *MiscHandler) handleGetMyIp(w http.ResponseWriter, r *http.Request
 	WriteResponse(w, "", ip)
 }
 
-func (handler *MiscHandler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
-	WriteResponse(w, "", handler.versionInfo)
-}
-
-func (handler *MiscHandler) handleUnknownPath(w http.ResponseWriter, r *http.Request) {
-	http.NotFound(w, r)
-}
-
 func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -144,7 +136,7 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	handler.session.CreatedAt = time.Now()
 
 	// token should probably not be logged, but whatta hell
-	log.Printf("new login, token: %s", token)
+	log.Tracef("new login, token: %s", token)
 
 	// TODO: check TTL on requests and refresh token in case needed
 
@@ -174,4 +166,12 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 	handler.session.CreatedAt = time.Time{}
 
 	WriteResponse(w, "", "logged-out")
+}
+
+func (handler *MiscHandler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
+	WriteResponse(w, "", handler.versionInfo)
+}
+
+func (handler *MiscHandler) handleUnknownPath(w http.ResponseWriter, r *http.Request) {
+	http.NotFound(w, r)
 }

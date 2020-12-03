@@ -31,8 +31,9 @@ type Server struct {
 	openWeatherAPIUrl string
 	openWeatherApiKey string
 	muteRequestLogs   bool
-	secretWord        string
-	versionInfo       string
+	// TODO: use new admin session to control this
+	secretWord  string
+	versionInfo string
 
 	session *LoginSession
 	admin   *Admin

@@ -139,10 +139,80 @@ func (b *BlogApi) All() ([]*Blog, error) {
 	return blogs, nil
 }
 
+func (b *BlogApi) BlogsCount() (int, error) {
+	rows, err := b.db.Query(
+		context.Background(),
+		`SELECT COUNT(*) FROM blog;`,
+	)
+	if err != nil {
+		return -1, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return -1, err
+	}
+
+	if rows.Next() {
+		var count int
+		if err := rows.Scan(&count); err == nil {
+			return count, nil
+		}
+	}
+
+	return -1, errors.New("unexpected error, failed to get blogs count")
+}
+
 func (b *BlogApi) GetBlogsPage(page, size int) ([]*Blog, error) {
-	log.Tracef("getting blogs page %d, size %d", page, size)
+	limit := size
+	offset := (page - 1) * size
+	blogsCount, err := b.BlogsCount()
+	if err != nil {
+		return nil, err
+	}
 
-	// https://www.postgresql.org/docs/8.3/queries-limit.html
+	if blogsCount-offset < limit {
+		offset = blogsCount - limit
+	}
 
-	return nil, nil
+	log.Tracef("getting blogs, blogs count %d, limit %d, offset %d", blogsCount, limit, offset)
+
+	rows, err := b.db.Query(
+		context.Background(),
+		`
+			SELECT * FROM blog
+			ORDER BY id DESC
+			LIMIT $1
+			OFFSET $2;
+		`,
+		limit,
+		offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	var blogs []*Blog
+	for rows.Next() {
+		var id int
+		var title string
+		var createdAt time.Time
+		var content string
+		if err := rows.Scan(&id, &title, &createdAt, &content); err != nil {
+			return nil, err
+		}
+		blogs = append(blogs, &Blog{
+			Id:        id,
+			Title:     title,
+			CreatedAt: createdAt,
+			Content:   content,
+		})
+	}
+
+	return blogs, nil
 }

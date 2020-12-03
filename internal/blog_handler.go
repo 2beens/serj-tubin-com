@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -30,7 +31,7 @@ func NewBlogHandler(
 	blogRouter.HandleFunc("/update", handler.handleUpdateBlog).Methods("POST", "OPTIONS").Name("update-blog")
 	blogRouter.HandleFunc("/delete/{id}", handler.handleDeleteBlog).Methods("GET", "OPTIONS").Name("delete-blog")
 	blogRouter.HandleFunc("/all", handler.handleAll).Methods("GET").Name("all-blogs")
-	blogRouter.HandleFunc("/all/page/{page}/size/{size}", handler.handleGetPage).Methods("GET").Name("blogs-page")
+	blogRouter.HandleFunc("/page/{page}/size/{size}", handler.handleGetPage).Methods("GET").Name("blogs-page")
 
 	blogRouter.Use(handler.authMiddleware())
 
@@ -197,6 +198,13 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	totalBlogsCount, err := handler.blogApi.BlogsCount()
+	if err != nil {
+		log.Errorf("get blogs error: %s", err)
+		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
+		return
+	}
+
 	blogPosts, err := handler.blogApi.GetBlogsPage(page, size)
 	if err != nil {
 		log.Errorf("get blogs error: %s", err)
@@ -218,7 +226,9 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", blogPostsJson)
+	resJson := fmt.Sprintf(`{"posts": %s, "total": %d}`, blogPostsJson, totalBlogsCount)
+
+	WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
 func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handler {
@@ -230,19 +240,24 @@ func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
-			// allow getting all blog posts, but not editing
-			if r.URL.Path == "/blog/all" {
+			// allow getting blog posts, but not editing
+			// TODO: find a better way to mark routes auth-free
+			switch {
+			case strings.HasPrefix(r.URL.Path, "/blog/page/"),
+				r.URL.Path == "/blog/all":
 				next.ServeHTTP(w, r)
 				return
 			}
 
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 			if authToken == "" || handler.session.Token == "" {
+				log.Tracef("[missing token] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
 
 			if handler.session.Token != authToken {
+				log.Tracef("[invalid token] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
