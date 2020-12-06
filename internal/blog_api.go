@@ -171,6 +171,10 @@ func (b *BlogApi) GetBlogsPage(page, size int) ([]*Blog, error) {
 		return nil, err
 	}
 
+	if blogsCount <= limit {
+		return b.All()
+	}
+
 	if blogsCount-offset < limit {
 		offset = blogsCount - limit
 	}
