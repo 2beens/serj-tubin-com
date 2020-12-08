@@ -108,7 +108,7 @@ func (b *BlogApi) DeleteBlog(id int) (bool, error) {
 func (b *BlogApi) All() ([]*Blog, error) {
 	rows, err := b.db.Query(
 		context.Background(),
-		`SELECT * FROM blog;`,
+		`SELECT * FROM blog ORDER BY id DESC;`,
 	)
 	if err != nil {
 		return nil, err
