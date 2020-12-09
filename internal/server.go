@@ -23,7 +23,7 @@ const (
 )
 
 type Server struct {
-	blogApi       *BlogApi
+	blogApi       BlogApi
 	geoIp         *GeoIp
 	quotesManager *QuotesManager
 	board         *Board
@@ -76,7 +76,7 @@ func NewServer(
 		return nil, errors.New("open weather API key not set")
 	}
 
-	blogApi, err := NewBlogApi()
+	blogApi, err := NewBlogPsqlApi()
 	if err != nil {
 		log.Fatalf("failed to create blog api: %s", err)
 	}

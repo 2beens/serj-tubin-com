@@ -12,11 +12,11 @@ import (
 
 // TODO: add caching
 
-type BlogApi struct {
+type BlogPsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewBlogApi() (*BlogApi, error) {
+func NewBlogPsqlApi() (*BlogPsqlApi, error) {
 	ctx := context.Background()
 
 	// TODO: place in env variable
@@ -26,20 +26,20 @@ func NewBlogApi() (*BlogApi, error) {
 		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
 	}
 
-	blogApi := &BlogApi{
+	blogApi := &BlogPsqlApi{
 		db: dbpool,
 	}
 
 	return blogApi, nil
 }
 
-func (b *BlogApi) CloseDB() {
+func (b *BlogPsqlApi) CloseDB() {
 	if b.db != nil {
 		b.db.Close()
 	}
 }
 
-func (b *BlogApi) AddBlog(blog *Blog) error {
+func (b *BlogPsqlApi) AddBlog(blog *Blog) error {
 	if blog.Content == "" || blog.Title == "" {
 		return errors.New("blog title or content empty")
 	}
@@ -69,7 +69,7 @@ func (b *BlogApi) AddBlog(blog *Blog) error {
 	return errors.New("unexpected error, failed to insert blog")
 }
 
-func (b *BlogApi) UpdateBlog(blog *Blog) error {
+func (b *BlogPsqlApi) UpdateBlog(blog *Blog) error {
 	if blog.Content == "" || blog.Title == "" {
 		return errors.New("blog title or content empty")
 	}
@@ -90,7 +90,7 @@ func (b *BlogApi) UpdateBlog(blog *Blog) error {
 	return nil
 }
 
-func (b *BlogApi) DeleteBlog(id int) (bool, error) {
+func (b *BlogPsqlApi) DeleteBlog(id int) (bool, error) {
 	tag, err := b.db.Exec(
 		context.Background(),
 		`DELETE FROM blog WHERE id = $1`,
@@ -105,7 +105,7 @@ func (b *BlogApi) DeleteBlog(id int) (bool, error) {
 	return true, nil
 }
 
-func (b *BlogApi) All() ([]*Blog, error) {
+func (b *BlogPsqlApi) All() ([]*Blog, error) {
 	rows, err := b.db.Query(
 		context.Background(),
 		`SELECT * FROM blog ORDER BY id DESC;`,
@@ -139,7 +139,7 @@ func (b *BlogApi) All() ([]*Blog, error) {
 	return blogs, nil
 }
 
-func (b *BlogApi) BlogsCount() (int, error) {
+func (b *BlogPsqlApi) BlogsCount() (int, error) {
 	rows, err := b.db.Query(
 		context.Background(),
 		`SELECT COUNT(*) FROM blog;`,
@@ -163,7 +163,7 @@ func (b *BlogApi) BlogsCount() (int, error) {
 	return -1, errors.New("unexpected error, failed to get blogs count")
 }
 
-func (b *BlogApi) GetBlogsPage(page, size int) ([]*Blog, error) {
+func (b *BlogPsqlApi) GetBlogsPage(page, size int) ([]*Blog, error) {
 	limit := size
 	offset := (page - 1) * size
 	blogsCount, err := b.BlogsCount()
