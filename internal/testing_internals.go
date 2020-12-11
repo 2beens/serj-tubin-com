@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
 )
 
@@ -17,7 +18,7 @@ type testingInternals struct {
 	lastInitialMessage   *BoardMessage
 
 	// blog
-	blogApi      *BlogTestApi
+	blogApi      *blog.TestApi
 	loginSession *LoginSession
 }
 
@@ -92,8 +93,8 @@ func newTestingInternals() *testingInternals {
 	boardCache.ClearFunctionCallsLog()
 
 	// blog stuff
-	blogApi := NewBlogTestApi()
-	err = blogApi.AddBlog(&Blog{
+	blogApi := blog.NewBlogTestApi()
+	err = blogApi.AddBlog(&blog.Blog{
 		Id:        1,
 		Title:     "blog1title",
 		CreatedAt: now,
@@ -102,7 +103,7 @@ func newTestingInternals() *testingInternals {
 	if err != nil {
 		panic(err)
 	}
-	err = blogApi.AddBlog(&Blog{
+	err = blogApi.AddBlog(&blog.Blog{
 		Id:        2,
 		Title:     "blog2title",
 		CreatedAt: now,

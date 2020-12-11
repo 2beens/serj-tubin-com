@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,13 +27,13 @@ func TestBlogHandler_handleAll(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var blogPosts []*Blog
+	var blogPosts []*blog.Blog
 	err = json.Unmarshal(rr.Body.Bytes(), &blogPosts)
 	require.NoError(t, err)
 	require.NotNil(t, blogPosts)
 
 	// check all posts received
-	require.Len(t, blogPosts, len(internals.blogApi.posts))
+	require.Len(t, blogPosts, internals.blogApi.PostsCount())
 	for i := range blogPosts {
 		assert.True(t, blogPosts[i].Id > 0)
 		assert.NotEmpty(t, blogPosts[i].Title)

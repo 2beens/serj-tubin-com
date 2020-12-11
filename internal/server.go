@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/gorilla/mux"
@@ -23,7 +24,7 @@ const (
 )
 
 type Server struct {
-	blogApi       BlogApi
+	blogApi       blog.BlogApi
 	geoIp         *GeoIp
 	quotesManager *QuotesManager
 	board         *Board
@@ -76,7 +77,7 @@ func NewServer(
 		return nil, errors.New("open weather API key not set")
 	}
 
-	blogApi, err := NewBlogPsqlApi()
+	blogApi, err := blog.NewBlogPsqlApi()
 	if err != nil {
 		log.Fatalf("failed to create blog api: %s", err)
 	}

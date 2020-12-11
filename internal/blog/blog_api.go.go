@@ -1,4 +1,4 @@
-package internal
+package blog
 
 type BlogApi interface {
 	CloseDB()

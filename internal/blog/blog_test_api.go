@@ -1,37 +1,41 @@
-package internal
+package blog
 
 import "sync"
 
-type BlogTestApi struct {
+type TestApi struct {
 	posts map[int]*Blog
 	mutex sync.Mutex
 }
 
-func NewBlogTestApi() *BlogTestApi {
-	return &BlogTestApi{
+func NewBlogTestApi() *TestApi {
+	return &TestApi{
 		posts: make(map[int]*Blog),
 	}
 }
 
-func (api *BlogTestApi) CloseDB() {
+func (api *TestApi) PostsCount() int {
+	return len(api.posts)
+}
+
+func (api *TestApi) CloseDB() {
 	// NOP
 }
 
-func (api *BlogTestApi) AddBlog(blog *Blog) error {
+func (api *TestApi) AddBlog(blog *Blog) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 	api.posts[blog.Id] = blog
 	return nil
 }
 
-func (api *BlogTestApi) UpdateBlog(blog *Blog) error {
+func (api *TestApi) UpdateBlog(blog *Blog) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 	api.posts[blog.Id] = blog
 	return nil
 }
 
-func (api *BlogTestApi) DeleteBlog(id int) (bool, error) {
+func (api *TestApi) DeleteBlog(id int) (bool, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
@@ -45,7 +49,7 @@ func (api *BlogTestApi) DeleteBlog(id int) (bool, error) {
 	return true, nil
 }
 
-func (api *BlogTestApi) All() ([]*Blog, error) {
+func (api *TestApi) All() ([]*Blog, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 	var blogs []*Blog
@@ -55,13 +59,13 @@ func (api *BlogTestApi) All() ([]*Blog, error) {
 	return blogs, nil
 }
 
-func (api *BlogTestApi) BlogsCount() (int, error) {
+func (api *TestApi) BlogsCount() (int, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 	return len(api.posts), nil
 }
 
-func (api *BlogTestApi) GetBlogsPage(page, size int) ([]*Blog, error) {
+func (api *TestApi) GetBlogsPage(page, size int) ([]*Blog, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 

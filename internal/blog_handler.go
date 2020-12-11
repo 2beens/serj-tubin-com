@@ -8,18 +8,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
 type BlogHandler struct {
-	blogApi      BlogApi
+	blogApi      blog.BlogApi
 	loginSession *LoginSession
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
-	blogApi BlogApi,
+	blogApi blog.BlogApi,
 	session *LoginSession,
 ) *BlogHandler {
 	handler := &BlogHandler{
@@ -58,7 +59,7 @@ func (handler *BlogHandler) handleNewBlog(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	newBlog := &Blog{
+	newBlog := &blog.Blog{
 		Title:     title,
 		CreatedAt: time.Now(),
 		Content:   content,
@@ -107,7 +108,7 @@ func (handler *BlogHandler) handleUpdateBlog(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	blog := &Blog{
+	blog := &blog.Blog{
 		Id:        id,
 		Title:     title,
 		CreatedAt: time.Now(),
