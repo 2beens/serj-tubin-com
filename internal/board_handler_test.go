@@ -200,7 +200,7 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
 	assert.Equal(t, "text/plain; charset=utf-8", rr.Header().Get("Content-Type"))
 	assert.Equal(t, "parse form error, parameter <page>\n", rr.Body.String())
 }

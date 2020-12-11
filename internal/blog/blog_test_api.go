@@ -53,7 +53,7 @@ func (api *TestApi) All() ([]*Blog, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 	var blogs []*Blog
-	for id, _ := range api.posts {
+	for id := range api.posts {
 		blogs = append(blogs, api.posts[id])
 	}
 	return blogs, nil
