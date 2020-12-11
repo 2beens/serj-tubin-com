@@ -10,7 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TODO: add caching ?
+// manual caching of blog posts not needed (at least for this use case):
+// https://github.com/jackc/pgx/wiki/Automatic-Prepared-Statement-Caching
 
 type PsqlApi struct {
 	db *pgxpool.Pool
@@ -20,6 +21,7 @@ func NewBlogPsqlApi() (*PsqlApi, error) {
 	ctx := context.Background()
 
 	// TODO: place in env variable
+	// or even better - introduce yml config files, and store there
 	const connString = "postgres://postgres@localhost:5432/serj_blogs"
 	dbpool, err := pgxpool.Connect(ctx, connString)
 	if err != nil {

@@ -1,12 +1,17 @@
 package internal
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
+)
+
+const (
+	blogPostsCount = 5
 )
 
 type testingInternals struct {
@@ -94,23 +99,15 @@ func newTestingInternals() *testingInternals {
 
 	// blog stuff
 	blogApi := blog.NewBlogTestApi()
-	err = blogApi.AddBlog(&blog.Blog{
-		Id:        1,
-		Title:     "blog1title",
-		CreatedAt: now,
-		Content:   "blog 1 content",
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = blogApi.AddBlog(&blog.Blog{
-		Id:        2,
-		Title:     "blog2title",
-		CreatedAt: now,
-		Content:   "blog 2 content",
-	})
-	if err != nil {
-		panic(err)
+	for i := 0; i < blogPostsCount; i++ {
+		if err = blogApi.AddBlog(&blog.Blog{
+			Id:        i,
+			Title:     fmt.Sprintf("blog%dtitle", i),
+			CreatedAt: now,
+			Content:   fmt.Sprintf("blog %d content", i),
+		}); err != nil {
+			panic(err)
+		}
 	}
 
 	loginSession := &LoginSession{

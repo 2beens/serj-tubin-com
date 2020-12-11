@@ -1,20 +1,23 @@
 package blog
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
 
 type TestApi struct {
-	posts map[int]*Blog
+	Posts map[int]*Blog
 	mutex sync.Mutex
 }
 
 func NewBlogTestApi() *TestApi {
 	return &TestApi{
-		posts: make(map[int]*Blog),
+		Posts: make(map[int]*Blog),
 	}
 }
 
 func (api *TestApi) PostsCount() int {
-	return len(api.posts)
+	return len(api.Posts)
 }
 
 func (api *TestApi) CloseDB() {
@@ -24,14 +27,23 @@ func (api *TestApi) CloseDB() {
 func (api *TestApi) AddBlog(blog *Blog) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
-	api.posts[blog.Id] = blog
+
+	if blog.Id == 0 {
+		blog.Id = len(api.Posts)
+	}
+
+	if _, ok := api.Posts[blog.Id]; ok {
+		return errors.New("blog exists already")
+	}
+
+	api.Posts[blog.Id] = blog
 	return nil
 }
 
 func (api *TestApi) UpdateBlog(blog *Blog) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
-	api.posts[blog.Id] = blog
+	api.Posts[blog.Id] = blog
 	return nil
 }
 
@@ -39,12 +51,12 @@ func (api *TestApi) DeleteBlog(id int) (bool, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
-	_, ok := api.posts[id]
+	_, ok := api.Posts[id]
 	if !ok {
 		return false, nil
 	}
 
-	delete(api.posts, id)
+	delete(api.Posts, id)
 
 	return true, nil
 }
@@ -53,8 +65,8 @@ func (api *TestApi) All() ([]*Blog, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 	var blogs []*Blog
-	for id := range api.posts {
-		blogs = append(blogs, api.posts[id])
+	for id := range api.Posts {
+		blogs = append(blogs, api.Posts[id])
 	}
 	return blogs, nil
 }
@@ -62,14 +74,14 @@ func (api *TestApi) All() ([]*Blog, error) {
 func (api *TestApi) BlogsCount() (int, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
-	return len(api.posts), nil
+	return len(api.Posts), nil
 }
 
 func (api *TestApi) GetBlogsPage(page, size int) ([]*Blog, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
-	if len(api.posts) <= size {
+	if len(api.Posts) <= size {
 		return api.All()
 	}
 
