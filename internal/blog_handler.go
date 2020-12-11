@@ -13,8 +13,8 @@ import (
 )
 
 type BlogHandler struct {
-	blogApi BlogApi
-	session *LoginSession
+	blogApi      BlogApi
+	loginSession *LoginSession
 }
 
 func NewBlogHandler(
@@ -23,8 +23,8 @@ func NewBlogHandler(
 	session *LoginSession,
 ) *BlogHandler {
 	handler := &BlogHandler{
-		blogApi: blogApi,
-		session: session,
+		blogApi:      blogApi,
+		loginSession: session,
 	}
 
 	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
@@ -250,13 +250,13 @@ func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handle
 			}
 
 			authToken := r.Header.Get("X-SERJ-TOKEN")
-			if authToken == "" || handler.session.Token == "" {
+			if authToken == "" || handler.loginSession.Token == "" {
 				log.Tracef("[missing token] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
 
-			if handler.session.Token != authToken {
+			if handler.loginSession.Token != authToken {
 				log.Tracef("[invalid token] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return

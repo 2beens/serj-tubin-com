@@ -9,11 +9,16 @@ import (
 )
 
 type testingInternals struct {
+	// board
 	aeroTestClient       *aerospike.BoardAeroTestClient
 	board                *Board
 	boardCache           *cache.BoardTestCache
 	initialBoardMessages map[int]*BoardMessage
 	lastInitialMessage   *BoardMessage
+
+	// blog
+	blogApi      *BlogTestApi
+	loginSession *LoginSession
 }
 
 func newTestingInternals() *testingInternals {
@@ -86,11 +91,40 @@ func newTestingInternals() *testingInternals {
 
 	boardCache.ClearFunctionCallsLog()
 
+	// blog stuff
+	blogApi := NewBlogTestApi()
+	err = blogApi.AddBlog(&Blog{
+		Id:        1,
+		Title:     "blog1title",
+		CreatedAt: now,
+		Content:   "blog 1 content",
+	})
+	if err != nil {
+		panic(err)
+	}
+	err = blogApi.AddBlog(&Blog{
+		Id:        2,
+		Title:     "blog2title",
+		CreatedAt: now,
+		Content:   "blog 2 content",
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	loginSession := &LoginSession{
+		Token:     "tokenAbc123",
+		CreatedAt: now,
+		TTL:       0,
+	}
+
 	return &testingInternals{
 		aeroTestClient:       aeroClient,
 		board:                board,
 		boardCache:           boardCache,
 		initialBoardMessages: initialBoardMessages,
 		lastInitialMessage:   initialBoardMessages[1],
+		blogApi:              blogApi,
+		loginSession:         loginSession,
 	}
 }
