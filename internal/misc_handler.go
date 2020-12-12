@@ -111,14 +111,14 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if !CheckPasswordHash(password, handler.admin.PasswordHash) {
-		log.Tracef("[password] failed login attempt: %s - %s", username, password)
+		log.Tracef("[password] failed login attempt for user: %s", username)
 		log.Println(handler.admin)
 		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
 		return
 	}
 
 	if username != handler.admin.Username {
-		log.Tracef("[username] failed login attempt: %s - %s", username, password)
+		log.Tracef("[username] failed login attempt for user: %s", username)
 		log.Println(handler.admin)
 		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
 		return
