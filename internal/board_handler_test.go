@@ -39,7 +39,7 @@ func TestNewBoardHandler(t *testing.T) {
 		"delete-message": {
 			name:   "delete-message",
 			path:   "/board/messages/delete/{id}/{secret}",
-			method: "GET",
+			method: "DELETE",
 		},
 		"count-messages": {
 			name:   "count-messages",
@@ -213,7 +213,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	require.NotNil(t, handler)
 
 	// wrong secret
-	req, err := http.NewRequest("GET", "/messages/delete/2/secret-word-blabla", nil)
+	req, err := http.NewRequest("DELETE", "/messages/delete/2/secret-word-blabla", nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
@@ -222,7 +222,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messagesCounter)
 
 	// correct secret - messages should get removed
-	req, err = http.NewRequest("GET", "/messages/delete/2/secret-word", nil)
+	req, err = http.NewRequest("DELETE", "/messages/delete/2/secret-word", nil)
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 
@@ -234,7 +234,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
 
 	// delete same message again - and fail to do so
-	req, err = http.NewRequest("GET", "/messages/delete/2/secret-word", nil)
+	req, err = http.NewRequest("DELETE", "/messages/delete/2/secret-word", nil)
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 
@@ -246,7 +246,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
 
 	// delete another one
-	req, err = http.NewRequest("GET", "/messages/delete/3/secret-word", nil)
+	req, err = http.NewRequest("DELETE", "/messages/delete/3/secret-word", nil)
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 

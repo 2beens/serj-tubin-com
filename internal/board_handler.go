@@ -25,7 +25,7 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board, secretWord string) *
 	}
 
 	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
-	boardRouter.HandleFunc("/messages/delete/{id}/{secret}", handler.handleDeleteMessage).Methods("GET").Name("delete-message")
+	boardRouter.HandleFunc("/messages/delete/{id}/{secret}", handler.handleDeleteMessage).Methods("DELETE").Name("delete-message")
 	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET").Name("all-messages")
 	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
