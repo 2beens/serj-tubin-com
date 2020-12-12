@@ -30,7 +30,7 @@ func NewBlogHandler(
 
 	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
 	blogRouter.HandleFunc("/update", handler.handleUpdateBlog).Methods("POST", "OPTIONS").Name("update-blog")
-	blogRouter.HandleFunc("/delete/{id}", handler.handleDeleteBlog).Methods("GET", "OPTIONS").Name("delete-blog")
+	blogRouter.HandleFunc("/delete/{id}", handler.handleDeleteBlog).Methods("DELETE", "OPTIONS").Name("delete-blog")
 	blogRouter.HandleFunc("/all", handler.handleAll).Methods("GET").Name("all-blogs")
 	blogRouter.HandleFunc("/page/{page}/size/{size}", handler.handleGetPage).Methods("GET").Name("blogs-page")
 
