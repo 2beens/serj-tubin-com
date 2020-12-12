@@ -43,6 +43,42 @@ func TestBlogHandler_handleAll(t *testing.T) {
 	}
 }
 
+func TestBlogHandler_handleDelete(t *testing.T) {
+	internals := newTestingInternals()
+
+	r := mux.NewRouter()
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	require.NotNil(t, handler)
+
+	req, err := http.NewRequest("DELETE", "/blog/delete/3", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	currentPostsCount := internals.blogApi.PostsCount()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
+	require.Equal(t, "no can do\n", rr.Body.String())
+	assert.Equal(t, currentPostsCount, internals.blogApi.PostsCount())
+
+	// check that blog was not deleted
+	assert.NotNil(t, internals.blogApi.Posts[3])
+
+	// now logged in
+	req, err = http.NewRequest("DELETE", "/blog/delete/3", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+
+	handler.loginSession.Token = "mylittlesecret"
+	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, "deleted:3", rr.Body.String())
+	assert.Equal(t, currentPostsCount-1, internals.blogApi.PostsCount())
+	assert.Nil(t, internals.blogApi.Posts[3])
+}
+
 func TestBlogHandler_handleNewBlog_notLoggedIn(t *testing.T) {
 	internals := newTestingInternals()
 
