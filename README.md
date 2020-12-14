@@ -17,5 +17,6 @@ Hosted and available at: https://www.serj-tubin.com/
 * I use GitHub Workflow Actions for a part of CI
     * unit testing
     * static code analysis
+* I use PostgreSQL to store blog posts
 * I use Vue to make the frontend part
     * source @ https://github.com/2beens/serj-tubin-vue
