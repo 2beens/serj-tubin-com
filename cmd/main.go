@@ -15,8 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TODO: add aerospike data migration
-
 func main() {
 	fmt.Println("starting ...")
 
@@ -29,8 +27,8 @@ func main() {
 	port := flag.Int("port", 8080, "port number")
 	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
 
-	aeroSetup := flag.Bool("aero-setup", false, "run aerospike db setup")
-	aeroDataFix := flag.Bool("aero-data-fix", false, "run aerospike db data fixing / migration")
+	aeroSetup := flag.Bool("aero-setup", false, "run aerospike sql setup")
+	aeroDataFix := flag.Bool("aero-data-fix", false, "run aerospike sql data fixing / migration")
 
 	flag.Parse()
 
@@ -72,6 +70,18 @@ func main() {
 		log.Tracef("running version: %s", versionInfo)
 	}
 
+	adminUsername := os.Getenv("SERJ_TUBIN_COM_ADMIN_USERNAME")
+	adminPasswordHash := os.Getenv("SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH")
+	if adminUsername == "" || adminPasswordHash == "" {
+		log.Errorf("admin username and password not set. use SERJ_TUBIN_COM_ADMIN_USERNAME and SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH")
+		return
+	}
+
+	admin := &internal.Admin{
+		Username:     adminUsername,
+		PasswordHash: adminPasswordHash,
+	}
+
 	server, err := internal.NewServer(
 		*aeroHost,
 		*aeroPort,
@@ -80,6 +90,7 @@ func main() {
 		openWeatherApiKey,
 		secretWord,
 		versionInfo,
+		admin,
 	)
 	if err != nil && !*forceStart {
 		log.Fatal(err)

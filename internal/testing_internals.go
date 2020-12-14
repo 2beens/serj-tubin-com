@@ -1,19 +1,30 @@
 package internal
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
 )
 
+const (
+	blogPostsCount = 5
+)
+
 type testingInternals struct {
+	// board
 	aeroTestClient       *aerospike.BoardAeroTestClient
 	board                *Board
 	boardCache           *cache.BoardTestCache
 	initialBoardMessages map[int]*BoardMessage
 	lastInitialMessage   *BoardMessage
+
+	// blog
+	blogApi      *blog.TestApi
+	loginSession *LoginSession
 }
 
 func newTestingInternals() *testingInternals {
@@ -86,11 +97,32 @@ func newTestingInternals() *testingInternals {
 
 	boardCache.ClearFunctionCallsLog()
 
+	// blog stuff
+	blogApi := blog.NewBlogTestApi()
+	for i := 0; i < blogPostsCount; i++ {
+		if err = blogApi.AddBlog(&blog.Blog{
+			Id:        i,
+			Title:     fmt.Sprintf("blog%dtitle", i),
+			CreatedAt: now.Add(time.Minute * time.Duration(i)),
+			Content:   fmt.Sprintf("blog %d content", i),
+		}); err != nil {
+			panic(err)
+		}
+	}
+
+	loginSession := &LoginSession{
+		Token:     "tokenAbc123",
+		CreatedAt: now,
+		TTL:       0,
+	}
+
 	return &testingInternals{
 		aeroTestClient:       aeroClient,
 		board:                board,
 		boardCache:           boardCache,
 		initialBoardMessages: initialBoardMessages,
 		lastInitialMessage:   initialBoardMessages[1],
+		blogApi:              blogApi,
+		loginSession:         loginSession,
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/gorilla/mux"
@@ -23,6 +24,7 @@ const (
 )
 
 type Server struct {
+	blogApi       blog.BlogApi
 	geoIp         *GeoIp
 	quotesManager *QuotesManager
 	board         *Board
@@ -30,8 +32,12 @@ type Server struct {
 	openWeatherAPIUrl string
 	openWeatherApiKey string
 	muteRequestLogs   bool
-	secretWord        string
-	versionInfo       string
+	// TODO: use new admin session to control this
+	secretWord  string
+	versionInfo string
+
+	session *LoginSession
+	admin   *Admin
 }
 
 func NewServer(
@@ -42,6 +48,7 @@ func NewServer(
 	openWeatherApiKey string,
 	secretWord string,
 	versionInfo string,
+	admin *Admin,
 ) (*Server, error) {
 	log.Debugf("connecting to aerospike server %s:%d [namespace:%s, set:%s] ...",
 		aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
@@ -70,7 +77,13 @@ func NewServer(
 		return nil, errors.New("open weather API key not set")
 	}
 
+	blogApi, err := blog.NewBlogPsqlApi()
+	if err != nil {
+		log.Fatalf("failed to create blog api: %s", err)
+	}
+
 	s := &Server{
+		blogApi:           blogApi,
 		openWeatherAPIUrl: "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey: openWeatherApiKey,
 		muteRequestLogs:   false,
@@ -78,6 +91,8 @@ func NewServer(
 		board:             board,
 		secretWord:        secretWord,
 		versionInfo:       versionInfo,
+		session:           &LoginSession{},
+		admin:             admin,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -93,8 +108,13 @@ func NewServer(
 func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
 
+	blogRouter := r.PathPrefix("/blog").Subrouter()
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
+
+	if NewBlogHandler(blogRouter, s.blogApi, s.session) == nil {
+		return nil, errors.New("blog handler is nil")
+	}
 
 	if NewBoardHandler(boardRouter, s.board, s.secretWord) == nil {
 		return nil, errors.New("board handler is nil")
@@ -106,7 +126,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("weather handler is nil")
 	}
 
-	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo) == nil {
+	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.session, s.admin) == nil {
 		panic("misc handler is nil")
 	}
 
@@ -150,6 +170,10 @@ func (s *Server) gracefulShutdown(httpServer *http.Server) {
 	log.Debug("graceful shutdown initiated ...")
 
 	s.board.Close()
+
+	if s.blogApi != nil {
+		s.blogApi.CloseDB()
+	}
 
 	maxWaitDuration := time.Second * 15
 	ctx, cancel := context.WithTimeout(context.Background(), maxWaitDuration)

@@ -25,7 +25,7 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board, secretWord string) *
 	}
 
 	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
-	boardRouter.HandleFunc("/messages/delete/{id}/{secret}", handler.handleDeleteMessage).Methods("GET").Name("delete-message")
+	boardRouter.HandleFunc("/messages/delete/{id}/{secret}", handler.handleDeleteMessage).Methods("DELETE").Name("delete-message")
 	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET").Name("all-messages")
 	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
@@ -45,7 +45,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
 		log.Errorf("handle get messages page, from <page> param: %s", err)
-		http.Error(w, "parse form error, parameter <page>", http.StatusInternalServerError)
+		http.Error(w, "parse form error, parameter <page>", http.StatusBadRequest)
 		return
 	}
 	sizeStr := vars["size"]
@@ -70,7 +70,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 	boardMessages, err := handler.board.GetMessagesPage(page, size)
 	if err != nil {
 		log.Errorf("get messages error: %s", err)
-		http.Error(w, "failed to get messages", http.StatusBadRequest)
+		http.Error(w, "failed to get messages", http.StatusInternalServerError)
 		return
 	}
 
@@ -84,7 +84,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 	messagesJson, err := json.Marshal(boardMessages)
 	if err != nil {
 		log.Errorf("marshal messages error: %s", err)
-		http.Error(w, "marshal messages error", http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
