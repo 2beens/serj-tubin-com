@@ -2,6 +2,7 @@ package blog
 
 import (
 	"errors"
+	"sort"
 	"sync"
 )
 
@@ -85,5 +86,26 @@ func (api *TestApi) GetBlogsPage(page, size int) ([]*Blog, error) {
 		return api.All()
 	}
 
-	panic("not implemented yet")
+	var allPosts []*Blog
+	for id := range api.Posts {
+		allPosts = append(allPosts, api.Posts[id])
+	}
+
+	sort.Slice(allPosts, func(i, j int) bool {
+		return allPosts[i].CreatedAt.Before(allPosts[j].CreatedAt)
+	})
+
+	startIndex := (page - 1) * size
+	endIndex := startIndex + size
+
+	// overflow
+	if startIndex >= len(allPosts) {
+		return []*Blog{}, nil
+	}
+
+	var blogs []*Blog
+	for i := startIndex; i < endIndex; i++ {
+		blogs = append(blogs, allPosts[i])
+	}
+	return blogs, nil
 }

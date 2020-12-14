@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/2beens/serjtubincom/internal/blog"
@@ -12,6 +13,73 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewBlogHandler(t *testing.T) {
+	r := mux.NewRouter()
+	boardRouter := r.PathPrefix("/blog").Subrouter()
+
+	handler := NewBlogHandler(boardRouter, nil, nil)
+	require.NotNil(t, handler)
+	require.NotNil(t, boardRouter)
+
+	for caseName, route := range map[string]struct {
+		name   string
+		path   string
+		method string
+	}{
+		"new-blog-post": {
+			name:   "new-blog",
+			path:   "/blog/new",
+			method: "POST",
+		},
+		"new-blog-options": {
+			name:   "new-blog",
+			path:   "/blog/new",
+			method: "OPTIONS",
+		},
+		"update-blog-post": {
+			name:   "update-blog",
+			path:   "/blog/update",
+			method: "POST",
+		},
+		"update-blog-options": {
+			name:   "update-blog",
+			path:   "/blog/update",
+			method: "OPTIONS",
+		},
+		"delete-blog-post": {
+			name:   "delete-blog",
+			path:   "/blog/delete/1",
+			method: "DELETE",
+		},
+		"delete-blog-options": {
+			name:   "delete-blog",
+			path:   "/blog/delete/1",
+			method: "OPTIONS",
+		},
+		"all-blog-post": {
+			name:   "all-blogs",
+			path:   "/blog/all",
+			method: "GET",
+		},
+		"blog-posts-page": {
+			name:   "blogs-page",
+			path:   "/blog/page/1/size/2",
+			method: "GET",
+		},
+	} {
+		t.Run(caseName, func(t *testing.T) {
+			req, err := http.NewRequest(route.method, route.path, nil)
+			require.NoError(t, err)
+
+			routeMatch := &mux.RouteMatch{}
+			route := r.Get(route.name)
+			require.NotNil(t, route)
+			isMatch := route.Match(req, routeMatch)
+			assert.True(t, isMatch, caseName)
+		})
+	}
+}
 
 func TestBlogHandler_handleAll(t *testing.T) {
 	internals := newTestingInternals()
@@ -41,6 +109,26 @@ func TestBlogHandler_handleAll(t *testing.T) {
 		assert.NotEmpty(t, blogPosts[i].Content)
 		assert.False(t, blogPosts[i].CreatedAt.IsZero())
 	}
+}
+
+func TestBlogHandler_handleGetPage(t *testing.T) {
+	internals := newTestingInternals()
+
+	r := mux.NewRouter()
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	require.NotNil(t, handler)
+
+	req, err := http.NewRequest("GET", "/blog/page/2/size/2", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+
+	receivedJson := rr.Body.String()
+	assert.True(t, strings.Contains(receivedJson, "blog2title"))
+	assert.True(t, strings.Contains(receivedJson, "blog3title"))
 }
 
 func TestBlogHandler_handleDelete(t *testing.T) {

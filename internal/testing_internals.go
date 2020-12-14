@@ -103,7 +103,7 @@ func newTestingInternals() *testingInternals {
 		if err = blogApi.AddBlog(&blog.Blog{
 			Id:        i,
 			Title:     fmt.Sprintf("blog%dtitle", i),
-			CreatedAt: now,
+			CreatedAt: now.Add(time.Minute * time.Duration(i)),
 			Content:   fmt.Sprintf("blog %d content", i),
 		}); err != nil {
 			panic(err)
