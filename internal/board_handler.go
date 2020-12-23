@@ -5,32 +5,35 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	// TODO: maybe try logging from uber
 	// https://github.com/uber-go/zap
+	log "github.com/sirupsen/logrus"
 )
 
 type BoardHandler struct {
-	board      *Board
-	secretWord string
+	board        *Board
+	loginSession *LoginSession
 }
 
-func NewBoardHandler(boardRouter *mux.Router, board *Board, secretWord string) *BoardHandler {
+func NewBoardHandler(boardRouter *mux.Router, board *Board, loginSession *LoginSession) *BoardHandler {
 	handler := &BoardHandler{
-		board:      board,
-		secretWord: secretWord,
+		board:        board,
+		loginSession: loginSession,
 	}
 
 	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
-	boardRouter.HandleFunc("/messages/delete/{id}/{secret}", handler.handleDeleteMessage).Methods("DELETE").Name("delete-message")
+	boardRouter.HandleFunc("/messages/delete/{id}", handler.handleDeleteMessage).Methods("DELETE").Name("delete-message")
 	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET").Name("all-messages")
 	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
 	boardRouter.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET").Name("messages-range")
 	boardRouter.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET").Name("messages-page")
+
+	boardRouter.Use(handler.authMiddleware())
 
 	return handler
 }
@@ -93,13 +96,6 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 
 func (handler *BoardHandler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-
-	secret := vars["secret"]
-	if secret != handler.secretWord {
-		log.Errorf("handle delete messages error, wrong secret: %s", secret)
-		http.Error(w, "no can do, sorry", http.StatusForbidden)
-		return
-	}
 
 	messageIdStr := vars["id"]
 	if messageIdStr == "" {
@@ -263,4 +259,37 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 	}
 
 	WriteResponseBytes(w, "application/json", messagesJson)
+}
+
+func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == "OPTIONS" {
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			// for now, only path /messages/delete/ is protected
+			if !strings.HasPrefix(r.URL.Path, "/messages/delete/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			authToken := r.Header.Get("X-SERJ-TOKEN")
+			if authToken == "" || handler.loginSession.Token == "" {
+				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+
+			if handler.loginSession.Token != authToken {
+				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }

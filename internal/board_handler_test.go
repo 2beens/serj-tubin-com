@@ -17,7 +17,7 @@ func TestNewBoardHandler(t *testing.T) {
 	r := mux.NewRouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 
-	handler := NewBoardHandler(boardRouter, nil, "secret")
+	handler := NewBoardHandler(boardRouter, nil, nil)
 	require.NotNil(t, handler)
 	require.NotNil(t, boardRouter)
 
@@ -38,7 +38,7 @@ func TestNewBoardHandler(t *testing.T) {
 		},
 		"delete-message": {
 			name:   "delete-message",
-			path:   "/board/messages/delete/{id}/{secret}",
+			path:   "/board/messages/delete/{id}",
 			method: "DELETE",
 		},
 		"count-messages": {
@@ -84,7 +84,7 @@ func TestBoardHandler_handleMessagesCount(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, "secret")
+	handler := NewBoardHandler(r, internals.board, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/count", nil)
@@ -101,7 +101,7 @@ func TestBoardHandler_handleGetAllMessages(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, "secret")
+	handler := NewBoardHandler(r, internals.board, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/all", nil)
@@ -128,7 +128,7 @@ func TestBoardHandler_handleGetLastMessages(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, "secret")
+	handler := NewBoardHandler(r, internals.board, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/last/2", nil)
@@ -154,7 +154,7 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, "secret")
+	handler := NewBoardHandler(r, internals.board, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/page/2/size/2", nil)
@@ -209,20 +209,31 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, "secret-word")
+	handler := NewBoardHandler(r, internals.board, internals.loginSession)
 	require.NotNil(t, handler)
 
-	// wrong secret
-	req, err := http.NewRequest("DELETE", "/messages/delete/2/secret-word-blabla", nil)
+	// wrong session token
+	req, err := http.NewRequest("DELETE", "/messages/delete/2", nil)
+	req.Header.Set("X-SERJ-TOKEN", "mywrongsecret")
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusForbidden, rr.Code)
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
+	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messagesCounter)
+
+	// session token missing
+	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messagesCounter)
 
 	// correct secret - messages should get removed
-	req, err = http.NewRequest("DELETE", "/messages/delete/2/secret-word", nil)
+	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
+	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 
@@ -234,7 +245,8 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
 
 	// delete same message again - and fail to do so
-	req, err = http.NewRequest("DELETE", "/messages/delete/2/secret-word", nil)
+	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
+	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 
@@ -246,7 +258,8 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
 
 	// delete another one
-	req, err = http.NewRequest("DELETE", "/messages/delete/3/secret-word", nil)
+	req, err = http.NewRequest("DELETE", "/messages/delete/3", nil)
+	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 
@@ -283,7 +296,7 @@ func TestBoardHandler_handleMessagesRange(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, "secret")
+	handler := NewBoardHandler(r, internals.board, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/from/1/to/3", nil)
@@ -321,7 +334,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, "secret")
+	handler := NewBoardHandler(r, internals.board, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/messages/new", nil)

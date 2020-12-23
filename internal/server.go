@@ -32,12 +32,12 @@ type Server struct {
 	openWeatherAPIUrl string
 	openWeatherApiKey string
 	muteRequestLogs   bool
-	// TODO: use new admin session to control this
+	// TODO: use new admin loginSession to control this
 	secretWord  string
 	versionInfo string
 
-	session *LoginSession
-	admin   *Admin
+	loginSession *LoginSession
+	admin        *Admin
 }
 
 func NewServer(
@@ -91,7 +91,7 @@ func NewServer(
 		board:             board,
 		secretWord:        secretWord,
 		versionInfo:       versionInfo,
-		session:           &LoginSession{},
+		loginSession:      &LoginSession{},
 		admin:             admin,
 	}
 
@@ -112,11 +112,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 
-	if NewBlogHandler(blogRouter, s.blogApi, s.session) == nil {
+	if NewBlogHandler(blogRouter, s.blogApi, s.loginSession) == nil {
 		return nil, errors.New("blog handler is nil")
 	}
 
-	if NewBoardHandler(boardRouter, s.board, s.secretWord) == nil {
+	if NewBoardHandler(boardRouter, s.board, s.loginSession) == nil {
 		return nil, errors.New("board handler is nil")
 	}
 
@@ -126,7 +126,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("weather handler is nil")
 	}
 
-	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.session, s.admin) == nil {
+	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.loginSession, s.admin) == nil {
 		panic("misc handler is nil")
 	}
 
