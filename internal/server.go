@@ -32,9 +32,7 @@ type Server struct {
 	openWeatherAPIUrl string
 	openWeatherApiKey string
 	muteRequestLogs   bool
-	// TODO: use new admin loginSession to control this
-	secretWord  string
-	versionInfo string
+	versionInfo       string
 
 	loginSession *LoginSession
 	admin        *Admin
@@ -46,7 +44,6 @@ func NewServer(
 	aeroNamespace string,
 	aeroMessagesSet string,
 	openWeatherApiKey string,
-	secretWord string,
 	versionInfo string,
 	admin *Admin,
 ) (*Server, error) {
@@ -89,7 +86,6 @@ func NewServer(
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp("https://freegeoip.app", http.DefaultClient),
 		board:             board,
-		secretWord:        secretWord,
 		versionInfo:       versionInfo,
 		loginSession:      &LoginSession{},
 		admin:             admin,

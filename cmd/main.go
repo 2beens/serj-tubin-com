@@ -58,11 +58,6 @@ func main() {
 		log.Errorf("open weather API key not set, use OPEN_WEATHER_API_KEY env var to set it")
 	}
 
-	secretWord := os.Getenv("SERJ_TUBIN_COM_SECRET_WORD")
-	if secretWord == "" {
-		log.Errorf("secret not set, use SERJ_TUBIN_COM_SECRET_WORD env var to set it")
-	}
-
 	versionInfo, err := tryGetLastCommitHash()
 	if err != nil {
 		log.Tracef("failed to get last commit hash / version info: %s", err)
@@ -88,7 +83,6 @@ func main() {
 		*aeroNamespace,
 		*aeroMessagesSet,
 		openWeatherApiKey,
-		secretWord,
 		versionInfo,
 		admin,
 	)
