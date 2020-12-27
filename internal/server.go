@@ -15,6 +15,8 @@ import (
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+
+	_ "net/http/pprof"
 )
 
 const (
@@ -128,6 +130,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	r.Use(s.loggingMiddleware())
 	r.Use(s.corsMiddleware())
+
+	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 
 	return r, nil
 }
