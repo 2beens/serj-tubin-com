@@ -70,19 +70,19 @@ func newTestingInternals() *testingInternals {
 		log.Fatal(err)
 	}
 
-	if err := board.StoreMessage(*initialBoardMessages[0]); err != nil {
+	if _, err := board.StoreMessage(*initialBoardMessages[0]); err != nil {
 		panic(err)
 	}
-	if err := board.StoreMessage(*initialBoardMessages[1]); err != nil {
+	if _, err := board.StoreMessage(*initialBoardMessages[1]); err != nil {
 		panic(err)
 	}
-	if err := board.StoreMessage(*initialBoardMessages[2]); err != nil {
+	if _, err := board.StoreMessage(*initialBoardMessages[2]); err != nil {
 		panic(err)
 	}
-	if err := board.StoreMessage(*initialBoardMessages[3]); err != nil {
+	if _, err := board.StoreMessage(*initialBoardMessages[3]); err != nil {
 		panic(err)
 	}
-	if err := board.StoreMessage(*initialBoardMessages[4]); err != nil {
+	if _, err := board.StoreMessage(*initialBoardMessages[4]); err != nil {
 		panic(err)
 	}
 

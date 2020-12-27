@@ -346,7 +346,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	require.Equal(t, "added", rr.Body.String())
+	require.Equal(t, "added:5", rr.Body.String())
 	assert.Equal(t, len(internals.initialBoardMessages)+1, internals.board.messagesCounter)
 	assert.Equal(t, len(internals.initialBoardMessages)+1, len(internals.aeroTestClient.AeroBinMaps))
 
@@ -359,7 +359,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	require.Equal(t, "added", rr.Body.String())
+	require.Equal(t, "added:6", rr.Body.String())
 	assert.Equal(t, len(internals.initialBoardMessages)+2, internals.board.messagesCounter)
 	assert.Equal(t, len(internals.initialBoardMessages)+2, len(internals.aeroTestClient.AeroBinMaps))
 
