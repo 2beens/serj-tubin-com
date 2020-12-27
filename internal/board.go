@@ -99,16 +99,18 @@ func (b *Board) Close() {
 	}
 }
 
-func (b *Board) StoreMessage(message BoardMessage) error {
+func (b *Board) StoreMessage(message BoardMessage) (int, error) {
 	if err := b.CheckAero(); err != nil {
-		return err
+		return -1, err
 	}
 
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
+	newMessageId := b.messagesCounter
+
 	bins := aerospike.AeroBinMap{
-		"id":        b.messagesCounter,
+		"id":        newMessageId,
 		"author":    message.Author,
 		"timestamp": message.Timestamp,
 		"message":   message.Message,
@@ -118,7 +120,7 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 
 	messageKey := strconv.Itoa(b.messagesCounter)
 	if err := b.aeroClient.Put(messageKey, bins); err != nil {
-		return fmt.Errorf("failed to do aero put: %w", err)
+		return -1, fmt.Errorf("failed to do aero put: %w", err)
 	}
 
 	// omg, fix this laziness
@@ -126,7 +128,7 @@ func (b *Board) StoreMessage(message BoardMessage) error {
 
 	b.messagesCounter++
 
-	return nil
+	return newMessageId, nil
 }
 
 func (b *Board) DeleteMessage(messageId string) (bool, error) {
