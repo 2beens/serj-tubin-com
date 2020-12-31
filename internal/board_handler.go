@@ -26,7 +26,7 @@ func NewBoardHandler(boardRouter *mux.Router, board *Board, loginSession *LoginS
 	}
 
 	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
-	boardRouter.HandleFunc("/messages/delete/{id}", handler.handleDeleteMessage).Methods("DELETE").Name("delete-message")
+	boardRouter.HandleFunc("/messages/delete/{id}", handler.handleDeleteMessage).Methods("DELETE", "OPTIONS").Name("delete-message")
 	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
 	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET").Name("all-messages")
 	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
@@ -188,7 +188,7 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 		Message:   message,
 	}
 
-	err = handler.board.StoreMessage(boardMessage)
+	id, err := handler.board.StoreMessage(boardMessage)
 	if err != nil {
 		log.Errorf("store new message error: %s", err)
 		http.Error(w, "failed to store message", http.StatusInternalServerError)
@@ -196,7 +196,7 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 	}
 
 	// TODO: refactor and unify responses
-	WriteResponse(w, "", "added")
+	WriteResponse(w, "", fmt.Sprintf("added:%d", id))
 }
 
 func (handler *BoardHandler) handleMessagesCount(w http.ResponseWriter, r *http.Request) {

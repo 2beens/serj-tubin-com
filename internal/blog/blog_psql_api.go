@@ -13,6 +13,8 @@ import (
 // manual caching of blog posts not needed (at least for this use case):
 // https://github.com/jackc/pgx/wiki/Automatic-Prepared-Statement-Caching
 
+var _ BlogApi = (*PsqlApi)(nil)
+
 type PsqlApi struct {
 	db *pgxpool.Pool
 }
