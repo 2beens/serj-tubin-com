@@ -12,6 +12,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
+	"github.com/2beens/serjtubincom/internal/netlog"
 	as "github.com/aerospike/aerospike-client-go"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -24,10 +25,11 @@ const (
 )
 
 type Server struct {
-	blogApi       blog.BlogApi
-	geoIp         *GeoIp
-	quotesManager *QuotesManager
-	board         *Board
+	blogApi         blog.BlogApi
+	geoIp           *GeoIp
+	quotesManager   *QuotesManager
+	board           *Board
+	netlogVisitsApi *netlog.VisitApi
 
 	openWeatherAPIUrl string
 	openWeatherApiKey string
@@ -79,6 +81,11 @@ func NewServer(
 		log.Fatalf("failed to create blog api: %s", err)
 	}
 
+	netlogVisitsApi, err := netlog.NewVisitApi()
+	if err != nil {
+		log.Fatalf("failed to create netlog visits api: %s", err)
+	}
+
 	s := &Server{
 		blogApi:           blogApi,
 		openWeatherAPIUrl: "http://api.openweathermap.org/data/2.5",
@@ -86,6 +93,7 @@ func NewServer(
 		muteRequestLogs:   false,
 		geoIp:             NewGeoIp("https://freegeoip.app", http.DefaultClient),
 		board:             board,
+		netlogVisitsApi:   netlogVisitsApi,
 		versionInfo:       versionInfo,
 		loginSession:      &LoginSession{},
 		admin:             admin,
@@ -107,6 +115,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	blogRouter := r.PathPrefix("/blog").Subrouter()
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
+	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 
 	if NewBlogHandler(blogRouter, s.blogApi, s.loginSession) == nil {
 		return nil, errors.New("blog handler is nil")
@@ -124,6 +133,10 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.loginSession, s.admin) == nil {
 		panic("misc handler is nil")
+	}
+
+	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.loginSession) == nil {
+		panic("netlog visits handler is nil")
 	}
 
 	r.Use(s.loggingMiddleware())

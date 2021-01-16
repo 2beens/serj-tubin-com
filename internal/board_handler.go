@@ -19,21 +19,21 @@ type BoardHandler struct {
 	loginSession *LoginSession
 }
 
-func NewBoardHandler(boardRouter *mux.Router, board *Board, loginSession *LoginSession) *BoardHandler {
+func NewBoardHandler(router *mux.Router, board *Board, loginSession *LoginSession) *BoardHandler {
 	handler := &BoardHandler{
 		board:        board,
 		loginSession: loginSession,
 	}
 
-	boardRouter.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
-	boardRouter.HandleFunc("/messages/delete/{id}", handler.handleDeleteMessage).Methods("DELETE", "OPTIONS").Name("delete-message")
-	boardRouter.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
-	boardRouter.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET").Name("all-messages")
-	boardRouter.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
-	boardRouter.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET").Name("messages-range")
-	boardRouter.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET").Name("messages-page")
+	router.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
+	router.HandleFunc("/messages/delete/{id}", handler.handleDeleteMessage).Methods("DELETE", "OPTIONS").Name("delete-message")
+	router.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
+	router.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET").Name("all-messages")
+	router.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
+	router.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET").Name("messages-range")
+	router.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET").Name("messages-page")
 
-	boardRouter.Use(handler.authMiddleware())
+	router.Use(handler.authMiddleware())
 
 	return handler
 }
