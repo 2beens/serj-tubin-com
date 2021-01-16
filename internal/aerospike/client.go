@@ -1,5 +1,13 @@
 package aerospike
 
+import "errors"
+
+var (
+	ErrAeroClientNil          = errors.New("aero client is nil")
+	ErrAeroClientNotConnected = errors.New("aero client is not connected")
+	ErrEmptyNamespace         = errors.New("namespace cannot be empty")
+)
+
 type AeroBinMap map[string]interface{}
 
 type Client interface {
