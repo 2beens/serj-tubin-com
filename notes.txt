@@ -7,6 +7,8 @@ some ideas:
     - (done ✅) add linter (golang ci)
     - (done ✅) add some sort of versioning (last commit count or hash?)
         - (done ✅) add to frontend
+    - use fasthttp ?
+        - https://github.com/valyala/fasthttp
     - logrotate
     - use ansible?
     - use monit?

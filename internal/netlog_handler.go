@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/netlog"
@@ -22,9 +23,11 @@ func NewNetlogHandler(router *mux.Router, visitApi *netlog.VisitApi, loginSessio
 		loginSession: loginSession,
 	}
 
-	router.HandleFunc("/", handler.handleGetAll).Methods("GET").Name("get-last")
-	router.HandleFunc("/last/{limit}", handler.handleGetAll).Methods("GET").Name("get-last-with-limit")
 	router.HandleFunc("/new", handler.handleNewVisit).Methods("POST", "OPTIONS").Name("new-visit")
+	router.HandleFunc("/", handler.handleGetAll).Methods("GET").Name("get-last")
+	router.HandleFunc("/limit/{limit}", handler.handleGetAll).Methods("GET").Name("get-with-limit")
+	router.HandleFunc("/search/{keywords}", handler.handleSearch).Methods("GET").Name("search")
+	router.HandleFunc("/search/{keywords}/limit/{limit}", handler.handleSearch).Methods("GET").Name("search-with-limit")
 
 	router.Use(handler.authMiddleware())
 
@@ -44,6 +47,7 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 	}
 
 	title := r.Form.Get("title")
+	source := r.Form.Get("source")
 	url := r.Form.Get("url")
 	if url == "" {
 		http.Error(w, "error, url empty", http.StatusBadRequest)
@@ -63,15 +67,65 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 	visit := &netlog.Visit{
 		Title:     title,
 		URL:       url,
+		Source:    source,
 		Timestamp: time.Unix(timestamp/1000, 0),
 	}
 	if err := handler.visitApi.AddVisit(visit); err != nil {
-		log.Printf("failed to add new visit [%s], [%s]: %s", timestamp, url, err)
+		log.Printf("failed to add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		return
 	}
 
 	log.Printf("new visit added: [%s]: %s", visit.Timestamp, visit.URL)
+}
+
+func (handler *NetlogHandler) handleSearch(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	limit := 200 // default value
+	if limitStr := vars["limit"]; limitStr != "" {
+		var err error
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			http.Error(w, "invalid limit provided", http.StatusBadRequest)
+			return
+		}
+	}
+
+	keywordsRaw := vars["keywords"]
+	if keywordsRaw == "" {
+		http.Error(w, "invalid/no keywords provided", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("searching netlog visits by %s ... ", keywordsRaw)
+
+	keywords := strings.Split(keywordsRaw, ",")
+	if len(keywords) == 0 {
+		http.Error(w, "invalid/empty keywords provided", http.StatusBadRequest)
+		return
+	}
+
+	visits, err := handler.visitApi.GetVisits(keywords, limit)
+	if err != nil {
+		log.Errorf("search visits error: %s", err)
+		http.Error(w, "failed to search for visits", http.StatusInternalServerError)
+		return
+	}
+
+	if len(visits) == 0 {
+		WriteResponseBytes(w, "application/json", []byte("[]"))
+		return
+	}
+
+	visitsJson, err := json.Marshal(visits)
+	if err != nil {
+		log.Errorf("marshal all visits error: %s", err)
+		http.Error(w, "marshal all visits error", http.StatusInternalServerError)
+		return
+	}
+
+	WriteResponseBytes(w, "application/json", visitsJson)
 }
 
 func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +144,7 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 
 	log.Printf("getting last %d netlog visits ... ", limit)
 
-	visits, err := handler.visitApi.GetVisits(limit)
+	visits, err := handler.visitApi.GetVisits([]string{}, limit)
 	if err != nil {
 		log.Errorf("get all visits error: %s", err)
 		http.Error(w, "failed to get all visits", http.StatusInternalServerError)

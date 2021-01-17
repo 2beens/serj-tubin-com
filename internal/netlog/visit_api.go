@@ -66,10 +66,20 @@ func (b *VisitApi) AddVisit(visit *Visit) error {
 	return errors.New("unexpected error, failed to insert visit")
 }
 
-func (b *VisitApi) GetVisits(limit int) ([]*Visit, error) {
+func (b *VisitApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
+	sbQueryLike := getQueryLikeCondition(keywords)
+	query := fmt.Sprintf(`
+		SELECT
+			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
+		FROM netlog.visit
+		%s
+		ORDER BY id DESC
+		LIMIT $1;
+	`, sbQueryLike)
+
 	rows, err := b.db.Query(
 		context.Background(),
-		`SELECT * FROM netlog.visit ORDER BY id DESC LIMIT $1;`,
+		query,
 		limit,
 	)
 	if err != nil {
@@ -85,9 +95,10 @@ func (b *VisitApi) GetVisits(limit int) ([]*Visit, error) {
 	for rows.Next() {
 		var id int
 		var title string
+		var source string
 		var url string
 		var timestamp time.Time
-		if err := rows.Scan(&id, &title, &url, &timestamp); err != nil {
+		if err := rows.Scan(&id, &title, &source, &url, &timestamp); err != nil {
 			return nil, err
 		}
 		visits = append(visits, &Visit{
