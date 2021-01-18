@@ -82,7 +82,7 @@ func (handler *MiscHandler) handleWhereAmI(w http.ResponseWriter, r *http.Reques
 }
 
 func (handler *MiscHandler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
-	ip, err := handler.geoIp.ReadUserIP(r)
+	ip, err := ReadUserIP(r)
 	if err != nil {
 		log.Errorf("failed to get user IP address: %s", err)
 		http.Error(w, "failed to get IP", http.StatusInternalServerError)

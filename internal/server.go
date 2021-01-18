@@ -31,6 +31,8 @@ type Server struct {
 	board           *Board
 	netlogVisitsApi *netlog.VisitApi
 
+	browserRequestsSecret string // used in netlog, when posting new visit
+
 	openWeatherAPIUrl string
 	openWeatherApiKey string
 	muteRequestLogs   bool
@@ -46,6 +48,7 @@ func NewServer(
 	aeroNamespace string,
 	aeroMessagesSet string,
 	openWeatherApiKey string,
+	browserRequestsSecret string,
 	versionInfo string,
 	admin *Admin,
 ) (*Server, error) {
@@ -87,16 +90,17 @@ func NewServer(
 	}
 
 	s := &Server{
-		blogApi:           blogApi,
-		openWeatherAPIUrl: "http://api.openweathermap.org/data/2.5",
-		openWeatherApiKey: openWeatherApiKey,
-		muteRequestLogs:   false,
-		geoIp:             NewGeoIp("https://freegeoip.app", http.DefaultClient),
-		board:             board,
-		netlogVisitsApi:   netlogVisitsApi,
-		versionInfo:       versionInfo,
-		loginSession:      &LoginSession{},
-		admin:             admin,
+		blogApi:               blogApi,
+		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
+		openWeatherApiKey:     openWeatherApiKey,
+		browserRequestsSecret: browserRequestsSecret,
+		muteRequestLogs:       false,
+		geoIp:                 NewGeoIp("https://freegeoip.app", http.DefaultClient),
+		board:                 board,
+		netlogVisitsApi:       netlogVisitsApi,
+		versionInfo:           versionInfo,
+		loginSession:          &LoginSession{},
+		admin:                 admin,
 	}
 
 	qm, err := NewQuoteManager("./assets/quotes.csv")
@@ -135,7 +139,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("misc handler is nil")
 	}
 
-	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.loginSession) == nil {
+	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.browserRequestsSecret, s.loginSession) == nil {
 		panic("netlog visits handler is nil")
 	}
 

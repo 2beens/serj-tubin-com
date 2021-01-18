@@ -13,21 +13,23 @@ import (
 )
 
 type NetlogHandler struct {
-	visitApi     *netlog.VisitApi
-	loginSession *LoginSession
+	browserRequestsSecret string
+	visitApi              *netlog.VisitApi
+	loginSession          *LoginSession
 }
 
-func NewNetlogHandler(router *mux.Router, visitApi *netlog.VisitApi, loginSession *LoginSession) *NetlogHandler {
+func NewNetlogHandler(router *mux.Router, visitApi *netlog.VisitApi, browserRequestsSecret string, loginSession *LoginSession) *NetlogHandler {
 	handler := &NetlogHandler{
-		visitApi:     visitApi,
-		loginSession: loginSession,
+		visitApi:              visitApi,
+		browserRequestsSecret: browserRequestsSecret,
+		loginSession:          loginSession,
 	}
 
 	router.HandleFunc("/new", handler.handleNewVisit).Methods("POST", "OPTIONS").Name("new-visit")
-	router.HandleFunc("/", handler.handleGetAll).Methods("GET").Name("get-last")
-	router.HandleFunc("/limit/{limit}", handler.handleGetAll).Methods("GET").Name("get-with-limit")
-	router.HandleFunc("/search/{keywords}", handler.handleSearch).Methods("GET").Name("search")
-	router.HandleFunc("/search/{keywords}/limit/{limit}", handler.handleSearch).Methods("GET").Name("search-with-limit")
+	router.HandleFunc("/", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-last")
+	router.HandleFunc("/limit/{limit}", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-with-limit")
+	router.HandleFunc("/search/{keywords}", handler.handleSearch).Methods("GET", "OPTIONS").Name("search")
+	router.HandleFunc("/search/{keywords}/limit/{limit}", handler.handleSearch).Methods("GET", "OPTIONS").Name("search-with-limit")
 
 	router.Use(handler.authMiddleware())
 
@@ -77,6 +79,7 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 	}
 
 	log.Printf("new visit added: [%s]: %s", visit.Timestamp, visit.URL)
+	WriteResponse(w, "", "added")
 }
 
 func (handler *NetlogHandler) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -175,18 +178,31 @@ func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Hand
 				return
 			}
 
-			//authToken := r.Header.Get("X-SERJ-TOKEN")
-			//if authToken == "" || handler.loginSession.Token == "" {
-			//	log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
-			//	http.Error(w, "no can do", http.StatusUnauthorized)
-			//	return
-			//}
-			//
-			//if handler.loginSession.Token != authToken {
-			//	log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
-			//	http.Error(w, "no can do", http.StatusUnauthorized)
-			//	return
-			//}
+			authToken := r.Header.Get("X-SERJ-TOKEN")
+
+			// requests coming from browser extension
+			if strings.HasPrefix(r.URL.Path, "/netlog/new") {
+				if handler.browserRequestsSecret != authToken {
+					reqIp, _ := ReadUserIP(r)
+					log.Warnf("unauthorized /netlog/new request detected from %s, authToken: %s", reqIp, authToken)
+					// fool the "attacker" by a fake positive response
+					WriteResponse(w, "", "added")
+					return
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if authToken == "" || handler.loginSession.Token == "" {
+				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+			if authToken != handler.loginSession.Token {
+				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
 
 			next.ServeHTTP(w, r)
 		})
