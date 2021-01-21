@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,13 +28,83 @@ func NewNetlogHandler(router *mux.Router, visitApi *netlog.VisitApi, browserRequ
 
 	router.HandleFunc("/new", handler.handleNewVisit).Methods("POST", "OPTIONS").Name("new-visit")
 	router.HandleFunc("/", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-last")
+	router.HandleFunc("/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("visits-page")
 	router.HandleFunc("/limit/{limit}", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-with-limit")
 	router.HandleFunc("/search/{keywords}", handler.handleSearch).Methods("GET", "OPTIONS").Name("search")
+	router.HandleFunc("/search/{keywords}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("search-page")
 	router.HandleFunc("/search/{keywords}/limit/{limit}", handler.handleSearch).Methods("GET", "OPTIONS").Name("search-with-limit")
 
 	router.Use(handler.authMiddleware())
 
 	return handler
+}
+
+func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	pageStr := vars["page"]
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		log.Errorf("handle get netlog visits page, from <page> param: %s", err)
+		http.Error(w, "parse form error, parameter <page>", http.StatusBadRequest)
+		return
+	}
+	sizeStr := vars["size"]
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+		log.Errorf("handle get netlog visits page, from <size> param: %s", err)
+		http.Error(w, "parse form error, parameter <size>", http.StatusInternalServerError)
+		return
+	}
+
+	var keywords []string
+	keywordsRaw := vars["keywords"]
+	if keywordsRaw != "" {
+		keywords = strings.Split(keywordsRaw, ",")
+	}
+
+	log.Tracef("get netlog visits - page %s size %s, keywords: %s", pageStr, sizeStr, keywords)
+
+	if page < 1 {
+		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusInternalServerError)
+		return
+	}
+	if size < 1 {
+		http.Error(w, "invalid size (has to be non-zero value)", http.StatusInternalServerError)
+		return
+	}
+
+	visits, err := handler.visitApi.GetVisitsPage(keywords, page, size)
+	if err != nil {
+		log.Errorf("get visits error: %s", err)
+		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+
+	if len(visits) == 0 {
+		WriteResponse(w, "application/json", "[]")
+		return
+	}
+
+	visitsJson, err := json.Marshal(visits)
+	if err != nil {
+		log.Errorf("marshal netlog visits error: %s", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	allVisitsCount, err := handler.visitApi.Count()
+	if err != nil {
+		log.Errorf("get netlog visits error: %s", err)
+		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
+		return
+	}
+
+	resJson := fmt.Sprintf(`{"visits": %s, "total": %d}`, visitsJson, allVisitsCount)
+
+	WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
 func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
