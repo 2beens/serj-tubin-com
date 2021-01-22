@@ -14,10 +14,10 @@ func TestUtil_getQueryLikeCondition(t *testing.T) {
 	// only one keyword
 	keywords := []string{"word1"}
 	queryLike = getQueryLikeCondition(keywords)
-	assert.Equal(t, "where url like '%word1%' ", queryLike)
+	assert.Equal(t, "WHERE url LIKE '%word1%' ", queryLike)
 
 	// more keywords
 	keywords = []string{"word1", "word2", "word3"}
 	queryLike = getQueryLikeCondition(keywords)
-	assert.Equal(t, "where url like '%word1%' and url like '%word2%' and url like '%word3%' ", queryLike)
+	assert.Equal(t, "WHERE url LIKE '%word1%' AND url LIKE '%word2%' AND url LIKE '%word3%' ", queryLike)
 }

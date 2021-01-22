@@ -9,6 +9,8 @@ some ideas:
         - (done ✅) add to frontend
     - use fasthttp ?
         - https://github.com/valyala/fasthttp
+    - try sentry, looks cool:
+        - https://sentry.io/welcome/
     - logrotate
     - use ansible?
     - use monit?

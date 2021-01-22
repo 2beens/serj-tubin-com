@@ -82,7 +82,7 @@ func TestGeoIp_ReadUserIP(t *testing.T) {
 	// X-Real-Ip
 	ip := "127.0.0.10"
 	req.Header.Add("X-Real-Ip", ip)
-	userIp, err := geoIp.ReadUserIP(req)
+	userIp, err := ReadUserIP(req)
 	require.NoError(t, err)
 	assert.Equal(t, ip, userIp)
 
@@ -90,13 +90,13 @@ func TestGeoIp_ReadUserIP(t *testing.T) {
 	req, err = http.NewRequest("-", "-", nil)
 	require.NoError(t, err)
 	req.Header.Set("X-Forwarded-For", ip)
-	userIp, err = geoIp.ReadUserIP(req)
+	userIp, err = ReadUserIP(req)
 	require.NoError(t, err)
 	assert.Equal(t, ip, userIp)
 
 	// headers empty
 	req, err = http.NewRequest("-", "-", nil)
 	require.NoError(t, err)
-	_, err = geoIp.ReadUserIP(req)
+	_, err = ReadUserIP(req)
 	require.EqualError(t, err, "ip addr  is invalid")
 }
