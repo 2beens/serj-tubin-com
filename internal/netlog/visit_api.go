@@ -113,10 +113,22 @@ func (api *VisitApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
 	return visits, nil
 }
 
-func (api *VisitApi) Count() (int, error) {
+func (api *VisitApi) CountAll() (int, error) {
+	return api.Count([]string{})
+}
+
+func (api *VisitApi) Count(keywords []string) (int, error) {
+	sbQueryLike := getQueryLikeCondition(keywords)
+	query := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM netlog.visit
+		%s
+		;
+	`, sbQueryLike)
+
 	rows, err := api.db.Query(
 		context.Background(),
-		`SELECT COUNT(*) FROM netlog.visit;`,
+		query,
 	)
 	if err != nil {
 		return -1, err
@@ -140,7 +152,7 @@ func (api *VisitApi) Count() (int, error) {
 func (api *VisitApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, error) {
 	limit := size
 	offset := (page - 1) * size
-	allVisitsCount, err := api.Count()
+	allVisitsCount, err := api.CountAll()
 	if err != nil {
 		return nil, err
 	}
