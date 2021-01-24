@@ -84,7 +84,7 @@ func TestBoardHandler_handleMessagesCount(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.boardApi, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/count", nil)
@@ -101,7 +101,7 @@ func TestBoardHandler_handleGetAllMessages(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.boardApi, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/all", nil)
@@ -128,7 +128,7 @@ func TestBoardHandler_handleGetLastMessages(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.boardApi, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/last/2", nil)
@@ -146,15 +146,15 @@ func TestBoardHandler_handleGetLastMessages(t *testing.T) {
 
 	// check all messages there
 	require.Len(t, boardMessages, 2)
-	assert.Equal(t, 4, boardMessages[0].ID)
-	assert.Equal(t, 1, boardMessages[1].ID)
+	assert.Equal(t, 5, boardMessages[0].ID)
+	assert.Equal(t, 2, boardMessages[1].ID)
 }
 
 func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.boardApi, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/page/2/size/2", nil)
@@ -209,7 +209,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.boardApi, internals.loginSession)
 	require.NotNil(t, handler)
 
 	// wrong session token
@@ -220,7 +220,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messagesCounter)
+	assert.Equal(t, len(internals.initialBoardMessages), internals.boardApi.messagesIdCounter)
 
 	// session token missing
 	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
@@ -229,7 +229,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messagesCounter)
+	assert.Equal(t, len(internals.initialBoardMessages), internals.boardApi.messagesIdCounter)
 
 	// correct secret - messages should get removed
 	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
@@ -239,7 +239,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	newCount, err := internals.board.aeroClient.CountAll()
+	newCount, err := internals.boardApi.aeroClient.CountAll()
 	require.NoError(t, err)
 	assert.Equal(t, "true", rr.Body.String())
 	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
@@ -252,7 +252,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	newCount, err = internals.board.aeroClient.CountAll()
+	newCount, err = internals.boardApi.aeroClient.CountAll()
 	require.NoError(t, err)
 	assert.Equal(t, "false", rr.Body.String())
 	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
@@ -265,7 +265,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	newCount, err = internals.board.aeroClient.CountAll()
+	newCount, err = internals.boardApi.aeroClient.CountAll()
 	require.NoError(t, err)
 	assert.Equal(t, "true", rr.Body.String())
 	assert.Equal(t, len(internals.initialBoardMessages)-2, newCount)
@@ -296,7 +296,7 @@ func TestBoardHandler_handleMessagesRange(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.boardApi, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/from/1/to/3", nil)
@@ -334,7 +334,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.boardApi, internals.loginSession)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/messages/new", nil)
@@ -346,8 +346,8 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	require.Equal(t, "added:5", rr.Body.String())
-	assert.Equal(t, len(internals.initialBoardMessages)+1, internals.board.messagesCounter)
+	require.Equal(t, "added:6", rr.Body.String())
+	assert.Equal(t, len(internals.initialBoardMessages)+1, internals.boardApi.messagesIdCounter)
 	assert.Equal(t, len(internals.initialBoardMessages)+1, len(internals.aeroTestClient.AeroBinMaps))
 
 	// add new message with empty author
@@ -359,8 +359,8 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	require.Equal(t, "added:6", rr.Body.String())
-	assert.Equal(t, len(internals.initialBoardMessages)+2, internals.board.messagesCounter)
+	require.Equal(t, "added:7", rr.Body.String())
+	assert.Equal(t, len(internals.initialBoardMessages)+2, internals.boardApi.messagesIdCounter)
 	assert.Equal(t, len(internals.initialBoardMessages)+2, len(internals.aeroTestClient.AeroBinMaps))
 
 	// check messages created

@@ -17,7 +17,7 @@ const (
 type testingInternals struct {
 	// board
 	aeroTestClient       *aerospike.BoardAeroTestClient
-	board                *BoardApi
+	boardApi             *BoardApi
 	boardCache           *cache.BoardTestCache
 	initialBoardMessages map[int]*BoardMessage
 	lastInitialMessage   *BoardMessage
@@ -31,31 +31,31 @@ func newTestingInternals() *testingInternals {
 	now := time.Now()
 	initialBoardMessages := map[int]*BoardMessage{
 		0: {
-			ID:        0,
+			//ID:        1,
 			Author:    "serj",
 			Timestamp: now.Add(-time.Hour).Unix(),
 			Message:   "test message blabla",
 		},
 		1: {
-			ID:        1,
+			//ID:        2,
 			Author:    "serj",
 			Timestamp: now.Unix(),
 			Message:   "test message gragra",
 		},
 		2: {
-			ID:        2,
+			//ID:        3,
 			Author:    "ana",
 			Timestamp: now.Add(-2 * time.Hour).Unix(),
 			Message:   "test message aaaaa",
 		},
 		3: {
-			ID:        3,
+			//ID:        4,
 			Author:    "drago",
 			Timestamp: now.Add(-5 * 24 * time.Hour).Unix(),
 			Message:   "drago's test message aaaaa sve",
 		},
 		4: {
-			ID:        4,
+			//ID:        5,
 			Author:    "rodjak nenad",
 			Timestamp: now.Add(-2 * time.Minute).Unix(),
 			Message:   "ja se mislim sta'e bilo",
@@ -118,7 +118,7 @@ func newTestingInternals() *testingInternals {
 
 	return &testingInternals{
 		aeroTestClient:       aeroClient,
-		board:                board,
+		boardApi:             board,
 		boardCache:           boardCache,
 		initialBoardMessages: initialBoardMessages,
 		lastInitialMessage:   initialBoardMessages[1],

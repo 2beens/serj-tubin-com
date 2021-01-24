@@ -19,8 +19,8 @@ const (
 type BoardApi struct {
 	aeroClient aerospike.Client
 
-	messagesCounter int
-	cache           cache.Cache
+	messagesIdCounter int
+	cache             cache.Cache
 
 	mutex sync.RWMutex
 }
@@ -31,64 +31,54 @@ func NewBoardApi(aeroClient aerospike.Client, cache cache.Cache) (*BoardApi, err
 	}
 
 	b := &BoardApi{
-		aeroClient:      aeroClient,
-		cache:           cache,
-		messagesCounter: -1,
+		aeroClient:        aeroClient,
+		cache:             cache,
+		messagesIdCounter: -1,
 	}
 
 	// wait a bit for aero to connect
 	// (or a better way - change CheckConnection(...) in boardApi aero client so it signals when it gets connected)
 	time.Sleep(time.Second)
 
-	messagesCount := b.GetMessagesCounter()
-	log.Tracef("number of boardApi messages: %d", messagesCount)
+	messagesIdCounter := b.GetMessagesIdCounter()
+	log.Tracef("board api messages id counter: %d", messagesIdCounter)
 
 	return b, nil
 }
 
-func (b *BoardApi) GetMessagesCounter() int {
-	if b.messagesCounter >= 0 {
-		return b.messagesCounter
+func (b *BoardApi) GetMessagesIdCounter() int {
+	if b.messagesIdCounter >= 0 {
+		return b.messagesIdCounter
 	}
 
-	// message counter is -1, means we get it for the first time (e.g. aero gained connection after server startup)
-	messagesCount, err := b.MessagesCount()
-	if err != nil {
-		log.Errorf("visitor boardApi failed to get all messages count: %s", err)
-		b.messagesCounter = -1
-	} else {
-		b.messagesCounter = messagesCount
-	}
-
-	if messagesCount > 0 {
-		//go func() {
-		if err := b.setAllMessagesCacheFromAero(); err != nil {
-			log.Errorf("failed to set all messages cache from aero cache: %s", err)
-		}
-		//}()
-	}
-
-	return messagesCount
-}
-
-func (b *BoardApi) setAllMessagesCacheFromAero() error {
 	allMessages, err := b.AllMessages(true)
 	if err != nil {
-		return err
+		b.messagesIdCounter = -1
+		log.Errorf("board api failed to get all messages from aero, for cache and counter: %s", err)
+	} else {
+		maxId := 0
+		for _, m := range allMessages {
+			if m.ID > maxId {
+				maxId = m.ID
+			}
+		}
+		b.messagesIdCounter = maxId
+
+		// TODO: this is a super lazy way to cache messages
+		// not really sure, all messages should be really cached
+		b.CacheBoardMessages(AllMessagesCacheKey, allMessages)
 	}
 
-	// TODO: this is a super lazy way to cache messages
-	// not really sure, all messages should be really cached
-	b.CacheBoardMessages(AllMessagesCacheKey, allMessages)
+	log.Warnf("board api init, messages counter: %d", b.messagesIdCounter)
 
-	return nil
+	return b.messagesIdCounter
 }
 
 func (b *BoardApi) CacheBoardMessages(cacheKey string, messages []*BoardMessage) {
 	if !b.cache.Set(cacheKey, messages, int64(len(messages)*3)) {
 		log.Errorf("failed to set cache for [%s]... for some reason", cacheKey)
 	} else {
-		log.Debugf("boardApi messages cache set for [%s]", cacheKey)
+		log.Debugf("board api messages cache set for [%s]", cacheKey)
 	}
 }
 
@@ -111,7 +101,10 @@ func (b *BoardApi) StoreMessage(message BoardMessage) (int, error) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	newMessageId := b.GetMessagesCounter()
+	newMessageId := b.GetMessagesIdCounter() + 1
+	if newMessageId <= 0 {
+		return -1, fmt.Errorf("invalid new message id: %d", newMessageId)
+	}
 
 	bins := aerospike.AeroBinMap{
 		"id":        newMessageId,
@@ -131,20 +124,15 @@ func (b *BoardApi) StoreMessage(message BoardMessage) (int, error) {
 	b.InvalidateCaches()
 
 	// used as an ID for the next message
-	b.messagesCounter++
+	b.messagesIdCounter++
 
 	return newMessageId, nil
 }
 
 func (b *BoardApi) DeleteMessage(messageId string) (bool, error) {
-	log.Tracef("boardApi - about to delete message: %s", messageId)
+	log.Tracef("board api - about to delete message: %s", messageId)
 	b.InvalidateCaches()
 	return b.aeroClient.Delete(messageId)
-
-	// TODO: important - after delete, all messages count is decreased,
-	// so - the next time server is started, new count is taken, but that count will
-	// be less than the last message ID, and might screw up adding new messages
-	// FIXME: try to find a way to fix that (e.g. get last message ID or so)
 }
 
 func (b *BoardApi) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
@@ -153,7 +141,8 @@ func (b *BoardApi) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 
 	log.Tracef("getting messages page %d, size %d", page, size)
 
-	messagesCount := b.GetMessagesCounter()
+	// FIXME/TODO: this wont work if many/some messages get deleted
+	messagesCount := b.GetMessagesIdCounter()
 	if size >= messagesCount {
 		return b.AllMessagesCache(false)
 	}

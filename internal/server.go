@@ -53,17 +53,17 @@ func NewServer(
 ) (*Server, error) {
 	boardAeroClient, err := aerospike.NewBoardAeroClient(aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create boardApi aero client: %w", err)
+		return nil, fmt.Errorf("failed to create board aero client: %w", err)
 	}
 
 	boardCache, err := cache.NewBoardCache()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create boardApi cache: %w", err)
+		return nil, fmt.Errorf("failed to create board cache: %w", err)
 	}
 
 	boardApi, err := NewBoardApi(boardAeroClient, boardCache)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create visitor boardApi: %s", err)
+		return nil, fmt.Errorf("failed to create visitor board api: %s", err)
 	}
 
 	if openWeatherApiKey == "" {
@@ -118,7 +118,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	}
 
 	if NewBoardHandler(boardRouter, s.boardApi, s.loginSession) == nil {
-		return nil, errors.New("boardApi handler is nil")
+		return nil, errors.New("board handler is nil")
 	}
 
 	if weatherHandler, err := NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {

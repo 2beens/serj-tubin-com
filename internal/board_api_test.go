@@ -24,7 +24,7 @@ func TestNewBoard(t *testing.T) {
 
 func TestBoard_AllMessagesCache(t *testing.T) {
 	internals := newTestingInternals()
-	board := internals.board
+	board := internals.boardApi
 
 	// cache empty at the beginning
 	require.Equal(t, 0, internals.boardCache.ElementsCount())
@@ -72,25 +72,25 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 func TestBoard_AllMessages(t *testing.T) {
 	internals := newTestingInternals()
 
-	messages, err := internals.board.AllMessages(false)
+	messages, err := internals.boardApi.AllMessages(false)
 	require.NoError(t, err)
 	assert.Len(t, messages, len(internals.initialBoardMessages))
 
-	messages, err = internals.board.AllMessages(true)
+	messages, err = internals.boardApi.AllMessages(true)
 	require.NoError(t, err)
 	assert.Len(t, messages, len(internals.initialBoardMessages))
 	// sorted by timestamp
-	assert.Equal(t, 3, messages[0].ID)
-	assert.Equal(t, 2, messages[1].ID)
-	assert.Equal(t, 0, messages[2].ID)
-	assert.Equal(t, 4, messages[3].ID)
-	assert.Equal(t, 1, messages[4].ID)
+	assert.Equal(t, 4, messages[0].ID)
+	assert.Equal(t, 3, messages[1].ID)
+	assert.Equal(t, 1, messages[2].ID)
+	assert.Equal(t, 5, messages[3].ID)
+	assert.Equal(t, 2, messages[4].ID)
 
 }
 
 func TestBoard_DeleteMessage(t *testing.T) {
 	internals := newTestingInternals()
-	board := internals.board
+	board := internals.boardApi
 
 	// non existent message
 	removed, err := board.DeleteMessage("100")
@@ -109,24 +109,6 @@ func TestBoard_DeleteMessage(t *testing.T) {
 	messagesCount, err = board.MessagesCount()
 	require.NoError(t, err)
 	require.Equal(t, len(internals.initialBoardMessages)-1, messagesCount)
-}
-
-func TestBoard_SetAllMessagesCacheFromAero(t *testing.T) {
-	internals := newTestingInternals()
-
-	// cache empty
-	require.Equal(t, 0, internals.boardCache.ElementsCount())
-
-	assert.NoError(t, internals.board.setAllMessagesCacheFromAero())
-
-	// cache filled
-	require.Equal(t, 1, internals.boardCache.ElementsCount())
-	allMessagesFromCache, found := internals.boardCache.Get(AllMessagesCacheKey)
-	require.True(t, found)
-	require.NotNil(t, allMessagesFromCache)
-	allMessages, ok := allMessagesFromCache.([]*BoardMessage)
-	require.True(t, ok)
-	assert.Len(t, allMessages, len(internals.initialBoardMessages))
 }
 
 func TestBoard_CacheBoardMessages(t *testing.T) {
@@ -150,7 +132,7 @@ func TestBoard_CacheBoardMessages(t *testing.T) {
 		},
 	}
 
-	internals.board.CacheBoardMessages("messages", messages)
+	internals.boardApi.CacheBoardMessages("messages", messages)
 
 	// cache filled
 	require.Equal(t, 1, internals.boardCache.ElementsCount())
@@ -169,7 +151,7 @@ func TestBoard_InvalidateCaches(t *testing.T) {
 	// cache empty
 	require.Equal(t, 0, internals.boardCache.ElementsCount())
 
-	internals.board.CacheBoardMessages("messages", []*BoardMessage{
+	internals.boardApi.CacheBoardMessages("messages", []*BoardMessage{
 		{
 			ID:        0,
 			Author:    "a0",
@@ -181,39 +163,41 @@ func TestBoard_InvalidateCaches(t *testing.T) {
 	// cache filled
 	require.Equal(t, 1, internals.boardCache.ElementsCount())
 
-	internals.board.InvalidateCaches()
+	internals.boardApi.InvalidateCaches()
 	// cache empty
 	require.Equal(t, 0, internals.boardCache.ElementsCount())
 }
 
 func TestBoard_StoreMessage(t *testing.T) {
 	internals := newTestingInternals()
-	board := internals.board
+	board := internals.boardApi
 
 	messagesCount, err := board.MessagesCount()
 	require.NoError(t, err)
 	require.Equal(t, len(internals.initialBoardMessages), messagesCount)
 
+	alreadyAddedMessagesCount := len(internals.initialBoardMessages)
+
 	now := time.Now()
 	m1 := BoardMessage{
-		ID:        len(internals.initialBoardMessages),
 		Author:    "ana",
 		Timestamp: now.Unix(),
 		Message:   "lixo",
 	}
 	newId1, err := board.StoreMessage(m1)
 	require.NoError(t, err)
-	assert.Equal(t, m1.ID, newId1)
+	assert.Equal(t, 1+alreadyAddedMessagesCount, newId1)
+	m1.ID = newId1
 
 	m2 := BoardMessage{
-		ID:        len(internals.initialBoardMessages) + 1,
 		Author:    "serj",
 		Timestamp: now.Add(-time.Hour).Unix(),
 		Message:   "a message",
 	}
 	newId2, err := board.StoreMessage(m2)
 	require.NoError(t, err)
-	assert.Equal(t, m2.ID, newId2)
+	assert.Equal(t, 2+alreadyAddedMessagesCount, newId2)
+	m2.ID = newId2
 
 	messagesCount, err = board.MessagesCount()
 	require.NoError(t, err)
@@ -237,7 +221,7 @@ func TestBoard_GetMessagesWithRange(t *testing.T) {
 	// cache empty at the beginning
 	require.Equal(t, 0, internals.boardCache.ElementsCount())
 
-	messages, err := internals.board.GetMessagesWithRange(1, 3)
+	messages, err := internals.boardApi.GetMessagesWithRange(2, 4)
 	require.NoError(t, err)
 
 	// cache empty after - GetMessagesWithRange does not cache atm
@@ -265,7 +249,7 @@ func TestBoard_GetMessagesWithRange(t *testing.T) {
 
 func TestBoard_GetMessagesPage(t *testing.T) {
 	internals := newTestingInternals()
-	board := internals.board
+	board := internals.boardApi
 
 	// cache empty at the beginning
 	require.Equal(t, 0, internals.boardCache.ElementsCount())
