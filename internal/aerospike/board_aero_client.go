@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 
 	as "github.com/aerospike/aerospike-client-go"
 	log "github.com/sirupsen/logrus"
@@ -16,32 +17,82 @@ var (
 	ErrAeroClientNil          = errors.New("aero client is nil")
 	ErrAeroClientNotConnected = errors.New("aero client is not connected")
 	ErrEmptyNamespace         = errors.New("namespace cannot be empty")
+	ErrEmptySet               = errors.New("set cannot be empty")
 )
 
 // aerospike data model (namespace, set, record, bin, ...) infos:
 // https://aerospike.com/docs/architecture/data-model.html
 type BoardAeroClient struct {
+	host       string
+	port       int
 	namespace  string
 	set        string
 	aeroClient *as.Client
+
+	isConnecting bool
+	mutex        sync.RWMutex
 }
 
-func NewBoardAeroClient(aeroClient *as.Client, namespace, set string) (*BoardAeroClient, error) {
-	if aeroClient == nil {
-		return nil, ErrAeroClientNil
-	}
+func NewBoardAeroClient(host string, port int, namespace, set string) (*BoardAeroClient, error) {
 	if namespace == "" {
 		return nil, ErrEmptyNamespace
 	}
+	if set == "" {
+		return nil, ErrEmptySet
+	}
 
-	return &BoardAeroClient{
-		namespace:  namespace,
-		set:        set,
-		aeroClient: aeroClient,
-	}, nil
+	bc := &BoardAeroClient{
+		host:      host,
+		port:      port,
+		namespace: namespace,
+		set:       set,
+	}
+
+	go func() {
+		if err := bc.CheckConnection(); err != nil {
+			log.Errorln(err)
+		}
+	}()
+
+	return bc, nil
+}
+
+func (bc *BoardAeroClient) CheckConnection() error {
+	if bc.aeroClient != nil && bc.aeroClient.IsConnected() {
+		return nil
+	}
+
+	if bc.isConnecting {
+		return errors.New("already connecting")
+	}
+
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
+
+	bc.isConnecting = true
+	defer func() {
+		bc.isConnecting = false
+	}()
+
+	log.Debugf("trying to connect to aerospike server %s:%d [namespace:%s, set:%s] ...",
+		bc.host, bc.port, bc.namespace, bc.set)
+
+	aeroClient, err := as.NewClient(bc.host, bc.port)
+	if err != nil {
+		return fmt.Errorf("failed to create aero client / connect to aero: %w", err)
+	}
+
+	bc.aeroClient = aeroClient
+	log.Debug("aero client successfully connected")
+
+	return nil
 }
 
 func (bc *BoardAeroClient) Put(key string, binMap AeroBinMap) error {
+	if err := bc.CheckConnection(); err != nil {
+		return err
+	}
+
 	messageId, err := strconv.Atoi(key)
 	if err != nil {
 		return errors.New("failed to parse message id")
@@ -61,6 +112,10 @@ func (bc *BoardAeroClient) Put(key string, binMap AeroBinMap) error {
 }
 
 func (bc *BoardAeroClient) Delete(key string) (bool, error) {
+	if err := bc.CheckConnection(); err != nil {
+		return false, err
+	}
+
 	messageId, err := strconv.Atoi(key)
 	if err != nil {
 		return false, errors.New("failed to parse message id")
@@ -89,6 +144,10 @@ func (bc *BoardAeroClient) Delete(key string) (bool, error) {
 }
 
 func (bc *BoardAeroClient) QueryByRange(index string, from, to int64) ([]AeroBinMap, error) {
+	if err := bc.CheckConnection(); err != nil {
+		return nil, err
+	}
+
 	rangeFilterStt := &as.Statement{
 		Namespace: bc.namespace,
 		SetName:   bc.set,
@@ -105,6 +164,10 @@ func (bc *BoardAeroClient) QueryByRange(index string, from, to int64) ([]AeroBin
 }
 
 func (bc *BoardAeroClient) ScanAll() ([]AeroBinMap, error) {
+	if err := bc.CheckConnection(); err != nil {
+		return nil, err
+	}
+
 	spolicy := as.NewScanPolicy()
 	spolicy.ConcurrentNodes = true
 	spolicy.Priority = as.LOW
@@ -119,6 +182,10 @@ func (bc *BoardAeroClient) ScanAll() ([]AeroBinMap, error) {
 }
 
 func (bc *BoardAeroClient) CountAll() (int, error) {
+	if err := bc.CheckConnection(); err != nil {
+		return -1, err
+	}
+
 	spolicy := as.NewScanPolicy()
 	spolicy.ConcurrentNodes = true
 	spolicy.Priority = as.LOW
@@ -145,7 +212,7 @@ func (bc *BoardAeroClient) IsConnected() bool {
 }
 
 func (bc *BoardAeroClient) Close() {
-	if bc.aeroClient == nil || bc.aeroClient.IsConnected() {
+	if bc.aeroClient == nil || !bc.aeroClient.IsConnected() {
 		return
 	}
 	bc.aeroClient.Close()

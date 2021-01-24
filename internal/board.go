@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/cache"
@@ -30,40 +31,47 @@ func NewBoard(aeroClient aerospike.Client, cache cache.Cache) (*Board, error) {
 	}
 
 	b := &Board{
-		aeroClient: aeroClient,
-		cache:      cache,
+		aeroClient:      aeroClient,
+		cache:           cache,
+		messagesCounter: -1,
 	}
 
-	messagesCount, err := b.MessagesCount()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all messages count: %w", err)
-	}
-	b.messagesCounter = messagesCount
+	// wait a bit for aero to connect
+	// (or a better way - change CheckConnection(...) in board aero client so it signals when it gets connected)
+	time.Sleep(time.Second)
 
-	if messagesCount > 0 {
-		go func() {
-			if err := b.SetAllMessagesCacheFromAero(); err != nil {
-				log.Errorf("failed to set all messages cache from aero cache: %s", err)
-			}
-		}()
-	}
+	messagesCount := b.GetMessagesCounter()
+	log.Tracef("number of board messages: %d", messagesCount)
 
 	return b, nil
 }
 
-func (b *Board) CheckAero() error {
-	if b.aeroClient == nil {
-		return aerospike.ErrAeroClientNil
-	} else if !b.aeroClient.IsConnected() {
-		return aerospike.ErrAeroClientNotConnected
+func (b *Board) GetMessagesCounter() int {
+	if b.messagesCounter >= 0 {
+		return b.messagesCounter
 	}
-	return nil
+
+	// message counter is -1, means we get it for the first time (e.g. aero gained connection after server startup)
+	messagesCount, err := b.MessagesCount()
+	if err != nil {
+		log.Errorf("visitor board failed to get all messages count: %s", err)
+		b.messagesCounter = -1
+	} else {
+		b.messagesCounter = messagesCount
+	}
+
+	if messagesCount > 0 {
+		//go func() {
+		if err := b.setAllMessagesCacheFromAero(); err != nil {
+			log.Errorf("failed to set all messages cache from aero cache: %s", err)
+		}
+		//}()
+	}
+
+	return messagesCount
 }
 
-func (b *Board) SetAllMessagesCacheFromAero() error {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-
+func (b *Board) setAllMessagesCacheFromAero() error {
 	allMessages, err := b.AllMessages(true)
 	if err != nil {
 		return err
@@ -100,14 +108,10 @@ func (b *Board) Close() {
 }
 
 func (b *Board) StoreMessage(message BoardMessage) (int, error) {
-	if err := b.CheckAero(); err != nil {
-		return -1, err
-	}
-
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	newMessageId := b.messagesCounter
+	newMessageId := b.GetMessagesCounter()
 
 	bins := aerospike.AeroBinMap{
 		"id":        newMessageId,
@@ -116,9 +120,9 @@ func (b *Board) StoreMessage(message BoardMessage) (int, error) {
 		"message":   message.Message,
 	}
 
-	log.Debugf("saving message %d: %+v: %s - %s", b.messagesCounter, message.Timestamp, message.Author, message.Message)
+	log.Debugf("saving message %d: %+v: %s - %s", newMessageId, message.Timestamp, message.Author, message.Message)
 
-	messageKey := strconv.Itoa(b.messagesCounter)
+	messageKey := strconv.Itoa(newMessageId)
 	if err := b.aeroClient.Put(messageKey, bins); err != nil {
 		return -1, fmt.Errorf("failed to do aero put: %w", err)
 	}
@@ -126,31 +130,31 @@ func (b *Board) StoreMessage(message BoardMessage) (int, error) {
 	// omg, fix this laziness
 	b.InvalidateCaches()
 
+	// used as an ID for the next message
 	b.messagesCounter++
 
 	return newMessageId, nil
 }
 
 func (b *Board) DeleteMessage(messageId string) (bool, error) {
-	if err := b.CheckAero(); err != nil {
-		return false, err
-	}
 	log.Tracef("board - about to delete message: %s", messageId)
 	b.InvalidateCaches()
 	return b.aeroClient.Delete(messageId)
+
+	// TODO: important - after delete, all messages count is decreased,
+	// so - the next time server is started, new count is taken, but that count will
+	// be less than the last message ID, and might screw up adding new messages
+	// FIXME: try to find a way to fix that (e.g. get last message ID or so)
 }
 
 func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
-	if err := b.CheckAero(); err != nil {
-		return nil, err
-	}
-
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
 	log.Tracef("getting messages page %d, size %d", page, size)
 
-	if size >= b.messagesCounter {
+	messagesCount := b.GetMessagesCounter()
+	if size >= messagesCount {
 		return b.AllMessagesCache(false)
 	}
 
@@ -164,12 +168,12 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 	}
 	// cache miss here, will get messages from aero and cache them
 
-	pages := (b.messagesCounter / size) + 1
+	pages := (messagesCount / size) + 1
 
 	var from, to int64
 	if page >= pages {
-		from = int64(b.messagesCounter - size)
-		to = int64(b.messagesCounter)
+		from = int64(messagesCount - size)
+		to = int64(messagesCount)
 	} else {
 		from = int64((page - 1) * size)
 		to = from + int64(size-1)
@@ -194,9 +198,6 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 }
 
 func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
-	if err := b.CheckAero(); err != nil {
-		return nil, err
-	}
 	log.Tracef("getting messages range from %d to %d", from, to)
 
 	messagesBins, err := b.aeroClient.QueryByRange("id", from, to)
@@ -236,9 +237,6 @@ func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) 
 }
 
 func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
-	if err := b.CheckAero(); err != nil {
-		return nil, err
-	}
 	log.Tracef("getting all messages from Aerospike")
 
 	messagesBins, err := b.aeroClient.ScanAll()
@@ -264,8 +262,5 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 }
 
 func (b *Board) MessagesCount() (int, error) {
-	if err := b.CheckAero(); err != nil {
-		return -1, err
-	}
 	return b.aeroClient.CountAll()
 }
