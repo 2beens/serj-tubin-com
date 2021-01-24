@@ -15,11 +15,11 @@ import (
 )
 
 type BoardHandler struct {
-	board        *Board
+	board        *BoardApi
 	loginSession *LoginSession
 }
 
-func NewBoardHandler(router *mux.Router, board *Board, loginSession *LoginSession) *BoardHandler {
+func NewBoardHandler(boardRouter *mux.Router, board *BoardApi, loginSession *LoginSession) *BoardHandler {
 	handler := &BoardHandler{
 		board:        board,
 		loginSession: loginSession,
@@ -223,10 +223,10 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 			http.Error(w, "invalid limit provided", http.StatusBadRequest)
 			return
 		}
-		log.Printf("getting last %d board messages ... ", limit)
+		log.Printf("getting last %d boardApi messages ... ", limit)
 	} else {
 		limit = 0
-		log.Print("getting all board messages ... ")
+		log.Print("getting all boardApi messages ... ")
 	}
 
 	allBoardMessages, err := handler.board.AllMessagesCache(true)
@@ -278,13 +278,13 @@ func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handl
 
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 			if authToken == "" || handler.loginSession.Token == "" {
-				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[missing token] [boardApi handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
 
 			if handler.loginSession.Token != authToken {
-				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[invalid token] [boardApi handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}

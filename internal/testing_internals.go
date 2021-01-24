@@ -17,7 +17,7 @@ const (
 type testingInternals struct {
 	// board
 	aeroTestClient       *aerospike.BoardAeroTestClient
-	board                *Board
+	board                *BoardApi
 	boardCache           *cache.BoardTestCache
 	initialBoardMessages map[int]*BoardMessage
 	lastInitialMessage   *BoardMessage
@@ -65,7 +65,7 @@ func newTestingInternals() *testingInternals {
 	aeroClient := aerospike.NewBoardAeroTestClient()
 	boardCache := cache.NewBoardTestCache()
 
-	board, err := NewBoard(aeroClient, boardCache)
+	board, err := NewBoardApi(aeroClient, boardCache)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func newTestingInternals() *testingInternals {
 	// indication of a design smell
 	//for _, m := range initialBoardMessages {
 	//	fmt.Printf("++ %d %s: %d\n", m.ID, m.Author, m.Timestamp)
-	//	if err := board.StoreMessage(*m); err != nil {
+	//	if err := boardApi.StoreMessage(*m); err != nil {
 	//		panic(err)
 	//	}
 	//}

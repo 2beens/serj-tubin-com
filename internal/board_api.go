@@ -16,7 +16,7 @@ const (
 	AllMessagesCacheKey = "all-messages"
 )
 
-type Board struct {
+type BoardApi struct {
 	aeroClient aerospike.Client
 
 	messagesCounter int
@@ -25,28 +25,28 @@ type Board struct {
 	mutex sync.RWMutex
 }
 
-func NewBoard(aeroClient aerospike.Client, cache cache.Cache) (*Board, error) {
+func NewBoardApi(aeroClient aerospike.Client, cache cache.Cache) (*BoardApi, error) {
 	if aeroClient == nil {
 		return nil, aerospike.ErrAeroClientNil
 	}
 
-	b := &Board{
+	b := &BoardApi{
 		aeroClient:      aeroClient,
 		cache:           cache,
 		messagesCounter: -1,
 	}
 
 	// wait a bit for aero to connect
-	// (or a better way - change CheckConnection(...) in board aero client so it signals when it gets connected)
+	// (or a better way - change CheckConnection(...) in boardApi aero client so it signals when it gets connected)
 	time.Sleep(time.Second)
 
 	messagesCount := b.GetMessagesCounter()
-	log.Tracef("number of board messages: %d", messagesCount)
+	log.Tracef("number of boardApi messages: %d", messagesCount)
 
 	return b, nil
 }
 
-func (b *Board) GetMessagesCounter() int {
+func (b *BoardApi) GetMessagesCounter() int {
 	if b.messagesCounter >= 0 {
 		return b.messagesCounter
 	}
@@ -54,7 +54,7 @@ func (b *Board) GetMessagesCounter() int {
 	// message counter is -1, means we get it for the first time (e.g. aero gained connection after server startup)
 	messagesCount, err := b.MessagesCount()
 	if err != nil {
-		log.Errorf("visitor board failed to get all messages count: %s", err)
+		log.Errorf("visitor boardApi failed to get all messages count: %s", err)
 		b.messagesCounter = -1
 	} else {
 		b.messagesCounter = messagesCount
@@ -71,7 +71,7 @@ func (b *Board) GetMessagesCounter() int {
 	return messagesCount
 }
 
-func (b *Board) setAllMessagesCacheFromAero() error {
+func (b *BoardApi) setAllMessagesCacheFromAero() error {
 	allMessages, err := b.AllMessages(true)
 	if err != nil {
 		return err
@@ -84,30 +84,30 @@ func (b *Board) setAllMessagesCacheFromAero() error {
 	return nil
 }
 
-func (b *Board) CacheBoardMessages(cacheKey string, messages []*BoardMessage) {
+func (b *BoardApi) CacheBoardMessages(cacheKey string, messages []*BoardMessage) {
 	if !b.cache.Set(cacheKey, messages, int64(len(messages)*3)) {
 		log.Errorf("failed to set cache for [%s]... for some reason", cacheKey)
 	} else {
-		log.Debugf("board messages cache set for [%s]", cacheKey)
+		log.Debugf("boardApi messages cache set for [%s]", cacheKey)
 	}
 }
 
-func (b *Board) MessagesPageCacheKey(page, size int) string {
+func (b *BoardApi) MessagesPageCacheKey(page, size int) string {
 	return fmt.Sprintf("messages::%d::%d", page, size)
 }
 
-func (b *Board) InvalidateCaches() {
+func (b *BoardApi) InvalidateCaches() {
 	log.Tracef("invalidating cache")
 	b.cache.Clear()
 }
 
-func (b *Board) Close() {
+func (b *BoardApi) Close() {
 	if b != nil && b.aeroClient != nil {
 		b.aeroClient.Close()
 	}
 }
 
-func (b *Board) StoreMessage(message BoardMessage) (int, error) {
+func (b *BoardApi) StoreMessage(message BoardMessage) (int, error) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
@@ -136,8 +136,8 @@ func (b *Board) StoreMessage(message BoardMessage) (int, error) {
 	return newMessageId, nil
 }
 
-func (b *Board) DeleteMessage(messageId string) (bool, error) {
-	log.Tracef("board - about to delete message: %s", messageId)
+func (b *BoardApi) DeleteMessage(messageId string) (bool, error) {
+	log.Tracef("boardApi - about to delete message: %s", messageId)
 	b.InvalidateCaches()
 	return b.aeroClient.Delete(messageId)
 
@@ -147,7 +147,7 @@ func (b *Board) DeleteMessage(messageId string) (bool, error) {
 	// FIXME: try to find a way to fix that (e.g. get last message ID or so)
 }
 
-func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
+func (b *BoardApi) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
@@ -197,7 +197,7 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 	return messages, nil
 }
 
-func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
+func (b *BoardApi) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 	log.Tracef("getting messages range from %d to %d", from, to)
 
 	messagesBins, err := b.aeroClient.QueryByRange("id", from, to)
@@ -216,7 +216,7 @@ func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 	return messages, nil
 }
 
-func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
+func (b *BoardApi) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
 	if allMessagesCached, found := b.cache.Get(AllMessagesCacheKey); found {
 		if allMessages, ok := allMessagesCached.([]*BoardMessage); ok {
 			log.Tracef("all %d messages found in cache", len(allMessages))
@@ -236,7 +236,7 @@ func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) 
 	return allMessages, nil
 }
 
-func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
+func (b *BoardApi) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 	log.Tracef("getting all messages from Aerospike")
 
 	messagesBins, err := b.aeroClient.ScanAll()
@@ -261,6 +261,6 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 	return messages, nil
 }
 
-func (b *Board) MessagesCount() (int, error) {
+func (b *BoardApi) MessagesCount() (int, error) {
 	return b.aeroClient.CountAll()
 }

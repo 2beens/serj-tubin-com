@@ -61,7 +61,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 	assert.Equal(t, "127.0.0.2", geoIpInfo.Ip)
 
 	// again - has to be taken from the cache
-	// TODO: maybe abstract the cache away and test it, like in the board_test.go
+	// TODO: maybe abstract the cache away and test it, like in the board_api_test.go
 	geoIpInfo, err = geoIp.GetRequestGeoInfo(req)
 	require.NoError(t, err)
 	require.NotNil(t, geoIpInfo)

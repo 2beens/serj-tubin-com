@@ -255,7 +255,7 @@ func setupAeroDb(namespace, set, host string, port int) error {
 	// TODO: maybe drop index first ?
 	// aeroClient.DropIndex(...)
 
-	if err := createBoardMessagesSecondaryIndex(aeroClient, namespace, set); err != nil {
+	if err := createBoardMessagesSecondaryIdIndex(aeroClient, namespace, set); err != nil {
 		return err
 	}
 
@@ -264,7 +264,7 @@ func setupAeroDb(namespace, set, host string, port int) error {
 	return nil
 }
 
-func createBoardMessagesSecondaryIndex(aeroClient *as.Client, namespace, set string) error {
+func createBoardMessagesSecondaryIdIndex(aeroClient *as.Client, namespace, set string) error {
 	task, err := aeroClient.CreateIndex(
 		nil,
 		namespace,

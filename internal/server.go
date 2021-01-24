@@ -53,17 +53,17 @@ func NewServer(
 ) (*Server, error) {
 	boardAeroClient, err := aerospike.NewBoardAeroClient(aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create board aero client: %w", err)
+		return nil, fmt.Errorf("failed to create boardApi aero client: %w", err)
 	}
 
 	boardCache, err := cache.NewBoardCache()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create board cache: %w", err)
+		return nil, fmt.Errorf("failed to create boardApi cache: %w", err)
 	}
 
-	board, err := NewBoard(boardAeroClient, boardCache)
+	boardApi, err := NewBoardApi(boardAeroClient, boardCache)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create visitor board: %s", err)
+		return nil, fmt.Errorf("failed to create visitor boardApi: %s", err)
 	}
 
 	if openWeatherApiKey == "" {
@@ -88,7 +88,7 @@ func NewServer(
 		browserRequestsSecret: browserRequestsSecret,
 		muteRequestLogs:       false,
 		geoIp:                 NewGeoIp("https://freegeoip.app", http.DefaultClient),
-		board:                 board,
+		board:                 boardApi,
 		netlogVisitsApi:       netlogVisitsApi,
 		versionInfo:           versionInfo,
 		loginSession:          &LoginSession{},
@@ -117,8 +117,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("blog handler is nil")
 	}
 
-	if NewBoardHandler(boardRouter, s.board, s.loginSession) == nil {
-		return nil, errors.New("board handler is nil")
+	if NewBoardHandler(boardRouter, s.boardApi, s.loginSession) == nil {
+		return nil, errors.New("boardApi handler is nil")
 	}
 
 	if weatherHandler, err := NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
@@ -174,7 +174,7 @@ func (s *Server) Serve(port int) {
 func (s *Server) gracefulShutdown(httpServer *http.Server) {
 	log.Debug("graceful shutdown initiated ...")
 
-	s.board.Close()
+	s.boardApi.Close()
 
 	if s.blogApi != nil {
 		s.blogApi.CloseDB()

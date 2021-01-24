@@ -12,12 +12,12 @@ import (
 )
 
 func TestNewBoard(t *testing.T) {
-	board, err := NewBoard(nil, cache.NewBoardTestCache())
+	board, err := NewBoardApi(nil, cache.NewBoardTestCache())
 	assert.Equal(t, aerospike.ErrAeroClientNil, err)
 	assert.Nil(t, board)
 
 	aeroTestClient := aerospike.NewBoardAeroTestClient()
-	board, err = NewBoard(aeroTestClient, cache.NewBoardTestCache())
+	board, err = NewBoardApi(aeroTestClient, cache.NewBoardTestCache())
 	require.NoError(t, err)
 	require.NotNil(t, board)
 }
