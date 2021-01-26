@@ -84,7 +84,8 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 	w.Header().Add("Content-Type", "application/json")
 
 	if len(visits) == 0 {
-		WriteResponse(w, "application/json", "[]")
+		resJson := fmt.Sprintf(`{"visits": %s, "total": 0}`, "[]")
+		WriteResponseBytes(w, "application/json", []byte(resJson))
 		return
 	}
 
@@ -103,7 +104,6 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 	}
 
 	resJson := fmt.Sprintf(`{"visits": %s, "total": %d}`, visitsJson, allVisitsCount)
-
 	WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
