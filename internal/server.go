@@ -25,7 +25,7 @@ const (
 )
 
 type Server struct {
-	blogApi         blog.BlogApi
+	blogApi         blog.Api
 	geoIp           *GeoIp
 	quotesManager   *QuotesManager
 	board           *Board

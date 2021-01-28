@@ -24,11 +24,9 @@ func NewVisitApi() (*VisitApi, error) {
 		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
 	}
 
-	visitApi := &VisitApi{
+	return &VisitApi{
 		db: dbpool,
-	}
-
-	return visitApi, nil
+	}, nil
 }
 
 func (api *VisitApi) CloseDB() {

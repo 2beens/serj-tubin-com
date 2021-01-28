@@ -14,13 +14,13 @@ import (
 )
 
 type BlogHandler struct {
-	blogApi      blog.BlogApi
+	blogApi      blog.Api
 	loginSession *LoginSession
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
-	blogApi blog.BlogApi,
+	blogApi blog.Api,
 	session *LoginSession,
 ) *BlogHandler {
 	handler := &BlogHandler{

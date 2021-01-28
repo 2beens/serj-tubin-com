@@ -1,6 +1,6 @@
 package blog
 
-type BlogApi interface {
+type Api interface {
 	CloseDB()
 	AddBlog(blog *Blog) error
 	UpdateBlog(blog *Blog) error

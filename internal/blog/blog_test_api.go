@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var _ BlogApi = (*TestApi)(nil)
+var _ Api = (*TestApi)(nil)
 
 type TestApi struct {
 	Posts map[int]*Blog
