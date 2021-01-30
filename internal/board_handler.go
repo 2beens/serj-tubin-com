@@ -19,7 +19,7 @@ type BoardHandler struct {
 	loginSession *LoginSession
 }
 
-func NewBoardHandler(boardRouter *mux.Router, board *BoardApi, loginSession *LoginSession) *BoardHandler {
+func NewBoardHandler(router *mux.Router, board *BoardApi, loginSession *LoginSession) *BoardHandler {
 	handler := &BoardHandler{
 		board:        board,
 		loginSession: loginSession,

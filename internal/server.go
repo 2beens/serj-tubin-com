@@ -27,7 +27,7 @@ type Server struct {
 	blogApi         blog.Api
 	geoIp           *GeoIp
 	quotesManager   *QuotesManager
-	board           *Board
+	boardApi        *BoardApi
 	netlogVisitsApi *netlog.PsqlApi
 
 	browserRequestsSecret string // used in netlog, when posting new visit
@@ -88,7 +88,7 @@ func NewServer(
 		browserRequestsSecret: browserRequestsSecret,
 		muteRequestLogs:       false,
 		geoIp:                 NewGeoIp("https://freegeoip.app", http.DefaultClient),
-		board:                 boardApi,
+		boardApi:              boardApi,
 		netlogVisitsApi:       netlogVisitsApi,
 		versionInfo:           versionInfo,
 		loginSession:          &LoginSession{},
