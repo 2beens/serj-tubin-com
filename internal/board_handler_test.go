@@ -220,7 +220,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messagesCounter)
+	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messageIdCounter)
 
 	// session token missing
 	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
@@ -229,7 +229,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messagesCounter)
+	assert.Equal(t, len(internals.initialBoardMessages), internals.board.messageIdCounter)
 
 	// correct secret - messages should get removed
 	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
@@ -347,7 +347,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "added:5", rr.Body.String())
-	assert.Equal(t, len(internals.initialBoardMessages)+1, internals.board.messagesCounter)
+	assert.Equal(t, len(internals.initialBoardMessages)+1, internals.board.messageIdCounter)
 	assert.Equal(t, len(internals.initialBoardMessages)+1, len(internals.aeroTestClient.AeroBinMaps))
 
 	// add new message with empty author
@@ -360,7 +360,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "added:6", rr.Body.String())
-	assert.Equal(t, len(internals.initialBoardMessages)+2, internals.board.messagesCounter)
+	assert.Equal(t, len(internals.initialBoardMessages)+2, internals.board.messageIdCounter)
 	assert.Equal(t, len(internals.initialBoardMessages)+2, len(internals.aeroTestClient.AeroBinMaps))
 
 	// check messages created

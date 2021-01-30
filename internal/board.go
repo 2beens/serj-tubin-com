@@ -17,11 +17,8 @@ const (
 
 type Board struct {
 	aeroClient aerospike.Client
-
-	messagesCounter int
-	cache           cache.Cache
-
-	mutex sync.RWMutex
+	cache      cache.Cache
+	mutex      sync.RWMutex
 }
 
 func NewBoard(aeroClient aerospike.Client, cache cache.Cache) (*Board, error) {
@@ -34,11 +31,16 @@ func NewBoard(aeroClient aerospike.Client, cache cache.Cache) (*Board, error) {
 		cache:      cache,
 	}
 
+	if messageIdCounter, err := aeroClient.GetMessageIdCounter(); err != nil {
+		log.Errorf("failed to get message id counter: %s", err)
+	} else {
+		log.Debugf("visitor board, received message id counter: %d", messageIdCounter)
+	}
+
 	messagesCount, err := b.MessagesCount()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all messages count: %w", err)
 	}
-	b.messagesCounter = messagesCount
 
 	if messagesCount > 0 {
 		go func() {
@@ -99,7 +101,7 @@ func (b *Board) Close() {
 	}
 }
 
-func (b *Board) StoreMessage(message BoardMessage) (int, error) {
+func (b *Board) NewMessage(message BoardMessage) (int, error) {
 	if err := b.CheckAero(); err != nil {
 		return -1, err
 	}
@@ -107,7 +109,10 @@ func (b *Board) StoreMessage(message BoardMessage) (int, error) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	newMessageId := b.messagesCounter
+	newMessageId, err := b.aeroClient.IncrementMessageIdCounter(1)
+	if err != nil {
+		return -1, fmt.Errorf("failed to get message id counter: %w", err)
+	}
 
 	bins := aerospike.AeroBinMap{
 		"id":        newMessageId,
@@ -116,17 +121,15 @@ func (b *Board) StoreMessage(message BoardMessage) (int, error) {
 		"message":   message.Message,
 	}
 
-	log.Debugf("saving message %d: %+v: %s - %s", b.messagesCounter, message.Timestamp, message.Author, message.Message)
+	log.Debugf("saving message %d: %+v: %s - %s", newMessageId, message.Timestamp, message.Author, message.Message)
 
-	messageKey := strconv.Itoa(b.messagesCounter)
+	messageKey := strconv.Itoa(newMessageId)
 	if err := b.aeroClient.Put(messageKey, bins); err != nil {
 		return -1, fmt.Errorf("failed to do aero put: %w", err)
 	}
 
 	// omg, fix this laziness
 	b.InvalidateCaches()
-
-	b.messagesCounter++
 
 	return newMessageId, nil
 }
@@ -150,7 +153,12 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 
 	log.Tracef("getting messages page %d, size %d", page, size)
 
-	if size >= b.messagesCounter {
+	totalMessagesCount, err := b.MessagesCount()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all messages count: %w", err)
+	}
+
+	if size >= totalMessagesCount {
 		return b.AllMessagesCache(false)
 	}
 
@@ -164,12 +172,12 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 	}
 	// cache miss here, will get messages from aero and cache them
 
-	pages := (b.messagesCounter / size) + 1
+	pages := (totalMessagesCount / size) + 1
 
 	var from, to int64
 	if page >= pages {
-		from = int64(b.messagesCounter - size)
-		to = int64(b.messagesCounter)
+		from = int64(totalMessagesCount - size)
+		to = int64(totalMessagesCount)
 	} else {
 		from = int64((page - 1) * size)
 		to = from + int64(size-1)

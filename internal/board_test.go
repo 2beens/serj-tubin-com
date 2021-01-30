@@ -209,7 +209,7 @@ func TestBoard_StoreMessage(t *testing.T) {
 		Timestamp: now.Unix(),
 		Message:   "lixo",
 	}
-	newId1, err := board.StoreMessage(m1)
+	newId1, err := board.NewMessage(m1)
 	require.NoError(t, err)
 	assert.Equal(t, m1.ID, newId1)
 
@@ -219,7 +219,7 @@ func TestBoard_StoreMessage(t *testing.T) {
 		Timestamp: now.Add(-time.Hour).Unix(),
 		Message:   "a message",
 	}
-	newId2, err := board.StoreMessage(m2)
+	newId2, err := board.NewMessage(m2)
 	require.NoError(t, err)
 	assert.Equal(t, m2.ID, newId2)
 

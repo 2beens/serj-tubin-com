@@ -9,6 +9,9 @@ type Client interface {
 	ScanAll() ([]AeroBinMap, error)
 	CountAll() (int, error)
 
+	GetMessageIdCounter() (int, error)
+	IncrementMessageIdCounter(increment int) (int, error)
+
 	IsConnected() bool
 	Close()
 }
