@@ -188,7 +188,7 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 		Message:   message,
 	}
 
-	id, err := handler.board.StoreMessage(boardMessage)
+	id, err := handler.board.NewMessage(boardMessage)
 	if err != nil {
 		log.Errorf("store new message error: %s", err)
 		http.Error(w, "failed to store message", http.StatusInternalServerError)

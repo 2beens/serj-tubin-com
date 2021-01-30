@@ -21,9 +21,10 @@ var (
 // aerospike data model (namespace, set, record, bin, ...) infos:
 // https://aerospike.com/docs/architecture/data-model.html
 type BoardAeroClient struct {
-	namespace  string
-	set        string
-	aeroClient *as.Client
+	namespace   string
+	set         string
+	metaDataSet string // keep things like ID counter here, etc.
+	aeroClient  *as.Client
 }
 
 func NewBoardAeroClient(aeroClient *as.Client, namespace, set string) (*BoardAeroClient, error) {
@@ -35,10 +36,60 @@ func NewBoardAeroClient(aeroClient *as.Client, namespace, set string) (*BoardAer
 	}
 
 	return &BoardAeroClient{
-		namespace:  namespace,
-		set:        set,
-		aeroClient: aeroClient,
+		namespace:   namespace,
+		set:         set,
+		metaDataSet: set + "-metadata",
+		aeroClient:  aeroClient,
 	}, nil
+}
+
+func (bc *BoardAeroClient) GetMessageIdCounter() (int, error) {
+	key, err := as.NewKey(bc.namespace, bc.metaDataSet, "message-id-counter")
+	if err != nil {
+		return -1, err
+	}
+
+	record, err := bc.aeroClient.Get(nil, key)
+	if err != nil {
+		return -1, err
+	}
+
+	counterRaw, ok := record.Bins["idCounter"]
+	if !ok {
+		return -1, errors.New("id counter not existing")
+	}
+
+	counter, ok := counterRaw.(int)
+	if !ok {
+		return -1, errors.New("id counter not an integer")
+	}
+
+	return counter, nil
+}
+
+func (bc *BoardAeroClient) IncrementMessageIdCounter(increment int) (int, error) {
+	key, err := as.NewKey(bc.namespace, bc.metaDataSet, "message-id-counter")
+	if err != nil {
+		return -1, err
+	}
+
+	counterBin := as.NewBin("idCounter", increment)
+	record, err := bc.aeroClient.Operate(nil, key, as.AddOp(counterBin), as.GetOp())
+	if err != nil {
+		return -1, fmt.Errorf("failed to call aero operate: %w", err)
+	}
+
+	counterRaw, ok := record.Bins["idCounter"]
+	if !ok {
+		return -1, errors.New("id counter not existing")
+	}
+
+	counter, ok := counterRaw.(int)
+	if !ok {
+		return -1, errors.New("id counter not an integer")
+	}
+
+	return counter, nil
 }
 
 func (bc *BoardAeroClient) Put(key string, binMap AeroBinMap) error {

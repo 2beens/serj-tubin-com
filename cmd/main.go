@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -29,6 +30,7 @@ func main() {
 
 	aeroSetup := flag.Bool("aero-setup", false, "run aerospike sql setup")
 	aeroDataFix := flag.Bool("aero-data-fix", false, "run aerospike sql data fixing / migration")
+	aeroMessageIdCounterSet := flag.Bool("aero-msg-id-counter-set", false, "set / fix the id counter for visitor board messages")
 
 	flag.Parse()
 
@@ -37,14 +39,21 @@ func main() {
 			fmt.Printf("aero setup failed: %s\n", err)
 			os.Exit(1)
 		}
-		fmt.Println("\naero setup complete")
+		fmt.Println("\naero setup completed")
 		os.Exit(0)
 	} else if *aeroDataFix {
 		if err := fixAerospikeData(*aeroNamespace, *aeroMessagesSet, *aeroHost, *aeroPort); err != nil {
 			fmt.Printf("aero data fix failed: %s\n", err)
 			os.Exit(1)
 		}
-		fmt.Println("\naero data fix complete")
+		fmt.Println("\naero data fix completed")
+		os.Exit(0)
+	} else if *aeroMessageIdCounterSet {
+		if err := fixAerospikeMessageIdCounter(*aeroNamespace, *aeroMessagesSet, *aeroHost, *aeroPort); err != nil {
+			fmt.Printf("aero message id counter fix / set failed: %s\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("\naero message id counter fix / set completed")
 		os.Exit(0)
 	}
 
@@ -146,6 +155,120 @@ func loggingSetup(logFileName string, logLevel string) {
 	log.SetOutput(logFile)
 }
 
+func setupAeroDb(namespace, set, host string, port int) error {
+	fmt.Println("staring aero setup ...")
+
+	aeroClient, err := as.NewClient(host, port)
+	if err != nil {
+		return fmt.Errorf("failed to create aero client: %w", err)
+	}
+
+	// TODO: maybe drop index first ?
+	// aeroClient.DropIndex(...)
+
+	if err := createBoardMessagesSecondaryIndex(aeroClient, namespace, set); err != nil {
+		return err
+	}
+
+	// other setup functions when/if needed:
+
+	return nil
+}
+
+func createBoardMessagesSecondaryIndex(aeroClient *as.Client, namespace, set string) error {
+	task, err := aeroClient.CreateIndex(
+		nil,
+		namespace,
+		set,
+		"id_index",
+		"id",
+		as.NUMERIC,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get create index task: %w", err)
+	}
+
+	waitSecondsMax := 20
+	for i := 0; i < waitSecondsMax; i++ {
+		if done, err := task.IsDone(); err != nil {
+			fmt.Println(".")
+		} else if done {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err = <-task.OnComplete(); err != nil {
+		return fmt.Errorf("failed to create index: %w", err)
+	}
+
+	return nil
+}
+
+func fixAerospikeMessageIdCounter(namespace, set, host string, port int) error {
+	fmt.Printf("staring aero message id counter fix [%s : %s] ...\n", namespace, set)
+
+	aeroClient, err := as.NewClient(host, port)
+	if err != nil {
+		return fmt.Errorf("failed to create aero client: %w", err)
+	}
+
+	spolicy := as.NewScanPolicy()
+	spolicy.ConcurrentNodes = true
+	spolicy.Priority = as.LOW
+	spolicy.IncludeBinData = false
+
+	recs, err := aeroClient.ScanAll(spolicy, namespace, set)
+	if err != nil {
+		return err
+	}
+
+	count := 0
+	for range recs.Results() {
+		count++
+	}
+
+	fmt.Printf("trying to set message id counter to: %d\n", count+1)
+
+	metadataSet := set + "-metadata"
+	updatedIdCounter, err := setMessageIdCounter(namespace, metadataSet, aeroClient, count+1)
+	if err != nil {
+		return fmt.Errorf("failed to set message id counter: %w", err)
+	}
+
+	fmt.Printf("message id counter set to: %d\n", updatedIdCounter)
+
+	return nil
+}
+
+func setMessageIdCounter(namespace, set string, aeroClient *as.Client, increment int) (int, error) {
+	messageIdCounterKey := "message-id-counter"
+
+	key, err := as.NewKey(namespace, set, messageIdCounterKey)
+	if err != nil {
+		return -1, err
+	}
+
+	counterBin := as.NewBin("idCounter", increment)
+	record, err := aeroClient.Operate(nil, key, as.AddOp(counterBin), as.GetOp())
+	if err != nil {
+		return -1, fmt.Errorf("failed to call aero operate: %w", err)
+	}
+
+	counterRaw, ok := record.Bins["idCounter"]
+	if !ok {
+		log.Printf("\n%+v\n\n", record.Bins)
+		return -1, errors.New("id counter not existing")
+	}
+
+	counter, ok := counterRaw.(int)
+	if !ok {
+		return -1, errors.New("id counter not an integer")
+	}
+
+	return counter, nil
+}
+
 func fixAerospikeData(namespace, set, host string, port int) error {
 	fmt.Println("staring aero data fix ...")
 
@@ -239,56 +362,6 @@ func fixAerospikeData(namespace, set, host string, port int) error {
 		} else {
 			fmt.Printf(" > found and deleted: %t\n", deleted)
 		}
-	}
-
-	return nil
-}
-
-func setupAeroDb(namespace, set, host string, port int) error {
-	fmt.Println("staring aero setup ...")
-
-	aeroClient, err := as.NewClient(host, port)
-	if err != nil {
-		return fmt.Errorf("failed to create aero client: %w", err)
-	}
-
-	// TODO: maybe drop index first ?
-	// aeroClient.DropIndex(...)
-
-	if err := createBoardMessagesSecondaryIndex(aeroClient, namespace, set); err != nil {
-		return err
-	}
-
-	// other setup functions when/if needed:
-
-	return nil
-}
-
-func createBoardMessagesSecondaryIndex(aeroClient *as.Client, namespace, set string) error {
-	task, err := aeroClient.CreateIndex(
-		nil,
-		namespace,
-		set,
-		"id_index",
-		"id",
-		as.NUMERIC,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to get create index task: %w", err)
-	}
-
-	waitSecondsMax := 20
-	for i := 0; i < waitSecondsMax; i++ {
-		if done, err := task.IsDone(); err != nil {
-			fmt.Println(".")
-		} else if done {
-			break
-		}
-		time.Sleep(time.Second)
-	}
-
-	if err = <-task.OnComplete(); err != nil {
-		return fmt.Errorf("failed to create index: %w", err)
 	}
 
 	return nil
