@@ -114,11 +114,14 @@ func (tc *BoardAeroTestClient) CountAll() (int, error) {
 }
 
 func (tc *BoardAeroTestClient) GetMessageIdCounter() (int, error) {
-	panic("not implemented")
+	if tc.AeroBinMaps == nil {
+		return -1, errors.New("aero bin maps nil")
+	}
+	return len(tc.AeroBinMaps), nil
 }
 
 func (tc *BoardAeroTestClient) IncrementMessageIdCounter(increment int) (int, error) {
-	panic("not implemented")
+	return len(tc.AeroBinMaps), nil
 }
 
 func (tc *BoardAeroTestClient) IsConnected() bool {
