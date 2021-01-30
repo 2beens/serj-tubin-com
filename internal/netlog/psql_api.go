@@ -10,11 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type VisitApi struct {
+type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewVisitApi() (*VisitApi, error) {
+func NewNetlogPsqlApi() (*PsqlApi, error) {
 	ctx := context.Background()
 
 	// TODO: place in config
@@ -24,18 +24,18 @@ func NewVisitApi() (*VisitApi, error) {
 		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
 	}
 
-	return &VisitApi{
+	return &PsqlApi{
 		db: dbpool,
 	}, nil
 }
 
-func (api *VisitApi) CloseDB() {
+func (api *PsqlApi) CloseDB() {
 	if api.db != nil {
 		api.db.Close()
 	}
 }
 
-func (api *VisitApi) AddVisit(visit *Visit) error {
+func (api *PsqlApi) AddVisit(visit *Visit) error {
 	if visit.URL == "" || visit.Timestamp.IsZero() {
 		return errors.New("visit url or timestamp empty")
 	}
@@ -65,7 +65,7 @@ func (api *VisitApi) AddVisit(visit *Visit) error {
 	return errors.New("unexpected error, failed to insert visit")
 }
 
-func (api *VisitApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
+func (api *PsqlApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
 	sbQueryLike := getQueryLikeCondition(keywords)
 	query := fmt.Sprintf(`
 		SELECT
@@ -111,11 +111,11 @@ func (api *VisitApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
 	return visits, nil
 }
 
-func (api *VisitApi) CountAll() (int, error) {
+func (api *PsqlApi) CountAll() (int, error) {
 	return api.Count([]string{})
 }
 
-func (api *VisitApi) Count(keywords []string) (int, error) {
+func (api *PsqlApi) Count(keywords []string) (int, error) {
 	sbQueryLike := getQueryLikeCondition(keywords)
 	query := fmt.Sprintf(`
 		SELECT COUNT(*)
@@ -147,7 +147,7 @@ func (api *VisitApi) Count(keywords []string) (int, error) {
 	return -1, errors.New("unexpected error, failed to get netlog visits count")
 }
 
-func (api *VisitApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, error) {
+func (api *PsqlApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, error) {
 	limit := size
 	offset := (page - 1) * size
 	allVisitsCount, err := api.CountAll()

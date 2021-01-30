@@ -15,13 +15,13 @@ import (
 
 type NetlogHandler struct {
 	browserRequestsSecret string
-	visitApi              *netlog.VisitApi
+	netlogApi             netlog.Api
 	loginSession          *LoginSession
 }
 
-func NewNetlogHandler(router *mux.Router, visitApi *netlog.VisitApi, browserRequestsSecret string, loginSession *LoginSession) *NetlogHandler {
+func NewNetlogHandler(router *mux.Router, netlogApi netlog.Api, browserRequestsSecret string, loginSession *LoginSession) *NetlogHandler {
 	handler := &NetlogHandler{
-		visitApi:              visitApi,
+		netlogApi:             netlogApi,
 		browserRequestsSecret: browserRequestsSecret,
 		loginSession:          loginSession,
 	}
@@ -74,7 +74,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	visits, err := handler.visitApi.GetVisitsPage(keywords, page, size)
+	visits, err := handler.netlogApi.GetVisitsPage(keywords, page, size)
 	if err != nil {
 		log.Errorf("get visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -96,7 +96,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	allVisitsCount, err := handler.visitApi.Count(keywords)
+	allVisitsCount, err := handler.netlogApi.Count(keywords)
 	if err != nil {
 		log.Errorf("get netlog visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -143,7 +143,7 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 		Source:    source,
 		Timestamp: time.Unix(timestamp/1000, 0),
 	}
-	if err := handler.visitApi.AddVisit(visit); err != nil {
+	if err := handler.netlogApi.AddVisit(visit); err != nil {
 		log.Printf("failed to add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		return
@@ -180,7 +180,7 @@ func (handler *NetlogHandler) handleSearch(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	visits, err := handler.visitApi.GetVisits(keywords, limit)
+	visits, err := handler.netlogApi.GetVisits(keywords, limit)
 	if err != nil {
 		log.Errorf("search visits error: %s", err)
 		http.Error(w, "failed to search for visits", http.StatusInternalServerError)
@@ -218,7 +218,7 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 
 	log.Printf("getting last %d netlog visits ... ", limit)
 
-	visits, err := handler.visitApi.GetVisits([]string{}, limit)
+	visits, err := handler.netlogApi.GetVisits([]string{}, limit)
 	if err != nil {
 		log.Errorf("get all visits error: %s", err)
 		http.Error(w, "failed to get all visits", http.StatusInternalServerError)

@@ -29,7 +29,7 @@ type Server struct {
 	geoIp           *GeoIp
 	quotesManager   *QuotesManager
 	board           *Board
-	netlogVisitsApi *netlog.VisitApi
+	netlogVisitsApi *netlog.PsqlApi
 
 	browserRequestsSecret string // used in netlog, when posting new visit
 
@@ -84,7 +84,7 @@ func NewServer(
 		log.Fatalf("failed to create blog api: %s", err)
 	}
 
-	netlogVisitsApi, err := netlog.NewVisitApi()
+	netlogVisitsApi, err := netlog.NewNetlogPsqlApi()
 	if err != nil {
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
