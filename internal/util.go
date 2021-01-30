@@ -4,9 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
@@ -55,6 +58,33 @@ func HashPassword(password string) (string, error) {
 func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+func ReadUserIP(r *http.Request) (string, error) {
+	ipAddr := r.Header.Get("X-Real-Ip")
+	if ipAddr == "" {
+		ipAddr = r.Header.Get("X-Forwarded-For")
+	}
+	if ipAddr == "" {
+		ipAddr = r.RemoteAddr
+	}
+
+	// used in development
+	if strings.HasPrefix(ipAddr, "127.0.0.1:") {
+		log.Debugf("read user IP: returning development 127.0.0.1 / Berlin")
+		return "127.0.0.1", nil
+	}
+
+	ip := net.ParseIP(ipAddr)
+	if ip == nil {
+		return "", fmt.Errorf("ip addr %s is invalid", ipAddr)
+	}
+
+	if strings.Contains(ipAddr, ":") {
+		ipAddr = strings.Split(ipAddr, ":")[0]
+	}
+
+	return ipAddr, nil
 }
 
 // GenerateRandomBytes returns securely generated random bytes.

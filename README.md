@@ -2,7 +2,7 @@
 [![Actions Status](https://github.com/2beens/serj-tubin-com/workflows/CI/badge.svg)](https://github.com/2beens/serj-tubin-com/actions)
 [![Actions Status](https://github.com/2beens/serj-tubin-com/workflows/CodeQL/badge.svg)](https://github.com/2beens/serj-tubin-com/actions)
 
-Personal garbage ♻️ and testing site 🕵️‍♀️
+Personal tech sandbox and testing site 🕵️‍♀️
 
 Hosted and available at: https://www.serj-tubin.com/
 
@@ -17,6 +17,6 @@ Hosted and available at: https://www.serj-tubin.com/
 * I use GitHub Workflow Actions for a part of CI
     * unit testing
     * static code analysis
-* I use PostgreSQL to store blog posts
+* I use PostgreSQL to store blog posts and personal web history (netlog)
 * I use Vue to make the frontend part
     * source @ https://github.com/2beens/serj-tubin-vue

@@ -72,6 +72,11 @@ func main() {
 		return
 	}
 
+	browserRequestsSecret := os.Getenv("SERJ_BROWSER_REQ_SECRET")
+	if browserRequestsSecret == "" {
+		log.Errorf("browser secret not set. use SERJ_BROWSER_REQ_SECRET")
+	}
+
 	admin := &internal.Admin{
 		Username:     adminUsername,
 		PasswordHash: adminPasswordHash,
@@ -83,6 +88,7 @@ func main() {
 		*aeroNamespace,
 		*aeroMessagesSet,
 		openWeatherApiKey,
+		browserRequestsSecret,
 		versionInfo,
 		admin,
 	)

@@ -14,13 +14,13 @@ import (
 )
 
 type BlogHandler struct {
-	blogApi      blog.BlogApi
+	blogApi      blog.Api
 	loginSession *LoginSession
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
-	blogApi blog.BlogApi,
+	blogApi blog.Api,
 	session *LoginSession,
 ) *BlogHandler {
 	handler := &BlogHandler{
@@ -199,13 +199,6 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	totalBlogsCount, err := handler.blogApi.BlogsCount()
-	if err != nil {
-		log.Errorf("get blogs error: %s", err)
-		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
-		return
-	}
-
 	blogPosts, err := handler.blogApi.GetBlogsPage(page, size)
 	if err != nil {
 		log.Errorf("get blogs error: %s", err)
@@ -224,6 +217,13 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.Errorf("marshal blogs error: %s", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	totalBlogsCount, err := handler.blogApi.BlogsCount()
+	if err != nil {
+		log.Errorf("get blogs error: %s", err)
+		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
 		return
 	}
 
