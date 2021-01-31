@@ -12,21 +12,17 @@ var _ Client = (*BoardAeroTestClient)(nil)
 type BoardAeroTestClient struct {
 	AeroBinMaps map[string]AeroBinMap
 	mutex       sync.Mutex
-
-	IsConnectedValue bool
 }
 
 func NewBoardAeroTestClient() *BoardAeroTestClient {
 	return &BoardAeroTestClient{
-		AeroBinMaps:      make(map[string]AeroBinMap),
-		IsConnectedValue: true,
+		AeroBinMaps: make(map[string]AeroBinMap),
 	}
 }
 
 func NewBoardAeroTestClientWithBins(aeroBinMaps map[string]AeroBinMap) *BoardAeroTestClient {
 	return &BoardAeroTestClient{
-		AeroBinMaps:      aeroBinMaps,
-		IsConnectedValue: true,
+		AeroBinMaps: aeroBinMaps,
 	}
 }
 
@@ -122,10 +118,6 @@ func (tc *BoardAeroTestClient) GetMessageIdCounter() (int, error) {
 
 func (tc *BoardAeroTestClient) IncrementMessageIdCounter(increment int) (int, error) {
 	return len(tc.AeroBinMaps), nil
-}
-
-func (tc *BoardAeroTestClient) IsConnected() bool {
-	return tc.IsConnectedValue
 }
 
 func (tc *BoardAeroTestClient) Close() {

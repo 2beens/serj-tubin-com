@@ -21,7 +21,7 @@ func main() {
 
 	logLevel := flag.String("loglvl", "trace", "log level")
 	forceStart := flag.Bool("force-start", false, "try to force start, regardless of errors")
-	aeroHost := flag.String("ahost", "localhost", "hostanme of aerospike server")
+	aeroHost := flag.String("ahost", "localhost", "hostname of aerospike server")
 	aeroPort := flag.Int("aport", 3000, "aerospike server port number")
 	aeroNamespace := flag.String("aero-namespace", "serj-tubin-com", "aerospike namespace value (used in aerospike server)")
 	aeroMessagesSet := flag.String("aero-messages-set", "messages", "aerospike set name for board messages (used in aerospike server)")

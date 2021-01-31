@@ -13,7 +13,6 @@ import (
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
 	"github.com/2beens/serjtubincom/internal/netlog"
-	as "github.com/aerospike/aerospike-client-go"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -52,14 +51,7 @@ func NewServer(
 	versionInfo string,
 	admin *Admin,
 ) (*Server, error) {
-	log.Debugf("connecting to aerospike server %s:%d [namespace:%s, set:%s] ...",
-		aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
-
-	aeroClient, err := as.NewClient(aerospikeHost, aerospikePort)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create aero client: %w", err)
-	}
-	boardAeroClient, err := aerospike.NewBoardAeroClient(aeroClient, aeroNamespace, aeroMessagesSet)
+	boardAeroClient, err := aerospike.NewBoardAeroClient(aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create board aero client: %w", err)
 	}

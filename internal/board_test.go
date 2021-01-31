@@ -20,14 +20,6 @@ func TestNewBoard(t *testing.T) {
 	board, err = NewBoard(aeroTestClient, cache.NewBoardTestCache())
 	require.NoError(t, err)
 	require.NotNil(t, board)
-
-	assert.Equal(t, nil, board.CheckAero())
-}
-
-func TestBoard_CheckAero(t *testing.T) {
-	internals := newTestingInternals()
-	internals.aeroTestClient.IsConnectedValue = false
-	assert.Equal(t, aerospike.ErrAeroClientNotConnected, internals.board.CheckAero())
 }
 
 func TestBoard_AllMessagesCache(t *testing.T) {
