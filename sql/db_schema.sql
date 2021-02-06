@@ -17,7 +17,7 @@ CREATE TABLE netlog.visit
     title VARCHAR,
     source VARCHAR,
     url VARCHAR NOT NULL,
-    timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL
+    timestamp TIMESTAMPTZ NOT NULL
 );
 
 ALTER TABLE netlog.visit OWNER TO postgres;

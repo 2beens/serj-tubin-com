@@ -171,7 +171,7 @@ func (api *PsqlApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, 
 			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
 		FROM netlog.visit
 		%s
-		ORDER BY id DESC
+		ORDER BY timestamp DESC
 		LIMIT $1
 		OFFSET $2;
 	`, sbQueryLike)
