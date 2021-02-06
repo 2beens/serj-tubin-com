@@ -63,7 +63,12 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 		keywords = strings.Split(keywordsRaw, ",")
 	}
 
-	log.Tracef("get netlog visits - page %s size %s, keywords: %s", pageStr, sizeStr, keywords)
+	byField := vars["field"]
+	if byField == "" {
+		byField = "url"
+	}
+
+	log.Tracef("get netlog visits - page %s size %s, field [%s], keywords: %s", pageStr, sizeStr, byField, keywords)
 
 	if page < 1 {
 		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusInternalServerError)
@@ -74,7 +79,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	visits, err := handler.netlogApi.GetVisitsPage(keywords, page, size)
+	visits, err := handler.netlogApi.GetVisitsPage(keywords, byField, page, size)
 	if err != nil {
 		log.Errorf("get visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -96,7 +101,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	allVisitsCount, err := handler.netlogApi.Count(keywords)
+	allVisitsCount, err := handler.netlogApi.Count(keywords, byField)
 	if err != nil {
 		log.Errorf("get netlog visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -180,7 +185,12 @@ func (handler *NetlogHandler) handleSearch(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	visits, err := handler.netlogApi.GetVisits(keywords, limit)
+	byField := vars["field"]
+	if byField == "" {
+		byField = "url"
+	}
+
+	visits, err := handler.netlogApi.GetVisits(keywords, byField, limit)
 	if err != nil {
 		log.Errorf("search visits error: %s", err)
 		http.Error(w, "failed to search for visits", http.StatusInternalServerError)
@@ -218,7 +228,7 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 
 	log.Printf("getting last %d netlog visits ... ", limit)
 
-	visits, err := handler.netlogApi.GetVisits([]string{}, limit)
+	visits, err := handler.netlogApi.GetVisits([]string{}, "url", limit)
 	if err != nil {
 		log.Errorf("get all visits error: %s", err)
 		http.Error(w, "failed to get all visits", http.StatusInternalServerError)

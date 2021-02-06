@@ -65,8 +65,8 @@ func (api *PsqlApi) AddVisit(visit *Visit) error {
 	return errors.New("unexpected error, failed to insert visit")
 }
 
-func (api *PsqlApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
-	sbQueryLike := getQueryLikeCondition(keywords)
+func (api *PsqlApi) GetVisits(keywords []string, byField string, limit int) ([]*Visit, error) {
+	sbQueryLike := getQueryLikeCondition(byField, keywords)
 	query := fmt.Sprintf(`
 		SELECT
 			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
@@ -112,11 +112,11 @@ func (api *PsqlApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
 }
 
 func (api *PsqlApi) CountAll() (int, error) {
-	return api.Count([]string{})
+	return api.Count([]string{}, "url")
 }
 
-func (api *PsqlApi) Count(keywords []string) (int, error) {
-	sbQueryLike := getQueryLikeCondition(keywords)
+func (api *PsqlApi) Count(keywords []string, byField string) (int, error) {
+	sbQueryLike := getQueryLikeCondition(byField, keywords)
 	query := fmt.Sprintf(`
 		SELECT COUNT(*)
 		FROM netlog.visit
@@ -147,7 +147,7 @@ func (api *PsqlApi) Count(keywords []string) (int, error) {
 	return -1, errors.New("unexpected error, failed to get netlog visits count")
 }
 
-func (api *PsqlApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, error) {
+func (api *PsqlApi) GetVisitsPage(keywords []string, byField string, page int, size int) ([]*Visit, error) {
 	limit := size
 	offset := (page - 1) * size
 	allVisitsCount, err := api.CountAll()
@@ -156,7 +156,7 @@ func (api *PsqlApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, 
 	}
 
 	if allVisitsCount <= limit {
-		return api.GetVisits([]string{}, size)
+		return api.GetVisits([]string{}, byField, size)
 	}
 
 	if allVisitsCount-offset < limit {
@@ -165,7 +165,7 @@ func (api *PsqlApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, 
 
 	log.Tracef("getting visits, all count %d, limit %d, offset %d", allVisitsCount, limit, offset)
 
-	sbQueryLike := getQueryLikeCondition(keywords)
+	sbQueryLike := getQueryLikeCondition(byField, keywords)
 	query := fmt.Sprintf(`
 		SELECT
 			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp

@@ -26,23 +26,34 @@ func (api *TestApi) CloseDB() {
 func (api *TestApi) AddVisit(visit *Visit) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
-	api.Visits[visit.Id] = *visit
+
+	nextId := len(api.Visits)
+
+	api.Visits[nextId] = *visit
 	return nil
 }
 
 func (api *TestApi) GetAllVisits() ([]*Visit, error) {
-	return api.GetVisits([]string{}, -1)
+	return api.GetVisits([]string{}, "", -1)
 }
 
-func (api *TestApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
+func (api *TestApi) GetVisits(keywords []string, byField string, limit int) ([]*Visit, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
+
+	if byField != "url" && byField != "title" {
+		return nil, errors.New("unknown field name")
+	}
 
 	var foundVisits []*Visit
 	for _, visit := range api.Visits {
 		if len(keywords) > 0 {
 			for _, keyword := range keywords {
-				if strings.Contains(visit.URL, keyword) {
+				field := visit.URL
+				if byField == "title" {
+					field = visit.Title
+				}
+				if strings.Contains(field, keyword) {
 					foundVisits = append(foundVisits, &visit)
 					break
 				}
@@ -64,14 +75,22 @@ func (api *TestApi) CountAll() (int, error) {
 	return len(api.Visits), nil
 }
 
-func (api *TestApi) Count(keywords []string) (int, error) {
+func (api *TestApi) Count(keywords []string, byField string) (int, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
+
+	if byField != "url" && byField != "title" {
+		return -1, errors.New("unknown field name")
+	}
 
 	count := 0
 	for _, visit := range api.Visits {
 		for _, keyword := range keywords {
-			if strings.Contains(visit.URL, keyword) {
+			field := visit.URL
+			if byField == "title" {
+				field = visit.Title
+			}
+			if strings.Contains(field, keyword) {
 				count++
 				break
 			}
@@ -80,7 +99,7 @@ func (api *TestApi) Count(keywords []string) (int, error) {
 	return count, nil
 }
 
-func (api *TestApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, error) {
+func (api *TestApi) GetVisitsPage(keywords []string, byField string, page int, size int) ([]*Visit, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
@@ -88,7 +107,7 @@ func (api *TestApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, 
 		return api.GetAllVisits()
 	}
 
-	foundVisits, err := api.GetVisits(keywords, -1)
+	foundVisits, err := api.GetVisits(keywords, byField, -1)
 	if err != nil {
 		return nil, err
 	}
