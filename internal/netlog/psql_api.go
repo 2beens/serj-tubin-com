@@ -42,8 +42,8 @@ func (api *PsqlApi) AddVisit(visit *Visit) error {
 
 	rows, err := api.db.Query(
 		context.Background(),
-		`INSERT INTO netlog.visit (title, url, timestamp) VALUES ($1, $2, $3) RETURNING id;`,
-		visit.Title, visit.URL, visit.Timestamp,
+		`INSERT INTO netlog.visit (title, source, url, timestamp) VALUES ($1, $2, $3, $4) RETURNING id;`,
+		visit.Title, visit.Source, visit.URL, visit.Timestamp,
 	)
 	if err != nil {
 		return err
