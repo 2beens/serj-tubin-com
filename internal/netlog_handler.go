@@ -149,7 +149,7 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	log.Printf("new visit added: [%s]: %s", visit.Timestamp, visit.URL)
+	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
 	WriteResponse(w, "", "added")
 }
 
