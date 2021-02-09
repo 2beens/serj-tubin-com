@@ -34,14 +34,14 @@ func (api *TestApi) AddVisit(visit *Visit) error {
 }
 
 func (api *TestApi) GetAllVisits() ([]*Visit, error) {
-	return api.GetVisits([]string{}, "", -1)
+	return api.GetVisits([]string{}, "url", "all", -1)
 }
 
-func (api *TestApi) GetVisits(keywords []string, byField string, limit int) ([]*Visit, error) {
+func (api *TestApi) GetVisits(keywords []string, field string, source string, limit int) ([]*Visit, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
-	if byField != "url" && byField != "title" {
+	if field != "url" && field != "title" {
 		return nil, errors.New("unknown field name")
 	}
 
@@ -50,13 +50,17 @@ func (api *TestApi) GetVisits(keywords []string, byField string, limit int) ([]*
 		if len(keywords) > 0 {
 			for _, keyword := range keywords {
 				field := visit.URL
-				if byField == "title" {
+				if field == "title" {
 					field = visit.Title
 				}
-				if strings.Contains(field, keyword) {
-					foundVisits = append(foundVisits, &visit)
-					break
+				if !strings.Contains(field, keyword) {
+					continue
 				}
+				if source != "all" && visit.Source != source {
+					continue
+				}
+				foundVisits = append(foundVisits, &visit)
+				break
 			}
 		} else {
 			foundVisits = append(foundVisits, &visit)
@@ -75,11 +79,11 @@ func (api *TestApi) CountAll() (int, error) {
 	return len(api.Visits), nil
 }
 
-func (api *TestApi) Count(keywords []string, byField string) (int, error) {
+func (api *TestApi) Count(keywords []string, field string, source string) (int, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
-	if byField != "url" && byField != "title" {
+	if field != "url" && field != "title" {
 		return -1, errors.New("unknown field name")
 	}
 
@@ -87,19 +91,23 @@ func (api *TestApi) Count(keywords []string, byField string) (int, error) {
 	for _, visit := range api.Visits {
 		for _, keyword := range keywords {
 			field := visit.URL
-			if byField == "title" {
+			if field == "title" {
 				field = visit.Title
 			}
-			if strings.Contains(field, keyword) {
-				count++
-				break
+			if !strings.Contains(field, keyword) {
+				continue
 			}
+			if source != "all" && visit.Source != source {
+				continue
+			}
+			count++
+			break
 		}
 	}
 	return count, nil
 }
 
-func (api *TestApi) GetVisitsPage(keywords []string, byField string, page int, size int) ([]*Visit, error) {
+func (api *TestApi) GetVisitsPage(keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
@@ -107,7 +115,7 @@ func (api *TestApi) GetVisitsPage(keywords []string, byField string, page int, s
 		return api.GetAllVisits()
 	}
 
-	foundVisits, err := api.GetVisits(keywords, byField, -1)
+	foundVisits, err := api.GetVisits(keywords, field, source, -1)
 	if err != nil {
 		return nil, err
 	}

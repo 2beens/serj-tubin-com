@@ -65,16 +65,24 @@ func (api *PsqlApi) AddVisit(visit *Visit) error {
 	return errors.New("unexpected error, failed to insert visit")
 }
 
-func (api *PsqlApi) GetVisits(keywords []string, byField string, limit int) ([]*Visit, error) {
-	sbQueryLike := getQueryLikeCondition(byField, keywords)
+func (api *PsqlApi) GetVisits(keywords []string, field string, source string, limit int) ([]*Visit, error) {
+	sbQueryLike := getQueryLikeCondition(field, keywords)
+	sourceCondition := ""
+	if source != "all" && sbQueryLike == "" {
+		sourceCondition = fmt.Sprintf("WHERE source = '%s'", source)
+	} else if source != "all" {
+		sourceCondition = fmt.Sprintf("AND source = '%s'", source)
+	}
+
 	query := fmt.Sprintf(`
 		SELECT
 			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
 		FROM netlog.visit
 		%s
+		%s
 		ORDER BY id DESC
 		LIMIT $1;
-	`, sbQueryLike)
+	`, sbQueryLike, sourceCondition)
 
 	rows, err := api.db.Query(
 		context.Background(),
@@ -112,17 +120,25 @@ func (api *PsqlApi) GetVisits(keywords []string, byField string, limit int) ([]*
 }
 
 func (api *PsqlApi) CountAll() (int, error) {
-	return api.Count([]string{}, "url")
+	return api.Count([]string{}, "url", "all")
 }
 
-func (api *PsqlApi) Count(keywords []string, byField string) (int, error) {
-	sbQueryLike := getQueryLikeCondition(byField, keywords)
+func (api *PsqlApi) Count(keywords []string, field string, source string) (int, error) {
+	sbQueryLike := getQueryLikeCondition(field, keywords)
+	sourceCondition := ""
+	if source != "all" && sbQueryLike == "" {
+		sourceCondition = fmt.Sprintf("WHERE source = '%s'", source)
+	} else if source != "all" {
+		sourceCondition = fmt.Sprintf("AND source = '%s'", source)
+	}
+
 	query := fmt.Sprintf(`
 		SELECT COUNT(*)
 		FROM netlog.visit
 		%s
+		%s
 		;
-	`, sbQueryLike)
+	`, sbQueryLike, sourceCondition)
 
 	rows, err := api.db.Query(
 		context.Background(),
@@ -147,7 +163,7 @@ func (api *PsqlApi) Count(keywords []string, byField string) (int, error) {
 	return -1, errors.New("unexpected error, failed to get netlog visits count")
 }
 
-func (api *PsqlApi) GetVisitsPage(keywords []string, byField string, page int, size int) ([]*Visit, error) {
+func (api *PsqlApi) GetVisitsPage(keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
 	limit := size
 	offset := (page - 1) * size
 	allVisitsCount, err := api.CountAll()
@@ -156,7 +172,7 @@ func (api *PsqlApi) GetVisitsPage(keywords []string, byField string, page int, s
 	}
 
 	if allVisitsCount <= limit {
-		return api.GetVisits([]string{}, byField, size)
+		return api.GetVisits([]string{}, field, source, size)
 	}
 
 	if allVisitsCount-offset < limit {
@@ -165,16 +181,24 @@ func (api *PsqlApi) GetVisitsPage(keywords []string, byField string, page int, s
 
 	log.Tracef("getting visits, all count %d, limit %d, offset %d", allVisitsCount, limit, offset)
 
-	sbQueryLike := getQueryLikeCondition(byField, keywords)
+	sbQueryLike := getQueryLikeCondition(field, keywords)
+	sourceCondition := ""
+	if source != "all" && sbQueryLike == "" {
+		sourceCondition = fmt.Sprintf("WHERE source = '%s'", source)
+	} else if source != "all" {
+		sourceCondition = fmt.Sprintf("AND source = '%s'", source)
+	}
+
 	query := fmt.Sprintf(`
 		SELECT
 			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
 		FROM netlog.visit
 		%s
+		%s
 		ORDER BY timestamp DESC
 		LIMIT $1
 		OFFSET $2;
-	`, sbQueryLike)
+	`, sbQueryLike, sourceCondition)
 
 	rows, err := api.db.Query(
 		context.Background(),
