@@ -66,23 +66,15 @@ func (api *PsqlApi) AddVisit(visit *Visit) error {
 }
 
 func (api *PsqlApi) GetVisits(keywords []string, field string, source string, limit int) ([]*Visit, error) {
-	sbQueryLike := getQueryLikeCondition(field, keywords)
-	sourceCondition := ""
-	if source != "all" && sbQueryLike == "" {
-		sourceCondition = fmt.Sprintf("WHERE source = '%s'", source)
-	} else if source != "all" {
-		sourceCondition = fmt.Sprintf("AND source = '%s'", source)
-	}
-
+	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT
 			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
 		FROM netlog.visit
 		%s
-		%s
 		ORDER BY id DESC
 		LIMIT $1;
-	`, sbQueryLike, sourceCondition)
+	`, sbQueryLike)
 
 	rows, err := api.db.Query(
 		context.Background(),
@@ -124,21 +116,13 @@ func (api *PsqlApi) CountAll() (int, error) {
 }
 
 func (api *PsqlApi) Count(keywords []string, field string, source string) (int, error) {
-	sbQueryLike := getQueryLikeCondition(field, keywords)
-	sourceCondition := ""
-	if source != "all" && sbQueryLike == "" {
-		sourceCondition = fmt.Sprintf("WHERE source = '%s'", source)
-	} else if source != "all" {
-		sourceCondition = fmt.Sprintf("AND source = '%s'", source)
-	}
-
+	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT COUNT(*)
 		FROM netlog.visit
 		%s
-		%s
 		;
-	`, sbQueryLike, sourceCondition)
+	`, sbQueryLike)
 
 	rows, err := api.db.Query(
 		context.Background(),
@@ -181,24 +165,16 @@ func (api *PsqlApi) GetVisitsPage(keywords []string, field string, source string
 
 	log.Tracef("getting visits, all count %d, limit %d, offset %d", allVisitsCount, limit, offset)
 
-	sbQueryLike := getQueryLikeCondition(field, keywords)
-	sourceCondition := ""
-	if source != "all" && sbQueryLike == "" {
-		sourceCondition = fmt.Sprintf("WHERE source = '%s'", source)
-	} else if source != "all" {
-		sourceCondition = fmt.Sprintf("AND source = '%s'", source)
-	}
-
+	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT
 			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
 		FROM netlog.visit
 		%s
-		%s
 		ORDER BY timestamp DESC
 		LIMIT $1
 		OFFSET $2;
-	`, sbQueryLike, sourceCondition)
+	`, sbQueryLike)
 
 	rows, err := api.db.Query(
 		context.Background(),

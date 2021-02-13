@@ -8,24 +8,24 @@ import (
 
 func TestUtil_getQueryLikeCondition(t *testing.T) {
 	// no keywords
-	queryLike := getQueryLikeCondition("url", []string{})
-	assert.Empty(t, queryLike)
+	queryLike := getQueryWhereCondition("url", "chrome", []string{})
+	assert.Equal(t, "WHERE source = 'chrome'", queryLike)
 
 	// only one keyword
 	keywords := []string{"word1"}
-	queryLike = getQueryLikeCondition("url", keywords)
-	assert.Equal(t, "WHERE url LIKE '%word1%' ", queryLike)
+	queryLike = getQueryWhereCondition("url", "chrome", keywords)
+	assert.Equal(t, "WHERE url LIKE '%word1%' AND source = 'chrome'", queryLike)
 
 	keywords = []string{"word1"}
-	queryLike = getQueryLikeCondition("title", keywords)
-	assert.Equal(t, "WHERE title LIKE '%word1%' ", queryLike)
+	queryLike = getQueryWhereCondition("title", "safari", keywords)
+	assert.Equal(t, "WHERE title LIKE '%word1%' AND source = 'safari'", queryLike)
 
 	// more keywords
 	keywords = []string{"word1", "word2", "word3"}
-	queryLike = getQueryLikeCondition("url", keywords)
-	assert.Equal(t, "WHERE url LIKE '%word1%' AND url LIKE '%word2%' AND url LIKE '%word3%' ", queryLike)
+	queryLike = getQueryWhereCondition("url", "pc", keywords)
+	assert.Equal(t, "WHERE url LIKE '%word1%' AND url LIKE '%word2%' AND url LIKE '%word3%' AND source = 'pc'", queryLike)
 
 	keywords = []string{"word1", "word2", "word3"}
-	queryLike = getQueryLikeCondition("title", keywords)
-	assert.Equal(t, "WHERE title LIKE '%word1%' AND title LIKE '%word2%' AND title LIKE '%word3%' ", queryLike)
+	queryLike = getQueryWhereCondition("title", "pc", keywords)
+	assert.Equal(t, "WHERE title LIKE '%word1%' AND title LIKE '%word2%' AND title LIKE '%word3%' AND source = 'pc'", queryLike)
 }
