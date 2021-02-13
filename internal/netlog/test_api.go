@@ -46,7 +46,8 @@ func (api *TestApi) GetVisits(keywords []string, field string, source string, li
 	}
 
 	var foundVisits []*Visit
-	for _, visit := range api.Visits {
+	for k := range api.Visits {
+		visit := api.Visits[k]
 		if len(keywords) > 0 {
 			for _, keyword := range keywords {
 				field := visit.URL
@@ -108,9 +109,6 @@ func (api *TestApi) Count(keywords []string, field string, source string) (int, 
 }
 
 func (api *TestApi) GetVisitsPage(keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
-
 	if len(api.Visits) <= size {
 		return api.GetAllVisits()
 	}
@@ -120,12 +118,20 @@ func (api *TestApi) GetVisitsPage(keywords []string, field string, source string
 		return nil, err
 	}
 
+	if foundVisits == nil {
+		return []*Visit{}, nil
+	}
+
 	sort.Slice(foundVisits, func(i, j int) bool {
 		return foundVisits[i].Timestamp.Before(foundVisits[j].Timestamp)
 	})
 
 	startIndex := (page - 1) * size
-	endIndex := startIndex + size
+	endIndex := startIndex + size - 1
+
+	if endIndex > (len(foundVisits) - 1) {
+		endIndex = len(foundVisits) - 1
+	}
 
 	// overflow
 	if startIndex >= len(foundVisits) {
@@ -133,7 +139,7 @@ func (api *TestApi) GetVisitsPage(keywords []string, field string, source string
 	}
 
 	var visits []*Visit
-	for i := startIndex; i < endIndex; i++ {
+	for i := startIndex; i <= endIndex; i++ {
 		visits = append(visits, foundVisits[i])
 	}
 	return visits, nil
