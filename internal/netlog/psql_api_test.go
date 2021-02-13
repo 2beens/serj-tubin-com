@@ -29,3 +29,9 @@ func TestUtil_getQueryLikeCondition(t *testing.T) {
 	queryLike = getQueryWhereCondition("title", "pc", keywords)
 	assert.Equal(t, "WHERE title LIKE '%word1%' AND title LIKE '%word2%' AND title LIKE '%word3%' AND source = 'pc'", queryLike)
 }
+
+func TestPsqlApi_AddVisit(t *testing.T) {
+	// TODO: maybe add some tests against the real DB
+	// PostgreSQL containers on GitHub Actions:
+	//	https://docs.github.com/en/actions/guides/creating-postgresql-service-containers
+}
