@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -65,8 +66,8 @@ func (api *PsqlApi) AddVisit(visit *Visit) error {
 	return errors.New("unexpected error, failed to insert visit")
 }
 
-func (api *PsqlApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
-	sbQueryLike := getQueryLikeCondition(keywords)
+func (api *PsqlApi) GetVisits(keywords []string, field string, source string, limit int) ([]*Visit, error) {
+	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT
 			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
@@ -112,11 +113,11 @@ func (api *PsqlApi) GetVisits(keywords []string, limit int) ([]*Visit, error) {
 }
 
 func (api *PsqlApi) CountAll() (int, error) {
-	return api.Count([]string{})
+	return api.Count([]string{}, "url", "all")
 }
 
-func (api *PsqlApi) Count(keywords []string) (int, error) {
-	sbQueryLike := getQueryLikeCondition(keywords)
+func (api *PsqlApi) Count(keywords []string, field string, source string) (int, error) {
+	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT COUNT(*)
 		FROM netlog.visit
@@ -147,7 +148,7 @@ func (api *PsqlApi) Count(keywords []string) (int, error) {
 	return -1, errors.New("unexpected error, failed to get netlog visits count")
 }
 
-func (api *PsqlApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, error) {
+func (api *PsqlApi) GetVisitsPage(keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
 	limit := size
 	offset := (page - 1) * size
 	allVisitsCount, err := api.CountAll()
@@ -156,7 +157,7 @@ func (api *PsqlApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, 
 	}
 
 	if allVisitsCount <= limit {
-		return api.GetVisits([]string{}, size)
+		return api.GetVisits([]string{}, field, source, size)
 	}
 
 	if allVisitsCount-offset < limit {
@@ -165,7 +166,7 @@ func (api *PsqlApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, 
 
 	log.Tracef("getting visits, all count %d, limit %d, offset %d", allVisitsCount, limit, offset)
 
-	sbQueryLike := getQueryLikeCondition(keywords)
+	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT
 			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
@@ -211,4 +212,34 @@ func (api *PsqlApi) GetVisitsPage(keywords []string, page, size int) ([]*Visit, 
 	}
 
 	return visits, nil
+}
+
+// getQueryWhereCondition will make a SQL WHERE condition
+// keywords starting with "-" will be filtered out with `url NOT LIKE ...`
+// column - the name of the column to which the "like" is applied for
+// source - the source of the netlog visit
+func getQueryWhereCondition(column, source string, keywords []string) string {
+	var sbQueryLike strings.Builder
+	if len(keywords) > 0 {
+		sbQueryLike.WriteString("WHERE ")
+		for i, word := range keywords {
+			if strings.HasPrefix(word, "-") {
+				word = strings.TrimPrefix(word, "-")
+				sbQueryLike.WriteString(fmt.Sprintf("%s NOT LIKE '%%%s%%' ", column, word))
+			} else {
+				sbQueryLike.WriteString(fmt.Sprintf("%s LIKE '%%%s%%' ", column, word))
+			}
+			if i < len(keywords)-1 {
+				sbQueryLike.WriteString("AND ")
+			}
+		}
+	}
+
+	if source != "all" && len(keywords) == 0 {
+		sbQueryLike.WriteString(fmt.Sprintf("WHERE source = '%s'", source))
+	} else if source != "all" {
+		sbQueryLike.WriteString(fmt.Sprintf("AND source = '%s'", source))
+	}
+
+	return sbQueryLike.String()
 }

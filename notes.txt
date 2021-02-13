@@ -7,7 +7,7 @@ some ideas:
     - (done ✅) add linter (golang ci)
     - (done ✅) add some sort of versioning (last commit count or hash?)
         - (done ✅) add to frontend
-    - backup all data (especialy netlog) on personal google drive
+    - backup all data (especially netlog) on personal google drive
         - https://developers.google.com/drive/api/v3/quickstart/go
     - use fasthttp ?
         - https://github.com/valyala/fasthttp
