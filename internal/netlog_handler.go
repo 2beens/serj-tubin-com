@@ -28,11 +28,9 @@ func NewNetlogHandler(router *mux.Router, netlogApi netlog.Api, browserRequestsS
 
 	router.HandleFunc("/new", handler.handleNewVisit).Methods("POST", "OPTIONS").Name("new-visit")
 	router.HandleFunc("/", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-last")
-	router.HandleFunc("/s/{source}/f/{field}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("visits-page")
 	router.HandleFunc("/limit/{limit}", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-with-limit")
-	router.HandleFunc("/search/{keywords}", handler.handleSearch).Methods("GET", "OPTIONS").Name("search")
+	router.HandleFunc("/s/{source}/f/{field}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("visits-page")
 	router.HandleFunc("/s/{source}/f/{field}/search/{keywords}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("search-page")
-	router.HandleFunc("/search/{keywords}/limit/{limit}", handler.handleSearch).Methods("GET", "OPTIONS").Name("search-with-limit")
 
 	router.Use(handler.authMiddleware())
 
@@ -154,60 +152,6 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 
 	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
 	WriteResponse(w, "", "added")
-}
-
-// TODO: check if this is used
-func (handler *NetlogHandler) handleSearch(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	limit := 200 // default value
-	if limitStr := vars["limit"]; limitStr != "" {
-		var err error
-		limit, err = strconv.Atoi(limitStr)
-		if err != nil {
-			http.Error(w, "invalid limit provided", http.StatusBadRequest)
-			return
-		}
-	}
-
-	keywordsRaw := vars["keywords"]
-	if keywordsRaw == "" {
-		http.Error(w, "invalid/no keywords provided", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("searching netlog visits by %s ... ", keywordsRaw)
-
-	keywords := strings.Split(keywordsRaw, ",")
-	if len(keywords) == 0 {
-		http.Error(w, "invalid/empty keywords provided", http.StatusBadRequest)
-		return
-	}
-
-	// TODO: check if handleSearch(...) is really used
-	field := "url"
-	source := "all"
-
-	visits, err := handler.netlogApi.GetVisits(keywords, field, source, limit)
-	if err != nil {
-		log.Errorf("search visits error: %s", err)
-		http.Error(w, "failed to search for visits", http.StatusInternalServerError)
-		return
-	}
-
-	if len(visits) == 0 {
-		WriteResponseBytes(w, "application/json", []byte("[]"))
-		return
-	}
-
-	visitsJson, err := json.Marshal(visits)
-	if err != nil {
-		log.Errorf("marshal all visits error: %s", err)
-		http.Error(w, "marshal all visits error", http.StatusInternalServerError)
-		return
-	}
-
-	WriteResponseBytes(w, "application/json", visitsJson)
 }
 
 func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Request) {
