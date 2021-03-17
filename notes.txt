@@ -26,6 +26,7 @@ some ideas:
         - https://www.elastic.co/start
         - go client:
             - https://github.com/elastic/go-elasticsearch
+    - BACKUP NETLOG DATA TO GOOGLE/MEGA/ETC
     - etc ...
 
 31-may-2020 serj-tubin-backend service:

@@ -3,6 +3,7 @@ module github.com/2beens/serjtubincom
 go 1.14
 
 require (
+	cloud.google.com/go v0.79.0 // indirect
 	github.com/aerospike/aerospike-client-go v3.0.0+incompatible
 	github.com/coocood/freecache v1.1.0
 	github.com/dgraph-io/ristretto v0.0.3
@@ -10,8 +11,11 @@ require (
 	github.com/jackc/pgx/v4 v4.9.2
 	github.com/onsi/ginkgo v1.13.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/yuin/gopher-lua v0.0.0-20200603152657-dc2b0ca8b37e // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a // indirect
+	golang.org/x/oauth2 v0.0.0-20210313182246-cd4f82c27b84
+	golang.org/x/sys v0.0.0-20210314195730-07df6a141424 // indirect
+	google.golang.org/api v0.41.0
+	google.golang.org/genproto v0.0.0-20210315142602-88120395e650 // indirect
 )
