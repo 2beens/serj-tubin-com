@@ -1,10 +1,11 @@
-package backup
+package netlog
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"google.golang.org/api/drive/v3"
 )
@@ -14,6 +15,7 @@ const (
 )
 
 type GoogleDriveBackupService struct {
+	psqlApi         *PsqlApi
 	service         *drive.Service
 	root            *drive.FileList
 	backupsFolderId string
@@ -45,7 +47,13 @@ func NewGoogleDriveBackupService(httpClient *http.Client) (*GoogleDriveBackupSer
 		}
 	}
 
+	psqlApi, err := NewNetlogPsqlApi()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create PSQL api client: %w", err)
+	}
+
 	s := &GoogleDriveBackupService{
+		psqlApi: psqlApi,
 		service: driveService,
 		root:    driveRoot,
 	}
@@ -73,16 +81,17 @@ func (s *GoogleDriveBackupService) DoBackup() error {
 
 	if len(backupFiles) == 0 {
 		log.Println("backups empty, creating initial backup file ...")
-		if initialBackupFile, err := s.createInitialBackupFile(); err == nil {
-			log.Printf("initial backup created: %s", initialBackupFile.Id)
-		} else {
+		initialBackupFile, err := s.createInitialBackupFile()
+		if err != nil {
 			return err
 		}
-	} else {
-		log.Println("current backup files:")
-		for _, i := range backupFiles {
-			log.Printf(" -- %s (%s)\n", i.Name, i.Id)
-		}
+		log.Printf("initial backup created: %s", initialBackupFile.Id)
+		return nil
+	}
+
+	log.Println("current backup files:")
+	for _, i := range backupFiles {
+		log.Printf(" -- %s (%s)\n", i.Name, i.Id)
 	}
 
 	// TODO:
@@ -115,12 +124,22 @@ func (s *GoogleDriveBackupService) createInitialBackupFile() (*drive.File, error
 		Parents:  []string{s.backupsFolderId},
 	}
 
-	testJsonReader := strings.NewReader(`{"va": "test"}`)
+	visits, err := s.psqlApi.GetAllVisits()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get netlog visits from db: %w", err)
+	}
+
+	visitsJson, err := json.Marshal(visits)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal netlog visits: %w", err)
+	}
+
+	visitsBytesReader := bytes.NewReader(visitsJson)
 
 	initialBackupFile, err := s.service.
 		Files.Create(initialBackupMeta).
 		Fields("id, parents").
-		Media(testJsonReader).
+		Media(visitsBytesReader).
 		Do()
 	if err != nil {
 		return nil, err

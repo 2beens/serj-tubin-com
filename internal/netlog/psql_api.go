@@ -66,6 +66,43 @@ func (api *PsqlApi) AddVisit(visit *Visit) error {
 	return errors.New("unexpected error, failed to insert visit")
 }
 
+func (api *PsqlApi) GetAllVisits() ([]*Visit, error) {
+	rows, err := api.db.Query(
+		context.Background(),
+		`SELECT
+			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
+		FROM netlog.visit`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	var visits []*Visit
+	for rows.Next() {
+		var id int
+		var title string
+		var source string
+		var url string
+		var timestamp time.Time
+		if err := rows.Scan(&id, &title, &source, &url, &timestamp); err != nil {
+			return nil, err
+		}
+		visits = append(visits, &Visit{
+			Id:        id,
+			Title:     title,
+			URL:       url,
+			Timestamp: timestamp,
+		})
+	}
+
+	return visits, nil
+}
+
 func (api *PsqlApi) GetVisits(keywords []string, field string, source string, limit int) ([]*Visit, error) {
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`

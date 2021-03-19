@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/2beens/serjtubincom/internal/netlog/backup"
+	"github.com/2beens/serjtubincom/internal/netlog"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
@@ -48,7 +48,7 @@ func main() {
 	}
 	client := getClient(config)
 
-	s, err := backup.NewGoogleDriveBackupService(client)
+	s, err := netlog.NewGoogleDriveBackupService(client)
 	if err != nil {
 		log.Fatalf("failed to create google drive backup service: %s", err)
 	}
