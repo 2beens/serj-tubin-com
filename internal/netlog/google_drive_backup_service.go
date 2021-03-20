@@ -179,16 +179,7 @@ func (s *GoogleDriveBackupService) createRootBackupsFolder() (string, error) {
 }
 
 func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) (*drive.File, error) {
-	initialBackupMeta := &drive.File{
-		Name: fmt.Sprintf("initial-%d-%d-%d.json", baseTime.Day(), baseTime.Month(), baseTime.Year()),
-		// https://developers.google.com/drive/api/v3/mime-types
-		MimeType: "application/vnd.google-apps.file",
-		Parents:  []string{s.backupsFolderId},
-	}
-
-	testTime := time.Now().Add(-1 * 24 * time.Hour)
-
-	visits, err := s.psqlApi.GetAllVisits(&testTime)
+	visits, err := s.psqlApi.GetAllVisits(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get netlog visits from db: %w", err)
 	}
@@ -200,12 +191,18 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) (
 		return nil, fmt.Errorf("failed to marshal netlog visits: %w", err)
 	}
 
-	visitsBytesReader := bytes.NewReader(visitsJson)
+	log.Println("creating file on google drive ...")
+	initialBackupMeta := &drive.File{
+		Name: fmt.Sprintf("initial-%d-%d-%d.bin", baseTime.Day(), baseTime.Month(), baseTime.Year()),
+		// https://developers.google.com/drive/api/v3/mime-types
+		MimeType: "application/vnd.google-apps.file",
+		Parents:  []string{s.backupsFolderId},
+	}
 
 	initialBackupFile, err := s.service.
 		Files.Create(initialBackupMeta).
 		Fields("id, parents").
-		Media(visitsBytesReader).
+		Media(bytes.NewReader(visitsJson)).
 		Do()
 	if err != nil {
 		if gdErr, ok := err.(*googleapi.Error); ok {
@@ -215,6 +212,9 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) (
 				gdErr.Header,
 				gdErr.Details,
 			)
+			for _, errItem := range gdErr.Errors {
+				log.Printf("\t -- %s: %s", errItem.Message, errItem.Reason)
+			}
 		}
 
 		return nil, fmt.Errorf("failed to create initial backup file: %w", err)
