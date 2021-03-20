@@ -33,3 +33,9 @@ go build cmd/main.go
 # restart service and show info
 sudo systemctl restart serj-tubin-backend.service
 sudo systemctl status serj-tubin-backend.service
+
+# build netlog backup tool
+echo "building netlog backup tool ..."
+go build -o netlog-backup cmd/backups_cmd/main.go
+
+echo "all done! <3"
