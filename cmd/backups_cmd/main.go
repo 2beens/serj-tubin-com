@@ -60,7 +60,7 @@ func main() {
 
 	baseTime := time.Now()
 	if err := s.DoBackup(baseTime); err != nil {
-		log.Fatalln(err)
+		log.Fatalf("%+v", err)
 	}
 }
 

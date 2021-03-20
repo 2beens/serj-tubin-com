@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/googleapi"
 )
 
 const (
@@ -190,6 +191,8 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) (
 		return nil, fmt.Errorf("failed to get netlog visits from db: %w", err)
 	}
 
+	log.Printf("create initial backup file with %d netlog visits ...", len(visits))
+
 	visitsJson, err := json.Marshal(visits)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal netlog visits: %w", err)
@@ -203,7 +206,11 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) (
 		Media(visitsBytesReader).
 		Do()
 	if err != nil {
-		return nil, err
+		gdErr, ok := err.(*googleapi.Error)
+		if ok {
+			log.Printf(" ---> create initial backup file google error: %+v", gdErr)
+		}
+		return nil, fmt.Errorf("failed to create initial backup file: %w", err)
 	}
 
 	return initialBackupFile, nil
