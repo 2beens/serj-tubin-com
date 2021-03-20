@@ -47,7 +47,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to parse client secret file to config: %v", err)
 	}
-	client := getClient(config)
+
+	client, err := getClient(config)
+	if err != nil {
+		log.Fatalf("failed to get http client: %s", err)
+	}
 
 	s, err := netlog.NewGoogleDriveBackupService(client)
 	if err != nil {
@@ -61,16 +65,18 @@ func main() {
 }
 
 // Retrieve a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config) *http.Client {
+func getClient(config *oauth2.Config) (*http.Client, error) {
 	// the file token.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first time
 	tokFile := "token.json"
 	tok, err := tokenFromFile(tokFile)
 	if err != nil {
 		tok = getTokenFromWeb(config)
-		saveToken(tokFile, tok)
+		if err := saveToken(tokFile, tok); err != nil {
+			return nil, fmt.Errorf("failed to save token json: %w", err)
+		}
 	}
-	return config.Client(context.Background(), tok)
+	return config.Client(context.Background(), tok), nil
 }
 
 // Request a token from the web, then returns the retrieved token.
@@ -104,14 +110,15 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 }
 
 // Saves a token to a file path.
-func saveToken(path string, token *oauth2.Token) {
+func saveToken(path string, token *oauth2.Token) error {
 	fmt.Printf("Saving credential file to: %s\n", path)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		log.Fatalf("Unable to cache oauth token: %v", err)
 	}
 	defer f.Close()
-	json.NewEncoder(f).Encode(token)
+
+	return json.NewEncoder(f).Encode(token)
 }
 
 func loggingSetup(logFileName string) {
