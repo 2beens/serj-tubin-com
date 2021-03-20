@@ -186,7 +186,9 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) (
 		Parents:  []string{s.backupsFolderId},
 	}
 
-	visits, err := s.psqlApi.GetAllVisits(nil)
+	testTime := time.Now().Add(-1 * 24 * time.Hour)
+
+	visits, err := s.psqlApi.GetAllVisits(&testTime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get netlog visits from db: %w", err)
 	}
