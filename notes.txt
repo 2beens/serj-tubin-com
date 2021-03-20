@@ -7,7 +7,7 @@ some ideas:
     - (done ✅) add linter (golang ci)
     - (done ✅) add some sort of versioning (last commit count or hash?)
         - (done ✅) add to frontend
-    - backup all data (especially netlog) on personal google drive
+    - (done ✅) backup all data (especially netlog) on personal google drive
         - https://developers.google.com/drive/api/v3/quickstart/go
     - use fasthttp ?
         - https://github.com/valyala/fasthttp
@@ -26,6 +26,7 @@ some ideas:
         - https://www.elastic.co/start
         - go client:
             - https://github.com/elastic/go-elasticsearch
+    - (done ✅) BACKUP NETLOG DATA TO GOOGLE/MEGA/ETC
     - etc ...
 
 31-may-2020 serj-tubin-backend service:
