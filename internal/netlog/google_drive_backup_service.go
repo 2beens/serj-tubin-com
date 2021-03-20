@@ -232,7 +232,7 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) e
 			return fmt.Errorf("%d: failed to create initial backup file: %w", i, err)
 		}
 
-		log.Printf("%d: backup file [%s] saved: %s", i, nextBuckupChunkFile.Name, nextBuckupChunkFile.Id)
+		log.Printf("%d: backup file [%s] saved: %s", i, fileMeta.Name, nextBuckupChunkFile.Id)
 
 		fromIndex = toIndex
 		toIndex = toIndex + chunkSize
