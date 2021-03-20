@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"golang.org/x/oauth2"
@@ -53,7 +54,8 @@ func main() {
 		log.Fatalf("failed to create google drive backup service: %s", err)
 	}
 
-	if err := s.DoBackup(); err != nil {
+	baseTime := time.Now()
+	if err := s.DoBackup(baseTime); err != nil {
 		log.Fatalln(err)
 	}
 }

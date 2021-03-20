@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"google.golang.org/api/drive/v3"
 )
@@ -73,15 +74,15 @@ func NewGoogleDriveBackupService(httpClient *http.Client) (*GoogleDriveBackupSer
 	return s, nil
 }
 
-func (s *GoogleDriveBackupService) DoBackup() error {
-	backupFiles, err := s.getNetlogBackupFiles(s.backupsFolderId)
+func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
+	currentAllBackupFiles, err := s.getNetlogBackupFiles(s.backupsFolderId)
 	if err != nil {
 		return err
 	}
 
-	if len(backupFiles) == 0 {
+	if len(currentAllBackupFiles) == 0 {
 		log.Println("backups empty, creating initial backup file ...")
-		initialBackupFile, err := s.createInitialBackupFile()
+		initialBackupFile, err := s.createInitialBackupFile(baseTime)
 		if err != nil {
 			return err
 		}
@@ -90,11 +91,71 @@ func (s *GoogleDriveBackupService) DoBackup() error {
 	}
 
 	log.Println("current backup files:")
-	for _, i := range backupFiles {
-		log.Printf(" -- %s (%s)\n", i.Name, i.Id)
+	lastCreatedAt := time.Time{}
+	for _, file := range currentAllBackupFiles {
+		createdAt, err := time.Parse(time.RFC3339, file.CreatedTime)
+		if err != nil {
+			log.Printf(" ---> error parsing created at for file %s: %s", file.Name, err)
+			continue
+		}
+		log.Printf(" -- [%v]: %s (%s)\n", createdAt, file.Name, file.Id)
+
+		if createdAt.After(lastCreatedAt) {
+			lastCreatedAt = createdAt
+		}
 	}
 
-	// TODO:
+	nextBackupVisits, err := s.psqlApi.GetAllVisits(&lastCreatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to get next backup visits: %w", err)
+	}
+
+	if len(nextBackupVisits) == 0 {
+		log.Println("no new netlog visits to backup, done")
+		return nil
+	}
+
+	log.Printf(" ---- backing up %d netlog visits since %v", len(nextBackupVisits), lastCreatedAt)
+
+	nextBackupVisitsJson, err := json.Marshal(nextBackupVisits)
+	if err != nil {
+		return fmt.Errorf("failed to marshal next backup visits: %w", err)
+	}
+
+	nextBackupVisitsReader := bytes.NewReader(nextBackupVisitsJson)
+	nextBackupFileName := fmt.Sprintf("netlog-visits-%d-%d-%d", baseTime.Day(), baseTime.Month(), baseTime.Year())
+	fileCounter := 1
+	for {
+		nameExists := false
+		for _, file := range currentAllBackupFiles {
+			if file.Name == (nextBackupFileName + ".json") {
+				nameExists = true
+				break
+			}
+		}
+		if nameExists {
+			fileCounter++
+			nextBackupFileName = fmt.Sprintf("%s_%d", nextBackupFileName, fileCounter)
+		} else {
+			break
+		}
+	}
+
+	nextBackupFileMeta := &drive.File{
+		Name:     fmt.Sprintf("%s.json", nextBackupFileName),
+		MimeType: "application/vnd.google-apps.file",
+		Parents:  []string{s.backupsFolderId},
+	}
+	nextBackupFile, err := s.service.
+		Files.Create(nextBackupFileMeta).
+		Fields("id, parents").
+		Media(nextBackupVisitsReader).
+		Do()
+	if err != nil {
+		return fmt.Errorf("failed to save next backup file: %w", err)
+	}
+
+	log.Printf("next backup since %v successfully saved: %s [id: %s]", lastCreatedAt, nextBackupFileMeta.Name, nextBackupFile.Id)
 
 	return nil
 }
@@ -116,15 +177,15 @@ func (s *GoogleDriveBackupService) createRootBackupsFolder() (string, error) {
 	return bfRes.Id, nil
 }
 
-func (s *GoogleDriveBackupService) createInitialBackupFile() (*drive.File, error) {
+func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) (*drive.File, error) {
 	initialBackupMeta := &drive.File{
-		Name: "initial-backup.json",
+		Name: fmt.Sprintf("initial-%d-%d-%d.json", baseTime.Day(), baseTime.Month(), baseTime.Year()),
 		// https://developers.google.com/drive/api/v3/mime-types
 		MimeType: "application/vnd.google-apps.file",
 		Parents:  []string{s.backupsFolderId},
 	}
 
-	visits, err := s.psqlApi.GetAllVisits()
+	visits, err := s.psqlApi.GetAllVisits(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get netlog visits from db: %w", err)
 	}
@@ -153,7 +214,7 @@ func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId str
 	backups, err := s.service.
 		Files.List().
 		Q(nbQuery).
-		Fields("files(id, name)").
+		Fields("files(id, name, createdTime)").
 		Do()
 	if err != nil {
 		return nil, err

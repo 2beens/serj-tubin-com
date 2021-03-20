@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	log "github.com/sirupsen/logrus"
 )
@@ -66,13 +67,28 @@ func (api *PsqlApi) AddVisit(visit *Visit) error {
 	return errors.New("unexpected error, failed to insert visit")
 }
 
-func (api *PsqlApi) GetAllVisits() ([]*Visit, error) {
-	rows, err := api.db.Query(
-		context.Background(),
-		`SELECT
-			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
-		FROM netlog.visit`,
-	)
+func (api *PsqlApi) GetAllVisits(fromTimestamp *time.Time) ([]*Visit, error) {
+	var rows pgx.Rows
+	var err error
+	if fromTimestamp != nil {
+		rows, err = api.db.Query(
+			context.Background(),
+			`
+			SELECT
+				id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
+			FROM netlog.visit
+			WHERE timestamp >= $1;`,
+			fromTimestamp,
+		)
+	} else {
+		rows, err = api.db.Query(
+			context.Background(),
+			`
+			SELECT
+				id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
+			FROM netlog.visit;`,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
