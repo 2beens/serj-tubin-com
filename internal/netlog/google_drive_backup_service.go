@@ -209,7 +209,10 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) (
 		gdErr, ok := err.(*googleapi.Error)
 		if ok {
 			log.Printf(" ---> create initial backup file google error: %+v", gdErr)
+		} else {
+			log.Printf(" ---> create initial backup file error: %+v", err)
 		}
+
 		return nil, fmt.Errorf("failed to create initial backup file: %w", err)
 	}
 
