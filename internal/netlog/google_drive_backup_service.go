@@ -192,6 +192,7 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) e
 		chunks++
 	}
 
+	// TODO: run in a few goroutines to make faster (if needed)
 	for i := 1; i <= chunks; i++ {
 		nextVisits := visits[fromIndex:toIndex]
 
@@ -210,7 +211,7 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) e
 			Parents:  []string{s.backupsFolderId},
 		}
 
-		nextBuckupChunkFile, err := s.service.
+		nextBackupChunkFile, err := s.service.
 			Files.Create(fileMeta).
 			Fields("id, parents").
 			Media(bytes.NewReader(nextVisitsJson)).
@@ -232,7 +233,7 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) e
 			return fmt.Errorf("%d: failed to create initial backup file: %w", i, err)
 		}
 
-		log.Printf("%d: backup file [%s] saved: %s", i, fileMeta.Name, nextBuckupChunkFile.Id)
+		log.Printf("%d: backup file [%s] saved: %s", i, fileMeta.Name, nextBackupChunkFile.Id)
 
 		fromIndex = toIndex
 		toIndex = toIndex + chunkSize

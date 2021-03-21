@@ -24,6 +24,11 @@ func main() {
 		"./lazar-dusan-veliki-drive-credentials.json",
 		"lazar dusan google drive credentials json",
 	)
+	tokenFile := flag.String(
+		"token-file",
+		"./token.json",
+		"google drive token file json",
+	)
 	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
 
 	flag.Parse()
@@ -34,6 +39,9 @@ func main() {
 
 	if *credentialsFile == "" {
 		log.Fatalln("google drive credentials json not specified")
+	}
+	if *tokenFile == "" {
+		log.Fatalln("google drive token file json not specified")
 	}
 
 	// lazar.dusan.veliki@gmail.com // stara sifra
@@ -48,7 +56,7 @@ func main() {
 		log.Fatalf("unable to parse client secret file to config: %v", err)
 	}
 
-	client, err := getClient(config)
+	client, err := getClient(*tokenFile, config)
 	if err != nil {
 		log.Fatalf("failed to get http client: %s", err)
 	}
@@ -65,14 +73,13 @@ func main() {
 }
 
 // Retrieve a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config) (*http.Client, error) {
+func getClient(tokenFilePath string, config *oauth2.Config) (*http.Client, error) {
 	// the file token.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first time
-	tokFile := "token.json"
-	tok, err := tokenFromFile(tokFile)
+	tok, err := tokenFromFile(tokenFilePath)
 	if err != nil {
 		tok = getTokenFromWeb(config)
-		if err := saveToken(tokFile, tok); err != nil {
+		if err := saveToken(tokenFilePath, tok); err != nil {
 			return nil, fmt.Errorf("failed to save token json: %w", err)
 		}
 	}
