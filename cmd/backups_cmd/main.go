@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -56,12 +55,12 @@ func main() {
 		log.Fatalf("unable to parse client secret file to config: %v", err)
 	}
 
-	client, err := getClient(*tokenFile, config)
+	token, err := getOauth2Token(*tokenFile, config)
 	if err != nil {
 		log.Fatalf("failed to get http client: %s", err)
 	}
 
-	s, err := netlog.NewGoogleDriveBackupService(client)
+	s, err := netlog.NewGoogleDriveBackupService(token, config)
 	if err != nil {
 		log.Fatalf("failed to create google drive backup service: %s", err)
 	}
@@ -72,18 +71,20 @@ func main() {
 	}
 }
 
-// Retrieve a token, saves the token, then returns the generated client.
-func getClient(tokenFilePath string, config *oauth2.Config) (*http.Client, error) {
+// Retrieve a token, saves the token, then returns it.
+func getOauth2Token(tokenFilePath string, config *oauth2.Config) (*oauth2.Token, error) {
 	// the file token.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first time
-	tok, err := tokenFromFile(tokenFilePath)
+	token, err := tokenFromFile(tokenFilePath)
 	if err != nil {
-		tok = getTokenFromWeb(config)
-		if err := saveToken(tokenFilePath, tok); err != nil {
+		log.Println("failed to get oauth2 token from file, getting from web ...")
+		token = getTokenFromWeb(config)
+		// save token
+		if err := saveToken(tokenFilePath, token); err != nil {
 			return nil, fmt.Errorf("failed to save token json: %w", err)
 		}
 	}
-	return config.Client(context.Background(), tok), nil
+	return token, nil
 }
 
 // Request a token from the web, then returns the retrieved token.
