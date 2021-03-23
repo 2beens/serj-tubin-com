@@ -10,12 +10,12 @@ import (
 
 	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v3"
-	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
 
 const (
-	rootFolderName = "netlog-backup"
+	rootFolderName      = "netlog-backup"
+	visitsFileChunkSize = 350 // number of visits in one backup file
 )
 
 type GoogleDriveBackupService struct {
@@ -113,24 +113,18 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 		}
 	}
 
-	nextBackupVisits, err := s.psqlApi.GetAllVisits(&lastCreatedAt)
+	visitsToBackup, err := s.psqlApi.GetAllVisits(&lastCreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to get next backup visits: %w", err)
 	}
 
-	if len(nextBackupVisits) == 0 {
+	if len(visitsToBackup) == 0 {
 		log.Println("no new netlog visits to backup, done")
 		return nil
 	}
 
-	log.Printf(" ---- backing up %d netlog visits since %v", len(nextBackupVisits), lastCreatedAt)
+	log.Printf(" ---- backing up %d netlog visits since %v", len(visitsToBackup), lastCreatedAt)
 
-	nextBackupVisitsJson, err := json.Marshal(nextBackupVisits)
-	if err != nil {
-		return fmt.Errorf("failed to marshal next backup visits: %w", err)
-	}
-
-	nextBackupVisitsReader := bytes.NewReader(nextBackupVisitsJson)
 	nextBackupFileName := fmt.Sprintf("netlog-visits-%d-%d-%d", baseTime.Day(), baseTime.Month(), baseTime.Year())
 	fileCounter := 1
 	for {
@@ -149,21 +143,11 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 		}
 	}
 
-	nextBackupFileMeta := &drive.File{
-		Name:     fmt.Sprintf("%s.json", nextBackupFileName),
-		MimeType: "application/vnd.google-apps.file",
-		Parents:  []string{s.backupsFolderId},
-	}
-	nextBackupFile, err := s.service.
-		Files.Create(nextBackupFileMeta).
-		Fields("id, parents").
-		Media(nextBackupVisitsReader).
-		Do()
-	if err != nil {
-		return fmt.Errorf("failed to save next backup file: %w", err)
+	if err := s.backupVisits(visitsToBackup, nextBackupFileName); err != nil {
+		return fmt.Errorf("failed to backup visits: %w", err)
 	}
 
-	log.Printf("next backup since %v successfully saved: %s [id: %s]", lastCreatedAt, nextBackupFileMeta.Name, nextBackupFile.Id)
+	log.Printf("next backup since %v successfully saved: %s", lastCreatedAt, nextBackupFileName)
 
 	return nil
 }
@@ -193,27 +177,36 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) e
 
 	log.Printf("initial backup of %d visits starting ...", len(visits))
 
-	chunkSize := 350
-	chunks := len(visits) / chunkSize
-	fromIndex, toIndex := 0, chunkSize
-	if len(visits)%chunkSize > 0 {
+	baseFileName := fmt.Sprintf("initial-%d-%d-%d", baseTime.Day(), baseTime.Month(), baseTime.Year())
+	if err := s.backupVisits(visits, baseFileName); err != nil {
+		return fmt.Errorf("failed to backup visits: %w", err)
+	}
+
+	return nil
+}
+
+func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName string) error {
+	chunks := len(visits) / visitsFileChunkSize
+	fromIndex, toIndex := 0, visitsFileChunkSize
+	if len(visits)%visitsFileChunkSize > 0 {
 		chunks++
 	}
 
 	// TODO: run in a few goroutines to make faster (if needed)
 	for i := 1; i <= chunks; i++ {
+		nextFileName := fmt.Sprintf("%s_%d.json", baseFileName, i)
 		nextVisits := visits[fromIndex:toIndex]
 
-		log.Printf("%d: create initial backup file with %d netlog visits [from %d to %d] ...", i, len(nextVisits), fromIndex, toIndex)
+		log.Printf("%s: create initial backup file with %d netlog visits [from %d to %d] ...", nextFileName, len(nextVisits), fromIndex, toIndex)
 
 		nextVisitsJson, err := json.Marshal(nextVisits)
 		if err != nil {
-			return fmt.Errorf("failed to marshal netlog visits: %w", err)
+			return fmt.Errorf("%s failed to marshal netlog visits: %w", nextFileName, err)
 		}
 
-		log.Printf("%d: creating file on google drive ...", i)
+		log.Printf("%s: creating file on google drive ...", nextFileName)
 		fileMeta := &drive.File{
-			Name: fmt.Sprintf("initial-%d-%d-%d_%d.json", baseTime.Day(), baseTime.Month(), baseTime.Year(), i),
+			Name: nextFileName,
 			// https://developers.google.com/drive/api/v3/mime-types
 			MimeType: "application/vnd.google-apps.file",
 			Parents:  []string{s.backupsFolderId},
@@ -225,26 +218,13 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) e
 			Media(bytes.NewReader(nextVisitsJson)).
 			Do()
 		if err != nil {
-			if gdErr, ok := err.(*googleapi.Error); ok {
-				log.Printf(
-					"%d: ---> create initial backup file google error: %s, header: [%+v], details: %s",
-					i,
-					gdErr.Message,
-					gdErr.Header,
-					gdErr.Details,
-				)
-				for _, errItem := range gdErr.Errors {
-					log.Printf("\t -- %s: %s", errItem.Message, errItem.Reason)
-				}
-			}
-
-			return fmt.Errorf("%d: failed to create initial backup file: %w", i, err)
+			return fmt.Errorf("%s: failed to create visits backup file: %w", nextFileName, err)
 		}
 
-		log.Printf("%d: backup file [%s] saved: %s", i, fileMeta.Name, nextBackupChunkFile.Id)
+		log.Printf("%s: backup file [%s] saved: %s", nextFileName, fileMeta.Name, nextBackupChunkFile.Id)
 
 		fromIndex = toIndex
-		toIndex = toIndex + chunkSize
+		toIndex = toIndex + visitsFileChunkSize
 		if toIndex >= len(visits) {
 			toIndex = len(visits)
 		}
