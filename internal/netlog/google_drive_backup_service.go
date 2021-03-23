@@ -2,14 +2,16 @@ package netlog
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
+	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 )
 
 const (
@@ -23,11 +25,13 @@ type GoogleDriveBackupService struct {
 	backupsFolderId string
 }
 
-func NewGoogleDriveBackupService(httpClient *http.Client) (*GoogleDriveBackupService, error) {
-	// TODO:
-	// gdService, err := drive.NewService(context.Background(), option.WithCredentialsJSON(credentialsFileBytes))
-
-	driveService, err := drive.New(httpClient)
+func NewGoogleDriveBackupService(token *oauth2.Token, config *oauth2.Config) (*GoogleDriveBackupService, error) {
+	// https://github.com/googleapis/google-api-go-client/blob/master/drive/v3/drive-gen.go
+	ctx := context.Background()
+	driveService, err := drive.NewService(
+		ctx,
+		option.WithTokenSource(config.TokenSource(ctx, token)),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve drive client: %w", err)
 	}
