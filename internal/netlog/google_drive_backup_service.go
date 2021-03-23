@@ -40,11 +40,14 @@ func NewGoogleDriveBackupService(httpClient *http.Client) (*GoogleDriveBackupSer
 		return nil, fmt.Errorf("unable to retrieve files: %w", err)
 	}
 
+	log.Printf("all files count: %d", len(driveRoot.Files))
+
 	backupsFolderId := ""
 	for _, f := range driveRoot.Files {
 		if f.Name == rootFolderName {
 			// root backups folder found, get out
 			backupsFolderId = f.Id
+			log.Printf("root backups folder found, %s: %s", f.Name, f.Id)
 			break
 		}
 	}
@@ -61,6 +64,7 @@ func NewGoogleDriveBackupService(httpClient *http.Client) (*GoogleDriveBackupSer
 	}
 
 	if backupsFolderId == "" {
+		log.Println("root backups folder not found, recreating ...")
 		backupsFolderId, err = s.createRootBackupsFolder()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create root backups folder: %w", err)
