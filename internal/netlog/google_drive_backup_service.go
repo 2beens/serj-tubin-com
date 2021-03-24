@@ -194,6 +194,10 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 		chunks++
 	}
 
+	if len(visits) < visitsFileChunkSize {
+		toIndex = len(visits)
+	}
+
 	// TODO: run in a few goroutines to make faster (if needed)
 	for i := 1; i <= chunks; i++ {
 		nextFileName := fmt.Sprintf("%s_%d.json", baseFileName, i)
