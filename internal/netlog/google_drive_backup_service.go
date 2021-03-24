@@ -14,14 +14,13 @@ import (
 )
 
 const (
-	rootFolderName      = "netlog-backup"
-	visitsFileChunkSize = 350 // number of visits in one backup file
+	rootBackupsFolderName = "netlog-backup"
+	visitsFileChunkSize   = 350 // number of visits in one backup file
 )
 
 type GoogleDriveBackupService struct {
 	psqlApi         *PsqlApi
 	service         *drive.Service
-	root            *drive.FileList
 	backupsFolderId string
 }
 
@@ -36,24 +35,28 @@ func NewGoogleDriveBackupService(token *oauth2.Token, config *oauth2.Config) (*G
 		return nil, fmt.Errorf("unable to retrieve drive client: %w", err)
 	}
 
-	driveRoot, err := driveService.
+	rootFolderQuery := fmt.Sprintf("mimeType = 'application/vnd.google-apps.folder' and trashed = false and name = '%s'", rootBackupsFolderName)
+	log.Println(rootFolderQuery)
+	netlogBackupFolder, err := driveService.
 		Files.List().
+		Q(rootFolderQuery).
 		Fields("files(id, name)").
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve files: %w", err)
 	}
 
-	log.Printf("all files count: %d", len(driveRoot.Files))
-
 	backupsFolderId := ""
-	for _, f := range driveRoot.Files {
-		if f.Name == rootFolderName {
-			// root backups folder found, get out
-			backupsFolderId = f.Id
-			log.Printf("root backups folder found, %s: %s", f.Name, f.Id)
-			break
-		}
+	if len(netlogBackupFolder.Files) == 1 {
+		rbf := netlogBackupFolder.Files[0]
+		log.Printf("root backups folder found, %s: %s", rbf.Name, rbf.Id)
+		backupsFolderId = rbf.Id
+	} else if len(netlogBackupFolder.Files) == 0 {
+		log.Println("root backups folder not found, will recreate")
+	} else {
+		rbf := netlogBackupFolder.Files[0]
+		log.Printf("attention: found %d root backups folders, will take the first one: %s", len(netlogBackupFolder.Files), rbf.Id)
+		backupsFolderId = rbf.Id
 	}
 
 	psqlApi, err := NewNetlogPsqlApi()
@@ -64,7 +67,6 @@ func NewGoogleDriveBackupService(token *oauth2.Token, config *oauth2.Config) (*G
 	s := &GoogleDriveBackupService{
 		psqlApi: psqlApi,
 		service: driveService,
-		root:    driveRoot,
 	}
 
 	if backupsFolderId == "" {
@@ -154,7 +156,7 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 
 func (s *GoogleDriveBackupService) createRootBackupsFolder() (string, error) {
 	backupsFolderMeta := &drive.File{
-		Name:     rootFolderName,
+		Name:     rootBackupsFolderName,
 		MimeType: "application/vnd.google-apps.folder",
 	}
 
@@ -245,15 +247,4 @@ func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId str
 	}
 
 	return backups.Files, nil
-}
-
-func (s *GoogleDriveBackupService) ListAllFiles() {
-	log.Println("all files:")
-	if len(s.root.Files) == 0 {
-		log.Println(" -- no files found")
-	} else {
-		for _, i := range s.root.Files {
-			log.Printf(" -- %s (%s)\n", i.Name, i.Id)
-		}
-	}
 }
