@@ -8,7 +8,6 @@ import (
 	"log"
 	"time"
 
-	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 )
@@ -24,12 +23,14 @@ type GoogleDriveBackupService struct {
 	backupsFolderId string
 }
 
-func NewGoogleDriveBackupService(token *oauth2.Token, config *oauth2.Config) (*GoogleDriveBackupService, error) {
+func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupService, error) {
 	// https://github.com/googleapis/google-api-go-client/blob/master/drive/v3/drive-gen.go
 	ctx := context.Background()
 	driveService, err := drive.NewService(
 		ctx,
-		option.WithTokenSource(config.TokenSource(ctx, token)),
+		option.WithCredentialsJSON(credentialsJson),
+		option.WithScopes(drive.DriveFileScope),
+		//option.WithTokenSource(config.TokenSource(ctx, token)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve drive client: %w", err)
