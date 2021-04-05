@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -17,10 +18,15 @@ const (
 	visitsFileChunkSize   = 350 // number of visits in one backup file
 )
 
+var (
+	ErrPermissionNotFound = errors.New("lazar permissions not found")
+)
+
 type GoogleDriveBackupService struct {
-	psqlApi         *PsqlApi
-	service         *drive.Service
-	backupsFolderId string
+	psqlApi              *PsqlApi
+	service              *drive.Service
+	backupsFolderId      string
+	lazarDusanPermission *drive.Permission
 }
 
 func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupService, error) {
@@ -67,25 +73,73 @@ func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupServ
 
 	if backupsFolderId == "" {
 		log.Println("root backups folder not found, recreating ...")
-		backupsFolderId, err = s.createRootBackupsFolder()
+
+		var permission *drive.Permission
+		backupsFolderId, permission, err = s.createRootBackupsFolder()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create root backups folder: %w", err)
 		}
-		log.Printf("new root backups folder created: %s", backupsFolderId)
+
+		s.lazarDusanPermission = permission
+
+		log.Printf("new root backups folder created: %s, permission: %s", backupsFolderId, permission.Id)
 	} else {
+		pList, err := driveService.Permissions.List(backupsFolderId).Do()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get root backup folder permission list: %w", err)
+		}
+
+		for _, p := range pList.Permissions {
+			//log.Printf(" ====> %+v", p)
+			if p.Type == "user" && p.Role == "reader" {
+				s.lazarDusanPermission = p
+				break
+			}
+		}
+
 		log.Printf("found backups folder ID: %s", backupsFolderId)
 	}
 
 	s.backupsFolderId = backupsFolderId
 
+	if s.lazarDusanPermission == nil {
+		return s, ErrPermissionNotFound
+	}
+
 	return s, nil
 }
 
-func (s *GoogleDriveBackupService) Destry() error {
+func DestroyAllFiles(credentialsJson []byte) error {
+	ctx := context.Background()
+	driveService, err := drive.NewService(ctx, option.WithCredentialsJSON(credentialsJson))
+	if err != nil {
+		return fmt.Errorf("unable to retrieve drive client: %w", err)
+	}
+
 	log.Println(" !! destroying netlog visits backups ...")
-	return s.service.Files.
-		Delete(s.backupsFolderId).
-		Do()
+
+	files, err := driveService.Files.List().Do()
+	if err != nil {
+		return fmt.Errorf("failed to get files list: %w", err)
+	}
+
+	// TODO: in case of more than 100 files, the rest will not be deleted
+
+	for _, f := range files.Files {
+		log.Printf("deleting: %s [%s] ...", f.Name, f.Id)
+		err = driveService.Files.
+			Delete(f.Id).
+			Do()
+		if err != nil {
+			log.Printf("failed to delete file %s: %s", f.Id, err)
+		}
+	}
+
+	if err := driveService.Files.EmptyTrash().Do(); err != nil {
+		log.Printf("empty trash err: %s", err)
+	}
+
+	return nil
 }
 
 func (s *GoogleDriveBackupService) Reinit(baseTime time.Time) error {
@@ -98,19 +152,25 @@ func (s *GoogleDriveBackupService) Reinit(baseTime time.Time) error {
 		return err
 	}
 
-	backupsFolderId, err := s.createRootBackupsFolder()
+	backupsFolderId, permission, err := s.createRootBackupsFolder()
 	if err != nil {
 		return fmt.Errorf("failed to create root backups folder: %w", err)
 	}
 
-	log.Printf("new root backups folder created: %s", backupsFolderId)
+	log.Printf("new root backups folder created: %s, permission: %s", backupsFolderId, permission.Id)
 
 	s.backupsFolderId = backupsFolderId
+	s.lazarDusanPermission = permission
 
 	return s.DoBackup(baseTime)
 }
 
 func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
+	log.Println("DoBackup start ...")
+	if s == nil {
+		panic("service is nil")
+	}
+
 	currentAllBackupFiles, err := s.getNetlogBackupFiles(s.backupsFolderId)
 	if err != nil {
 		return err
@@ -179,7 +239,7 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 	return nil
 }
 
-func (s *GoogleDriveBackupService) createRootBackupsFolder() (string, error) {
+func (s *GoogleDriveBackupService) createRootBackupsFolder() (folderId string, createdPermission *drive.Permission, err error) {
 	backupsFolderMeta := &drive.File{
 		Name:     rootBackupsFolderName,
 		MimeType: "application/vnd.google-apps.folder",
@@ -190,16 +250,29 @@ func (s *GoogleDriveBackupService) createRootBackupsFolder() (string, error) {
 		Fields("id").
 		Do()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	if pId, err := s.updateFilePermission(bfRes.Id); err != nil {
-		return bfRes.Id, fmt.Errorf("failed to create additional permission for root backup folder: %s", err)
-	} else {
-		log.Printf("permission %s created for root backup folder %s", pId, bfRes.Id)
+	log.Printf("creating permission for backup folder [%s] ...", bfRes.Id)
+
+	permission := &drive.Permission{
+		EmailAddress: "lazar.dusan.veliki@gmail.com",
+		Type:         "user",
+		//Type:   "domain",
+		//Domain: "serj-tubin.com",
+		Role: "reader",
 	}
 
-	return bfRes.Id, nil
+	cp, err := s.service.Permissions.
+		Create(bfRes.Id, permission).
+		Do()
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create permission: %w", err)
+	}
+
+	log.Println("permission created")
+
+	return bfRes.Id, cp, nil
 }
 
 func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) error {
@@ -276,20 +349,13 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 }
 
 func (s *GoogleDriveBackupService) updateFilePermission(fileId string) (string, error) {
-	permission := &drive.Permission{
-		EmailAddress: "lazar.dusan.veliki@gmail.com",
-		Type:         "user",
-		Role:         "reader",
-	}
-
-	createdPermission, err := s.service.Permissions.
-		Create(fileId, permission).
+	addedPermission, err := s.service.Permissions.
+		Update(fileId, s.lazarDusanPermission.Id, s.lazarDusanPermission).
 		Do()
 	if err != nil {
 		return "", err
 	}
-
-	return createdPermission.Id, nil
+	return addedPermission.Id, nil
 }
 
 func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId string) ([]*drive.File, error) {

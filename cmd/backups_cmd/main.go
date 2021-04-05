@@ -48,6 +48,14 @@ func main() {
 		log.Fatalf("unable to read client secret file: %v", err)
 	}
 
+	if *destroy {
+		if err := netlog.DestroyAllFiles(credentialsFileBytes); err != nil {
+			log.Fatalf("destroy failed: %s", err)
+		}
+		log.Println("destroy done!")
+		return
+	}
+
 	s, err := netlog.NewGoogleDriveBackupService(credentialsFileBytes)
 	if err != nil {
 		log.Fatalf("failed to create google drive backup service: %s", err)
@@ -60,14 +68,6 @@ func main() {
 			log.Fatalf("reinit failed: %s", err)
 		}
 		log.Println("reinit done")
-		return
-	}
-
-	if *destroy {
-		if err := s.Destry(); err != nil {
-			log.Fatalf("destroy failed: %s", err)
-		}
-		log.Println("destroy done!")
 		return
 	}
 
