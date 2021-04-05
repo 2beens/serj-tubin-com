@@ -24,6 +24,7 @@ func main() {
 	)
 	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
 	reinit := flag.Bool("reinit", false, "reinitialize all again")
+	destroy := flag.Bool("destroy", false, "destroy all backups")
 
 	flag.Parse()
 
@@ -59,6 +60,14 @@ func main() {
 			log.Fatalf("reinit failed: %s", err)
 		}
 		log.Println("reinit done")
+		return
+	}
+
+	if *destroy {
+		if err := s.Destry(); err != nil {
+			log.Fatalf("destroy failed: %s", err)
+		}
+		log.Println("destroy done!")
 		return
 	}
 

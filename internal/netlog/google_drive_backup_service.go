@@ -81,6 +81,13 @@ func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupServ
 	return s, nil
 }
 
+func (s *GoogleDriveBackupService) Destry() error {
+	log.Println(" !! destroying netlog visits backups ...")
+	return s.service.Files.
+		Delete(s.backupsFolderId).
+		Do()
+}
+
 func (s *GoogleDriveBackupService) Reinit(baseTime time.Time) error {
 	log.Println("netlog visits backup reinit starting ...")
 
