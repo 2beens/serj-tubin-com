@@ -52,14 +52,16 @@ func main() {
 		log.Fatalf("failed to create google drive backup service: %s", err)
 	}
 
+	baseTime := time.Now()
+
 	if *reinit {
-		if err := s.Reinit(); err != nil {
+		if err := s.Reinit(baseTime); err != nil {
 			log.Fatalf("reinit failed: %s", err)
 		}
-		log.Println("reinit done, will backup now ...")
+		log.Println("reinit done")
+		return
 	}
 
-	baseTime := time.Now()
 	if err := s.DoBackup(baseTime); err != nil {
 		log.Fatalf("%+v", err)
 	}

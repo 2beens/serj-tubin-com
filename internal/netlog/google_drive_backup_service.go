@@ -26,9 +26,6 @@ type GoogleDriveBackupService struct {
 func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupService, error) {
 	// https://github.com/googleapis/google-api-go-client/blob/master/drive/v3/drive-gen.go
 	ctx := context.Background()
-
-	// https://stackoverflow.com/questions/27448699/google-drive-folders-files-created-using-api-not-visible-on-google-interface
-
 	driveService, err := drive.NewService(ctx, option.WithCredentialsJSON(credentialsJson))
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve drive client: %w", err)
@@ -84,7 +81,7 @@ func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupServ
 	return s, nil
 }
 
-func (s *GoogleDriveBackupService) Reinit() error {
+func (s *GoogleDriveBackupService) Reinit(baseTime time.Time) error {
 	log.Println("netlog visits backup reinit starting ...")
 
 	err := s.service.Files.
@@ -103,7 +100,7 @@ func (s *GoogleDriveBackupService) Reinit() error {
 
 	s.backupsFolderId = backupsFolderId
 
-	return nil
+	return s.DoBackup(baseTime)
 }
 
 func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
@@ -195,16 +192,6 @@ func (s *GoogleDriveBackupService) createRootBackupsFolder() (string, error) {
 		log.Printf("permission %s created for root backup folder %s", pId, bfRes.Id)
 	}
 
-	pList, err := s.service.Permissions.List(bfRes.Id).Do()
-	if err != nil {
-		log.Printf("failed to get root folder permissions: %s", err)
-	} else {
-		log.Println("root folder permissions:")
-		for _, p := range pList.Permissions {
-			log.Printf("--> %+v", p)
-		}
-	}
-
 	return bfRes.Id, nil
 }
 
@@ -264,13 +251,12 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 			return fmt.Errorf("%s: failed to create visits backups file: %w", nextFileName, err)
 		}
 
-		if pId, err := s.updateFilePermission(nextBackupChunkFile.Id); err != nil {
+		permissionId, err := s.updateFilePermission(nextBackupChunkFile.Id)
+		if err != nil {
 			return fmt.Errorf("%s: failed to create additional permission: %s", nextFileName, err)
-		} else {
-			log.Printf("%s: permission %s created", nextFileName, pId)
 		}
 
-		log.Printf("%s: backup file [%s] saved: %s", nextFileName, fileMeta.Name, nextBackupChunkFile.Id)
+		log.Printf("%s: backup file [%s] [permission %s] saved: %s", nextFileName, fileMeta.Name, permissionId, nextBackupChunkFile.Id)
 
 		fromIndex = toIndex
 		toIndex = toIndex + visitsFileChunkSize
