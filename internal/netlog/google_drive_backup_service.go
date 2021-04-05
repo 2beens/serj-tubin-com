@@ -26,12 +26,10 @@ type GoogleDriveBackupService struct {
 func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupService, error) {
 	// https://github.com/googleapis/google-api-go-client/blob/master/drive/v3/drive-gen.go
 	ctx := context.Background()
-	driveService, err := drive.NewService(
-		ctx,
-		option.WithCredentialsJSON(credentialsJson),
-		option.WithScopes(drive.DriveFileScope),
-		//option.WithTokenSource(config.TokenSource(ctx, token)),
-	)
+
+	// https://stackoverflow.com/questions/27448699/google-drive-folders-files-created-using-api-not-visible-on-google-interface
+
+	driveService, err := drive.NewService(ctx, option.WithCredentialsJSON(credentialsJson))
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve drive client: %w", err)
 	}
@@ -76,14 +74,36 @@ func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupServ
 		if err != nil {
 			return nil, fmt.Errorf("failed to create root backups folder: %w", err)
 		}
-		log.Printf("root backups folder created: %s", backupsFolderId)
+		log.Printf("new root backups folder created: %s", backupsFolderId)
+	} else {
+		log.Printf("found backups folder ID: %s", backupsFolderId)
 	}
 
 	s.backupsFolderId = backupsFolderId
 
-	log.Printf("backups folder ID: %s", s.backupsFolderId)
-
 	return s, nil
+}
+
+func (s *GoogleDriveBackupService) Reinit() error {
+	log.Println("netlog visits backup reinit starting ...")
+
+	err := s.service.Files.
+		Delete(s.backupsFolderId).
+		Do()
+	if err != nil {
+		return err
+	}
+
+	backupsFolderId, err := s.createRootBackupsFolder()
+	if err != nil {
+		return fmt.Errorf("failed to create root backups folder: %w", err)
+	}
+
+	log.Printf("new root backups folder created: %s", backupsFolderId)
+
+	s.backupsFolderId = backupsFolderId
+
+	return nil
 }
 
 func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
@@ -169,6 +189,22 @@ func (s *GoogleDriveBackupService) createRootBackupsFolder() (string, error) {
 		return "", err
 	}
 
+	if pId, err := s.updateFilePermission(bfRes.Id); err != nil {
+		return bfRes.Id, fmt.Errorf("failed to create additional permission for root backup folder: %s", err)
+	} else {
+		log.Printf("permission %s created for root backup folder %s", pId, bfRes.Id)
+	}
+
+	pList, err := s.service.Permissions.List(bfRes.Id).Do()
+	if err != nil {
+		log.Printf("failed to get root folder permissions: %s", err)
+	} else {
+		log.Println("root folder permissions:")
+		for _, p := range pList.Permissions {
+			log.Printf("--> %+v", p)
+		}
+	}
+
 	return bfRes.Id, nil
 }
 
@@ -225,7 +261,13 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 			Media(bytes.NewReader(nextVisitsJson)).
 			Do()
 		if err != nil {
-			return fmt.Errorf("%s: failed to create visits backup file: %w", nextFileName, err)
+			return fmt.Errorf("%s: failed to create visits backups file: %w", nextFileName, err)
+		}
+
+		if pId, err := s.updateFilePermission(nextBackupChunkFile.Id); err != nil {
+			return fmt.Errorf("%s: failed to create additional permission: %s", nextFileName, err)
+		} else {
+			log.Printf("%s: permission %s created", nextFileName, pId)
 		}
 
 		log.Printf("%s: backup file [%s] saved: %s", nextFileName, fileMeta.Name, nextBackupChunkFile.Id)
@@ -238,6 +280,23 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 	}
 
 	return nil
+}
+
+func (s *GoogleDriveBackupService) updateFilePermission(fileId string) (string, error) {
+	permission := &drive.Permission{
+		EmailAddress: "lazar.dusan.veliki@gmail.com",
+		Type:         "user",
+		Role:         "reader",
+	}
+
+	createdPermission, err := s.service.Permissions.
+		Create(fileId, permission).
+		Do()
+	if err != nil {
+		return "", err
+	}
+
+	return createdPermission.Id, nil
 }
 
 func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId string) ([]*drive.File, error) {
