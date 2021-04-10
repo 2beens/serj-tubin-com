@@ -27,6 +27,10 @@ some ideas:
         - go client:
             - https://github.com/elastic/go-elasticsearch
     - (done ✅) BACKUP NETLOG DATA TO GOOGLE/MEGA/ETC
+
+    - apple health data export, backup and use:
+        - https://osxdaily.com/2019/05/20/export-health-data-from-iphone/
+
     - etc ...
 
 31-may-2020 serj-tubin-backend service:
@@ -45,3 +49,7 @@ some ideas:
         -   https://www.serj-tubin.com/monit/
         -   no services are still enabled
         -   to enable serj-tubin backend (or any other), it needs its service file (done) and PID file (not done yet), then it can be seen in the monit dashboard
+
+apr-2021 - DB replication and high availability:
+ - instead of using google drive API to backup netlog visits, let's get a new server somewhere else and setup the replication and HA
+ - https://www.postgresql.org/docs/9.2/high-availability.html
