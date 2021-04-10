@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
@@ -188,6 +190,7 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 
 	log.Println("current backup files:")
 	lastCreatedAt := time.Time{}
+	lastFile := currentAllBackupFiles[0]
 	for _, file := range currentAllBackupFiles {
 		createdAt, err := time.Parse(time.RFC3339, file.CreatedTime)
 		if err != nil {
@@ -198,7 +201,43 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 
 		if createdAt.After(lastCreatedAt) {
 			lastCreatedAt = createdAt
+			lastFile = file
 		}
+	}
+
+	// get the last visit from last file
+	lastFileContent, err := s.service.Files.Export(lastFile.Id, "text/plain").Download()
+	if err != nil {
+		return fmt.Errorf("failed to get next backup visits, failed to get last file content: %w", err)
+	}
+
+	if lastFileContent.StatusCode != http.StatusOK {
+		log.Printf("!! warning, download last saved file non-200 status returned: %d", lastFileContent.StatusCode)
+	}
+
+	lastFileVisitsJson, err := io.ReadAll(lastFileContent.Body)
+	if err != nil {
+		return fmt.Errorf("failed to get next backup visits, failed to read last file body: %w", err)
+	}
+
+	if len(lastFileVisitsJson) > 0 {
+		// the response is a UTF-8 text string with a Byte Order Mark (BOM)
+		// the BOM identifies that the text is UTF-8 encoded, but it should be removed before decoding
+		// https://stackoverflow.com/questions/31398044/got-error-invalid-character-%C3%AF-looking-for-beginning-of-value-from-json-unmar
+		lastFileVisitsJson = bytes.TrimPrefix(lastFileVisitsJson, []byte("\xef\xbb\xbf"))
+
+		var lastFileVisits []Visit
+		if err := json.Unmarshal(lastFileVisitsJson, &lastFileVisits); err != nil {
+			return fmt.Errorf("failed to get next backup visits, failed to unmarshal last file visits: %w", err)
+		}
+
+		if len(lastFileVisits) > 0 {
+			lastVisit := lastFileVisits[len(lastFileVisits)-1]
+			log.Printf(" > found last visit [%d], will continue from timestamp: %s", lastVisit.Id, lastVisit.Timestamp)
+			lastCreatedAt = lastVisit.Timestamp
+		}
+	} else {
+		log.Printf("!! warning, last saved file [%s] is empty", lastFile.Name)
 	}
 
 	visitsToBackup, err := s.psqlApi.GetAllVisits(&lastCreatedAt)
@@ -213,29 +252,30 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 
 	log.Printf(" ---- backing up %d netlog visits since %v", len(visitsToBackup), lastCreatedAt)
 
-	nextBackupFileName := fmt.Sprintf("netlog-visits-%d-%d-%d", baseTime.Day(), baseTime.Month(), baseTime.Year())
+	nextBackupFileBaseName := fmt.Sprintf("netlog-visits-%d-%d-%d", baseTime.Day(), baseTime.Month(), baseTime.Year())
 	fileCounter := 1
 	for {
 		nameExists := false
 		for _, file := range currentAllBackupFiles {
-			if file.Name == (nextBackupFileName + ".json") {
+			if file.Name == fmt.Sprintf("%s_%d.json", nextBackupFileBaseName, fileCounter) {
 				nameExists = true
 				break
 			}
 		}
 		if nameExists {
 			fileCounter++
-			nextBackupFileName = fmt.Sprintf("%s_%d", nextBackupFileName, fileCounter)
 		} else {
 			break
 		}
 	}
 
-	if err := s.backupVisits(visitsToBackup, nextBackupFileName); err != nil {
+	log.Printf(" ====> next chosen name: %s_%d.json", nextBackupFileBaseName, fileCounter)
+
+	if err := s.backupVisits(visitsToBackup, nextBackupFileBaseName, fileCounter); err != nil {
 		return fmt.Errorf("failed to backup visits: %w", err)
 	}
 
-	log.Printf("next backup since %v successfully saved: %s", lastCreatedAt, nextBackupFileName)
+	log.Printf("next backup since %v successfully saved: %s", lastCreatedAt, nextBackupFileBaseName)
 
 	return nil
 }
@@ -283,14 +323,14 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) e
 	log.Printf("initial backup of %d visits starting ...", len(visits))
 
 	baseFileName := fmt.Sprintf("initial-%d-%d-%d", baseTime.Day(), baseTime.Month(), baseTime.Year())
-	if err := s.backupVisits(visits, baseFileName); err != nil {
+	if err := s.backupVisits(visits, baseFileName, 1); err != nil {
 		return fmt.Errorf("failed to backup visits: %w", err)
 	}
 
 	return nil
 }
 
-func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName string) error {
+func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName string, previousFileCounter int) error {
 	chunks := len(visits) / visitsFileChunkSize
 	fromIndex, toIndex := 0, visitsFileChunkSize
 	if len(visits)%visitsFileChunkSize > 0 {
@@ -303,11 +343,11 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 
 	// TODO: run in a few goroutines to make faster (if needed)
 	for i := 1; i <= chunks; i++ {
-		nextFileName := fmt.Sprintf("%s_%d.json", baseFileName, i)
+		nextFileName := fmt.Sprintf("%s_%d.json", baseFileName, i+previousFileCounter-1)
 		nextVisits := visits[fromIndex:toIndex]
 
 		log.Printf(
-			"%s: create initial backup file with %d netlog visits [from %d to %d] [chunk %d / %d] ...",
+			"%s: creating backup file with %d netlog visits [from %d to %d] [chunk %d / %d] ...",
 			nextFileName, len(nextVisits), fromIndex, toIndex, i, chunks,
 		)
 
@@ -323,12 +363,10 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 			MimeType:      "application/vnd.google-apps.file",
 			Parents:       []string{s.backupsFolderId},
 			PermissionIds: []string{s.lazarDusanPermission.Id},
-			//Permissions:   []*drive.Permission{s.lazarDusanPermission},
 		}
 
 		retries := 0
 
-		// goto considered harmful :)
 	loop:
 		retries++
 		nextBackupChunkFile, err := s.service.
@@ -341,8 +379,12 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 				if retries >= 5 {
 					return fmt.Errorf("%s: failed to create visits backups file after %d retries: %w", nextFileName, retries, err)
 				}
-				log.Printf("%s: backup failed, will try again in 10 seconds: %s", nextFileName, err)
-				time.Sleep(10 * time.Second)
+
+				backoffDuration := retries * 10
+				log.Printf("%s: backup failed, will try again in %d seconds: %s", nextFileName, backoffDuration, err)
+				time.Sleep(time.Duration(backoffDuration) * time.Second)
+
+				// goto considered harmful :)
 				goto loop
 			}
 			return fmt.Errorf("%s: failed to create visits backups file: %w", nextFileName, err)
