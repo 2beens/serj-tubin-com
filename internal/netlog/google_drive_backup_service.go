@@ -258,9 +258,7 @@ func (s *GoogleDriveBackupService) createRootBackupsFolder() (folderId string, c
 	permission := &drive.Permission{
 		EmailAddress: "lazar.dusan.veliki@gmail.com",
 		Type:         "user",
-		//Type:   "domain",
-		//Domain: "serj-tubin.com",
-		Role: "reader",
+		Role:         "reader",
 	}
 
 	cp, err := s.service.Permissions.
@@ -307,7 +305,10 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 		nextFileName := fmt.Sprintf("%s_%d.json", baseFileName, i)
 		nextVisits := visits[fromIndex:toIndex]
 
-		log.Printf("%s: create initial backup file with %d netlog visits [from %d to %d] ...", nextFileName, len(nextVisits), fromIndex, toIndex)
+		log.Printf(
+			"%s: create initial backup file with %d netlog visits [from %d to %d] [chunk %d / %d] ...",
+			nextFileName, len(nextVisits), fromIndex, toIndex, i, chunks,
+		)
 
 		nextVisitsJson, err := json.Marshal(nextVisits)
 		if err != nil {
@@ -318,8 +319,10 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 		fileMeta := &drive.File{
 			Name: nextFileName,
 			// https://developers.google.com/drive/api/v3/mime-types
-			MimeType: "application/vnd.google-apps.file",
-			Parents:  []string{s.backupsFolderId},
+			MimeType:      "application/vnd.google-apps.file",
+			Parents:       []string{s.backupsFolderId},
+			PermissionIds: []string{s.lazarDusanPermission.Id},
+			//Permissions:   []*drive.Permission{s.lazarDusanPermission},
 		}
 
 		nextBackupChunkFile, err := s.service.
@@ -331,12 +334,7 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 			return fmt.Errorf("%s: failed to create visits backups file: %w", nextFileName, err)
 		}
 
-		permissionId, err := s.updateFilePermission(nextBackupChunkFile.Id)
-		if err != nil {
-			return fmt.Errorf("%s: failed to create additional permission: %s", nextFileName, err)
-		}
-
-		log.Printf("%s: backup file [%s] [permission %s] saved: %s", nextFileName, fileMeta.Name, permissionId, nextBackupChunkFile.Id)
+		log.Printf("%s: backup file [%s] [permission %s] saved: %s", nextFileName, fileMeta.Name, s.lazarDusanPermission.Id, nextBackupChunkFile.Id)
 
 		fromIndex = toIndex
 		toIndex = toIndex + visitsFileChunkSize
@@ -346,16 +344,6 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 	}
 
 	return nil
-}
-
-func (s *GoogleDriveBackupService) updateFilePermission(fileId string) (string, error) {
-	addedPermission, err := s.service.Permissions.
-		Update(fileId, s.lazarDusanPermission.Id, s.lazarDusanPermission).
-		Do()
-	if err != nil {
-		return "", err
-	}
-	return addedPermission.Id, nil
 }
 
 func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId string) ([]*drive.File, error) {
