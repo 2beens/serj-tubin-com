@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"google.golang.org/api/drive/v3"
@@ -325,12 +326,25 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 			//Permissions:   []*drive.Permission{s.lazarDusanPermission},
 		}
 
+		retries := 0
+
+		// goto considered harmful :)
+	loop:
+		retries++
 		nextBackupChunkFile, err := s.service.
 			Files.Create(fileMeta).
 			Fields("id, parents").
 			Media(bytes.NewReader(nextVisitsJson)).
 			Do()
 		if err != nil {
+			if strings.Contains(err.Error(), "internalError") {
+				if retries >= 5 {
+					return fmt.Errorf("%s: failed to create visits backups file after %d retries: %w", nextFileName, retries, err)
+				}
+				log.Printf("%s: backup failed, will try again in 10 seconds: %s", nextFileName, err)
+				time.Sleep(10 * time.Second)
+				goto loop
+			}
 			return fmt.Errorf("%s: failed to create visits backups file: %w", nextFileName, err)
 		}
 
