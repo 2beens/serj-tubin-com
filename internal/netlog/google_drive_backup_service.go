@@ -127,6 +127,7 @@ func DestroyAllFiles(credentialsJson []byte) error {
 	}
 
 	// TODO: in case of more than 100 files, the rest will not be deleted
+	//		- just run it more times, until all are deleted then :shrug:
 
 	for _, f := range files.Files {
 		log.Printf("deleting: %s [%s] ...", f.Name, f.Id)
@@ -403,15 +404,35 @@ func (s *GoogleDriveBackupService) backupVisits(visits []*Visit, baseFileName st
 }
 
 func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId string) ([]*drive.File, error) {
+	var files []*drive.File
 	nbQuery := fmt.Sprintf("'%s' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false", netlogBackupFolderId)
-	backups, err := s.service.
-		Files.List().
-		Q(nbQuery).
-		Fields("files(id, name, createdTime)").
-		Do()
-	if err != nil {
-		return nil, err
+	nextPageToken := ""
+	i := 1
+
+	for {
+		log.Printf("fetching all files chunk: %d", i)
+		fileList, err := s.service.
+			Files.List().
+			PageSize(100).
+			Q(nbQuery).
+			Fields("nextPageToken, files(id, name, createdTime)").
+			PageToken(nextPageToken).
+			Do()
+		if err != nil {
+			return nil, err
+		}
+
+		nextPageToken = fileList.NextPageToken
+
+		files = append(files, fileList.Files...)
+		log.Printf(" - loaded: %d", len(files))
+
+		if nextPageToken == "" {
+			break
+		}
+
+		i++
 	}
 
-	return backups.Files, nil
+	return files, nil
 }

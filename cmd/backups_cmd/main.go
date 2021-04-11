@@ -24,7 +24,7 @@ func main() {
 	)
 	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
 	reinit := flag.Bool("reinit", false, "reinitialize all again")
-	destroy := flag.Bool("destroy", false, "destroy all backups")
+	destroy := flag.Bool("destroy", false, "destroy all files (warning!!) (try running more times, if more than 100 files are present)")
 
 	flag.Parse()
 
