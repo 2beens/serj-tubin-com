@@ -75,7 +75,7 @@ func (api *PsqlApi) GetAllVisits(fromTimestamp *time.Time) ([]*Visit, error) {
 			context.Background(),
 			`
 			SELECT
-				id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
+				id, COALESCE(title, '') as title, COALESCE(source, '') as source, url, timestamp
 			FROM netlog.visit
 			WHERE timestamp >= $1;`,
 			fromTimestamp,
@@ -85,7 +85,7 @@ func (api *PsqlApi) GetAllVisits(fromTimestamp *time.Time) ([]*Visit, error) {
 			context.Background(),
 			`
 			SELECT
-				id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
+				id, COALESCE(title, '') as title, COALESCE(source, '') as source, url, timestamp
 			FROM netlog.visit;`,
 		)
 	}
@@ -111,6 +111,7 @@ func (api *PsqlApi) GetAllVisits(fromTimestamp *time.Time) ([]*Visit, error) {
 		visits = append(visits, &Visit{
 			Id:        id,
 			Title:     title,
+			Source:    source,
 			URL:       url,
 			Timestamp: timestamp,
 		})
