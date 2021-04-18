@@ -201,6 +201,8 @@ func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Hand
 				return
 			}
 
+			// a non standard req. header is set, and thus - browser makes a preflight/OPTIONS request:
+			//	https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#preflighted_requests
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 
 			// requests coming from browser extension

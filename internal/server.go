@@ -164,11 +164,9 @@ func (s *Server) Serve(port int) {
 		log.Fatal(httpServer.ListenAndServe())
 	}()
 
-	for {
-		<-chOsInterrupt
-		log.Warn("os interrupt received ...")
-		s.gracefulShutdown(httpServer)
-	}
+	<-chOsInterrupt
+	log.Warn("os interrupt received ...")
+	s.gracefulShutdown(httpServer)
 }
 
 func (s *Server) gracefulShutdown(httpServer *http.Server) {
