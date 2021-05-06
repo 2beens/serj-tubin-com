@@ -98,6 +98,7 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting freegeoip response: %s", err.Error())
 	}
+	defer resp.Body.Close()
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

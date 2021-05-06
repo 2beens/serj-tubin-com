@@ -74,6 +74,7 @@ func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApi
 	if err != nil {
 		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
+	defer resp.Body.Close()
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -121,6 +122,7 @@ func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry s
 	if err != nil {
 		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
+	defer resp.Body.Close()
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
