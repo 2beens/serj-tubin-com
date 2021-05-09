@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -137,6 +138,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	r.Use(s.loggingMiddleware())
 	r.Use(s.corsMiddleware())
+	r.Use(s.drainAndCloseMiddleware())
 
 	return r, nil
 }
@@ -207,6 +209,17 @@ func (s *Server) loggingMiddleware() func(next http.Handler) http.Handler {
 				log.Tracef(" ====> request [%s] path: [%s] [UA: %s]", r.Method, r.URL.Path, userAgent)
 			}
 			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// drainAndCloseMiddleware - avoid potential overhead and memory leaks by draining the request body and closing it
+func (s *Server) drainAndCloseMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+			_, _ = io.Copy(io.Discard, r.Body)
+			_ = r.Body.Close()
 		})
 	}
 }
