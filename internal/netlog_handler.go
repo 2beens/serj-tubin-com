@@ -38,6 +38,12 @@ func NewNetlogHandler(router *mux.Router, netlogApi netlog.Api, browserRequestsS
 }
 
 func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "GET, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	vars := mux.Vars(r)
 
 	field := vars["field"]
@@ -110,6 +116,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 
 func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -155,6 +162,12 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 }
 
 func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "GET, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	vars := mux.Vars(r)
 
 	// TODO: maybe make configurable

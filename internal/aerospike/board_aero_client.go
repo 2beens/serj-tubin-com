@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 
 	as "github.com/aerospike/aerospike-client-go"
 	log "github.com/sirupsen/logrus"
@@ -14,10 +15,10 @@ import (
 var _ Client = (*BoardAeroClient)(nil)
 
 var (
-	ErrAeroClientNil          = errors.New("aero client is nil")
-	ErrAeroClientNotConnected = errors.New("aero client is not connected")
-	ErrEmptyNamespace         = errors.New("namespace cannot be empty")
-	ErrEmptySet               = errors.New("set cannot be empty")
+	ErrAeroClientNil         = errors.New("aero client is nil")
+	ErrAeroClientConnTimeout = errors.New("aero client connecting timeout")
+	ErrEmptyNamespace        = errors.New("namespace cannot be empty")
+	ErrEmptySet              = errors.New("set cannot be empty")
 )
 
 // aerospike data model (namespace, set, record, bin, ...) infos:
@@ -33,6 +34,7 @@ type BoardAeroClient struct {
 
 	isConnecting bool
 	mutex        sync.RWMutex
+	ready        chan struct{}
 }
 
 func NewBoardAeroClient(host string, port int, namespace, set string) (*BoardAeroClient, error) {
@@ -52,6 +54,7 @@ func NewBoardAeroClient(host string, port int, namespace, set string) (*BoardAer
 		namespace:   namespace,
 		set:         set,
 		metaDataSet: set + "-metadata",
+		ready:       make(chan struct{}),
 	}
 
 	go func() {
@@ -61,6 +64,15 @@ func NewBoardAeroClient(host string, port int, namespace, set string) (*BoardAer
 	}()
 
 	return bc, nil
+}
+
+func (bc *BoardAeroClient) WaitForReady(timeout time.Duration) error {
+	select {
+	case <-time.After(timeout):
+		return ErrAeroClientConnTimeout
+	case <-bc.ready:
+		return nil
+	}
 }
 
 func (bc *BoardAeroClient) CheckConnection() error {
@@ -90,6 +102,7 @@ func (bc *BoardAeroClient) CheckConnection() error {
 
 	bc.aeroClient = aeroClient
 	log.Debug("aero client successfully connected")
+	close(bc.ready)
 
 	return nil
 }

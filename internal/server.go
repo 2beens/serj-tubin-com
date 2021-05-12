@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -95,12 +96,10 @@ func NewServer(
 		admin:                 admin,
 	}
 
-	qm, err := NewQuoteManager("./assets/quotes.csv")
+	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create quote manager: %s", err)
 	}
-
-	s.quotesManager = qm
 
 	return s, nil
 }
@@ -137,6 +136,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	r.Use(s.loggingMiddleware())
 	r.Use(s.corsMiddleware())
+	r.Use(s.drainAndCloseMiddleware())
 
 	return r, nil
 }
@@ -190,10 +190,13 @@ func (s *Server) gracefulShutdown(httpServer *http.Server) {
 func (s *Server) corsMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// TODO: fix to allow only "www.serj-tubin.com"
+
 			//Allow CORS here By * or specific origin
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -207,6 +210,17 @@ func (s *Server) loggingMiddleware() func(next http.Handler) http.Handler {
 				log.Tracef(" ====> request [%s] path: [%s] [UA: %s]", r.Method, r.URL.Path, userAgent)
 			}
 			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// drainAndCloseMiddleware - avoid potential overhead and memory leaks by draining the request body and closing it
+func (s *Server) drainAndCloseMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+			_, _ = io.Copy(io.Discard, r.Body)
+			_ = r.Body.Close()
 		})
 	}
 }

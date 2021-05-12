@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 )
 
 // compile time check - ensure that BoardAeroClients implements Client interface
@@ -24,6 +25,10 @@ func NewBoardAeroTestClientWithBins(aeroBinMaps map[string]AeroBinMap) *BoardAer
 	return &BoardAeroTestClient{
 		AeroBinMaps: aeroBinMaps,
 	}
+}
+
+func (tc *BoardAeroTestClient) WaitForReady(_ time.Duration) error {
+	return nil
 }
 
 func (tc *BoardAeroTestClient) Put(key string, binMap AeroBinMap) error {
