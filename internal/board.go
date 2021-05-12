@@ -33,8 +33,12 @@ func NewBoard(aeroClient aerospike.Client, cache cache.Cache) (*Board, error) {
 	}
 
 	// wait a bit for aero to connect
-	// (or a better way - change CheckConnection(...) in board aero client so it signals when it gets connected)
-	time.Sleep(time.Second)
+	connTimeout := 2 * time.Second
+	if err := aeroClient.WaitForReady(connTimeout); err != nil {
+		// just log and try connecting at later point
+		log.Errorf("aero client failed to connect after %s: %s", connTimeout, err)
+		return b, nil
+	}
 
 	if messageIdCounter, err := aeroClient.GetMessageIdCounter(); err != nil {
 		log.Errorf("failed to get message id counter: %s", err)

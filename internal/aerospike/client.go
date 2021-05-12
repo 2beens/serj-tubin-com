@@ -1,5 +1,7 @@
 package aerospike
 
+import "time"
+
 type Client interface {
 	Close()
 	GetMessageIdCounter() (int, error)
@@ -10,4 +12,6 @@ type Client interface {
 	QueryByRange(index string, from, to int64) ([]AeroBinMap, error)
 	ScanAll() ([]AeroBinMap, error)
 	CountAll() (int, error)
+
+	WaitForReady(timeout time.Duration) error
 }
