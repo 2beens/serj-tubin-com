@@ -30,6 +30,35 @@ func TestNewBoardAeroClient(t *testing.T) {
 	}, time.Second, 100*time.Millisecond)
 }
 
+func TestBoardAeroClient_CheckConnection(t *testing.T) {
+	sem := make(chan struct{})
+
+	newAerospikeClientFunc := func(hostname string, port int) (*as.Client, error) {
+		<-sem
+		return &as.Client{}, nil
+	}
+
+	boardClient, err := newDefaultBoardAeroClient("testhost", 9000, "testnamespace", "testset", newAerospikeClientFunc)
+	assert.NoError(t, err)
+	require.NotNil(t, boardClient)
+
+	assert.Never(t, func() bool {
+		return boardClient.WaitForReady(200*time.Millisecond) == nil
+	}, time.Second, 100*time.Millisecond)
+
+	err = boardClient.CheckConnection()
+	require.Error(t, err)
+	assert.Equal(t, "aero client already connecting", err.Error())
+
+	sem <- struct{}{}
+	assert.Eventually(t, func() bool {
+		return boardClient.WaitForReady(200*time.Millisecond) == nil
+	}, time.Second, 100*time.Millisecond)
+
+	// TODO: first abstract the aero client away from the board api, then test this
+	//assert.NoError(t, boardClient.CheckConnection())
+}
+
 func TestBoardAeroClient_WaitForReady(t *testing.T) {
 	newAerospikeClientFunc := func(hostname string, port int) (*as.Client, error) {
 		return &as.Client{}, nil
