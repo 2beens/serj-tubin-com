@@ -1,6 +1,7 @@
 package aerospike
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -28,6 +29,19 @@ func TestNewBoardAeroClient(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		return boardClient.WaitForReady(200*time.Millisecond) == nil
 	}, time.Second, 100*time.Millisecond)
+}
+
+func TestNewBoardAeroClient_NewAeroClientFailed(t *testing.T) {
+	dummyErr := errors.New("dummy err")
+	newAerospikeClientFunc := func(hostname string, port int) (*as.Client, error) {
+		return nil, dummyErr
+	}
+
+	boardClient, err := newDefaultBoardAeroClient("testhost", 9000, "testnamespace", "testset", newAerospikeClientFunc)
+	assert.NoError(t, err)
+	require.NotNil(t, boardClient)
+
+	assert.True(t, errors.Is(boardClient.CheckConnection(), dummyErr))
 }
 
 func TestBoardAeroClient_CheckConnection(t *testing.T) {
