@@ -29,13 +29,13 @@ git checkout ${branch}
 git rebase
 
 # build project
-go build -o service cmd/service/main.go
+go build -o /home/serj/serj-tubin-com/service cmd/service/main.go
 # restart service and show info
 sudo systemctl restart serj-tubin-backend.service
 sudo systemctl status serj-tubin-backend.service
 
 # build netlog backup tool
 echo "building netlog backup tool ..."
-go build -o netlog-backup cmd/backups_cmd/main.go
+go build -o /home/serj/serj-tubin-com/netlog-backup cmd/netlog_gd_backup/main.go
 
 echo "all done! <3"
