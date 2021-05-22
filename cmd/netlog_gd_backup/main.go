@@ -9,7 +9,10 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/netlog"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
+
+// netlog google drive backup cmd
 
 func main() {
 	credentialsFile := flag.String(
@@ -22,7 +25,7 @@ func main() {
 		"./token.json",
 		"google drive token file json",
 	)
-	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
+	logsPath := flag.String("logs-path", "/var/log/serj-tubin-backend/netlog-backup.log", "server logs file path (empty for stdout)")
 	reinit := flag.Bool("reinit", false, "reinitialize all again")
 	destroy := flag.Bool("destroy", false, "destroy all files (warning!!) (try running more times, if more than 100 files are present)")
 
@@ -86,10 +89,13 @@ func loggingSetup(logFileName string) {
 		logFileName += ".log"
 	}
 
-	logFile, err := os.OpenFile(logFileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
-	if err != nil {
-		log.Panicf("failed to open log file %q: %s", logFileName, err)
-	}
-
-	log.SetOutput(logFile)
+	log.SetOutput(&lumberjack.Logger{
+		Filename:  logFileName,
+		MaxSize:   50,    // megabytes
+		LocalTime: false, // false -> use UTC
+		Compress:  true,  // disabled by default
+		// comment out MaxBackups and MaxAge, as I want to retain rotated log files indefinitely for now
+		//MaxBackups: 30,
+		//MaxAge:     730,   //days
+	})
 }

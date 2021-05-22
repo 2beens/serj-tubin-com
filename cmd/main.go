@@ -14,6 +14,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	as "github.com/aerospike/aerospike-client-go"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func main() {
@@ -26,7 +27,7 @@ func main() {
 	aeroNamespace := flag.String("aero-namespace", "serj-tubin-com", "aerospike namespace value (used in aerospike server)")
 	aeroMessagesSet := flag.String("aero-messages-set", "messages", "aerospike set name for board messages (used in aerospike server)")
 	port := flag.Int("port", 8080, "port number")
-	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
+	logsPath := flag.String("logs-path", "/var/log/serj-tubin-backend/service.log", "server logs file path (empty for stdout)")
 
 	aeroSetup := flag.Bool("aero-setup", false, "run aerospike sql setup")
 	aeroDataFix := flag.Bool("aero-data-fix", false, "run aerospike sql data fixing / migration")
@@ -147,12 +148,15 @@ func loggingSetup(logFileName string, logLevel string) {
 		logFileName += ".log"
 	}
 
-	logFile, err := os.OpenFile(logFileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
-	if err != nil {
-		log.Panicf("failed to open log file %q: %s", logFileName, err)
-	}
-
-	log.SetOutput(logFile)
+	log.SetOutput(&lumberjack.Logger{
+		Filename:  logFileName,
+		MaxSize:   50,    // megabytes
+		LocalTime: false, // false -> use UTC
+		Compress:  true,  // disabled by default
+		// comment out MaxBackups and MaxAge, as I want to retain rotated log files indefinitely for now
+		//MaxBackups: 30,
+		//MaxAge:     730,   //days
+	})
 }
 
 func setupAeroDb(namespace, set, host string, port int) error {

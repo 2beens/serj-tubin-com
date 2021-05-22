@@ -18,4 +18,5 @@ require (
 	golang.org/x/sys v0.0.0-20210314195730-07df6a141424 // indirect
 	google.golang.org/api v0.41.0
 	google.golang.org/genproto v0.0.0-20210315142602-88120395e650 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
