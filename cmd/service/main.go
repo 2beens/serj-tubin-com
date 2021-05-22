@@ -7,14 +7,13 @@ import (
 	"os"
 	"os/exec"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/logging"
 	as "github.com/aerospike/aerospike-client-go"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func main() {
@@ -27,6 +26,7 @@ func main() {
 	aeroNamespace := flag.String("aero-namespace", "serj-tubin-com", "aerospike namespace value (used in aerospike server)")
 	aeroMessagesSet := flag.String("aero-messages-set", "messages", "aerospike set name for board messages (used in aerospike server)")
 	port := flag.Int("port", 8080, "port number")
+	logToStdout := flag.Bool("o", true, "additionally, write logs to stdout")
 	logsPath := flag.String("logs-path", "/var/log/serj-tubin-backend/service.log", "server logs file path (empty for stdout)")
 
 	aeroSetup := flag.Bool("aero-setup", false, "run aerospike sql setup")
@@ -61,7 +61,7 @@ func main() {
 	log.Debugf("using port: %d", *port)
 	log.Debugf("using server logs path: %s", *logsPath)
 
-	loggingSetup(*logsPath, *logLevel)
+	logging.Setup(*logsPath, *logToStdout, *logLevel)
 
 	openWeatherApiKey := os.Getenv("OPEN_WEATHER_API_KEY")
 	if openWeatherApiKey == "" {
@@ -119,44 +119,6 @@ func tryGetLastCommitHash() (string, error) {
 		return "", err
 	}
 	return string(stdout), nil
-}
-
-func loggingSetup(logFileName string, logLevel string) {
-	switch strings.ToLower(logLevel) {
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-	case "error":
-		log.SetLevel(log.ErrorLevel)
-	case "fatal":
-		log.SetLevel(log.FatalLevel)
-	case "info":
-		log.SetLevel(log.InfoLevel)
-	case "trace":
-		log.SetLevel(log.TraceLevel)
-	case "warn":
-		log.SetLevel(log.WarnLevel)
-	default:
-		log.SetLevel(log.TraceLevel)
-	}
-
-	if logFileName == "" {
-		log.SetOutput(os.Stdout)
-		return
-	}
-
-	if !strings.HasSuffix(logFileName, ".log") {
-		logFileName += ".log"
-	}
-
-	log.SetOutput(&lumberjack.Logger{
-		Filename:  logFileName,
-		MaxSize:   50,    // megabytes
-		LocalTime: false, // false -> use UTC
-		Compress:  true,  // disabled by default
-		// comment out MaxBackups and MaxAge, as I want to retain rotated log files indefinitely for now
-		//MaxBackups: 30,
-		//MaxAge:     730,   //days
-	})
 }
 
 func setupAeroDb(namespace, set, host string, port int) error {

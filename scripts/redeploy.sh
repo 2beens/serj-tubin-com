@@ -29,7 +29,7 @@ git checkout ${branch}
 git rebase
 
 # build project
-go build cmd/main.go
+go build -o service cmd/service/main.go
 # restart service and show info
 sudo systemctl restart serj-tubin-backend.service
 sudo systemctl status serj-tubin-backend.service

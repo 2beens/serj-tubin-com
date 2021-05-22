@@ -3,13 +3,11 @@ package main
 import (
 	"flag"
 	"io/ioutil"
-	"log"
-	"os"
-	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/logging"
 	"github.com/2beens/serjtubincom/internal/netlog"
-	"gopkg.in/natefinch/lumberjack.v2"
+	log "github.com/sirupsen/logrus"
 )
 
 // netlog google drive backup cmd
@@ -25,13 +23,14 @@ func main() {
 		"./token.json",
 		"google drive token file json",
 	)
+	logToStdout := flag.Bool("o", true, "additionally, write logs to stdout")
 	logsPath := flag.String("logs-path", "/var/log/serj-tubin-backend/netlog-backup.log", "server logs file path (empty for stdout)")
 	reinit := flag.Bool("reinit", false, "reinitialize all again")
 	destroy := flag.Bool("destroy", false, "destroy all files (warning!!) (try running more times, if more than 100 files are present)")
 
 	flag.Parse()
 
-	loggingSetup(*logsPath)
+	logging.Setup(*logsPath, *logToStdout, "trace")
 
 	log.Println("staring netlog backup ...")
 
@@ -77,25 +76,4 @@ func main() {
 	if err := s.DoBackup(baseTime); err != nil {
 		log.Fatalf("%+v", err)
 	}
-}
-
-func loggingSetup(logFileName string) {
-	if logFileName == "" {
-		log.SetOutput(os.Stdout)
-		return
-	}
-
-	if !strings.HasSuffix(logFileName, ".log") {
-		logFileName += ".log"
-	}
-
-	log.SetOutput(&lumberjack.Logger{
-		Filename:  logFileName,
-		MaxSize:   50,    // megabytes
-		LocalTime: false, // false -> use UTC
-		Compress:  true,  // disabled by default
-		// comment out MaxBackups and MaxAge, as I want to retain rotated log files indefinitely for now
-		//MaxBackups: 30,
-		//MaxAge:     730,   //days
-	})
 }

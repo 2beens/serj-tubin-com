@@ -12,7 +12,7 @@ Environment="SERJ_TUBIN_COM_ADMIN_USERNAME=username here"
 Environment="SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH=pass hash here"
 Environment="SERJ_BROWSER_REQ_SECRET=pass here"
 WorkingDirectory=/home/serj/serj-tubin-com
-ExecStart=/home/serj/serj-tubin-com/main -port 1988 -logs-path /home/serj/serj-tubin-com/server-logs.log
+ExecStart=/home/serj/serj-tubin-com/service -port 1988 -logs-path /var/log/serj-tubin-backend/service.log
 
 [Install]
 WantedBy=multi-user.target
