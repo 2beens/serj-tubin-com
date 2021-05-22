@@ -17,7 +17,7 @@ func NewCombinedWriter(writers ...io.Writer) *CombinedWriter {
 	return cw
 }
 
-func (cw CombinedWriter) Write(p []byte) (n int, err error) {
+func (cw *CombinedWriter) Write(p []byte) (n int, err error) {
 	n = 0
 	for _, w := range cw.Writers {
 		written, werr := w.Write(p)
