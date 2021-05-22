@@ -13,9 +13,7 @@ type CombinedWriter struct {
 
 func NewCombinedWriter(writers ...io.Writer) *CombinedWriter {
 	cw := &CombinedWriter{}
-	for _, w := range writers {
-		cw.Writers = append(cw.Writers, w)
-	}
+	cw.Writers = append(cw.Writers, writers...)
 	return cw
 }
 
