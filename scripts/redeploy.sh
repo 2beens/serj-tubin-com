@@ -5,6 +5,7 @@ set -e          # abort on errors
 # TODO: maybe read the branch name from stdin
 # read -p "branch name: " branch
 
+#   1 get branch name
 branch="master"
 case $1 in
     "master")
@@ -20,22 +21,26 @@ case $1 in
         branch=$1
 esac
 
-#   1 get branch name
-echo "deploying branch:" "${branch}"
+echo "--> deploying branch:" "${branch}"
 
 #   2 checkout branch
 git fetch --all
 git checkout ${branch}
 git rebase
 
-# build project
+#   3 build project
+echo "--> building project ..."
 go build -o /home/serj/serj-tubin-com/service cmd/service/main.go
-# restart service and show info
+echo "--> build project done"
+
+#   4 restart service and show info
+echo "--> restarting service ..."
 sudo systemctl restart serj-tubin-backend.service
 sudo systemctl status serj-tubin-backend.service
+echo "--> service restarted"
 
 # build netlog backup tool
-echo "building netlog backup tool ..."
+echo "--> building netlog backup tool ..."
 go build -o /home/serj/serj-tubin-com/netlog-backup cmd/netlog_gd_backup/main.go
 
-echo "all done! <3"
+echo "==> all done! <3"
