@@ -20,3 +20,4 @@ Hosted and available at: https://www.serj-tubin.com/
 * I use PostgreSQL to store blog posts and personal web history (netlog)
 * I use Vue to make the frontend part
     * source @ https://github.com/2beens/serj-tubin-vue
+* ❗️ Disclaimer: some parts of the system are deliberately unoptimized or complicated for testing ☑️ / learning 👨🏼‍🏫 / trial 🛠 purposes
