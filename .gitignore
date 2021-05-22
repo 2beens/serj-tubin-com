@@ -18,6 +18,7 @@ main
 # vendor/
 
 serjnetlog-*.json
-lazar-dusan-veliki-drive-credentials.json
+*-credentials.json
 netlog-backup
+service
 token.json

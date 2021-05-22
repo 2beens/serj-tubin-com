@@ -35,12 +35,25 @@ type BoardAeroClient struct {
 	isConnecting bool
 	mutex        sync.RWMutex
 	ready        chan struct{}
+
+	// ability to inject aero client creation func, to be able to unit test
+	newAerospikeClientFunc func(hostname string, port int) (*as.Client, error)
 }
 
 func NewBoardAeroClient(host string, port int, namespace, set string) (*BoardAeroClient, error) {
 	log.Debugf("connecting to aerospike server %s:%d [namespace:%s, set:%s] ...",
 		host, port, namespace, set)
 
+	return newDefaultBoardAeroClient(host, port, namespace, set, as.NewClient)
+}
+
+func newDefaultBoardAeroClient(
+	host string,
+	port int,
+	namespace,
+	set string,
+	newAerospikeClientFunc func(hostname string, port int) (*as.Client, error),
+) (*BoardAeroClient, error) {
 	if set == "" {
 		return nil, ErrEmptySet
 	}
@@ -55,6 +68,8 @@ func NewBoardAeroClient(host string, port int, namespace, set string) (*BoardAer
 		set:         set,
 		metaDataSet: set + "-metadata",
 		ready:       make(chan struct{}),
+
+		newAerospikeClientFunc: newAerospikeClientFunc,
 	}
 
 	go func() {
@@ -95,7 +110,7 @@ func (bc *BoardAeroClient) CheckConnection() error {
 	log.Debugf("trying to connect to aerospike server %s:%d [namespace:%s, set:%s] ...",
 		bc.host, bc.port, bc.namespace, bc.set)
 
-	aeroClient, err := as.NewClient(bc.host, bc.port)
+	aeroClient, err := bc.newAerospikeClientFunc(bc.host, bc.port)
 	if err != nil {
 		return fmt.Errorf("failed to create aero client / connect to aero: %w", err)
 	}

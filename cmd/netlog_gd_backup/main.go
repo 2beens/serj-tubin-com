@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"io/ioutil"
-	"log"
-	"os"
-	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/logging"
 	"github.com/2beens/serjtubincom/internal/netlog"
+	log "github.com/sirupsen/logrus"
 )
+
+// netlog google drive backup cmd
 
 func main() {
 	credentialsFile := flag.String(
@@ -22,13 +23,14 @@ func main() {
 		"./token.json",
 		"google drive token file json",
 	)
-	logsPath := flag.String("logs-path", "", "server logs file path (empty for stdout)")
+	logToStdout := flag.Bool("o", true, "additionally, write logs to stdout")
+	logsPath := flag.String("logs-path", "/var/log/serj-tubin-backend/netlog-backup.log", "server logs file path (empty for stdout)")
 	reinit := flag.Bool("reinit", false, "reinitialize all again")
 	destroy := flag.Bool("destroy", false, "destroy all files (warning!!) (try running more times, if more than 100 files are present)")
 
 	flag.Parse()
 
-	loggingSetup(*logsPath)
+	logging.Setup(*logsPath, *logToStdout, "trace")
 
 	log.Println("staring netlog backup ...")
 
@@ -74,22 +76,4 @@ func main() {
 	if err := s.DoBackup(baseTime); err != nil {
 		log.Fatalf("%+v", err)
 	}
-}
-
-func loggingSetup(logFileName string) {
-	if logFileName == "" {
-		log.SetOutput(os.Stdout)
-		return
-	}
-
-	if !strings.HasSuffix(logFileName, ".log") {
-		logFileName += ".log"
-	}
-
-	logFile, err := os.OpenFile(logFileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
-	if err != nil {
-		log.Panicf("failed to open log file %q: %s", logFileName, err)
-	}
-
-	log.SetOutput(logFile)
 }
