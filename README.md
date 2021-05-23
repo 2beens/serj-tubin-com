@@ -1,6 +1,7 @@
 # serj-tubin.com
 [![Actions Status](https://github.com/2beens/serj-tubin-com/workflows/CI/badge.svg)](https://github.com/2beens/serj-tubin-com/actions)
 [![Actions Status](https://github.com/2beens/serj-tubin-com/workflows/CodeQL/badge.svg)](https://github.com/2beens/serj-tubin-com/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/2beens/serj-tubin-com)](https://goreportcard.com/report/github.com/2beens/serj-tubin-com)
 
 Personal tech sandbox and testing site 🕵️‍♀️
 
