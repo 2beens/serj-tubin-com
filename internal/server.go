@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,11 @@ import (
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+
+	// metrics:
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -40,6 +46,10 @@ type Server struct {
 
 	loginSession *LoginSession
 	admin        *Admin
+
+	// metrics
+	requestsCounter prometheus.Counter
+	requestsGauge   prometheus.Gauge
 }
 
 func NewServer(
@@ -82,6 +92,23 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
+	promNamespace := "backend"
+	promSubsystem := "server1"
+	requestsCounter := promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "request",
+		Help:      "The total number of incoming requests",
+	})
+
+	requestsGauge := promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace:   promNamespace,
+		Subsystem:   promSubsystem,
+		Name:        "current_requests",
+		Help:        "Current number of requests served",
+		ConstLabels: nil,
+	})
+
 	s := &Server{
 		blogApi:               blogApi,
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
@@ -94,6 +121,10 @@ func NewServer(
 		versionInfo:           versionInfo,
 		loginSession:          &LoginSession{},
 		admin:                 admin,
+
+		//metrics
+		requestsCounter: requestsCounter,
+		requestsGauge:   requestsGauge,
 	}
 
 	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
@@ -134,6 +165,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("netlog visits handler is nil")
 	}
 
+	r.Handle("/metrics/", promhttp.Handler())
+
 	r.Use(s.loggingMiddleware())
 	r.Use(s.corsMiddleware())
 	r.Use(s.drainAndCloseMiddleware())
@@ -154,6 +187,7 @@ func (s *Server) Serve(port int) {
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
+		ConnState:    s.connStateMetrics,
 	}
 
 	chOsInterrupt := make(chan os.Signal, 1)
@@ -162,6 +196,23 @@ func (s *Server) Serve(port int) {
 	go func() {
 		log.Infof(" > server listening on: [%s]", ipAndPort)
 		log.Fatal(httpServer.ListenAndServe())
+	}()
+
+	go func() {
+		log.Debugln("--> starting dummy metrics")
+		dummyOpsProcessed := promauto.NewCounter(prometheus.CounterOpts{
+			Namespace: "promNamespace",
+			Subsystem: "promSubsystem",
+			Name:      "myapp_processed_ops_total",
+			Help:      "The total number of processed events",
+		})
+		counter := 0
+		for {
+			counter++
+			dummyOpsProcessed.Inc()
+			log.Infof("new dummy metrics, current: %d", counter)
+			time.Sleep(2 * time.Minute)
+		}
 	}()
 
 	<-chOsInterrupt
@@ -224,3 +275,22 @@ func (s *Server) drainAndCloseMiddleware() func(next http.Handler) http.Handler 
 		})
 	}
 }
+
+func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
+	switch state {
+	case http.StateNew:
+		s.requestsCounter.Add(1)
+		s.requestsGauge.Add(1)
+	case http.StateClosed:
+		s.requestsGauge.Add(-1)
+	}
+}
+
+//func (s *Server) statsMiddleware() func(next http.Handler) http.Handler {
+//	return func(next http.Handler) http.Handler {
+//		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//			s.requestsCounter.Add(1)
+//			next.ServeHTTP(w, r)
+//		})
+//	}
+//}
