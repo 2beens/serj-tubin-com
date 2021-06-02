@@ -165,8 +165,6 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("netlog visits handler is nil")
 	}
 
-	r.Handle("/metrics/", promhttp.Handler())
-
 	r.Use(s.loggingMiddleware())
 	r.Use(s.corsMiddleware())
 	r.Use(s.drainAndCloseMiddleware())
@@ -213,6 +211,15 @@ func (s *Server) Serve(port int) {
 			log.Infof("new dummy metrics, current: %d", counter)
 			time.Sleep(2 * time.Minute)
 		}
+	}()
+
+	// TODO: make metrics settings configurable
+	metricsPort := "2112"
+	metricsAddr := fmt.Sprintf("localhost:%s", metricsPort)
+	log.Printf(" > metrics listening on: [%s]", metricsAddr)
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		log.Println(http.ListenAndServe(metricsAddr, nil))
 	}()
 
 	<-chOsInterrupt
