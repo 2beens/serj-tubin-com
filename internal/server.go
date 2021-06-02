@@ -19,8 +19,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	// metrics:
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -48,8 +46,7 @@ type Server struct {
 	admin        *Admin
 
 	// metrics
-	requestsCounter prometheus.Counter
-	requestsGauge   prometheus.Gauge
+	instr *Instrumentation
 }
 
 func NewServer(
@@ -92,23 +89,6 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
-	promNamespace := "backend"
-	promSubsystem := "server1"
-	requestsCounter := promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: promNamespace,
-		Subsystem: promSubsystem,
-		Name:      "request",
-		Help:      "The total number of incoming requests",
-	})
-
-	requestsGauge := promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace:   promNamespace,
-		Subsystem:   promSubsystem,
-		Name:        "current_requests",
-		Help:        "Current number of requests served",
-		ConstLabels: nil,
-	})
-
 	s := &Server{
 		blogApi:               blogApi,
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
@@ -123,8 +103,7 @@ func NewServer(
 		admin:                 admin,
 
 		//metrics
-		requestsCounter: requestsCounter,
-		requestsGauge:   requestsGauge,
+		instr: NewInstrumentation("backend", "server1"),
 	}
 
 	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
@@ -196,23 +175,6 @@ func (s *Server) Serve(port int) {
 		log.Fatal(httpServer.ListenAndServe())
 	}()
 
-	go func() {
-		log.Debugln("--> starting dummy metrics")
-		dummyOpsProcessed := promauto.NewCounter(prometheus.CounterOpts{
-			Namespace: "promNamespace",
-			Subsystem: "promSubsystem",
-			Name:      "myapp_processed_ops_total",
-			Help:      "The total number of processed events",
-		})
-		counter := 0
-		for {
-			counter++
-			dummyOpsProcessed.Inc()
-			log.Infof("new dummy metrics, current: %d", counter)
-			time.Sleep(2 * time.Minute)
-		}
-	}()
-
 	// TODO: make metrics settings configurable
 	metricsPort := "2112"
 	metricsAddr := fmt.Sprintf("localhost:%s", metricsPort)
@@ -222,6 +184,8 @@ func (s *Server) Serve(port int) {
 		log.Println(http.ListenAndServe(metricsAddr, nil))
 	}()
 
+	s.instr.GaugeLifeSignal.Set(1)
+
 	<-chOsInterrupt
 	log.Warn("os interrupt received ...")
 	s.gracefulShutdown(httpServer)
@@ -229,6 +193,8 @@ func (s *Server) Serve(port int) {
 
 func (s *Server) gracefulShutdown(httpServer *http.Server) {
 	log.Debug("graceful shutdown initiated ...")
+
+	s.instr.GaugeLifeSignal.Set(0)
 
 	s.board.Close()
 
@@ -286,18 +252,9 @@ func (s *Server) drainAndCloseMiddleware() func(next http.Handler) http.Handler 
 func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
 	switch state {
 	case http.StateNew:
-		s.requestsCounter.Add(1)
-		s.requestsGauge.Add(1)
+		s.instr.CounterRequests.Add(1)
+		s.instr.GaugeRequests.Add(1)
 	case http.StateClosed:
-		s.requestsGauge.Add(-1)
+		s.instr.CounterRequests.Add(-1)
 	}
 }
-
-//func (s *Server) statsMiddleware() func(next http.Handler) http.Handler {
-//	return func(next http.Handler) http.Handler {
-//		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//			s.requestsCounter.Add(1)
-//			next.ServeHTTP(w, r)
-//		})
-//	}
-//}
