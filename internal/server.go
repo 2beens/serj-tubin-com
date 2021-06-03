@@ -89,6 +89,9 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
+	instrumentation := NewInstrumentation("backend", "server1")
+	instrumentation.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran
+
 	s := &Server{
 		blogApi:               blogApi,
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
@@ -103,7 +106,7 @@ func NewServer(
 		admin:                 admin,
 
 		//metrics
-		instr: NewInstrumentation("backend", "server1"),
+		instr: instrumentation,
 	}
 
 	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
@@ -140,7 +143,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("misc handler is nil")
 	}
 
-	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.browserRequestsSecret, s.loginSession) == nil {
+	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginSession) == nil {
 		panic("netlog visits handler is nil")
 	}
 
@@ -170,6 +173,10 @@ func (s *Server) Serve(port int) {
 	chOsInterrupt := make(chan os.Signal, 1)
 	signal.Notify(chOsInterrupt, os.Interrupt)
 
+	// TODO: set initial netlog visits counter?
+	//visitsCount, _ := s.netlogVisitsApi.CountAll()
+	//s.instr.CounterNetlogVisits.Add(float64(visitsCount))
+
 	go func() {
 		log.Infof(" > server listening on: [%s]", ipAndPort)
 		log.Fatal(httpServer.ListenAndServe())
@@ -185,6 +192,7 @@ func (s *Server) Serve(port int) {
 	}()
 
 	s.instr.GaugeLifeSignal.Set(1)
+	defer s.instr.GaugeLifeSignal.Set(0)
 
 	<-chOsInterrupt
 	log.Warn("os interrupt received ...")
@@ -193,8 +201,6 @@ func (s *Server) Serve(port int) {
 
 func (s *Server) gracefulShutdown(httpServer *http.Server) {
 	log.Debug("graceful shutdown initiated ...")
-
-	s.instr.GaugeLifeSignal.Set(0)
 
 	s.board.Close()
 

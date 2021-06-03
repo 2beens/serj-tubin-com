@@ -17,11 +17,19 @@ type NetlogHandler struct {
 	browserRequestsSecret string
 	netlogApi             netlog.Api
 	loginSession          *LoginSession
+	instr                 *Instrumentation
 }
 
-func NewNetlogHandler(router *mux.Router, netlogApi netlog.Api, browserRequestsSecret string, loginSession *LoginSession) *NetlogHandler {
+func NewNetlogHandler(
+	router *mux.Router,
+	netlogApi netlog.Api,
+	instrumentation *Instrumentation,
+	browserRequestsSecret string,
+	loginSession *LoginSession,
+) *NetlogHandler {
 	handler := &NetlogHandler{
 		netlogApi:             netlogApi,
+		instr:                 instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
 		loginSession:          loginSession,
 	}
@@ -156,6 +164,8 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		return
 	}
+
+	handler.instr.CounterNetlogVisits.Inc()
 
 	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
 	WriteResponse(w, "", "added")
