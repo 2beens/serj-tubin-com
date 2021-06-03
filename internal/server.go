@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
@@ -16,10 +17,8 @@ import (
 	"github.com/2beens/serjtubincom/internal/cache"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
-
-	// metrics:
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -147,6 +146,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("netlog visits handler is nil")
 	}
 
+	r.Use(s.panicRecoveryMiddleware())
 	r.Use(s.loggingMiddleware())
 	r.Use(s.corsMiddleware())
 	r.Use(s.drainAndCloseMiddleware())
@@ -251,6 +251,22 @@ func (s *Server) drainAndCloseMiddleware() func(next http.Handler) http.Handler 
 			next.ServeHTTP(w, r)
 			_, _ = io.Copy(io.Discard, r.Body)
 			_ = r.Body.Close()
+		})
+	}
+}
+
+func (s *Server) panicRecoveryMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("http: panic serving %s: %v\n%s", req.URL.Path, r, debug.Stack())
+					//metricsBuffer.CountM("panic.recovery")
+				}
+			}()
+
+			// handler call
+			next.ServeHTTP(respWriter, req)
 		})
 	}
 }
