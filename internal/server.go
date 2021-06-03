@@ -261,7 +261,7 @@ func (s *Server) panicRecoveryMiddleware() func(next http.Handler) http.Handler 
 			defer func() {
 				if r := recover(); r != nil {
 					log.Printf("http: panic serving %s: %v\n%s", req.URL.Path, r, debug.Stack())
-					//metricsBuffer.CountM("panic.recovery")
+					// TODO: send metrics
 				}
 			}()
 
@@ -277,6 +277,6 @@ func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
 		s.instr.CounterRequests.Add(1)
 		s.instr.GaugeRequests.Add(1)
 	case http.StateClosed:
-		s.instr.CounterRequests.Add(-1)
+		s.instr.GaugeRequests.Add(-1)
 	}
 }
