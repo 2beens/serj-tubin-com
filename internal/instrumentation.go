@@ -9,10 +9,11 @@ import (
 // http://grafana.serj-tubin.com/
 
 type Instrumentation struct {
-	CounterRequests     prometheus.Counter
-	CounterNetlogVisits prometheus.Counter
-	GaugeRequests       prometheus.Gauge
-	GaugeLifeSignal     prometheus.Gauge
+	CounterRequests           prometheus.Counter
+	CounterNetlogVisits       prometheus.Counter
+	CounterHandleRequestPanic prometheus.Counter
+	GaugeRequests             prometheus.Gauge
+	GaugeLifeSignal           prometheus.Gauge
 }
 
 func NewInstrumentation(namespace, subsystem string) *Instrumentation {
@@ -27,6 +28,12 @@ func NewInstrumentation(namespace, subsystem string) *Instrumentation {
 		Subsystem: subsystem,
 		Name:      "netlog_visits",
 		Help:      "The total number of netlog visits",
+	})
+	counterHandleRequestPanic := promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "handle_request_panic",
+		Help:      "The total number of serve request panics",
 	})
 
 	gaugeRequests := promauto.NewGauge(prometheus.GaugeOpts{
@@ -45,9 +52,10 @@ func NewInstrumentation(namespace, subsystem string) *Instrumentation {
 	})
 
 	return &Instrumentation{
-		CounterRequests:     counterRequests,
-		CounterNetlogVisits: counterNetlogVisits,
-		GaugeRequests:       gaugeRequests,
-		GaugeLifeSignal:     gaugeLifeSignal,
+		CounterRequests:           counterRequests,
+		CounterNetlogVisits:       counterNetlogVisits,
+		CounterHandleRequestPanic: counterHandleRequestPanic,
+		GaugeRequests:             gaugeRequests,
+		GaugeLifeSignal:           gaugeLifeSignal,
 	}
 }

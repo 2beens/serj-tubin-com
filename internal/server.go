@@ -261,7 +261,7 @@ func (s *Server) panicRecoveryMiddleware() func(next http.Handler) http.Handler 
 			defer func() {
 				if r := recover(); r != nil {
 					log.Printf("http: panic serving %s: %v\n%s", req.URL.Path, r, debug.Stack())
-					// TODO: send metrics
+					s.instr.CounterHandleRequestPanic.Inc()
 				}
 			}()
 
