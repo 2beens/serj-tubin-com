@@ -14,6 +14,7 @@ type Instrumentation struct {
 	CounterHandleRequestPanic prometheus.Counter
 	GaugeRequests             prometheus.Gauge
 	GaugeLifeSignal           prometheus.Gauge
+	HistRequestDuration       prometheus.Histogram
 }
 
 func NewInstrumentation(namespace, subsystem string) *Instrumentation {
@@ -51,11 +52,26 @@ func NewInstrumentation(namespace, subsystem string) *Instrumentation {
 		ConstLabels: nil,
 	})
 
+	histReqDuration := promauto.NewHistogram(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Buckets: []float64{
+				0.0000001, 0.0000002, 0.0000003, 0.0000004, 0.0000005,
+				0.000001, 0.0000025, 0.000005, 0.0000075, 0.00001,
+				0.0001, 0.001, 0.01, 0.1, 1, 10, 60,
+			},
+			Name: "request_duration_seconds",
+			Help: "Total duration of all requests",
+		},
+	)
+
 	return &Instrumentation{
 		CounterRequests:           counterRequests,
 		CounterNetlogVisits:       counterNetlogVisits,
 		CounterHandleRequestPanic: counterHandleRequestPanic,
 		GaugeRequests:             gaugeRequests,
 		GaugeLifeSignal:           gaugeLifeSignal,
+		HistRequestDuration:       histReqDuration,
 	}
 }

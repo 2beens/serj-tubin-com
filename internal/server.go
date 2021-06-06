@@ -150,6 +150,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.Use(s.loggingMiddleware())
 	r.Use(s.corsMiddleware())
 	r.Use(s.drainAndCloseMiddleware())
+	r.Use(s.metricsMiddleware())
 
 	return r, nil
 }
@@ -264,6 +265,19 @@ func (s *Server) panicRecoveryMiddleware() func(next http.Handler) http.Handler 
 					s.instr.CounterHandleRequestPanic.Inc()
 				}
 			}()
+
+			// handler call
+			next.ServeHTTP(respWriter, req)
+		})
+	}
+}
+
+func (s *Server) metricsMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
+			defer func(begin time.Time) {
+				s.instr.HistRequestDuration.Observe(time.Since(begin).Seconds())
+			}(time.Now())
 
 			// handler call
 			next.ServeHTTP(respWriter, req)
