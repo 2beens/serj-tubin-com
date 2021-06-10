@@ -15,6 +15,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
+	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -45,7 +46,7 @@ type Server struct {
 	admin        *Admin
 
 	// metrics
-	instr *Instrumentation
+	instr *instrumentation.Instrumentation
 }
 
 func NewServer(
@@ -88,7 +89,7 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
-	instrumentation := NewInstrumentation("backend", "server1")
+	instrumentation := instrumentation.NewInstrumentation("backend", "server1")
 	instrumentation.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran
 
 	s := &Server{

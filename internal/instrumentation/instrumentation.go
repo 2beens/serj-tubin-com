@@ -1,4 +1,4 @@
-package internal
+package instrumentation
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
@@ -9,12 +9,18 @@ import (
 // http://grafana.serj-tubin.com/
 
 type Instrumentation struct {
+	// counters
 	CounterRequests           prometheus.Counter
 	CounterNetlogVisits       prometheus.Counter
 	CounterHandleRequestPanic prometheus.Counter
-	GaugeRequests             prometheus.Gauge
-	GaugeLifeSignal           prometheus.Gauge
-	HistRequestDuration       prometheus.Histogram
+	CounterVisitsBackups      prometheus.Counter
+
+	// gauges
+	GaugeRequests   prometheus.Gauge
+	GaugeLifeSignal prometheus.Gauge
+
+	// historgrams
+	HistRequestDuration prometheus.Histogram
 }
 
 func NewInstrumentation(namespace, subsystem string) *Instrumentation {
@@ -35,6 +41,12 @@ func NewInstrumentation(namespace, subsystem string) *Instrumentation {
 		Subsystem: subsystem,
 		Name:      "handle_request_panic",
 		Help:      "The total number of serve request panics",
+	})
+	counterVisitsBackups := promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "netlog_visits_backed_up",
+		Help:      "Number of netlog visits backed up",
 	})
 
 	gaugeRequests := promauto.NewGauge(prometheus.GaugeOpts{
@@ -70,6 +82,7 @@ func NewInstrumentation(namespace, subsystem string) *Instrumentation {
 		CounterRequests:           counterRequests,
 		CounterNetlogVisits:       counterNetlogVisits,
 		CounterHandleRequestPanic: counterHandleRequestPanic,
+		CounterVisitsBackups:      counterVisitsBackups,
 		GaugeRequests:             gaugeRequests,
 		GaugeLifeSignal:           gaugeLifeSignal,
 		HistRequestDuration:       histReqDuration,

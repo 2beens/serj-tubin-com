@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -17,13 +18,13 @@ type NetlogHandler struct {
 	browserRequestsSecret string
 	netlogApi             netlog.Api
 	loginSession          *LoginSession
-	instr                 *Instrumentation
+	instr                 *instrumentation.Instrumentation
 }
 
 func NewNetlogHandler(
 	router *mux.Router,
 	netlogApi netlog.Api,
-	instrumentation *Instrumentation,
+	instrumentation *instrumentation.Instrumentation,
 	browserRequestsSecret string,
 	loginSession *LoginSession,
 ) *NetlogHandler {

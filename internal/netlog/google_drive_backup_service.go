@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 )
@@ -30,6 +31,7 @@ type GoogleDriveBackupService struct {
 	service              *drive.Service
 	backupsFolderId      string
 	lazarDusanPermission *drive.Permission
+	instr                *instrumentation.Instrumentation
 }
 
 func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupService, error) {
@@ -72,6 +74,7 @@ func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupServ
 	s := &GoogleDriveBackupService{
 		psqlApi: psqlApi,
 		service: driveService,
+		instr:   instrumentation.NewInstrumentation("backend", "netlog_backups"),
 	}
 
 	if backupsFolderId == "" {
@@ -275,6 +278,8 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 	if err := s.backupVisits(visitsToBackup, nextBackupFileBaseName, fileCounter); err != nil {
 		return fmt.Errorf("failed to backup visits: %w", err)
 	}
+
+	s.instr.CounterVisitsBackups.Add(float64(len(visitsToBackup)))
 
 	log.Printf("next backup since %v successfully saved: %s", lastCreatedAt, nextBackupFileBaseName)
 
