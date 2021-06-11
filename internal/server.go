@@ -175,10 +175,6 @@ func (s *Server) Serve(port int) {
 	chOsInterrupt := make(chan os.Signal, 1)
 	signal.Notify(chOsInterrupt, os.Interrupt)
 
-	// TODO: set initial netlog visits counter?
-	//visitsCount, _ := s.netlogVisitsApi.CountAll()
-	//s.instr.CounterNetlogVisits.Add(float64(visitsCount))
-
 	go func() {
 		log.Infof(" > server listening on: [%s]", ipAndPort)
 		log.Fatal(httpServer.ListenAndServe())
@@ -186,7 +182,7 @@ func (s *Server) Serve(port int) {
 
 	// TODO: make metrics settings configurable
 	metricsPort := "2112"
-	metricsAddr := fmt.Sprintf("localhost:%s", metricsPort)
+	metricsAddr := net.JoinHostPort("localhost", metricsPort)
 	log.Printf(" > metrics listening on: [%s]", metricsAddr)
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())

@@ -279,6 +279,10 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 		return fmt.Errorf("failed to backup visits: %w", err)
 	}
 
+	// TODO: Now, this won't do, as the script does not live long enough (usually) for prometheus service
+	// to pull metrics. One way to solve it is with pushgateway/push-metrics:
+	//	https://prometheus.io/docs/instrumenting/pushing/
+	// TODO: another thing why it does not work - it needs metrics handler setup, on a different port than the main one - 2112
 	s.instr.CounterVisitsBackups.Add(float64(len(visitsToBackup)))
 
 	log.Printf("next backup since %v successfully saved: %s", lastCreatedAt, nextBackupFileBaseName)
