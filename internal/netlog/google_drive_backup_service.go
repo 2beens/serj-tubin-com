@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -24,6 +26,13 @@ const (
 
 var (
 	ErrPermissionNotFound = errors.New("lazar permissions not found")
+)
+
+const (
+	// TODO: use this one after YML config is integrated along with env vars
+	// NetlogUnixSocketAddrDir = "/run/serj-service"
+	NetlogUnixSocketAddrDir = "/var/tmp/serj-service"
+	NetlogUnixSocket        = "netlog-backup.sock"
 )
 
 type GoogleDriveBackupService struct {
@@ -279,13 +288,9 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 		return fmt.Errorf("failed to backup visits: %w", err)
 	}
 
-	// TODO: Now, this won't do, as the script does not live long enough (usually) for prometheus service
-	// to pull metrics. One way to solve it is with pushgateway/push-metrics:
-	//	https://prometheus.io/docs/instrumenting/pushing/
-	// TODO: another thing why it does not work - it needs metrics handler setup, on a different port than the main one - 2112
-	s.instr.CounterVisitsBackups.Add(float64(len(visitsToBackup)))
-
 	log.Printf("next backup since %v successfully saved: %s", lastCreatedAt, nextBackupFileBaseName)
+
+	s.trySendMetrics(len(visitsToBackup))
 
 	return nil
 }
@@ -444,4 +449,32 @@ func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId str
 	}
 
 	return files, nil
+}
+
+func (s *GoogleDriveBackupService) trySendMetrics(visitsCount int) {
+	log.Println("sending metrics ...")
+
+	socket := filepath.Join(NetlogUnixSocketAddrDir, NetlogUnixSocket)
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		log.Printf("try send metrics, conn: %s", err)
+		return
+	}
+
+	msg := fmt.Sprintf("visits-count::%d", visitsCount)
+	_, err = conn.Write([]byte(msg))
+	if err != nil {
+		log.Printf("try send metrics, write: %s", err)
+	}
+
+	log.Println("metrics sent successfully")
+
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf) // TODO: set read timeout?
+	if err != nil {
+		log.Printf("try send metrics, read: %s", err)
+	}
+
+	msgReceived := buf[:n]
+	log.Printf("metrics, received from server: %s", msgReceived)
 }

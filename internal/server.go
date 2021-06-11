@@ -9,7 +9,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime/debug"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
@@ -189,16 +192,31 @@ func (s *Server) Serve(port int) {
 		log.Println(http.ListenAndServe(metricsAddr, nil))
 	}()
 
+	// netlog backup unix socket
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := os.MkdirAll(netlog.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
+		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
+	} else {
+		if addr, err := s.netlogBackupSocketSetup(ctx, netlog.NetlogUnixSocketAddrDir, netlog.NetlogUnixSocket); err != nil {
+			log.Errorf("failed to create netlog backup unix socket: %s", err)
+		} else {
+			log.Debugf("netlog backup unix socket: %s", addr)
+		}
+	}
+
 	s.instr.GaugeLifeSignal.Set(1)
 	defer s.instr.GaugeLifeSignal.Set(0)
 
 	<-chOsInterrupt
 	log.Warn("os interrupt received ...")
-	s.gracefulShutdown(httpServer)
+	// go to sleep 🥱
+	s.gracefulShutdown(httpServer, cancel)
 }
 
-func (s *Server) gracefulShutdown(httpServer *http.Server) {
+func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.CancelFunc) {
 	log.Debug("graceful shutdown initiated ...")
+
+	cancel()
 
 	s.board.Close()
 
@@ -206,9 +224,14 @@ func (s *Server) gracefulShutdown(httpServer *http.Server) {
 		s.blogApi.CloseDB()
 	}
 
+	log.Debugln("removing netlog backup unix socket ...")
+	if err := os.RemoveAll(netlog.NetlogUnixSocketAddrDir); err != nil {
+		log.Errorf("failed to cleanup netlog backup unix socket dir: %s", err)
+	}
+
 	maxWaitDuration := time.Second * 15
-	ctx, cancel := context.WithTimeout(context.Background(), maxWaitDuration)
-	defer cancel()
+	ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
+	defer timeoutCancel()
 	if err := httpServer.Shutdown(ctx); err != nil {
 		log.Error(" >>> failed to gracefully shutdown http server")
 	}
@@ -290,4 +313,69 @@ func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
 	case http.StateClosed:
 		s.instr.GaugeRequests.Add(-1)
 	}
+}
+
+// this is a deliberately overengineered method of communicating of netlog backup with the main service
+// just so I have a piece of code that uses UNIX socket interprocess communication, and also to avoid
+// adding the Prometheus push gateway to push metrics to it
+func (s *Server) netlogBackupSocketSetup(ctx context.Context, socketAddrDir, socketFileName string) (net.Addr, error) {
+	socket := filepath.Join(socketAddrDir, socketFileName)
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		return nil, fmt.Errorf("binding to unix socket %s: %w", socket, err)
+	}
+
+	if err := os.Chmod(socket, os.ModeSocket|0666); err != nil {
+		return nil, err
+	}
+
+	go func() {
+		go func() {
+			<-ctx.Done()
+			_ = listener.Close()
+		}()
+
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Errorf("netlog backup socket listener conn accept: %s", err)
+				return
+			}
+
+			go func() {
+				defer func() { _ = conn.Close() }()
+
+				for {
+					buf := make([]byte, 1024)
+					n, err := conn.Read(buf)
+					if err != nil {
+						return
+					}
+
+					messageReceived := string(buf[:n])
+					log.Infof("netlog backup unix socket received: %s", messageReceived)
+					if !strings.HasPrefix(messageReceived, "visits-count::") {
+						log.Errorf("netlog backup conn, invalid message received: %s", messageReceived)
+						return
+					}
+
+					visitsCountStr := strings.Split(messageReceived, "::")[1]
+					visitsCount, err := strconv.Atoi(visitsCountStr)
+					if err != nil {
+						log.Errorf("netlog backup conn, invalid visits counter: %s", err)
+						return
+					}
+
+					s.instr.CounterVisitsBackups.Add(float64(visitsCount))
+
+					_, err = conn.Write([]byte("ok"))
+					if err != nil {
+						log.Errorf("netlog backup conn, send response: %s", err)
+					}
+				}
+			}()
+		}
+	}()
+
+	return listener.Addr(), nil
 }
