@@ -341,39 +341,42 @@ func (s *Server) netlogBackupSocketSetup(ctx context.Context, socketAddrDir, soc
 				log.Errorf("netlog backup unix socket listener conn accept: %s", err)
 				return
 			}
-
 			log.Debugf("netlog backup unix socket got new conn: %s", conn.RemoteAddr().String())
+
+			// if it takes over 5 minutes to transfer all netlog data, then something is probably not right
+			if err := conn.SetDeadline(time.Now().Add(5 * time.Minute)); err != nil {
+				log.Errorf("failed to set conn timeout: %s", err)
+				return
+			}
 
 			go func() {
 				defer func() { _ = conn.Close() }()
 
-				for {
-					buf := make([]byte, 1024)
-					n, err := conn.Read(buf)
-					if err != nil {
-						return
-					}
+				buf := make([]byte, 1024)
+				n, err := conn.Read(buf)
+				if err != nil {
+					return
+				}
 
-					messageReceived := string(buf[:n])
-					log.Infof("netlog backup unix socket received: %s", messageReceived)
-					if !strings.HasPrefix(messageReceived, "visits-count::") {
-						log.Errorf("netlog backup conn, invalid message received: %s", messageReceived)
-						return
-					}
+				messageReceived := string(buf[:n])
+				log.Infof("netlog backup unix socket received: %s", messageReceived)
+				if !strings.HasPrefix(messageReceived, "visits-count::") {
+					log.Errorf("netlog backup conn, invalid message received: %s", messageReceived)
+					return
+				}
 
-					visitsCountStr := strings.Split(messageReceived, "::")[1]
-					visitsCount, err := strconv.Atoi(visitsCountStr)
-					if err != nil {
-						log.Errorf("netlog backup conn, invalid visits counter: %s", err)
-						return
-					}
+				visitsCountStr := strings.Split(messageReceived, "::")[1]
+				visitsCount, err := strconv.Atoi(visitsCountStr)
+				if err != nil {
+					log.Errorf("netlog backup conn, invalid visits counter: %s", err)
+					return
+				}
 
-					s.instr.CounterVisitsBackups.Add(float64(visitsCount))
+				s.instr.CounterVisitsBackups.Add(float64(visitsCount))
 
-					_, err = conn.Write([]byte("ok"))
-					if err != nil {
-						log.Errorf("netlog backup conn, send response: %s", err)
-					}
+				_, err = conn.Write([]byte("ok"))
+				if err != nil {
+					log.Errorf("netlog backup conn, send response: %s", err)
 				}
 			}()
 		}

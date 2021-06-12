@@ -455,9 +455,15 @@ func (s *GoogleDriveBackupService) trySendMetrics(visitsCount int) {
 	log.Println("sending metrics ...")
 
 	socket := filepath.Join(NetlogUnixSocketAddrDir, NetlogUnixSocket)
-	conn, err := net.Dial("unix", socket)
+	conn, err := net.DialTimeout("unix", socket, 20*time.Second)
 	if err != nil {
 		log.Printf("try send metrics, conn: %s", err)
+		return
+	}
+
+	// if it takes over 5 minutes to transfer all netlog data, then something is probably not right
+	if err := conn.SetDeadline(time.Now().Add(5 * time.Minute)); err != nil {
+		log.Errorf("failed to set conn timeout: %s", err)
 		return
 	}
 
@@ -470,7 +476,7 @@ func (s *GoogleDriveBackupService) trySendMetrics(visitsCount int) {
 	log.Println("metrics sent successfully")
 
 	buf := make([]byte, 1024)
-	n, err := conn.Read(buf) // TODO: set read timeout?
+	n, err := conn.Read(buf)
 	if err != nil {
 		log.Printf("try send metrics, read: %s", err)
 	}
