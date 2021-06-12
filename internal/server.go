@@ -338,9 +338,11 @@ func (s *Server) netlogBackupSocketSetup(ctx context.Context, socketAddrDir, soc
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				log.Errorf("netlog backup socket listener conn accept: %s", err)
+				log.Errorf("netlog backup unix socket listener conn accept: %s", err)
 				return
 			}
+
+			log.Debugf("netlog backup unix socket got new conn: %s", conn.RemoteAddr().String())
 
 			go func() {
 				defer func() { _ = conn.Close() }()
