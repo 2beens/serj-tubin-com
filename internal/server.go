@@ -197,7 +197,7 @@ func (s *Server) Serve(port int) {
 	if err := os.MkdirAll(netlog.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
 		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
 	} else {
-		if addr, err := s.netlogBackupSocketSetup(ctx, netlog.NetlogUnixSocketAddrDir, netlog.NetlogUnixSocket); err != nil {
+		if addr, err := s.netlogBackupSocketSetup(ctx, netlog.NetlogUnixSocketAddrDir, netlog.NetlogUnixSocketFileName); err != nil {
 			log.Errorf("failed to create netlog backup unix socket: %s", err)
 		} else {
 			log.Debugf("netlog backup unix socket: %s", addr)

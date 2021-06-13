@@ -31,8 +31,8 @@ var (
 const (
 	// TODO: use this one after YML config is integrated along with env vars
 	// NetlogUnixSocketAddrDir = "/run/serj-service"
-	NetlogUnixSocketAddrDir = "/var/tmp/serj-service"
-	NetlogUnixSocket        = "netlog-backup.sock"
+	NetlogUnixSocketAddrDir  = "/var/tmp/serj-service"
+	NetlogUnixSocketFileName = "netlog-backup.sock"
 )
 
 type GoogleDriveBackupService struct {
@@ -454,7 +454,7 @@ func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId str
 func (s *GoogleDriveBackupService) trySendMetrics(visitsCount int) {
 	log.Println("sending metrics ...")
 
-	socket := filepath.Join(NetlogUnixSocketAddrDir, NetlogUnixSocket)
+	socket := filepath.Join(NetlogUnixSocketAddrDir, NetlogUnixSocketFileName)
 	conn, err := net.DialTimeout("unix", socket, 20*time.Second)
 	if err != nil {
 		log.Printf("try send metrics, conn: %s", err)

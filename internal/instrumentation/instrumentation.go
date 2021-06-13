@@ -24,39 +24,48 @@ type Instrumentation struct {
 }
 
 func NewInstrumentation(namespace, subsystem string) *Instrumentation {
-	counterRequests := promauto.NewCounter(prometheus.CounterOpts{
+	return NewInstrumentationWithRegisterer(namespace, subsystem, prometheus.DefaultRegisterer)
+}
+
+func NewTestInstrumentation() *Instrumentation {
+	return NewInstrumentationWithRegisterer("backend", "test_server", prometheus.NewRegistry())
+}
+
+func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheus.Registerer) *Instrumentation {
+	factory := promauto.With(reg)
+	counterRequests := factory.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: subsystem,
 		Name:      "request",
 		Help:      "The total number of incoming requests",
 	})
-	counterNetlogVisits := promauto.NewCounter(prometheus.CounterOpts{
+	counterNetlogVisits := factory.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: subsystem,
 		Name:      "netlog_visits",
 		Help:      "The total number of netlog visits",
 	})
-	counterHandleRequestPanic := promauto.NewCounter(prometheus.CounterOpts{
+	counterHandleRequestPanic := factory.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: subsystem,
 		Name:      "handle_request_panic",
 		Help:      "The total number of serve request panics",
 	})
-	counterVisitsBackups := promauto.NewCounter(prometheus.CounterOpts{
+	counterVisitsBackups := factory.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: subsystem,
 		Name:      "netlog_visits_backed_up",
 		Help:      "Number of netlog visits backed up",
 	})
 
-	gaugeRequests := promauto.NewGauge(prometheus.GaugeOpts{
+	gaugeRequests := factory.NewGauge(prometheus.GaugeOpts{
 		Namespace:   namespace,
 		Subsystem:   subsystem,
 		Name:        "current_requests",
 		Help:        "Current number of requests served",
 		ConstLabels: nil,
 	})
-	gaugeLifeSignal := promauto.NewGauge(prometheus.GaugeOpts{
+	gaugeLifeSignal := factory.NewGauge(prometheus.GaugeOpts{
 		Namespace:   namespace,
 		Subsystem:   subsystem,
 		Name:        "life_signal",
@@ -64,7 +73,7 @@ func NewInstrumentation(namespace, subsystem string) *Instrumentation {
 		ConstLabels: nil,
 	})
 
-	histReqDuration := promauto.NewHistogram(
+	histReqDuration := factory.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
