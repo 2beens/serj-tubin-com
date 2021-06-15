@@ -10,7 +10,7 @@ import (
 
 type Instrumentation struct {
 	// counters
-	CounterRequests           prometheus.Counter
+	CounterRequests           *prometheus.CounterVec
 	CounterNetlogVisits       prometheus.Counter
 	CounterHandleRequestPanic prometheus.Counter
 	CounterVisitsBackups      prometheus.Counter
@@ -33,12 +33,13 @@ func NewTestInstrumentation() *Instrumentation {
 
 func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheus.Registerer) *Instrumentation {
 	factory := promauto.With(reg)
-	counterRequests := factory.NewCounter(prometheus.CounterOpts{
+
+	counterRequests := factory.NewCounterVec(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: subsystem,
 		Name:      "request",
 		Help:      "The total number of incoming requests",
-	})
+	}, []string{"method"})
 	counterNetlogVisits := factory.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: subsystem,

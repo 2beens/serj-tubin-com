@@ -22,6 +22,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 )
@@ -300,6 +301,8 @@ func (s *Server) metricsMiddleware() func(next http.Handler) http.Handler {
 				s.instr.HistRequestDuration.Observe(time.Since(begin).Seconds())
 			}(time.Now())
 
+			s.instr.CounterRequests.With(prometheus.Labels{"method": req.Method}).Inc()
+
 			// handler call
 			next.ServeHTTP(respWriter, req)
 		})
@@ -309,7 +312,6 @@ func (s *Server) metricsMiddleware() func(next http.Handler) http.Handler {
 func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
 	switch state {
 	case http.StateNew:
-		s.instr.CounterRequests.Add(1)
 		s.instr.GaugeRequests.Add(1)
 	case http.StateClosed:
 		s.instr.GaugeRequests.Add(-1)
