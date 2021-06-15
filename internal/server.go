@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
@@ -176,7 +177,7 @@ func (s *Server) Serve(port int) {
 	}
 
 	chOsInterrupt := make(chan os.Signal, 1)
-	signal.Notify(chOsInterrupt, os.Interrupt)
+	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		log.Infof(" > server listening on: [%s]", ipAndPort)
@@ -207,8 +208,8 @@ func (s *Server) Serve(port int) {
 	s.instr.GaugeLifeSignal.Set(1)
 	defer s.instr.GaugeLifeSignal.Set(0)
 
-	<-chOsInterrupt
-	log.Warn("os interrupt received ...")
+	receivedSig := <-chOsInterrupt
+	log.Warnf("signal [%s] received ...", receivedSig)
 	// go to sleep 🥱
 	s.gracefulShutdown(httpServer, cancel)
 }
