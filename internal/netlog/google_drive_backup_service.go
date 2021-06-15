@@ -187,6 +187,8 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 		panic("service is nil")
 	}
 
+	beginTimestamp := time.Now()
+
 	currentAllBackupFiles, err := s.getNetlogBackupFiles(s.backupsFolderId)
 	if err != nil {
 		return err
@@ -290,7 +292,7 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 
 	log.Printf("next backup since %v successfully saved: %s", lastCreatedAt, nextBackupFileBaseName)
 
-	s.trySendMetrics(len(visitsToBackup))
+	s.trySendMetrics(beginTimestamp, len(visitsToBackup))
 
 	return nil
 }
@@ -451,7 +453,7 @@ func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId str
 	return files, nil
 }
 
-func (s *GoogleDriveBackupService) trySendMetrics(visitsCount int) {
+func (s *GoogleDriveBackupService) trySendMetrics(beginTimestamp time.Time, visitsCount int) {
 	log.Println("sending metrics ...")
 
 	socket := filepath.Join(NetlogUnixSocketAddrDir, NetlogUnixSocketFileName)
@@ -467,7 +469,11 @@ func (s *GoogleDriveBackupService) trySendMetrics(visitsCount int) {
 		return
 	}
 
-	msg := fmt.Sprintf("visits-count::%d", visitsCount)
+	backupDurationSeconds := time.Since(beginTimestamp).Seconds()
+
+	msg := fmt.Sprintf("visits-count::%d||duration::%f", visitsCount, backupDurationSeconds)
+	log.Printf("sending metrics info: %s", msg)
+
 	_, err = conn.Write([]byte(msg))
 	if err != nil {
 		log.Printf("try send metrics, write: %s", err)

@@ -363,13 +363,35 @@ func (s *Server) netlogBackupSocketSetup(ctx context.Context, socketAddrDir, soc
 
 				messageReceived := string(buf[:n])
 				log.Infof("netlog backup unix socket received: %s", messageReceived)
-				if !strings.HasPrefix(messageReceived, "visits-count::") {
+
+				msgParts := strings.Split(messageReceived, "||")
+				if len(msgParts) != 2 {
 					log.Errorf("netlog backup conn, invalid message received: %s", messageReceived)
 					return
 				}
 
-				visitsCountStr := strings.Split(messageReceived, "::")[1]
-				visitsCount, err := strconv.Atoi(visitsCountStr)
+				// TODO: make this goroutine prettier please :)
+
+				durationInfo := msgParts[1]
+				durationInfoParts := strings.Split(durationInfo, "::")
+				if len(durationInfoParts) != 2 {
+					log.Errorf("netlog backup conn, invalid duration info received: %s", durationInfo)
+				} else {
+					if durationInSec, err := strconv.ParseFloat(durationInfoParts[1], 64); err != nil {
+						log.Errorf("netlog backup conn, invalid duration info received: %s", err)
+					} else {
+						s.instr.HistNetlogBackupDuration.Observe(durationInSec)
+					}
+				}
+
+				visitsCountInfo := msgParts[0]
+				visitsCountInfoParts := strings.Split(visitsCountInfo, "::")
+				if len(visitsCountInfoParts) != 2 {
+					log.Errorf("netlog backup conn, invalid visits info received: %s", visitsCountInfo)
+					return
+				}
+
+				visitsCount, err := strconv.Atoi(visitsCountInfoParts[1])
 				if err != nil {
 					log.Errorf("netlog backup conn, invalid visits counter: %s", err)
 					return

@@ -20,7 +20,8 @@ type Instrumentation struct {
 	GaugeLifeSignal prometheus.Gauge
 
 	// historgrams
-	HistRequestDuration prometheus.Histogram
+	HistRequestDuration      prometheus.Histogram
+	HistNetlogBackupDuration prometheus.Histogram
 }
 
 func NewInstrumentation(namespace, subsystem string) *Instrumentation {
@@ -29,6 +30,11 @@ func NewInstrumentation(namespace, subsystem string) *Instrumentation {
 
 func NewTestInstrumentation() *Instrumentation {
 	return NewInstrumentationWithRegisterer("backend", "test_server", prometheus.NewRegistry())
+}
+
+func NewTestInstrumentationAndRegistry() (*Instrumentation, *prometheus.Registry) {
+	reg := prometheus.NewRegistry()
+	return NewInstrumentationWithRegisterer("backend", "test_server", reg), reg
 }
 
 func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheus.Registerer) *Instrumentation {
@@ -84,7 +90,20 @@ func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheu
 				0.0001, 0.001, 0.01, 0.1, 1, 10, 60,
 			},
 			Name: "request_duration_seconds",
-			Help: "Total duration of all requests",
+			Help: "Total duration of requests in seconds",
+		},
+	)
+	histNetlogBackupDuration := factory.NewHistogram(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Buckets: []float64{
+				0.0001, 0.001, 0.01, 0.1, 1, 10,
+				60, 120, 240, 480, 1000, 2000,
+				4000, 10000,
+			},
+			Name: "netlog_backup_duration_seconds",
+			Help: "Total duration of a single netlog backup in seconds",
 		},
 	)
 
@@ -96,5 +115,6 @@ func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheu
 		GaugeRequests:             gaugeRequests,
 		GaugeLifeSignal:           gaugeLifeSignal,
 		HistRequestDuration:       histReqDuration,
+		HistNetlogBackupDuration:  histNetlogBackupDuration,
 	}
 }
