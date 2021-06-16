@@ -45,7 +45,7 @@ func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheu
 		Subsystem: subsystem,
 		Name:      "request",
 		Help:      "The total number of incoming requests",
-	}, []string{"method"})
+	}, []string{"method", "status"})
 	counterNetlogVisits := factory.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: subsystem,

@@ -301,12 +301,29 @@ func (s *Server) metricsMiddleware() func(next http.Handler) http.Handler {
 				s.instr.HistRequestDuration.Observe(time.Since(begin).Seconds())
 			}(time.Now())
 
-			s.instr.CounterRequests.With(prometheus.Labels{"method": req.Method}).Inc()
+			resp := &responseWriter{respWriter, http.StatusOK}
 
 			// handler call
-			next.ServeHTTP(respWriter, req)
+			next.ServeHTTP(resp, req)
+
+			s.instr.CounterRequests.With(
+				prometheus.Labels{
+					"method": req.Method,
+					"status": strconv.Itoa(resp.statusCode),
+				},
+			).Inc()
 		})
 	}
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (r *responseWriter) WriteHeader(statusCode int) {
+	r.ResponseWriter.WriteHeader(statusCode)
+	r.statusCode = statusCode
 }
 
 func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
