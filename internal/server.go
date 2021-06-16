@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -20,9 +18,9 @@ import (
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 )
@@ -44,7 +42,6 @@ type Server struct {
 
 	openWeatherAPIUrl string
 	openWeatherApiKey string
-	muteRequestLogs   bool
 	versionInfo       string
 
 	loginSession *LoginSession
@@ -102,7 +99,6 @@ func NewServer(
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
-		muteRequestLogs:       false,
 		geoIp:                 NewGeoIp("https://freegeoip.app", http.DefaultClient),
 		board:                 board,
 		netlogVisitsApi:       netlogVisitsApi,
@@ -152,11 +148,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("netlog visits handler is nil")
 	}
 
-	r.Use(s.panicRecoveryMiddleware())
-	r.Use(s.loggingMiddleware())
-	r.Use(s.corsMiddleware())
-	r.Use(s.drainAndCloseMiddleware())
-	r.Use(s.metricsMiddleware())
+	r.Use(middleware.PanicRecovery(s.instr))
+	r.Use(middleware.LogRequest())
+	r.Use(middleware.Cors())
+	r.Use(middleware.DrainAndCloseRequest())
+	r.Use(middleware.Metrics(s.instr))
 
 	return r, nil
 }
@@ -238,92 +234,6 @@ func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.Cancel
 		log.Error(" >>> failed to gracefully shutdown http server")
 	}
 	log.Warn("server shut down")
-}
-
-func (s *Server) corsMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// TODO: fix to allow only "www.serj-tubin.com"
-
-			//Allow CORS here By * or specific origin
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func (s *Server) loggingMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !s.muteRequestLogs {
-				userAgent := r.Header.Get("User-Agent")
-				log.Tracef(" ====> request [%s] path: [%s] [UA: %s]", r.Method, r.URL.Path, userAgent)
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// drainAndCloseMiddleware - avoid potential overhead and memory leaks by draining the request body and closing it
-func (s *Server) drainAndCloseMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
-			_, _ = io.Copy(io.Discard, r.Body)
-			_ = r.Body.Close()
-		})
-	}
-}
-
-func (s *Server) panicRecoveryMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("http: panic serving %s: %v\n%s", req.URL.Path, r, debug.Stack())
-					s.instr.CounterHandleRequestPanic.Inc()
-				}
-			}()
-
-			// handler call
-			next.ServeHTTP(respWriter, req)
-		})
-	}
-}
-
-func (s *Server) metricsMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
-			defer func(begin time.Time) {
-				s.instr.HistRequestDuration.Observe(time.Since(begin).Seconds())
-			}(time.Now())
-
-			resp := &responseWriter{respWriter, http.StatusOK}
-
-			// handler call
-			next.ServeHTTP(resp, req)
-
-			s.instr.CounterRequests.With(
-				prometheus.Labels{
-					"method": req.Method,
-					"status": strconv.Itoa(resp.statusCode),
-				},
-			).Inc()
-		})
-	}
-}
-
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (r *responseWriter) WriteHeader(statusCode int) {
-	r.ResponseWriter.WriteHeader(statusCode)
-	r.statusCode = statusCode
 }
 
 func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -91,52 +89,4 @@ func TestNewServer_netlogBackupSocketSetup(t *testing.T) {
 	require.NotNil(t, foundHistMetric)
 	require.NotNil(t, foundHistMetric.Histogram)
 	assert.Equal(t, duration, *foundHistMetric.Histogram.SampleSum)
-}
-
-func Test_panicRecoveryMiddleware_nonPanic(t *testing.T) {
-	server := &Server{
-		instr: instrumentation.NewTestInstrumentation(),
-	}
-
-	handler := server.panicRecoveryMiddleware()
-	next := &panicRecTestHandler{}
-	handlerFunc := handler(next)
-
-	rr := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/", nil)
-	handlerFunc.ServeHTTP(rr, req)
-
-	assert.True(t, next.called)
-	// panic did not happen
-	assert.Equal(t, float64(0), testutil.ToFloat64(server.instr.CounterHandleRequestPanic))
-}
-
-func Test_panicRecoveryMiddleware_panic(t *testing.T) {
-	server := &Server{
-		instr: instrumentation.NewTestInstrumentation(),
-	}
-
-	handler := server.panicRecoveryMiddleware()
-	next := &panicRecTestHandler{panic: true}
-	handlerFunc := handler(next)
-
-	rr := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/", nil)
-	handlerFunc.ServeHTTP(rr, req)
-
-	assert.True(t, next.called)
-	// panic DID happen
-	assert.Equal(t, float64(1), testutil.ToFloat64(server.instr.CounterHandleRequestPanic))
-}
-
-type panicRecTestHandler struct {
-	panic  bool
-	called bool
-}
-
-func (p *panicRecTestHandler) ServeHTTP(http.ResponseWriter, *http.Request) {
-	p.called = true
-	if p.panic {
-		panic("YOLO")
-	}
 }
