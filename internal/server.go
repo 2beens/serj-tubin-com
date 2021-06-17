@@ -195,7 +195,7 @@ func (s *Server) Serve(port int) {
 	if err := os.MkdirAll(netlog.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
 		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
 	} else {
-		if addr, err := s.netlogBackupSocketSetup(ctx, netlog.NetlogUnixSocketAddrDir, netlog.NetlogUnixSocketFileName); err != nil {
+		if addr, err := netlogBackupSocketSetup(ctx, netlog.NetlogUnixSocketAddrDir, netlog.NetlogUnixSocketFileName, s.instr); err != nil {
 			log.Errorf("failed to create netlog backup unix socket: %s", err)
 		} else {
 			log.Debugf("netlog backup unix socket: %s", addr)
@@ -248,7 +248,11 @@ func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
 // this is a deliberately overengineered method of communicating of netlog backup with the main service
 // just so I have a piece of code that uses UNIX socket interprocess communication, and also to avoid
 // adding the Prometheus push gateway to push metrics to it
-func (s *Server) netlogBackupSocketSetup(ctx context.Context, socketAddrDir, socketFileName string) (net.Addr, error) {
+func netlogBackupSocketSetup(
+	ctx context.Context,
+	socketAddrDir, socketFileName string,
+	instr *instrumentation.Instrumentation,
+) (net.Addr, error) {
 	socket := filepath.Join(socketAddrDir, socketFileName)
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
@@ -297,34 +301,11 @@ func (s *Server) netlogBackupSocketSetup(ctx context.Context, socketAddrDir, soc
 					return
 				}
 
-				// TODO: make this goroutine prettier please :)
-
 				durationInfo := msgParts[1]
-				durationInfoParts := strings.Split(durationInfo, "::")
-				if len(durationInfoParts) != 2 {
-					log.Errorf("netlog backup conn, invalid duration info received: %s", durationInfo)
-				} else {
-					if durationInSec, err := strconv.ParseFloat(durationInfoParts[1], 64); err != nil {
-						log.Errorf("netlog backup conn, invalid duration info received: %s", err)
-					} else {
-						s.instr.HistNetlogBackupDuration.Observe(durationInSec)
-					}
-				}
+				sendNetlogBackupDurationInfo(durationInfo, instr)
 
 				visitsCountInfo := msgParts[0]
-				visitsCountInfoParts := strings.Split(visitsCountInfo, "::")
-				if len(visitsCountInfoParts) != 2 {
-					log.Errorf("netlog backup conn, invalid visits info received: %s", visitsCountInfo)
-					return
-				}
-
-				visitsCount, err := strconv.Atoi(visitsCountInfoParts[1])
-				if err != nil {
-					log.Errorf("netlog backup conn, invalid visits counter: %s", err)
-					return
-				}
-
-				s.instr.CounterVisitsBackups.Add(float64(visitsCount))
+				sendNetlogBackupVisitsCount(visitsCountInfo, instr)
 
 				_, err = conn.Write([]byte("ok"))
 				if err != nil {
@@ -335,4 +316,36 @@ func (s *Server) netlogBackupSocketSetup(ctx context.Context, socketAddrDir, soc
 	}()
 
 	return listener.Addr(), nil
+}
+
+func sendNetlogBackupDurationInfo(durationInfoMsg string, instr *instrumentation.Instrumentation) {
+	durationInfoParts := strings.Split(durationInfoMsg, "::")
+	if len(durationInfoParts) != 2 {
+		log.Errorf("netlog backup conn, invalid duration info received: %s", durationInfoMsg)
+		return
+	}
+
+	durationInSec, err := strconv.ParseFloat(durationInfoParts[1], 64)
+	if err != nil {
+		log.Errorf("netlog backup conn, invalid duration info received: %s", err)
+		return
+	}
+
+	instr.HistNetlogBackupDuration.Observe(durationInSec)
+}
+
+func sendNetlogBackupVisitsCount(visitsCountInfoMsg string, instr *instrumentation.Instrumentation) {
+	visitsCountInfoParts := strings.Split(visitsCountInfoMsg, "::")
+	if len(visitsCountInfoParts) != 2 {
+		log.Errorf("netlog backup conn, invalid visits info received: %s", visitsCountInfoMsg)
+		return
+	}
+
+	visitsCount, err := strconv.Atoi(visitsCountInfoParts[1])
+	if err != nil {
+		log.Errorf("netlog backup conn, invalid visits counter: %s", err)
+		return
+	}
+
+	instr.CounterVisitsBackups.Add(float64(visitsCount))
 }

@@ -18,10 +18,6 @@ import (
 
 func TestNewServer_netlogBackupSocketSetup(t *testing.T) {
 	instr, reg := instrumentation.NewTestInstrumentationAndRegistry()
-	server := &Server{
-		instr: instr,
-	}
-
 	dir, err := ioutil.TempDir("", "serj-server-unix-2")
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +31,7 @@ func TestNewServer_netlogBackupSocketSetup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	socket := fmt.Sprintf("%d.sock", os.Getpid())
 
-	addr, err := server.netlogBackupSocketSetup(ctx, dir, socket)
+	addr, err := netlogBackupSocketSetup(ctx, dir, socket, instr)
 	require.NoError(t, err)
 
 	/////////////////
@@ -60,12 +56,12 @@ func TestNewServer_netlogBackupSocketSetup(t *testing.T) {
 	cancel()
 
 	// https://pkg.go.dev/github.com/prometheus/client_golang/prometheus/testutil
-	counterVisitsBackups := testutil.CollectAndCount(server.instr.CounterVisitsBackups, "backend_test_server_netlog_visits_backed_up")
+	counterVisitsBackups := testutil.CollectAndCount(instr.CounterVisitsBackups, "backend_test_server_netlog_visits_backed_up")
 	histNetlogBackupDuration, err := testutil.GatherAndCount(reg, "backend_test_server_netlog_backup_duration_seconds")
 	require.NoError(t, err)
 	assert.Equal(t, 1, counterVisitsBackups)
 	assert.Equal(t, 1, histNetlogBackupDuration)
-	assert.Equal(t, float64(visitsCount), testutil.ToFloat64(server.instr.CounterVisitsBackups))
+	assert.Equal(t, float64(visitsCount), testutil.ToFloat64(instr.CounterVisitsBackups))
 
 	require.NotNil(t, reg)
 	gathered, err := reg.Gather()
