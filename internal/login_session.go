@@ -12,5 +12,6 @@ type Admin struct {
 type LoginSession struct {
 	Token     string
 	CreatedAt time.Time
-	TTL       time.Duration
+	// TODO: make use of this, it's still not used
+	TTL time.Duration
 }

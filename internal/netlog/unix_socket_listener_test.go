@@ -1,4 +1,4 @@
-package internal
+package netlog
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewServer_netlogBackupSocketSetup(t *testing.T) {
+func TestVisitsBackupUnixSocketListenerSetup(t *testing.T) {
 	instr, reg := instrumentation.NewTestInstrumentationAndRegistry()
 	dir, err := ioutil.TempDir("", "serj-server-unix-2")
 	if err != nil {
@@ -31,7 +31,7 @@ func TestNewServer_netlogBackupSocketSetup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	socket := fmt.Sprintf("%d.sock", os.Getpid())
 
-	addr, err := netlogBackupSocketSetup(ctx, dir, socket, instr)
+	addr, err := VisitsBackupUnixSocketListenerSetup(ctx, dir, socket, instr)
 	require.NoError(t, err)
 
 	/////////////////
