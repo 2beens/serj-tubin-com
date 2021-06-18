@@ -14,8 +14,12 @@ github.com/aerospike/aerospike-client-go/pkg/ripemd160
 github.com/aerospike/aerospike-client-go/types
 github.com/aerospike/aerospike-client-go/types/rand
 github.com/aerospike/aerospike-client-go/utils/buffer
+# github.com/beorn7/perks v1.0.1
+github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash v1.1.0
 github.com/cespare/xxhash
+# github.com/cespare/xxhash/v2 v2.1.1
+github.com/cespare/xxhash/v2
 # github.com/coocood/freecache v1.1.0
 ## explicit
 github.com/coocood/freecache
@@ -63,10 +67,30 @@ github.com/jackc/pgx/v4/pgxpool
 github.com/jackc/puddle
 # github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
+# github.com/matttproud/golang_protobuf_extensions v1.0.1
+github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/onsi/ginkgo v1.13.0
 ## explicit
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
+# github.com/prometheus/client_golang v1.10.0
+## explicit
+github.com/prometheus/client_golang/prometheus
+github.com/prometheus/client_golang/prometheus/internal
+github.com/prometheus/client_golang/prometheus/promauto
+github.com/prometheus/client_golang/prometheus/promhttp
+github.com/prometheus/client_golang/prometheus/testutil
+github.com/prometheus/client_golang/prometheus/testutil/promlint
+# github.com/prometheus/client_model v0.2.0
+github.com/prometheus/client_model/go
+# github.com/prometheus/common v0.18.0
+github.com/prometheus/common/expfmt
+github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
+github.com/prometheus/common/model
+# github.com/prometheus/procfs v0.6.0
+github.com/prometheus/procfs
+github.com/prometheus/procfs/internal/fs
+github.com/prometheus/procfs/internal/util
 # github.com/sirupsen/logrus v1.6.0
 ## explicit
 github.com/sirupsen/logrus
@@ -131,6 +155,7 @@ golang.org/x/sync/semaphore
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
+golang.org/x/sys/windows
 # golang.org/x/text v0.3.5
 golang.org/x/text/cases
 golang.org/x/text/internal

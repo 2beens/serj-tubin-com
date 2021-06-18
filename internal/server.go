@@ -4,17 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
+	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,11 +39,13 @@ type Server struct {
 
 	openWeatherAPIUrl string
 	openWeatherApiKey string
-	muteRequestLogs   bool
 	versionInfo       string
 
 	loginSession *LoginSession
 	admin        *Admin
+
+	// metrics
+	instr *instrumentation.Instrumentation
 }
 
 func NewServer(
@@ -82,18 +88,23 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
+	instrumentation := instrumentation.NewInstrumentation("backend", "server1")
+	instrumentation.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran
+
 	s := &Server{
 		blogApi:               blogApi,
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
-		muteRequestLogs:       false,
 		geoIp:                 NewGeoIp("https://freegeoip.app", http.DefaultClient),
 		board:                 board,
 		netlogVisitsApi:       netlogVisitsApi,
 		versionInfo:           versionInfo,
 		loginSession:          &LoginSession{},
 		admin:                 admin,
+
+		//metrics
+		instr: instrumentation,
 	}
 
 	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
@@ -130,13 +141,15 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("misc handler is nil")
 	}
 
-	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.browserRequestsSecret, s.loginSession) == nil {
+	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginSession) == nil {
 		panic("netlog visits handler is nil")
 	}
 
-	r.Use(s.loggingMiddleware())
-	r.Use(s.corsMiddleware())
-	r.Use(s.drainAndCloseMiddleware())
+	r.Use(middleware.PanicRecovery(s.instr))
+	r.Use(middleware.LogRequest())
+	r.Use(middleware.Cors())
+	r.Use(middleware.DrainAndCloseRequest())
+	r.Use(middleware.Metrics(s.instr))
 
 	return r, nil
 }
@@ -154,23 +167,51 @@ func (s *Server) Serve(port int) {
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
+		ConnState:    s.connStateMetrics,
 	}
 
 	chOsInterrupt := make(chan os.Signal, 1)
-	signal.Notify(chOsInterrupt, os.Interrupt)
+	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		log.Infof(" > server listening on: [%s]", ipAndPort)
 		log.Fatal(httpServer.ListenAndServe())
 	}()
 
-	<-chOsInterrupt
-	log.Warn("os interrupt received ...")
-	s.gracefulShutdown(httpServer)
+	// TODO: make metrics settings configurable
+	metricsPort := "2112"
+	metricsAddr := net.JoinHostPort("localhost", metricsPort)
+	log.Printf(" > metrics listening on: [%s]", metricsAddr)
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		log.Println(http.ListenAndServe(metricsAddr, nil))
+	}()
+
+	// netlog backup unix socket
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := os.MkdirAll(netlog.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
+		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
+	} else {
+		if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, netlog.NetlogUnixSocketAddrDir, netlog.NetlogUnixSocketFileName, s.instr); err != nil {
+			log.Errorf("failed to create netlog backup unix socket: %s", err)
+		} else {
+			log.Debugf("netlog backup unix socket: %s", addr)
+		}
+	}
+
+	s.instr.GaugeLifeSignal.Set(1)
+	defer s.instr.GaugeLifeSignal.Set(0)
+
+	receivedSig := <-chOsInterrupt
+	log.Warnf("signal [%s] received ...", receivedSig)
+	// go to sleep 🥱
+	s.gracefulShutdown(httpServer, cancel)
 }
 
-func (s *Server) gracefulShutdown(httpServer *http.Server) {
+func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.CancelFunc) {
 	log.Debug("graceful shutdown initiated ...")
+
+	cancel()
 
 	s.board.Close()
 
@@ -178,49 +219,25 @@ func (s *Server) gracefulShutdown(httpServer *http.Server) {
 		s.blogApi.CloseDB()
 	}
 
+	log.Debugln("removing netlog backup unix socket ...")
+	if err := os.RemoveAll(netlog.NetlogUnixSocketAddrDir); err != nil {
+		log.Errorf("failed to cleanup netlog backup unix socket dir: %s", err)
+	}
+
 	maxWaitDuration := time.Second * 15
-	ctx, cancel := context.WithTimeout(context.Background(), maxWaitDuration)
-	defer cancel()
+	ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
+	defer timeoutCancel()
 	if err := httpServer.Shutdown(ctx); err != nil {
 		log.Error(" >>> failed to gracefully shutdown http server")
 	}
 	log.Warn("server shut down")
 }
 
-func (s *Server) corsMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// TODO: fix to allow only "www.serj-tubin.com"
-
-			//Allow CORS here By * or specific origin
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func (s *Server) loggingMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !s.muteRequestLogs {
-				userAgent := r.Header.Get("User-Agent")
-				log.Tracef(" ====> request [%s] path: [%s] [UA: %s]", r.Method, r.URL.Path, userAgent)
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// drainAndCloseMiddleware - avoid potential overhead and memory leaks by draining the request body and closing it
-func (s *Server) drainAndCloseMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
-			_, _ = io.Copy(io.Discard, r.Body)
-			_ = r.Body.Close()
-		})
+func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
+	switch state {
+	case http.StateNew:
+		s.instr.GaugeRequests.Add(1)
+	case http.StateClosed:
+		s.instr.GaugeRequests.Add(-1)
 	}
 }

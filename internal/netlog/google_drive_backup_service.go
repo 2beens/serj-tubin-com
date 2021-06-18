@@ -7,11 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/instrumentation"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 )
@@ -25,11 +28,19 @@ var (
 	ErrPermissionNotFound = errors.New("lazar permissions not found")
 )
 
+const (
+	// TODO: use this one after YML config is integrated along with env vars
+	// NetlogUnixSocketAddrDir = "/run/serj-service"
+	NetlogUnixSocketAddrDir  = "/var/tmp/serj-service"
+	NetlogUnixSocketFileName = "netlog-backup.sock"
+)
+
 type GoogleDriveBackupService struct {
 	psqlApi              *PsqlApi
 	service              *drive.Service
 	backupsFolderId      string
 	lazarDusanPermission *drive.Permission
+	instr                *instrumentation.Instrumentation
 }
 
 func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupService, error) {
@@ -72,6 +83,7 @@ func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupServ
 	s := &GoogleDriveBackupService{
 		psqlApi: psqlApi,
 		service: driveService,
+		instr:   instrumentation.NewInstrumentation("backend", "netlog_backups"),
 	}
 
 	if backupsFolderId == "" {
@@ -175,6 +187,8 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 		panic("service is nil")
 	}
 
+	beginTimestamp := time.Now()
+
 	currentAllBackupFiles, err := s.getNetlogBackupFiles(s.backupsFolderId)
 	if err != nil {
 		return err
@@ -277,6 +291,8 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 	}
 
 	log.Printf("next backup since %v successfully saved: %s", lastCreatedAt, nextBackupFileBaseName)
+
+	s.trySendMetrics(beginTimestamp, len(visitsToBackup))
 
 	return nil
 }
@@ -435,4 +451,42 @@ func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId str
 	}
 
 	return files, nil
+}
+
+func (s *GoogleDriveBackupService) trySendMetrics(beginTimestamp time.Time, visitsCount int) {
+	log.Println("sending metrics ...")
+
+	socket := filepath.Join(NetlogUnixSocketAddrDir, NetlogUnixSocketFileName)
+	conn, err := net.DialTimeout("unix", socket, 20*time.Second)
+	if err != nil {
+		log.Printf("try send metrics, conn: %s", err)
+		return
+	}
+
+	// if it takes over 5 minutes to transfer all netlog data, then something is probably not right
+	if err := conn.SetDeadline(time.Now().Add(5 * time.Minute)); err != nil {
+		log.Errorf("failed to set conn timeout: %s", err)
+		return
+	}
+
+	backupDurationSeconds := time.Since(beginTimestamp).Seconds()
+
+	msg := fmt.Sprintf("visits-count::%d||duration::%f", visitsCount, backupDurationSeconds)
+	log.Printf("sending metrics info: %s", msg)
+
+	_, err = conn.Write([]byte(msg))
+	if err != nil {
+		log.Printf("try send metrics, write: %s", err)
+	}
+
+	log.Println("metrics sent successfully")
+
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		log.Printf("try send metrics, read: %s", err)
+	}
+
+	msgReceived := buf[:n]
+	log.Printf("metrics, received from server: %s", msgReceived)
 }

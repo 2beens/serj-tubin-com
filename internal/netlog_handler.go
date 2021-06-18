@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -17,11 +18,19 @@ type NetlogHandler struct {
 	browserRequestsSecret string
 	netlogApi             netlog.Api
 	loginSession          *LoginSession
+	instr                 *instrumentation.Instrumentation
 }
 
-func NewNetlogHandler(router *mux.Router, netlogApi netlog.Api, browserRequestsSecret string, loginSession *LoginSession) *NetlogHandler {
+func NewNetlogHandler(
+	router *mux.Router,
+	netlogApi netlog.Api,
+	instrumentation *instrumentation.Instrumentation,
+	browserRequestsSecret string,
+	loginSession *LoginSession,
+) *NetlogHandler {
 	handler := &NetlogHandler{
 		netlogApi:             netlogApi,
+		instr:                 instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
 		loginSession:          loginSession,
 	}
@@ -156,6 +165,8 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		return
 	}
+
+	handler.instr.CounterNetlogVisits.Inc()
 
 	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
 	WriteResponse(w, "", "added")
