@@ -16,7 +16,6 @@ func main() {
 	fmt.Println("starting ...")
 
 	logLevel := flag.String("loglvl", "trace", "log level")
-	forceStart := flag.Bool("force-start", false, "try to force start, regardless of errors")
 	aeroHost := flag.String("ahost", "localhost", "hostname of aerospike server")
 	aeroPort := flag.Int("aport", 3000, "aerospike server port number")
 	aeroNamespace := flag.String("aero-namespace", "serj-tubin-com", "aerospike namespace value (used in aerospike server)")
@@ -98,12 +97,11 @@ func main() {
 		versionInfo,
 		admin,
 	)
-	if err != nil && !*forceStart {
+	if err != nil {
 		log.Fatal(err)
 	}
-	if server != nil {
-		server.Serve(*port)
-	}
+
+	server.Serve(*port)
 }
 
 // tryGetLastCommitHash will try to get the last commit hash
