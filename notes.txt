@@ -10,15 +10,19 @@ some ideas:
     - (done ✅) backup all data (especially netlog) on personal google drive
         - https://developers.google.com/drive/api/v3/quickstart/go
     - use config files (YML for example) with env variables (production, debug/local, ...)
+    - write log viewer web service, maybe write in different technology (Rust 🦀) ? (use webSockets to get logs in realtime)
     - use fasthttp ?
         - https://github.com/valyala/fasthttp
     - try sentry, looks cool:
         - https://sentry.io/welcome/
-    - logrotate
+    - (done ✅) logrotate (lumberjack added)
     - use ansible?
-    - use monit?
-    - add metrics (graphite + grafana)
-        - alarming (metrics), e.g. on too many requests, etc.
+    - (half done ⏱, see below) use monit?
+    - (done ✅ prometheus used instead) add metrics (graphite + grafana)
+    - metrics phase 2
+        - alarming
+        - add statsD between the service and prometheus
+            - https://github.com/statsd/statsd
     - add URL shortener
         - with auto generated path
         - manually enter path
