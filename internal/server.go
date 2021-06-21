@@ -88,8 +88,8 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
-	instrumentation := instrumentation.NewInstrumentation("backend", "server1")
-	instrumentation.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran
+	instr := instrumentation.NewInstrumentation("backend", "server1")
+	instr.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
 	s := &Server{
 		blogApi:               blogApi,
@@ -104,7 +104,7 @@ func NewServer(
 		admin:                 admin,
 
 		//metrics
-		instr: instrumentation,
+		instr: instr,
 	}
 
 	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
@@ -200,10 +200,11 @@ func (s *Server) Serve(port int) {
 	}
 
 	s.instr.GaugeLifeSignal.Set(1)
-	defer s.instr.GaugeLifeSignal.Set(0)
-
 	receivedSig := <-chOsInterrupt
+
 	log.Warnf("signal [%s] received ...", receivedSig)
+	s.instr.GaugeLifeSignal.Set(0)
+
 	// go to sleep 🥱
 	s.gracefulShutdown(httpServer, cancel)
 }
