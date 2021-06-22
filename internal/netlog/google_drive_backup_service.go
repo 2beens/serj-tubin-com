@@ -28,22 +28,21 @@ var (
 	ErrPermissionNotFound = errors.New("lazar permissions not found")
 )
 
-const (
-	// TODO: use this one after YML config is integrated along with env vars
-	// NetlogUnixSocketAddrDir = "/run/serj-service"
-	NetlogUnixSocketAddrDir  = "/var/tmp/serj-service"
-	NetlogUnixSocketFileName = "netlog-backup.sock"
-)
-
 type GoogleDriveBackupService struct {
-	psqlApi              *PsqlApi
-	service              *drive.Service
-	backupsFolderId      string
-	lazarDusanPermission *drive.Permission
-	instr                *instrumentation.Instrumentation
+	psqlApi                  *PsqlApi
+	service                  *drive.Service
+	backupsFolderId          string
+	lazarDusanPermission     *drive.Permission
+	instr                    *instrumentation.Instrumentation
+	netlogUnixSocketAddrDir  string
+	netlogUnixSocketFileName string
 }
 
-func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupService, error) {
+func NewGoogleDriveBackupService(
+	credentialsJson []byte,
+	netlogUnixSocketAddrDir string,
+	netlogUnixSocketFileName string,
+) (*GoogleDriveBackupService, error) {
 	// https://github.com/googleapis/google-api-go-client/blob/master/drive/v3/drive-gen.go
 	ctx := context.Background()
 	driveService, err := drive.NewService(ctx, option.WithCredentialsJSON(credentialsJson))
@@ -81,9 +80,11 @@ func NewGoogleDriveBackupService(credentialsJson []byte) (*GoogleDriveBackupServ
 	}
 
 	s := &GoogleDriveBackupService{
-		psqlApi: psqlApi,
-		service: driveService,
-		instr:   instrumentation.NewInstrumentation("backend", "netlog_backups"),
+		psqlApi:                  psqlApi,
+		service:                  driveService,
+		instr:                    instrumentation.NewInstrumentation("backend", "netlog_backups"),
+		netlogUnixSocketAddrDir:  netlogUnixSocketAddrDir,
+		netlogUnixSocketFileName: netlogUnixSocketFileName,
 	}
 
 	if backupsFolderId == "" {
@@ -292,7 +293,12 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 
 	log.Printf("next backup since %v successfully saved: %s", lastCreatedAt, nextBackupFileBaseName)
 
-	s.trySendMetrics(beginTimestamp, len(visitsToBackup))
+	trySendMetrics(
+		beginTimestamp,
+		len(visitsToBackup),
+		s.netlogUnixSocketAddrDir,
+		s.netlogUnixSocketFileName,
+	)
 
 	return nil
 }
@@ -453,10 +459,15 @@ func (s *GoogleDriveBackupService) getNetlogBackupFiles(netlogBackupFolderId str
 	return files, nil
 }
 
-func (s *GoogleDriveBackupService) trySendMetrics(beginTimestamp time.Time, visitsCount int) {
+func trySendMetrics(
+	beginTimestamp time.Time,
+	visitsCount int,
+	netlogUnixSocketAddrDir string,
+	netlogUnixSocketFileName string,
+) {
 	log.Println("sending metrics ...")
 
-	socket := filepath.Join(NetlogUnixSocketAddrDir, NetlogUnixSocketFileName)
+	socket := filepath.Join(netlogUnixSocketAddrDir, netlogUnixSocketFileName)
 	conn, err := net.DialTimeout("unix", socket, 20*time.Second)
 	if err != nil {
 		log.Printf("try send metrics, conn: %s", err)

@@ -45,7 +45,9 @@ type Server struct {
 	admin        *Admin
 
 	// metrics
-	instr *instrumentation.Instrumentation
+	instr                    *instrumentation.Instrumentation
+	netlogUnixSocketAddrDir  string
+	netlogUnixSocketFileName string
 }
 
 func NewServer(
@@ -57,6 +59,8 @@ func NewServer(
 	browserRequestsSecret string,
 	versionInfo string,
 	admin *Admin,
+	netlogUnixSocketAddrDir string,
+	netlogUnixSocketFileName string,
 ) (*Server, error) {
 	boardAeroClient, err := aerospike.NewBoardAeroClient(aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
 	if err != nil {
@@ -104,7 +108,9 @@ func NewServer(
 		admin:                 admin,
 
 		//metrics
-		instr: instr,
+		instr:                    instr,
+		netlogUnixSocketAddrDir:  netlogUnixSocketAddrDir,
+		netlogUnixSocketFileName: netlogUnixSocketFileName,
 	}
 
 	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
@@ -189,10 +195,10 @@ func (s *Server) Serve(port int) {
 
 	// netlog backup unix socket
 	ctx, cancel := context.WithCancel(context.Background())
-	if err := os.MkdirAll(netlog.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(s.netlogUnixSocketAddrDir, os.ModePerm); err != nil {
 		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
 	} else {
-		if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, netlog.NetlogUnixSocketAddrDir, netlog.NetlogUnixSocketFileName, s.instr); err != nil {
+		if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, s.netlogUnixSocketAddrDir, s.netlogUnixSocketFileName, s.instr); err != nil {
 			log.Errorf("failed to create netlog backup unix socket: %s", err)
 		} else {
 			log.Debugf("netlog backup unix socket: %s", addr)
@@ -221,7 +227,7 @@ func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.Cancel
 	}
 
 	log.Debugln("removing netlog backup unix socket ...")
-	if err := os.RemoveAll(netlog.NetlogUnixSocketAddrDir); err != nil {
+	if err := os.RemoveAll(s.netlogUnixSocketAddrDir); err != nil {
 		log.Errorf("failed to cleanup netlog backup unix socket dir: %s", err)
 	}
 

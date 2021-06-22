@@ -18,6 +18,9 @@ type Config struct {
 	AeroPort        int    `toml:"aero_port"`
 	AeroNamespace   string `toml:"aero_namespace"`
 	AeroMessagesSet string `toml:"aero_messages_set"`
+	// netlog backup
+	NetlogUnixSocketAddrDir  string `toml:"netlog_unix_socket_addr_dir"`
+	NetlogUnixSocketFileName string `toml:"netlog_unix_socket_file_name"`
 }
 
 type Toml struct {

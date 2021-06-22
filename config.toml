@@ -9,8 +9,9 @@ aero_host = "172.28.128.3" # hostname of aerospike server
 aero_port = 3000 # aerospike server port number
 aero_namespace = "test" # aerospike namespace value (used in aerospike server)
 aero_messages_set = "messages" # aerospike set name for board messages (used in aerospike server)
-
-# TODO: add netlog backup socket info
+# NETLOG BACKUP
+netlog_unix_socket_addr_dir  = "/var/tmp/serj-service"
+netlog_unix_socket_file_name = "netlog-backup.sock"
 
 [production]
 port = 1988
@@ -23,3 +24,6 @@ aero_host = "localhost" # hostname of aerospike server
 aero_port = 3000 # aerospike server port number
 aero_namespace = "serj-tubin-com" # aerospike namespace value (used in aerospike server)
 aero_messages_set = "messages" # aerospike set name for board messages (used in aerospike server)
+# NETLOG BACKUP
+netlog_unix_socket_addr_dir  = "/var/run/serj-service"
+netlog_unix_socket_file_name = "netlog-backup.sock"
