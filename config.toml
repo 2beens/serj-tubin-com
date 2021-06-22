@@ -1,0 +1,25 @@
+[development]
+port = 9000
+# LOGGING
+log_level = "trace"
+logs_path = "" # empty for STDOUT
+log_to_stdout = true # additional logging to STDOUT
+# AEROSPIKE
+aero_host = "172.28.128.3" # hostname of aerospike server
+aero_port = 3000 # aerospike server port number
+aero_namespace = "test" # aerospike namespace value (used in aerospike server)
+aero_messages_set = "messages" # aerospike set name for board messages (used in aerospike server)
+
+# TODO: add netlog backup socket info
+
+[production]
+port = 1988
+# LOGGING
+log_level = "trace"
+logs_path = "/var/log/serj-tubin-backend/service.log"
+log_to_stdout = false # additional logging to STDOUT
+# AEROSPIKE
+aero_host = "localhost" # hostname of aerospike server
+aero_port = 3000 # aerospike server port number
+aero_namespace = "serj-tubin-com" # aerospike namespace value (used in aerospike server)
+aero_messages_set = "messages" # aerospike set name for board messages (used in aerospike server)

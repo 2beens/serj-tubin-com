@@ -1,6 +1,9 @@
 # cloud.google.com/go v0.79.0
 ## explicit
 cloud.google.com/go/compute/metadata
+# github.com/BurntSushi/toml v0.3.1
+## explicit
+github.com/BurntSushi/toml
 # github.com/aerospike/aerospike-client-go v3.0.0+incompatible
 ## explicit
 github.com/aerospike/aerospike-client-go
@@ -82,6 +85,7 @@ github.com/prometheus/client_golang/prometheus/promhttp
 github.com/prometheus/client_golang/prometheus/testutil
 github.com/prometheus/client_golang/prometheus/testutil/promlint
 # github.com/prometheus/client_model v0.2.0
+## explicit
 github.com/prometheus/client_model/go
 # github.com/prometheus/common v0.18.0
 github.com/prometheus/common/expfmt

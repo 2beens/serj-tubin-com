@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	cloud.google.com/go v0.79.0 // indirect
+	github.com/BurntSushi/toml v0.3.1
 	github.com/aerospike/aerospike-client-go v3.0.0+incompatible
 	github.com/coocood/freecache v1.1.0
 	github.com/dgraph-io/ristretto v0.0.3
@@ -11,6 +12,7 @@ require (
 	github.com/jackc/pgx/v4 v4.9.2
 	github.com/onsi/ginkgo v1.13.0 // indirect
 	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/client_model v0.2.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.7.0
 	github.com/yuin/gopher-lua v0.0.0-20200603152657-dc2b0ca8b37e // indirect
