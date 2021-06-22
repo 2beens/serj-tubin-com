@@ -9,8 +9,6 @@ import (
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/logging"
-	"github.com/2beens/serjtubincom/tools"
-	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -19,50 +17,17 @@ func main() {
 
 	env := flag.String("env", "development", "environment [prod | production | dev | development]")
 	configPath := flag.String("config", "./config.toml", "path for the TOML config file")
-	// TODO: extract to separate cmd, it's super ugly
-	aeroSetup := flag.Bool("aero-setup", false, "run aerospike sql setup")
-	aeroDataFix := flag.Bool("aero-data-fix", false, "run aerospike sql data fixing / migration")
-	aeroMessageIdCounterSet := flag.Bool("aero-msg-id-counter-set", false, "set / fix the id counter for visitor board messages")
-
 	flag.Parse()
 
-	var tomlConfig config.Toml
-	if _, err := toml.DecodeFile(*configPath, &tomlConfig); err != nil {
-		panic(err)
-	}
-
-	cfg, err := tomlConfig.Get(*env)
+	cfg, err := config.Load(*env, *configPath)
 	if err != nil {
 		panic(err)
 	}
 
-	if *aeroSetup {
-		if err := tools.SetupAeroDb(cfg.AeroNamespace, cfg.AeroMessagesSet, cfg.AeroHost, cfg.AeroPort); err != nil {
-			fmt.Printf("aero setup failed: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("\naero setup completed")
-		os.Exit(0)
-	} else if *aeroDataFix {
-		if err := tools.FixAerospikeData(cfg.AeroNamespace, cfg.AeroMessagesSet, cfg.AeroHost, cfg.AeroPort); err != nil {
-			fmt.Printf("aero data fix failed: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("\naero data fix completed")
-		os.Exit(0)
-	} else if *aeroMessageIdCounterSet {
-		if err := tools.FixAerospikeMessageIdCounter(cfg.AeroNamespace, cfg.AeroMessagesSet, cfg.AeroHost, cfg.AeroPort); err != nil {
-			fmt.Printf("aero message id counter fix / set failed: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("\naero message id counter fix / set completed")
-		os.Exit(0)
-	}
+	logging.Setup(cfg.LogsPath, cfg.LogToStdout, cfg.LogLevel)
 
 	log.Debugf("using port: %d", cfg.Port)
-	log.Debugf("using server logs path: %s", cfg.LogsPath)
-
-	logging.Setup(cfg.LogsPath, cfg.LogToStdout, cfg.LogLevel)
+	log.Debugf("using server logs path: [%s]", cfg.LogsPath)
 
 	openWeatherApiKey := os.Getenv("OPEN_WEATHER_API_KEY")
 	if openWeatherApiKey == "" {

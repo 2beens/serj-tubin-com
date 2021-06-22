@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"strings"
+
+	"github.com/BurntSushi/toml"
 )
 
 type Config struct {
@@ -32,4 +34,18 @@ func (t *Toml) Get(env string) (*Config, error) {
 	default:
 		return nil, fmt.Errorf("unknown env: %s", env)
 	}
+}
+
+func Load(env, path string) (*Config, error) {
+	var tomlConfig Toml
+	if _, err := toml.DecodeFile(path, &tomlConfig); err != nil {
+		panic(err)
+	}
+
+	cfg, err := tomlConfig.Get(env)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
