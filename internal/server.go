@@ -187,15 +187,7 @@ func (s *Server) Serve(port int) {
 
 	// netlog backup unix socket
 	ctx, cancel := context.WithCancel(context.Background())
-	if err := os.MkdirAll(s.config.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
-		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
-	} else {
-		if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, s.config.NetlogUnixSocketAddrDir, s.config.NetlogUnixSocketFileName, s.instr); err != nil {
-			log.Errorf("failed to create netlog backup unix socket: %s", err)
-		} else {
-			log.Debugf("netlog backup unix socket: %s", addr)
-		}
-	}
+	s.setNetlogBackupUnixSocket(ctx)
 
 	s.instr.GaugeLifeSignal.Set(1)
 	receivedSig := <-chOsInterrupt
@@ -205,6 +197,19 @@ func (s *Server) Serve(port int) {
 
 	// go to sleep 🥱
 	s.gracefulShutdown(httpServer, cancel)
+}
+
+func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
+	if err := os.MkdirAll(s.config.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
+		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
+		return
+	}
+
+	if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, s.config.NetlogUnixSocketAddrDir, s.config.NetlogUnixSocketFileName, s.instr); err != nil {
+		log.Errorf("failed to create netlog backup unix socket: %s", err)
+	} else {
+		log.Debugf("netlog backup unix socket: %s", addr)
+	}
 }
 
 func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.CancelFunc) {
