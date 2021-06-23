@@ -42,7 +42,7 @@ func (t *Toml) Get(env string) (*Config, error) {
 func Load(env, path string) (*Config, error) {
 	var tomlConfig Toml
 	if _, err := toml.DecodeFile(path, &tomlConfig); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	cfg, err := tomlConfig.Get(env)
