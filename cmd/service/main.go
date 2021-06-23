@@ -59,16 +59,11 @@ func main() {
 	}
 
 	server, err := internal.NewServer(
-		cfg.AeroHost,
-		cfg.AeroPort,
-		cfg.AeroNamespace,
-		cfg.AeroMessagesSet,
+		cfg,
 		openWeatherApiKey,
 		browserRequestsSecret,
 		versionInfo,
 		admin,
-		cfg.NetlogUnixSocketAddrDir,
-		cfg.NetlogUnixSocketFileName,
 	)
 	if err != nil {
 		log.Fatal(err)

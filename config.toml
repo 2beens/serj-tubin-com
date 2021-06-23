@@ -12,6 +12,9 @@ aero_messages_set = "messages" # aerospike set name for board messages (used in 
 # NETLOG BACKUP
 netlog_unix_socket_addr_dir  = "/var/tmp/serj-service"
 netlog_unix_socket_file_name = "netlog-backup.sock"
+# PROMETHEUS METRICS
+prometheus_metrics_port = "2112"
+prometheus_metrics_host = "localhost"
 
 [production]
 port = 1988
@@ -27,3 +30,6 @@ aero_messages_set = "messages" # aerospike set name for board messages (used in 
 # NETLOG BACKUP
 netlog_unix_socket_addr_dir  = "/var/run/serj-service"
 netlog_unix_socket_file_name = "netlog-backup.sock"
+# PROMETHEUS METRICS
+prometheus_metrics_port = "2112"
+prometheus_metrics_host = "localhost"

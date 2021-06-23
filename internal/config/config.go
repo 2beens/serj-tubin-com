@@ -21,6 +21,9 @@ type Config struct {
 	// netlog backup
 	NetlogUnixSocketAddrDir  string `toml:"netlog_unix_socket_addr_dir"`
 	NetlogUnixSocketFileName string `toml:"netlog_unix_socket_file_name"`
+	// prometheus metrics
+	PrometheusMetricsPort string `toml:"prometheus_metrics_port"`
+	PrometheusMetricsHost string `toml:"prometheus_metrics_host"`
 }
 
 type Toml struct {
