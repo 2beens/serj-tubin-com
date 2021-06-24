@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	as "github.com/aerospike/aerospike-client-go"
@@ -32,7 +33,9 @@ type BoardAeroClient struct {
 	metaDataSet string // keep things like ID counter here, etc.
 	aeroClient  *as.Client
 
-	isConnecting bool
+	// isConnecting has to be a pointer to int and operated on via Atomics,
+	// to avoid data races
+	isConnecting *uint32
 	mutex        sync.RWMutex
 	ready        chan struct{}
 
@@ -61,13 +64,16 @@ func newDefaultBoardAeroClient(
 		return nil, ErrEmptyNamespace
 	}
 
+	var isConnecting uint32 = 0
+
 	bc := &BoardAeroClient{
-		host:        host,
-		port:        port,
-		namespace:   namespace,
-		set:         set,
-		metaDataSet: set + "-metadata",
-		ready:       make(chan struct{}),
+		host:         host,
+		port:         port,
+		namespace:    namespace,
+		set:          set,
+		metaDataSet:  set + "-metadata",
+		isConnecting: &isConnecting,
+		ready:        make(chan struct{}),
 
 		newAerospikeClientFunc: newAerospikeClientFunc,
 	}
@@ -95,16 +101,16 @@ func (bc *BoardAeroClient) CheckConnection() error {
 		return nil
 	}
 
-	if bc.isConnecting {
+	if atomic.LoadUint32(bc.isConnecting) == 1 {
 		return errors.New("aero client already connecting")
 	}
 
 	bc.mutex.Lock()
 	defer bc.mutex.Unlock()
 
-	bc.isConnecting = true
+	atomic.StoreUint32(bc.isConnecting, 1)
 	defer func() {
-		bc.isConnecting = false
+		atomic.StoreUint32(bc.isConnecting, 0)
 	}()
 
 	log.Debugf("trying to connect to aerospike server %s:%d [namespace:%s, set:%s] ...",

@@ -7,57 +7,27 @@ import (
 	"os/exec"
 
 	"github.com/2beens/serjtubincom/internal"
+	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/logging"
-	"github.com/2beens/serjtubincom/tools"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	fmt.Println("starting ...")
 
-	logLevel := flag.String("loglvl", "trace", "log level")
-	forceStart := flag.Bool("force-start", false, "try to force start, regardless of errors")
-	aeroHost := flag.String("ahost", "localhost", "hostname of aerospike server")
-	aeroPort := flag.Int("aport", 3000, "aerospike server port number")
-	aeroNamespace := flag.String("aero-namespace", "serj-tubin-com", "aerospike namespace value (used in aerospike server)")
-	aeroMessagesSet := flag.String("aero-messages-set", "messages", "aerospike set name for board messages (used in aerospike server)")
-	port := flag.Int("port", 8080, "port number")
-	logToStdout := flag.Bool("o", true, "additionally, write logs to stdout")
-	logsPath := flag.String("logs-path", "/var/log/serj-tubin-backend/service.log", "server logs file path (empty for stdout)")
-
-	aeroSetup := flag.Bool("aero-setup", false, "run aerospike sql setup")
-	aeroDataFix := flag.Bool("aero-data-fix", false, "run aerospike sql data fixing / migration")
-	aeroMessageIdCounterSet := flag.Bool("aero-msg-id-counter-set", false, "set / fix the id counter for visitor board messages")
-
+	env := flag.String("env", "development", "environment [prod | production | dev | development]")
+	configPath := flag.String("config", "./config.toml", "path for the TOML config file")
 	flag.Parse()
 
-	if *aeroSetup {
-		if err := tools.SetupAeroDb(*aeroNamespace, *aeroMessagesSet, *aeroHost, *aeroPort); err != nil {
-			fmt.Printf("aero setup failed: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("\naero setup completed")
-		os.Exit(0)
-	} else if *aeroDataFix {
-		if err := tools.FixAerospikeData(*aeroNamespace, *aeroMessagesSet, *aeroHost, *aeroPort); err != nil {
-			fmt.Printf("aero data fix failed: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("\naero data fix completed")
-		os.Exit(0)
-	} else if *aeroMessageIdCounterSet {
-		if err := tools.FixAerospikeMessageIdCounter(*aeroNamespace, *aeroMessagesSet, *aeroHost, *aeroPort); err != nil {
-			fmt.Printf("aero message id counter fix / set failed: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("\naero message id counter fix / set completed")
-		os.Exit(0)
+	cfg, err := config.Load(*env, *configPath)
+	if err != nil {
+		panic(err)
 	}
 
-	log.Debugf("using port: %d", *port)
-	log.Debugf("using server logs path: %s", *logsPath)
+	logging.Setup(cfg.LogsPath, cfg.LogToStdout, cfg.LogLevel)
 
-	logging.Setup(*logsPath, *logToStdout, *logLevel)
+	log.Debugf("using port: %d", cfg.Port)
+	log.Debugf("using server logs path: [%s]", cfg.LogsPath)
 
 	openWeatherApiKey := os.Getenv("OPEN_WEATHER_API_KEY")
 	if openWeatherApiKey == "" {
@@ -89,21 +59,17 @@ func main() {
 	}
 
 	server, err := internal.NewServer(
-		*aeroHost,
-		*aeroPort,
-		*aeroNamespace,
-		*aeroMessagesSet,
+		cfg,
 		openWeatherApiKey,
 		browserRequestsSecret,
 		versionInfo,
 		admin,
 	)
-	if err != nil && !*forceStart {
+	if err != nil {
 		log.Fatal(err)
 	}
-	if server != nil {
-		server.Serve(*port)
-	}
+
+	server.Serve(cfg.Port)
 }
 
 // tryGetLastCommitHash will try to get the last commit hash

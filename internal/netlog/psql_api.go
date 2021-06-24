@@ -16,18 +16,19 @@ type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewNetlogPsqlApi() (*PsqlApi, error) {
+func NewNetlogPsqlApi(dbHost, dbPort, dbName string) (*PsqlApi, error) {
 	ctx := context.Background()
 
-	// TODO: place in config
-	const connString = "postgres://postgres@localhost:5432/serj_blogs"
-	dbpool, err := pgxpool.Connect(ctx, connString)
+	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
+	dbPool, err := pgxpool.Connect(ctx, connString)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
 	}
 
+	log.Debugf("netlog api connected to: %s", connString)
+
 	return &PsqlApi{
-		db: dbpool,
+		db: dbPool,
 	}, nil
 }
 

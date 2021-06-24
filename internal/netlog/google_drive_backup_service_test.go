@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"testing"
 	"time"
@@ -16,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVisitsBackupUnixSocketListenerSetup(t *testing.T) {
+func Test_trySendMetrics(t *testing.T) {
 	instr, reg := instrumentation.NewTestInstrumentationAndRegistry()
 	dir, err := ioutil.TempDir("", "serj-server-unix")
 	if err != nil {
@@ -33,29 +32,17 @@ func TestVisitsBackupUnixSocketListenerSetup(t *testing.T) {
 
 	addr, err := VisitsBackupUnixSocketListenerSetup(ctx, dir, socket, instr)
 	require.NoError(t, err)
+	require.NotEmpty(t, addr)
 
-	/////////////////
-	conn, err := net.DialTimeout("unix", addr.String(), 20*time.Second)
-	require.NoError(t, err)
+	beginTimestamp := time.Now().Add(-time.Second)
+	visitsCount := 100
 
-	require.NoError(t, conn.SetDeadline(time.Now().Add(2*time.Second)))
-
-	visitsCount := 15
-	duration := 12.1234
-	_, err = conn.Write([]byte(fmt.Sprintf("visits-count::%d||duration::%f", visitsCount, duration)))
-	require.NoError(t, err)
-
-	buf := make([]byte, 1024)
-	n, err := conn.Read(buf)
-	require.NoError(t, err)
-
-	msgReceived := string(buf[:n])
-	assert.Equal(t, "ok", msgReceived)
+	// MAIN TESTED FUNCTION
+	trySendMetrics(beginTimestamp, visitsCount, dir, socket)
 
 	// stop unix listener
 	cancel()
 
-	// https://pkg.go.dev/github.com/prometheus/client_golang/prometheus/testutil
 	counterVisitsBackups := testutil.CollectAndCount(instr.CounterVisitsBackups, "backend_test_server_netlog_visits_backed_up")
 	histNetlogBackupDuration, err := testutil.GatherAndCount(reg, "backend_test_server_netlog_backup_duration_seconds")
 	require.NoError(t, err)
@@ -84,5 +71,7 @@ func TestVisitsBackupUnixSocketListenerSetup(t *testing.T) {
 	foundHistMetric := foundDurationHistogram.Metric[0]
 	require.NotNil(t, foundHistMetric)
 	require.NotNil(t, foundHistMetric.Histogram)
-	assert.Equal(t, duration, *foundHistMetric.Histogram.SampleSum)
+	// duration [d] is: 1 <= d < 2
+	assert.GreaterOrEqual(t, *foundHistMetric.Histogram.SampleSum, float64(1))
+	assert.Less(t, *foundHistMetric.Histogram.SampleSum, float64(2))
 }

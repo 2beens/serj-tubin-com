@@ -14,6 +14,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
+	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/netlog"
@@ -29,6 +30,7 @@ const (
 )
 
 type Server struct {
+	config          *config.Config
 	blogApi         blog.Api
 	geoIp           *GeoIp
 	quotesManager   *QuotesManager
@@ -49,16 +51,13 @@ type Server struct {
 }
 
 func NewServer(
-	aerospikeHost string,
-	aerospikePort int,
-	aeroNamespace string,
-	aeroMessagesSet string,
+	config *config.Config,
 	openWeatherApiKey string,
 	browserRequestsSecret string,
 	versionInfo string,
 	admin *Admin,
 ) (*Server, error) {
-	boardAeroClient, err := aerospike.NewBoardAeroClient(aerospikeHost, aerospikePort, aeroNamespace, aeroMessagesSet)
+	boardAeroClient, err := aerospike.NewBoardAeroClient(config.AeroHost, config.AeroPort, config.AeroNamespace, config.AeroMessagesSet)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create board aero client: %w", err)
 	}
@@ -78,20 +77,21 @@ func NewServer(
 		return nil, errors.New("open weather API key not set")
 	}
 
-	blogApi, err := blog.NewBlogPsqlApi()
+	blogApi, err := blog.NewBlogPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create blog api: %s", err)
 	}
 
-	netlogVisitsApi, err := netlog.NewNetlogPsqlApi()
+	netlogVisitsApi, err := netlog.NewNetlogPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
-	instrumentation := instrumentation.NewInstrumentation("backend", "server1")
-	instrumentation.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran
+	instr := instrumentation.NewInstrumentation("backend", "server1")
+	instr.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
 	s := &Server{
+		config:                config,
 		blogApi:               blogApi,
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey:     openWeatherApiKey,
@@ -104,7 +104,7 @@ func NewServer(
 		admin:                 admin,
 
 		//metrics
-		instr: instrumentation,
+		instr: instr,
 	}
 
 	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
@@ -178,9 +178,7 @@ func (s *Server) Serve(port int) {
 		log.Fatal(httpServer.ListenAndServe())
 	}()
 
-	// TODO: make metrics settings configurable
-	metricsPort := "2112"
-	metricsAddr := net.JoinHostPort("localhost", metricsPort)
+	metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
 	log.Printf(" > metrics listening on: [%s]", metricsAddr)
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
@@ -189,23 +187,29 @@ func (s *Server) Serve(port int) {
 
 	// netlog backup unix socket
 	ctx, cancel := context.WithCancel(context.Background())
-	if err := os.MkdirAll(netlog.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
-		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
-	} else {
-		if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, netlog.NetlogUnixSocketAddrDir, netlog.NetlogUnixSocketFileName, s.instr); err != nil {
-			log.Errorf("failed to create netlog backup unix socket: %s", err)
-		} else {
-			log.Debugf("netlog backup unix socket: %s", addr)
-		}
-	}
+	s.setNetlogBackupUnixSocket(ctx)
 
 	s.instr.GaugeLifeSignal.Set(1)
-	defer s.instr.GaugeLifeSignal.Set(0)
-
 	receivedSig := <-chOsInterrupt
+
 	log.Warnf("signal [%s] received ...", receivedSig)
+	s.instr.GaugeLifeSignal.Set(0)
+
 	// go to sleep 🥱
 	s.gracefulShutdown(httpServer, cancel)
+}
+
+func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
+	if err := os.MkdirAll(s.config.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
+		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
+		return
+	}
+
+	if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, s.config.NetlogUnixSocketAddrDir, s.config.NetlogUnixSocketFileName, s.instr); err != nil {
+		log.Errorf("failed to create netlog backup unix socket: %s", err)
+	} else {
+		log.Debugf("netlog backup unix socket: %s", addr)
+	}
 }
 
 func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.CancelFunc) {
@@ -220,7 +224,7 @@ func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.Cancel
 	}
 
 	log.Debugln("removing netlog backup unix socket ...")
-	if err := os.RemoveAll(netlog.NetlogUnixSocketAddrDir); err != nil {
+	if err := os.RemoveAll(s.config.NetlogUnixSocketAddrDir); err != nil {
 		log.Errorf("failed to cleanup netlog backup unix socket dir: %s", err)
 	}
 

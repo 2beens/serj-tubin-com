@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/logging"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	log "github.com/sirupsen/logrus"
@@ -27,8 +28,14 @@ func main() {
 	logsPath := flag.String("logs-path", "/var/log/serj-tubin-backend/netlog-backup.log", "server logs file path (empty for stdout)")
 	reinit := flag.Bool("reinit", false, "reinitialize all again")
 	destroy := flag.Bool("destroy", false, "destroy all files (warning!!) (try running more times, if more than 100 files are present)")
-
+	env := flag.String("env", "development", "environment [prod | production | dev | development]")
+	configPath := flag.String("config", "./config.toml", "path for the TOML config file")
 	flag.Parse()
+
+	cfg, err := config.Load(*env, *configPath)
+	if err != nil {
+		panic(err)
+	}
 
 	logging.Setup(*logsPath, *logToStdout, "trace")
 
@@ -58,7 +65,14 @@ func main() {
 		return
 	}
 
-	s, err := netlog.NewGoogleDriveBackupService(credentialsFileBytes)
+	s, err := netlog.NewGoogleDriveBackupService(
+		credentialsFileBytes,
+		cfg.PostgresHost,
+		cfg.PostgresPort,
+		cfg.PostgresDBName,
+		cfg.NetlogUnixSocketAddrDir,
+		cfg.NetlogUnixSocketFileName,
+	)
 	if err != nil {
 		log.Fatalf("failed to create google drive backup service: %s", err)
 	}
