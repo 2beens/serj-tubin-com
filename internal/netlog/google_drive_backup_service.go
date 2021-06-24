@@ -40,6 +40,9 @@ type GoogleDriveBackupService struct {
 
 func NewGoogleDriveBackupService(
 	credentialsJson []byte,
+	dbHost string,
+	dbPort string,
+	dbName string,
 	netlogUnixSocketAddrDir string,
 	netlogUnixSocketFileName string,
 ) (*GoogleDriveBackupService, error) {
@@ -74,7 +77,7 @@ func NewGoogleDriveBackupService(
 		backupsFolderId = rbf.Id
 	}
 
-	psqlApi, err := NewNetlogPsqlApi()
+	psqlApi, err := NewNetlogPsqlApi(dbHost, dbPort, dbName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PSQL api client: %w", err)
 	}

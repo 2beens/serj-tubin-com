@@ -19,19 +19,17 @@ type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewBlogPsqlApi() (*PsqlApi, error) {
+func NewBlogPsqlApi(dbHost, dbPort, dbName string) (*PsqlApi, error) {
 	ctx := context.Background()
 
-	// TODO: place in env variable
-	// or even better - introduce yml config files, and store there
-	const connString = "postgres://postgres@localhost:5432/serj_blogs"
-	dbpool, err := pgxpool.Connect(ctx, connString)
+	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
+	dbPool, err := pgxpool.Connect(ctx, connString)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
 	}
 
 	blogApi := &PsqlApi{
-		db: dbpool,
+		db: dbPool,
 	}
 
 	return blogApi, nil

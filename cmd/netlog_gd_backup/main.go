@@ -65,7 +65,14 @@ func main() {
 		return
 	}
 
-	s, err := netlog.NewGoogleDriveBackupService(credentialsFileBytes, cfg.NetlogUnixSocketAddrDir, cfg.NetlogUnixSocketFileName)
+	s, err := netlog.NewGoogleDriveBackupService(
+		credentialsFileBytes,
+		cfg.PostgresHost,
+		cfg.PostgresPort,
+		cfg.PostgresDBName,
+		cfg.NetlogUnixSocketAddrDir,
+		cfg.NetlogUnixSocketFileName,
+	)
 	if err != nil {
 		log.Fatalf("failed to create google drive backup service: %s", err)
 	}

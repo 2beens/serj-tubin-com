@@ -15,6 +15,10 @@ netlog_unix_socket_file_name = "netlog-backup.sock"
 # PROMETHEUS METRICS
 prometheus_metrics_port = "2112"
 prometheus_metrics_host = "localhost"
+# POSGRES
+postgres_port = "5432"
+postgres_host = "localhost"
+postgres_db_name = "serj_blogs"
 
 [production]
 port = 1988
@@ -33,3 +37,7 @@ netlog_unix_socket_file_name = "netlog-backup.sock"
 # PROMETHEUS METRICS
 prometheus_metrics_port = "2112"
 prometheus_metrics_host = "localhost"
+# POSGRES
+postgres_port = "5432"
+postgres_host = "localhost"
+postgres_db_name = "serj_blogs"

@@ -77,12 +77,12 @@ func NewServer(
 		return nil, errors.New("open weather API key not set")
 	}
 
-	blogApi, err := blog.NewBlogPsqlApi()
+	blogApi, err := blog.NewBlogPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create blog api: %s", err)
 	}
 
-	netlogVisitsApi, err := netlog.NewNetlogPsqlApi()
+	netlogVisitsApi, err := netlog.NewNetlogPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}

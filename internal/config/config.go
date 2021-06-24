@@ -24,6 +24,10 @@ type Config struct {
 	// prometheus metrics
 	PrometheusMetricsPort string `toml:"prometheus_metrics_port"`
 	PrometheusMetricsHost string `toml:"prometheus_metrics_host"`
+	// postgres db
+	PostgresPort   string `toml:"postgres_port"`
+	PostgresHost   string `toml:"postgres_host"`
+	PostgresDBName string `toml:"postgres_db_name"`
 }
 
 type Toml struct {
