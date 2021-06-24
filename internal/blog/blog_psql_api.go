@@ -28,6 +28,8 @@ func NewBlogPsqlApi(dbHost, dbPort, dbName string) (*PsqlApi, error) {
 		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
 	}
 
+	log.Debugf("blog api connected to: %s", connString)
+
 	blogApi := &PsqlApi{
 		db: dbPool,
 	}

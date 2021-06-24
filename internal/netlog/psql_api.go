@@ -25,6 +25,8 @@ func NewNetlogPsqlApi(dbHost, dbPort, dbName string) (*PsqlApi, error) {
 		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
 	}
 
+	log.Debugf("netlog api connected to: %s", connString)
+
 	return &PsqlApi{
 		db: dbPool,
 	}, nil
