@@ -96,7 +96,7 @@ func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApi
 	return weatherApiResponse, nil
 }
 
-// returns something like sunny, cloudy, etc
+// Get5DaysWeatherForecast returns something like sunny, cloudy, etc
 func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry string) ([]WeatherInfo, error) {
 	weatherApiResponse := &WeatherApi5DaysResponse{}
 

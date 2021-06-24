@@ -2,31 +2,37 @@
 set -o pipefail # abort on errors in pipeline
 set -e          # abort on errors
 
-# TODO: maybe read the branch name from stdin
-# read -p "branch name: " branch
-
 #   1 get branch name
+skip_rebase=false
 branch="master"
 case $1 in
-    "master")
-        ;;
-    "")
-        ;;
-    "-c")
-        ;& # fallthru
-    "--current")
-        branch=$(git rev-parse --abbrev-ref HEAD)
-        ;;
-    *)
-        branch=$1
+  "master")
+    ;;
+  "")
+    ;;
+  "-c")
+    ;& # fallthru
+  "--current")
+    branch=$(git rev-parse --abbrev-ref HEAD)
+    ;;
+  "-cc")
+    ;& # fallthru
+  "--current-commit")
+    skip_rebase=true
+    ;;
+  *)
+    branch=$1
 esac
 
-echo "--> deploying branch:" "${branch}"
-
-#   2 checkout branch
-git fetch --all
-git checkout ${branch}
-git rebase
+if [[ "$skip_rebase" = false ]] ; then
+  echo "--> deploying branch:" "${branch}"
+  #   2 checkout branch
+  git fetch --all
+  git checkout ${branch}
+  git rebase
+else
+  echo "--> skip fetch&rebase, just build and deploy the current commit"
+fi
 
 #   3 build project
 echo "--> building project ..."
@@ -39,7 +45,7 @@ sudo systemctl restart serj-tubin-backend.service
 sudo systemctl status serj-tubin-backend.service
 echo "--> service restarted"
 
-# build netlog backup tool
+# build netlog backup tool (initiated by crontab)
 echo "--> building netlog backup tool ..."
 go build -o /home/serj/serj-tubin-com/netlog-backup cmd/netlog_gd_backup/main.go
 
