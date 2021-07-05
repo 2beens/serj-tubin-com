@@ -105,9 +105,5 @@ func (api *TestApi) GetBlogsPage(page, size int) ([]*Blog, error) {
 		return []*Blog{}, nil
 	}
 
-	var blogs []*Blog
-	for i := startIndex; i < endIndex; i++ {
-		blogs = append(blogs, allPosts[i])
-	}
-	return blogs, nil
+	return allPosts[startIndex:endIndex], nil
 }
