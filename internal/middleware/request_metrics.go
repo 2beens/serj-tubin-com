@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func Metrics(instr *instrumentation.Instrumentation) func(next http.Handler) http.Handler {
+func RequestMetrics(instr *instrumentation.Instrumentation) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
 			defer func(begin time.Time) {

@@ -149,7 +149,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())
 	r.Use(middleware.DrainAndCloseRequest())
-	r.Use(middleware.Metrics(s.instr))
+	r.Use(middleware.RequestMetrics(s.instr))
 
 	return r, nil
 }
