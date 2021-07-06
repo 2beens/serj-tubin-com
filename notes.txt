@@ -63,3 +63,11 @@ some ideas:
 apr-2021 - DB replication and high availability:
  - instead of using google drive API to backup netlog visits, let's get a new server somewhere else and setup the replication and HA
  - https://www.postgresql.org/docs/9.2/high-availability.html
+
+july-2021:
+    - tracing seems quite cool and powerful, I believe it's worth integrating here to learn how it works.
+    - Jaeger UI already set up at: https://jaeger.serj-tubin.com/
+    - great showcase of tracing in distributed services written in Go:
+        - https://www.youtube.com/watch?v=idDu_jXqf4E&ab_channel=ThatDevOpsGuy
+    - https://opentracing.io/guides/golang/quick-start/
+    - https://www.jaegertracing.io/docs/1.23/getting-started/
