@@ -1,4 +1,5 @@
 [dockerdev]
+host = "0.0.0.0"
 port = 9000
 # LOGGING
 log_level = "trace"
@@ -21,6 +22,7 @@ postgres_host = "postgres"
 postgres_db_name = "serj_blogs"
 
 [development]
+host = "localhost"
 port = 9000
 # LOGGING
 log_level = "trace"
@@ -43,6 +45,7 @@ postgres_host = "localhost"
 postgres_db_name = "serj_blogs"
 
 [production]
+host = "localhost"
 port = 1988
 # LOGGING
 log_level = "trace"

@@ -70,7 +70,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server.Serve(cfg.Port)
+	server.Serve(cfg.Host, cfg.Port)
 }
 
 // tryGetLastCommitHash will try to get the last commit hash

@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	Host string
 	Port int
 	// logging
 	LogLevel    string `toml:"log_level"`
