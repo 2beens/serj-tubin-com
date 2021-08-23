@@ -28,7 +28,7 @@ func main() {
 	logsPath := flag.String("logs-path", "/var/log/serj-tubin-backend/netlog-backup.log", "server logs file path (empty for stdout)")
 	reinit := flag.Bool("reinit", false, "reinitialize all again")
 	destroy := flag.Bool("destroy", false, "destroy all files (warning!!) (try running more times, if more than 100 files are present)")
-	env := flag.String("env", "development", "environment [prod | production | dev | development]")
+	env := flag.String("env", "development", "environment [prod | production | dev | development | ddev | dockerdev]")
 	configPath := flag.String("config", "./config.toml", "path for the TOML config file")
 	flag.Parse()
 

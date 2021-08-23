@@ -168,6 +168,16 @@ func FixAerospikeMessageIdCounter(namespace, set, host string, port int) error {
 		return fmt.Errorf("failed to create aero client: %w", err)
 	}
 
+	metadataSet := set + "-metadata"
+	counterExists, err := counterExists(aeroClient, namespace, metadataSet)
+	if err != nil {
+		fmt.Printf("check counter exists: %s\n", err)
+	}
+	if counterExists {
+		fmt.Printf("messages counter already set, will abort")
+		return nil
+	}
+
 	spolicy := as.NewScanPolicy()
 	spolicy.ConcurrentNodes = true
 	spolicy.Priority = as.LOW
@@ -185,7 +195,6 @@ func FixAerospikeMessageIdCounter(namespace, set, host string, port int) error {
 
 	fmt.Printf("trying to set message id counter to: %d\n", count+1)
 
-	metadataSet := set + "-metadata"
 	updatedIdCounter, err := setMessageIdCounter(namespace, metadataSet, aeroClient, count+1)
 	if err != nil {
 		return fmt.Errorf("failed to set message id counter: %w", err)
@@ -194,6 +203,30 @@ func FixAerospikeMessageIdCounter(namespace, set, host string, port int) error {
 	fmt.Printf("message id counter set to: %d\n", updatedIdCounter)
 
 	return nil
+}
+
+func counterExists(aeroClient *as.Client, namespace, metadataSet string) (bool, error) {
+	key, err := as.NewKey(namespace, metadataSet, "message-id-counter")
+	if err != nil {
+		return false, err
+	}
+
+	record, err := aeroClient.Get(nil, key)
+	if err != nil {
+		return false, err
+	}
+
+	counterRaw, ok := record.Bins["idCounter"]
+	if !ok {
+		return false, errors.New("id counter not existing")
+	}
+
+	counter, ok := counterRaw.(int)
+	if !ok {
+		return false, errors.New("id counter not an integer")
+	}
+
+	return counter >= 0, nil
 }
 
 func setMessageIdCounter(namespace, set string, aeroClient *as.Client, increment int) (int, error) {

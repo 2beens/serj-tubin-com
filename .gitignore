@@ -23,5 +23,5 @@ netlog-backup
 service
 token.json
 
-docker/docker-aerospike
-docker/docker-postgres-db
+docker/docker-data-aerospike
+docker/docker-data-postgres
