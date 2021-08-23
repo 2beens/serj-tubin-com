@@ -4,21 +4,21 @@ services:
   serj-tubin-service:
     image: golang:latest
     volumes:
-      - .:/go/src/serj-tubin-com
+      - ..:/go/src/serj-tubin-com
     command: sh -c "go build -o bin/service cmd/service/main.go && ./bin/service -env dockerdev"
     ports:
       - 9000:9000
     working_dir: /go/src/serj-tubin-com
     environment:
-      OPEN_WEATHER_API_KEY: dummy
-      SERJ_TUBIN_COM_ADMIN_USERNAME: dummy
-      SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: dummy
-      SERJ_BROWSER_REQ_SECRET: dummy
+      OPEN_WEATHER_API_KEY: todo
+      SERJ_TUBIN_COM_ADMIN_USERNAME: todo
+      SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: todo
+      SERJ_BROWSER_REQ_SECRET: todo
 
   postgres:
     image: postgres:latest
     volumes:
-      - service-postgres-data:/var/lib/postgresql/data
+      - ./docker-postgres-db:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: serj_blogs
       POSTGRES_PASSWORD: admin
@@ -29,6 +29,3 @@ services:
     restart: always
     ports:
       - 8080:8080
-
-volumes:
-  service-postgres-data:
