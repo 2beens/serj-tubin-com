@@ -7,7 +7,7 @@ services:
       - ..:/go/src/serj-tubin-com
     command: sh -c "go build -o bin/service cmd/service/main.go && ./bin/service -env dockerdev"
     ports:
-      - 9000:9000
+      - "9000:9000"
     working_dir: /go/src/serj-tubin-com
     environment:
       OPEN_WEATHER_API_KEY: todo
@@ -23,6 +23,13 @@ services:
       POSTGRES_DB: serj_blogs
       POSTGRES_PASSWORD: admin
       POSTGRES_HOST_AUTH_METHOD: trust
+
+  aerospike:
+    image: aerospike:ce-5.6.0.5
+    volumes:
+      - ./docker-aerospike:/opt/aerospike/data
+    environment:
+      NAMESPACE: serj-tubin-com
 
   adminer:
     image: adminer

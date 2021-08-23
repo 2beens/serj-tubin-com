@@ -22,3 +22,6 @@ serjnetlog-*.json
 netlog-backup
 service
 token.json
+
+docker/docker-aerospike
+docker/docker-postgres-db

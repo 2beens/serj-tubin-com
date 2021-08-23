@@ -5,9 +5,9 @@ log_level = "trace"
 logs_path = "" # empty for STDOUT
 log_to_stdout = true # additional logging to STDOUT
 # AEROSPIKE
-aero_host = "172.28.128.3" # hostname of aerospike server
+aero_host = "aerospike" # hostname of aerospike server
 aero_port = 3000 # aerospike server port number
-aero_namespace = "test" # aerospike namespace value (used in aerospike server)
+aero_namespace = "serj-tubin-com" # aerospike namespace value (used in aerospike server)
 aero_messages_set = "messages" # aerospike set name for board messages (used in aerospike server)
 # NETLOG BACKUP
 netlog_unix_socket_addr_dir  = "/var/tmp/serj-service"
