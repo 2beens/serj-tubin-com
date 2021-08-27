@@ -9,11 +9,16 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/2beens/serjtubincom/pkg"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	localDockerIpRegex = regexp.MustCompile(`^172\.\d{1,3}\.0\.1:\d{1,5}`)
 )
 
 func WriteResponse(w http.ResponseWriter, contentType, message string) {
@@ -61,6 +66,16 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
+func IPIsLocal(ipAddr string) bool {
+	// used in local development ?
+	if strings.HasPrefix(ipAddr, "127.0.0.1:") {
+		return true
+	}
+
+	// user within docker container ?
+	return localDockerIpRegex.MatchString(ipAddr)
+}
+
 func ReadUserIP(r *http.Request) (string, error) {
 	ipAddr := r.Header.Get("X-Real-Ip")
 	if ipAddr == "" {
@@ -71,9 +86,9 @@ func ReadUserIP(r *http.Request) (string, error) {
 	}
 
 	// used in development
-	if strings.HasPrefix(ipAddr, "127.0.0.1:") {
-		log.Debugf("read user IP: returning development 127.0.0.1 / Berlin")
-		return "127.0.0.1", nil
+	if IPIsLocal(ipAddr) {
+		log.Debugf("read user IP: returning development localhost / Berlin")
+		return "localhost", nil
 	}
 
 	ip := net.ParseIP(ipAddr)

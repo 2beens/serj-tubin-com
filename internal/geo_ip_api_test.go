@@ -43,14 +43,15 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 	require.NoError(t, err)
 
 	// will return geoIpInfo - development Berlin
-	req.Header.Add("X-Real-Ip", "127.0.0.1")
+	req.Header.Add("X-Real-Ip", "127.0.0.1:1234")
 	geoIpInfo, err := geoIp.GetRequestGeoInfo(req)
 	require.NoError(t, err)
 	require.NotNil(t, geoIpInfo)
 	assert.Equal(t, &devGeoIpInfo, geoIpInfo)
 
 	// non-dev IP
-	req.Header.Set("X-Real-Ip", "127.0.0.2")
+	ipAddr := "127.0.0.2"
+	req.Header.Set("X-Real-Ip", ipAddr)
 	geoIpInfo, err = geoIp.GetRequestGeoInfo(req)
 	require.NoError(t, err)
 	require.NotNil(t, geoIpInfo)
@@ -58,7 +59,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 	assert.Equal(t, "Novi Sad", geoIpInfo.City)
 	assert.Equal(t, "Serbia", geoIpInfo.CountryName)
 	assert.Equal(t, "21000", geoIpInfo.ZipCode)
-	assert.Equal(t, "127.0.0.2", geoIpInfo.Ip)
+	assert.Equal(t, ipAddr, geoIpInfo.Ip)
 
 	// again - has to be taken from the cache
 	// TODO: maybe abstract the cache away and test it, like in the board_test.go
@@ -69,7 +70,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 	assert.Equal(t, "Novi Sad", geoIpInfo.City)
 	assert.Equal(t, "Serbia", geoIpInfo.CountryName)
 	assert.Equal(t, "21000", geoIpInfo.ZipCode)
-	assert.Equal(t, "127.0.0.2", geoIpInfo.Ip)
+	assert.Equal(t, ipAddr, geoIpInfo.Ip)
 }
 
 func TestGeoIp_ReadUserIP(t *testing.T) {
