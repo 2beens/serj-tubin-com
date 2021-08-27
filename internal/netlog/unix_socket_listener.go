@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/pkg"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -61,7 +62,7 @@ func VisitsBackupUnixSocketListenerSetup(
 					return
 				}
 
-				messageReceived := string(buf[:n])
+				messageReceived := pkg.BytesToString(buf[:n])
 				log.Infof("netlog backup unix socket received: %s", messageReceived)
 
 				msgParts := strings.Split(messageReceived, "||")

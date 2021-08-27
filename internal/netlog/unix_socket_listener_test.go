@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	promcl "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
@@ -49,7 +50,7 @@ func TestVisitsBackupUnixSocketListenerSetup(t *testing.T) {
 	n, err := conn.Read(buf)
 	require.NoError(t, err)
 
-	msgReceived := string(buf[:n])
+	msgReceived := pkg.BytesToString(buf[:n])
 	assert.Equal(t, "ok", msgReceived)
 
 	// stop unix listener

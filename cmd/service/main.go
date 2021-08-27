@@ -9,6 +9,7 @@ import (
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/logging"
+	"github.com/2beens/serjtubincom/pkg"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -80,5 +81,5 @@ func tryGetLastCommitHash() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(stdout), nil
+	return pkg.BytesToString(stdout), nil
 }

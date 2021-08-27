@@ -69,6 +69,7 @@ func TestNewBlogHandler(t *testing.T) {
 		},
 	} {
 		t.Run(caseName, func(t *testing.T) {
+			t.Parallel()
 			req, err := http.NewRequest(route.method, route.path, nil)
 			require.NoError(t, err)
 
