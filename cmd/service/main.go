@@ -16,7 +16,7 @@ import (
 func main() {
 	fmt.Println("starting ...")
 
-	env := flag.String("env", "development", "environment [prod | production | dev | development]")
+	env := flag.String("env", "development", "environment [prod | production | dev | development | ddev | doockerdev ]")
 	configPath := flag.String("config", "./config.toml", "path for the TOML config file")
 	flag.Parse()
 
@@ -70,7 +70,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server.Serve(cfg.Port)
+	server.Serve(cfg.Host, cfg.Port)
 }
 
 // tryGetLastCommitHash will try to get the last commit hash

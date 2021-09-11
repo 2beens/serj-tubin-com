@@ -154,13 +154,13 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	return r, nil
 }
 
-func (s *Server) Serve(port int) {
+func (s *Server) Serve(host string, port int) {
 	router, err := s.routerSetup()
 	if err != nil {
 		log.Fatalf("failed to setup router: %s", err)
 	}
 
-	ipAndPort := fmt.Sprintf("%s:%d", "localhost", port)
+	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 
 	httpServer := &http.Server{
 		Handler:      router,

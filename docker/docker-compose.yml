@@ -1,0 +1,50 @@
+version: "3.7"
+
+services:
+  serj-tubin-service:
+    image: golang:latest
+    volumes:
+      - ..:/go/src/serj-tubin-com
+    entrypoint: ["/bin/sh","-c"]
+    command:
+      - |
+        go run cmd/aerospike_tools/aero_setup/main.go -env dockerdev
+        go run cmd/aerospike_tools/aero_msg_id_counter_set/main.go -env dockerdev
+        go build -o bin/service cmd/service/main.go
+        ./bin/service -env dockerdev
+    ports:
+      - "9000:9000"
+    working_dir: /go/src/serj-tubin-com
+    environment:
+      OPEN_WEATHER_API_KEY: todo
+      SERJ_TUBIN_COM_ADMIN_USERNAME: todo
+      SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: todo
+      SERJ_BROWSER_REQ_SECRET: todo
+
+  # https://hub.docker.com/_/postgres
+  postgres:
+    image: postgres:latest
+    volumes:
+      - ./docker-data-postgres:/var/lib/postgresql/data
+      - ../sql:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: serj_blogs
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_HOST_AUTH_METHOD: trust
+
+  # https://hub.docker.com/_/aerospike
+  aerospike:
+    image: aerospike:ce-5.6.0.5
+    volumes:
+      - ./docker-data-aerospike:/opt/aerospike/data
+    environment:
+      NAMESPACE: serj-tubin-com
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080

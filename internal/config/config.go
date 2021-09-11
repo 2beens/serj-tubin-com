@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	Host string
 	Port int
 	// logging
 	LogLevel    string `toml:"log_level"`
@@ -31,6 +32,7 @@ type Config struct {
 }
 
 type Toml struct {
+	DockerDev   *Config
 	Development *Config
 	Production  *Config
 }
@@ -41,12 +43,23 @@ func (t *Toml) Get(env string) (*Config, error) {
 		return t.Development, nil
 	case "prod", "production":
 		return t.Production, nil
+	case "ddev", "dockerdev":
+		return t.DockerDev, nil
 	default:
 		return nil, fmt.Errorf("unknown env: %s", env)
 	}
 }
 
 func Load(env, path string) (*Config, error) {
+	switch env {
+	case "prod":
+		env = "production"
+	case "dev":
+		env = "development"
+	case "ddev":
+		env = "dockerdev"
+	}
+
 	var tomlConfig Toml
 	if _, err := toml.DecodeFile(path, &tomlConfig); err != nil {
 		return nil, err

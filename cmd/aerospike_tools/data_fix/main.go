@@ -13,7 +13,7 @@ import (
 func main() {
 	fmt.Println("starting aerospike data fix/migration tools ...")
 
-	env := flag.String("env", "development", "environment [prod | production | dev | development]")
+	env := flag.String("env", "development", "environment [prod | production | dev | development | ddev | dockerdev]")
 	configPath := flag.String("config", "./config.toml", "path for the TOML config file")
 	flag.Parse()
 

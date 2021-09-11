@@ -1,4 +1,28 @@
+[dockerdev]
+host = "0.0.0.0"
+port = 9000
+# LOGGING
+log_level = "trace"
+logs_path = "" # empty for STDOUT
+log_to_stdout = true # additional logging to STDOUT
+# AEROSPIKE
+aero_host = "aerospike" # hostname of aerospike server
+aero_port = 3000 # aerospike server port number
+aero_namespace = "serj-tubin-com" # aerospike namespace value (used in aerospike server)
+aero_messages_set = "messages" # aerospike set name for board messages (used in aerospike server)
+# NETLOG BACKUP
+netlog_unix_socket_addr_dir  = "/var/tmp/serj-service"
+netlog_unix_socket_file_name = "netlog-backup.sock"
+# PROMETHEUS METRICS
+prometheus_metrics_port = "2112"
+prometheus_metrics_host = "localhost"
+# POSGRES
+postgres_port = "5432"
+postgres_host = "postgres"
+postgres_db_name = "serj_blogs"
+
 [development]
+host = "localhost"
 port = 9000
 # LOGGING
 log_level = "trace"
@@ -21,6 +45,7 @@ postgres_host = "localhost"
 postgres_db_name = "serj_blogs"
 
 [production]
+host = "localhost"
 port = 1988
 # LOGGING
 log_level = "trace"

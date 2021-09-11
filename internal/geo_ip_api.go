@@ -66,8 +66,8 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	}
 
 	// used for development
-	if userIp == "127.0.0.1" {
-		log.Debugf("request geo info: returning development 127.0.0.1 / Berlin")
+	if userIp == "localhost" {
+		log.Debugf("request geo info: returning development localhost / Berlin")
 		return &devGeoIpInfo, nil
 	}
 

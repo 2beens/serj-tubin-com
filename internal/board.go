@@ -171,7 +171,7 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 
 	messagesBins, err := b.aeroClient.QueryByRange("id", from, to)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query aero spike for messages: %w", err)
+		return nil, fmt.Errorf("get messages page, failed to query aero spike for messages: %w", err)
 	}
 
 	var messages []*BoardMessage
@@ -192,7 +192,7 @@ func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 
 	messagesBins, err := b.aeroClient.QueryByRange("id", from, to)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query aero spike for messages: %w", err)
+		return nil, fmt.Errorf("get messages with range, failed to query aero spike for messages: %w", err)
 	}
 
 	var messages []*BoardMessage
@@ -231,7 +231,7 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 
 	messagesBins, err := b.aeroClient.ScanAll()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query aero spike for messages: %w", err)
+		return nil, fmt.Errorf("get all messages, failed to query aero spike for messages: %w", err)
 	}
 
 	var messages []*BoardMessage
