@@ -26,8 +26,12 @@ services:
     image: postgres:latest
     volumes:
       - ./docker-data-postgres:/var/lib/postgresql/data
+      - ../sql:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: serj_blogs
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
       POSTGRES_HOST_AUTH_METHOD: trust
 
