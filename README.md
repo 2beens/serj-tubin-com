@@ -8,6 +8,7 @@ Personal tech sandbox and testing site 🕵️‍♀️
 Hosted and available at: https://www.serj-tubin.com/
 
 * I use golang to make this all happen 👨🏼‍💻
+* `Dockerfile` and `docker/` folder contain configs for running the service stack within Docker
 * I use Aerospike to store those visitor board messages 💿
     * there are better choices than Aerospike, I know, just wanted to test Aerospike
 * I tried to use Elasticsearch Stack for logging and monitoring on a different server, but it was kinda hungry for memory, and exceeded the needs of this humble project (will try something else lighter)
