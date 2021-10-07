@@ -23,3 +23,13 @@ CREATE TABLE netlog.visit
 ALTER TABLE netlog.visit OWNER TO postgres;
 CREATE INDEX ix_visit_created_at ON netlog.visit USING btree (timestamp);
 CREATE INDEX ix_visit_url ON netlog.visit(url);
+
+CREATE TABLE public.note
+(
+    id SERIAL PRIMARY KEY,
+    title VARCHAR,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    content TEXT NOT NULL
+);
+
+ALTER TABLE public.note OWNER TO postgres;

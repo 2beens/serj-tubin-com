@@ -18,6 +18,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/netlog"
+	"github.com/2beens/serjtubincom/internal/notes_box"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -36,6 +37,7 @@ type Server struct {
 	quotesManager   *QuotesManager
 	board           *Board
 	netlogVisitsApi *netlog.PsqlApi
+	notesBoxApi     *notes_box.PsqlApi
 
 	browserRequestsSecret string // used in netlog, when posting new visit
 
@@ -123,6 +125,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	boardRouter := r.PathPrefix("/board").Subrouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 
+	// TODO: refactor this - return handlers, but define routes here, similar to notes handler
 	if NewBlogHandler(blogRouter, s.blogApi, s.loginSession) == nil {
 		return nil, errors.New("blog handler is nil")
 	}
@@ -144,6 +147,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginSession) == nil {
 		panic("netlog visits handler is nil")
 	}
+
+	notesHandler := NewNotesBoxHandler(s.notesBoxApi)
+	r.HandleFunc("/notes", notesHandler.handleList).Methods("GET", "OPTIONS").Name("list-notes")
+	r.HandleFunc("/notes/add", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
+	r.HandleFunc("/notes/remove", notesHandler.handleRemove).Methods("PUT", "OPTIONS").Name("remove-note")
 
 	r.Use(middleware.PanicRecovery(s.instr))
 	r.Use(middleware.LogRequest())

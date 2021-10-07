@@ -97,8 +97,6 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	w.Header().Add("Content-Type", "application/json")
-
 	if len(visits) == 0 {
 		resJson := fmt.Sprintf(`{"visits": %s, "total": 0}`, "[]")
 		WriteResponseBytes(w, "application/json", []byte(resJson))
