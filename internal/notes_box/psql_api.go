@@ -12,5 +12,6 @@ func (api *PsqlApi) Remove(id int) (Note, error) {
 }
 
 func (api *PsqlApi) List() ([]Note, error) {
-	panic("not impl")
+	var notes []Note
+	return notes, nil
 }

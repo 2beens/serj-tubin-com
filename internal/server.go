@@ -153,6 +153,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/notes/add", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
 	r.HandleFunc("/notes/remove", notesHandler.handleRemove).Methods("PUT", "OPTIONS").Name("remove-note")
 
+	// all the rest - unhandled paths
+	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}).Methods("GET", "POST", "PUT", "OPTIONS").Name("unknown")
+
 	r.Use(middleware.PanicRecovery(s.instr))
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())

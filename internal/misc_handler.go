@@ -43,9 +43,6 @@ func NewMiscHandler(
 	mainRouter.HandleFunc("/login", handler.handleLogin).Methods("POST").Name("login")
 	mainRouter.HandleFunc("/logout", handler.handleLogout).Methods("GET", "OPTIONS").Name("logout")
 
-	// all the rest - unhandled paths
-	mainRouter.HandleFunc("/{unknown}", handler.handleUnknownPath).Methods("GET", "POST", "PUT", "OPTIONS").Name("unknown")
-
 	return handler
 }
 
@@ -170,8 +167,4 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 
 func (handler *MiscHandler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
 	WriteResponse(w, "", handler.versionInfo)
-}
-
-func (handler *MiscHandler) handleUnknownPath(w http.ResponseWriter, r *http.Request) {
-	http.NotFound(w, r)
 }
