@@ -89,6 +89,11 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
+	notesBoxApi, err := notes_box.NewPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
+	if err != nil {
+		log.Fatalf("failed to create notes visits api: %s", err)
+	}
+
 	instr := instrumentation.NewInstrumentation("backend", "server1")
 	instr.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
@@ -101,6 +106,7 @@ func NewServer(
 		geoIp:                 NewGeoIp("https://freegeoip.app", http.DefaultClient),
 		board:                 board,
 		netlogVisitsApi:       netlogVisitsApi,
+		notesBoxApi:           notesBoxApi,
 		versionInfo:           versionInfo,
 		loginSession:          &LoginSession{},
 		admin:                 admin,

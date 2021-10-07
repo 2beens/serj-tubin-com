@@ -5,6 +5,6 @@ var _ Api = (*TestApi)(nil)
 
 type Api interface {
 	Add(note *Note) (Note, error)
-	Remove(id int) (Note, error)
+	Remove(id int) (bool, error)
 	List() ([]Note, error)
 }

@@ -7,7 +7,7 @@ func (api *TestApi) Add(note *Note) (Note, error) {
 	panic("not impl")
 }
 
-func (api *TestApi) Remove(id int) (Note, error) {
+func (api *TestApi) Remove(id int) (bool, error) {
 	panic("not impl")
 }
 
