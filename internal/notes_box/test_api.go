@@ -11,7 +11,7 @@ func (api *TestApi) Get(id int) (*Note, error) {
 	panic("not impl")
 }
 
-func (api *TestApi) Remove(id int) (bool, error) {
+func (api *TestApi) Delete(id int) (bool, error) {
 	panic("not impl")
 }
 

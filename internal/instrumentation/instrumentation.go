@@ -12,6 +12,7 @@ type Instrumentation struct {
 	// counters
 	CounterRequests           *prometheus.CounterVec
 	CounterNetlogVisits       prometheus.Counter
+	CounterNotes              prometheus.Counter
 	CounterHandleRequestPanic prometheus.Counter
 	CounterVisitsBackups      prometheus.Counter
 
@@ -51,6 +52,12 @@ func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheu
 		Subsystem: subsystem,
 		Name:      "netlog_visits",
 		Help:      "The total number of netlog visits",
+	})
+	counterNotes := factory.NewCounter(prometheus.CounterOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "notes",
+		Help:      "The total number of added notes",
 	})
 	counterHandleRequestPanic := factory.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
@@ -110,6 +117,7 @@ func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheu
 	return &Instrumentation{
 		CounterRequests:           counterRequests,
 		CounterNetlogVisits:       counterNetlogVisits,
+		CounterNotes:              counterNotes,
 		CounterHandleRequestPanic: counterHandleRequestPanic,
 		CounterVisitsBackups:      counterVisitsBackups,
 		GaugeRequests:             gaugeRequests,

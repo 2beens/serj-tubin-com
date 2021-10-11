@@ -103,7 +103,7 @@ func (api *PsqlApi) Get(id int) (*Note, error) {
 	return nil, errors.New("unexpected error, failed to get note")
 }
 
-func (api *PsqlApi) Remove(id int) (bool, error) {
+func (api *PsqlApi) Delete(id int) (bool, error) {
 	tag, err := api.db.Exec(
 		context.Background(),
 		`DELETE FROM note WHERE id = $1`,

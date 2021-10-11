@@ -130,6 +130,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
+	notesRouter := r.PathPrefix("/notes").Subrouter()
 
 	// TODO: refactor this - return handlers, but define routes here, similar to notes handler
 	if NewBlogHandler(blogRouter, s.blogApi, s.loginSession) == nil {
@@ -154,10 +155,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("netlog visits handler is nil")
 	}
 
-	notesHandler := NewNotesBoxHandler(s.notesBoxApi)
-	r.HandleFunc("/notes", notesHandler.handleList).Methods("GET", "OPTIONS").Name("list-notes")
-	r.HandleFunc("/notes/add", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
-	r.HandleFunc("/notes/remove", notesHandler.handleRemove).Methods("PUT", "OPTIONS").Name("remove-note")
+	notesHandler := NewNotesBoxHandler(s.notesBoxApi, s.loginSession, s.instr)
+	notesRouter.HandleFunc("", notesHandler.handleList).Methods("GET", "OPTIONS").Name("list-notes")
+	notesRouter.HandleFunc("/add", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
+	notesRouter.HandleFunc("/remove/{id}", notesHandler.handleRemove).Methods("DELETE", "OPTIONS").Name("remove-note")
+	notesRouter.Use(notesHandler.authMiddleware())
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {

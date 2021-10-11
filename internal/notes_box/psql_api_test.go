@@ -34,11 +34,11 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 	addedNote1, err := api.Add(note1)
 	require.NoError(t, err)
 	require.NotNil(t, addedNote1)
-	defer api.Remove(addedNote1.Id)
+	defer api.Delete(addedNote1.Id)
 	addedNote2, err := api.Add(note2)
 	require.NoError(t, err)
 	require.NotNil(t, addedNote2)
-	defer api.Remove(addedNote2.Id)
+	defer api.Delete(addedNote2.Id)
 
 	assert.Equal(t, note1.Content, addedNote1.Content)
 	assert.Equal(t, note1.Title, addedNote1.Title)
@@ -65,7 +65,7 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 	assert.Equal(t, note3.Content, addedNote3.Content)
 	assert.Equal(t, note3.Title, addedNote3.Title)
 
-	removed, err := api.Remove(note3.Id)
+	removed, err := api.Delete(note3.Id)
 	require.NoError(t, err)
 	assert.True(t, removed)
 
