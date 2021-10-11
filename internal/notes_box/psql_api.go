@@ -39,9 +39,9 @@ func (api *PsqlApi) CloseDB() {
 	}
 }
 
-func (api *PsqlApi) Add(note *Note) (Note, error) {
+func (api *PsqlApi) Add(note *Note) (*Note, error) {
 	if note.Content == "" || note.CreatedAt.IsZero() {
-		return Note{}, errors.New("note content or timestamp empty")
+		return nil, errors.New("note content or timestamp empty")
 	}
 
 	rows, err := api.db.Query(
@@ -50,23 +50,57 @@ func (api *PsqlApi) Add(note *Note) (Note, error) {
 		note.Title, note.CreatedAt, note.Content,
 	)
 	if err != nil {
-		return Note{}, err
+		return nil, err
 	}
 	defer rows.Close()
 
 	if err := rows.Err(); err != nil {
-		return Note{}, err
+		return nil, err
 	}
 
 	if rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err == nil {
 			note.Id = id
-			return *note, nil
+			return note, nil
 		}
 	}
 
-	return Note{}, errors.New("unexpected error, failed to insert note")
+	return nil, errors.New("unexpected error, failed to insert note")
+}
+
+func (api *PsqlApi) Get(id int) (*Note, error) {
+	rows, err := api.db.Query(
+		context.Background(),
+		`SELECT * FROM note WHERE id = $1;`,
+		id,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if rows.Next() {
+		var id int
+		var title string
+		var createdAt time.Time
+		var content string
+		if err := rows.Scan(&id, &title, &createdAt, &content); err != nil {
+			return nil, err
+		}
+		return &Note{
+			Id:        id,
+			Title:     title,
+			CreatedAt: createdAt,
+			Content:   content,
+		}, nil
+	}
+
+	return nil, errors.New("unexpected error, failed to get note")
 }
 
 func (api *PsqlApi) Remove(id int) (bool, error) {
@@ -89,8 +123,8 @@ func (api *PsqlApi) List() ([]Note, error) {
 		context.Background(),
 		`
 			SELECT
-				id, COALESCE(title, '') as title, COALESCE(source, '') as source, url, timestamp
-			FROM netlog.visit;`,
+				id, title, created_at, content
+			FROM note;`,
 	)
 	if err != nil {
 		return nil, err
