@@ -136,12 +136,12 @@ func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Ha
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 
 			if authToken == "" || handler.loginSession.Token == "" {
-				log.Tracef("[missing token] [notes handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[missing token] [notes handler] [%s] unauthorized => %s", handler.loginSession.Token, r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
 			if authToken != handler.loginSession.Token {
-				log.Tracef("[invalid token] [notes handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[invalid token] [notes handler] ['%s' != '%s'] unauthorized => %s", authToken, handler.loginSession.Token, r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}

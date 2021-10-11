@@ -20,6 +20,8 @@ func main() {
 	configPath := flag.String("config", "./config.toml", "path for the TOML config file")
 	flag.Parse()
 
+	log.Warnf("---->> running in [%s] environment", *env)
+
 	cfg, err := config.Load(*env, *configPath)
 	if err != nil {
 		panic(err)

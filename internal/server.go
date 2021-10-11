@@ -97,6 +97,11 @@ func NewServer(
 	instr := instrumentation.NewInstrumentation("backend", "server1")
 	instr.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
+	loginSession := &LoginSession{}
+	if config.IsDev {
+		loginSession.Token = "test-token"
+	}
+
 	s := &Server{
 		config:                config,
 		blogApi:               blogApi,
@@ -108,7 +113,7 @@ func NewServer(
 		netlogVisitsApi:       netlogVisitsApi,
 		notesBoxApi:           notesBoxApi,
 		versionInfo:           versionInfo,
-		loginSession:          &LoginSession{},
+		loginSession:          loginSession,
 		admin:                 admin,
 
 		//metrics
