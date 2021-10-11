@@ -1,20 +1,43 @@
 package notes_box
 
+import "errors"
+
 type TestApi struct {
+	notes map[int]*Note
+}
+
+func NewTestApi() *TestApi {
+	return &TestApi{
+		notes: make(map[int]*Note),
+	}
 }
 
 func (api *TestApi) Add(note *Note) (*Note, error) {
-	panic("not impl")
+	api.notes[note.Id] = note
+	return note, nil
 }
 
 func (api *TestApi) Get(id int) (*Note, error) {
-	panic("not impl")
+	note, ok := api.notes[id]
+	if !ok {
+		return nil, errors.New("not found")
+	}
+	return note, nil
 }
 
 func (api *TestApi) Delete(id int) (bool, error) {
-	panic("not impl")
+	note, ok := api.notes[id]
+	if !ok {
+		return false, errors.New("not found")
+	}
+	delete(api.notes, note.Id)
+	return true, nil
 }
 
 func (api *TestApi) List() ([]Note, error) {
-	panic("not impl")
+	var notes []Note
+	for _, n := range api.notes {
+		notes = append(notes, *n)
+	}
+	return notes, nil
 }
