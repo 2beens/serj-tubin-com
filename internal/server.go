@@ -162,8 +162,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	notesHandler := NewNotesBoxHandler(s.notesBoxApi, s.loginSession, s.instr)
 	notesRouter.HandleFunc("", notesHandler.handleList).Methods("GET", "OPTIONS").Name("list-notes")
-	notesRouter.HandleFunc("/add", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
-	notesRouter.HandleFunc("/remove/{id}", notesHandler.handleRemove).Methods("DELETE", "OPTIONS").Name("remove-note")
+	notesRouter.HandleFunc("", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
+	notesRouter.HandleFunc("/{id}", notesHandler.handleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
 	notesRouter.Use(notesHandler.authMiddleware())
 
 	// all the rest - unhandled paths

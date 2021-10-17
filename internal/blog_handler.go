@@ -208,9 +208,8 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 
 	w.Header().Add("Content-Type", "application/json")
 
-	if len(blogPosts) == 0 {
-		WriteResponse(w, "application/json", "[]")
-		return
+	if blogPosts == nil || len(blogPosts) == 0 {
+		blogPosts = []*blog.Blog{}
 	}
 
 	blogPostsJson, err := json.Marshal(blogPosts)

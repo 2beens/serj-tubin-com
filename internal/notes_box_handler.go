@@ -70,7 +70,7 @@ func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
 	WriteResponse(w, "", fmt.Sprintf("added:%d", addedNote.Id))
 }
 
-func (h *NotesBoxHandler) handleRemove(w http.ResponseWriter, r *http.Request) {
+func (h *NotesBoxHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	idStr := vars["id"]
@@ -106,9 +106,8 @@ func (h *NotesBoxHandler) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(notes) == 0 {
-		WriteResponseBytes(w, "application/json", []byte("[]"))
-		return
+	if notes == nil || len(notes) == 0 {
+		notes = []notes_box.Note{}
 	}
 
 	notesJson, err := json.Marshal(notes)
