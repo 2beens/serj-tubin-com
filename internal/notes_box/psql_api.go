@@ -145,7 +145,8 @@ func (api *PsqlApi) List() ([]Note, error) {
 		`
 			SELECT
 				id, title, created_at, content
-			FROM note;`,
+			FROM note
+			ORDER BY created_at DESC;`,
 	)
 	if err != nil {
 		return nil, err
