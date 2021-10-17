@@ -17,6 +17,14 @@ func (api *TestApi) Add(note *Note) (*Note, error) {
 	return note, nil
 }
 
+func (api *TestApi) Update(note *Note) error {
+	if _, err := api.Get(note.Id); err != nil {
+		return err
+	}
+	api.notes[note.Id] = note
+	return nil
+}
+
 func (api *TestApi) Get(id int) (*Note, error) {
 	note, ok := api.notes[id]
 	if !ok {

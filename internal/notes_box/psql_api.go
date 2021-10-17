@@ -103,6 +103,27 @@ func (api *PsqlApi) Get(id int) (*Note, error) {
 	return nil, errors.New("unexpected error, failed to get note")
 }
 
+func (b *PsqlApi) Update(note *Note) error {
+	if note.Content == "" {
+		return errors.New("note content empty")
+	}
+
+	tag, err := b.db.Exec(
+		context.Background(),
+		`UPDATE note SET title = $1, content = $2 WHERE id = $3;`,
+		note.Title, note.Content, note.Id,
+	)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		log.Tracef("note %d not updated", note.Id)
+	}
+
+	return nil
+}
+
 func (api *PsqlApi) Delete(id int) (bool, error) {
 	tag, err := api.db.Exec(
 		context.Background(),

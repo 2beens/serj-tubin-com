@@ -70,6 +70,53 @@ func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
 	WriteResponse(w, "", fmt.Sprintf("added:%d", addedNote.Id))
 }
 
+func (h *NotesBoxHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "PUT, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		log.Errorf("update note failed, parse form error: %s", err)
+		http.Error(w, "parse form error", http.StatusInternalServerError)
+		return
+	}
+
+	title := r.Form.Get("title")
+	content := r.Form.Get("content")
+	if content == "" {
+		http.Error(w, "error, content empty", http.StatusBadRequest)
+		return
+	}
+	idStr := r.Form.Get("id")
+	if idStr == "" {
+		http.Error(w, "error, id empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "error, id invalid", http.StatusBadRequest)
+		return
+	}
+
+	note := &notes_box.Note{
+		Id:      id,
+		Title:   title,
+		Content: content,
+		// CreatedAt: not updateable for now,
+	}
+
+	if err := h.api.Update(note); err != nil {
+		log.Printf("failed to update note [%d], [%s]: %s", note.Id, note.Title, err)
+		http.Error(w, "error, failed to update note", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("note updated: [%s] [%s]: %s", note.Title, note.CreatedAt, note.Id)
+	WriteResponse(w, "", fmt.Sprintf("updated:%d", note.Id))
+}
+
 func (h *NotesBoxHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 

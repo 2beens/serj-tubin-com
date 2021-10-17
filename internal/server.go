@@ -163,6 +163,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	notesHandler := NewNotesBoxHandler(s.notesBoxApi, s.loginSession, s.instr)
 	notesRouter.HandleFunc("", notesHandler.handleList).Methods("GET", "OPTIONS").Name("list-notes")
 	notesRouter.HandleFunc("", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
+	notesRouter.HandleFunc("", notesHandler.handleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
 	notesRouter.HandleFunc("/{id}", notesHandler.handleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
 	notesRouter.Use(notesHandler.authMiddleware())
 
