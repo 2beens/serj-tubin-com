@@ -22,7 +22,7 @@ func NewNetlogPsqlApi(dbHost, dbPort, dbName string) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
 	dbPool, err := pgxpool.Connect(ctx, connString)
 	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
+		return nil, fmt.Errorf("netlog api unable to connect to database: %w", err)
 	}
 
 	log.Debugf("netlog api connected to: %s", connString)
