@@ -66,7 +66,7 @@ func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
 
 	h.instr.CounterNotes.Inc()
 
-	log.Printf("new note added: [%s] [%s]: %s", addedNote.Title, addedNote.CreatedAt, addedNote.Id)
+	log.Printf("new note added: [%s] [%s]: %d", addedNote.Title, addedNote.CreatedAt, addedNote.Id)
 	WriteResponse(w, "", fmt.Sprintf("added:%d", addedNote.Id))
 }
 
@@ -113,7 +113,7 @@ func (h *NotesBoxHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("note updated: [%s] [%s]: %s", note.Title, note.CreatedAt, note.Id)
+	log.Printf("note updated: [%s] [%s]: %d", note.Title, note.CreatedAt, note.Id)
 	WriteResponse(w, "", fmt.Sprintf("updated:%d", note.Id))
 }
 
