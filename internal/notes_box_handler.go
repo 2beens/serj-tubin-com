@@ -153,7 +153,7 @@ func (h *NotesBoxHandler) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if notes == nil || len(notes) == 0 {
+	if len(notes) == 0 {
 		notes = []notes_box.Note{}
 	}
 

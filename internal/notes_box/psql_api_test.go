@@ -1,6 +1,7 @@
 package notes_box
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -34,11 +35,20 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 	addedNote1, err := api.Add(note1)
 	require.NoError(t, err)
 	require.NotNil(t, addedNote1)
-	defer api.Delete(addedNote1.Id)
+	// i must do this awkwardnes because of the linter complaining about not checking err
+	defer func() {
+		if _, err := api.Delete(addedNote1.Id); err != nil {
+			fmt.Println(err)
+		}
+	}()
 	addedNote2, err := api.Add(note2)
 	require.NoError(t, err)
 	require.NotNil(t, addedNote2)
-	defer api.Delete(addedNote2.Id)
+	defer func() {
+		if _, err := api.Delete(addedNote2.Id); err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	assert.Equal(t, note1.Content, addedNote1.Content)
 	assert.Equal(t, note1.Title, addedNote1.Title)
@@ -62,6 +72,7 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 		Content:   "content3",
 	}
 	addedNote3, err := api.Add(note3)
+	require.NoError(t, err)
 	assert.Equal(t, note3.Content, addedNote3.Content)
 	assert.Equal(t, note3.Title, addedNote3.Title)
 

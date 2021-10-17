@@ -29,8 +29,10 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 		Content:   "content2",
 		CreatedAt: now,
 	}
-	api.Add(n1)
-	api.Add(n2)
+	_, err := api.Add(n1)
+	require.NoError(t, err)
+	_, err = api.Add(n2)
+	require.NoError(t, err)
 
 	loginSession := &LoginSession{
 		Token:     "mylittlesecret",
