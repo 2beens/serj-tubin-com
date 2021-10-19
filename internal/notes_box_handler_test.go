@@ -37,11 +37,12 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	loginSession := &LoginSession{
 		Token:     "mylittlesecret",
 		CreatedAt: now,
-		TTL:       0,
 	}
+	authService := NewAuthService(time.Hour)
+	authService.sessions[loginSession.Token] = loginSession
 
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNotesBoxHandler(api, loginSession, instr)
+	handler := NewNotesBoxHandler(api, authService, instr)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "", nil)

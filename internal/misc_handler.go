@@ -14,7 +14,7 @@ type MiscHandler struct {
 	geoIp         *GeoIp
 	quotesManager *QuotesManager
 	versionInfo   string
-	session       *LoginSession
+	authService   *AuthService
 	admin         *Admin
 }
 
@@ -23,14 +23,14 @@ func NewMiscHandler(
 	geoIp *GeoIp,
 	quotesManager *QuotesManager,
 	versionInfo string,
-	session *LoginSession,
+	authService *AuthService,
 	admin *Admin,
 ) *MiscHandler {
 	handler := &MiscHandler{
 		geoIp:         geoIp,
 		quotesManager: quotesManager,
 		versionInfo:   versionInfo,
-		session:       session,
+		authService:   authService,
 		admin:         admin,
 	}
 
@@ -121,21 +121,15 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	token, err := GenerateRandomString(35)
+	token, err := handler.authService.Login(time.Now())
 	if err != nil {
 		log.Errorf("login failed, generate token error: %s", err)
 		http.Error(w, "generate token error", http.StatusInternalServerError)
 		return
 	}
 
-	handler.session.Token = token
-	handler.session.TTL = time.Hour
-	handler.session.CreatedAt = time.Now()
-
 	// token should probably not be logged, but whatta hell
 	log.Tracef("new login, token: %s", token)
-
-	// TODO: check TTL on requests and refresh token in case needed
 
 	WriteResponse(w, "", fmt.Sprintf(`{"token": "%s"}`, token))
 }
@@ -153,14 +147,12 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if handler.session.Token != authToken {
+	if handler.authService.Logout(authToken) {
 		http.Error(w, "no can do", http.StatusUnauthorized)
 		return
 	}
 
-	log.Printf("logout for %s", handler.session.Token)
-	handler.session.Token = ""
-	handler.session.CreatedAt = time.Time{}
+	log.Printf("logout for [%s] success", authToken)
 
 	WriteResponse(w, "", "logged-out")
 }

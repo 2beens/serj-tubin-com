@@ -14,18 +14,18 @@ import (
 )
 
 type BlogHandler struct {
-	blogApi      blog.Api
-	loginSession *LoginSession
+	blogApi     blog.Api
+	authService *AuthService
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
 	blogApi blog.Api,
-	session *LoginSession,
+	authService *AuthService,
 ) *BlogHandler {
 	handler := &BlogHandler{
-		blogApi:      blogApi,
-		loginSession: session,
+		blogApi:     blogApi,
+		authService: authService,
 	}
 
 	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
@@ -250,13 +250,13 @@ func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handle
 			}
 
 			authToken := r.Header.Get("X-SERJ-TOKEN")
-			if authToken == "" || handler.loginSession.Token == "" {
+			if authToken == "" {
 				log.Tracef("[missing token] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
 
-			if handler.loginSession.Token != authToken {
+			if !handler.authService.IsLogged(authToken) {
 				log.Tracef("[invalid token] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
