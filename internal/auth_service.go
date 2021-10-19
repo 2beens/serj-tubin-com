@@ -3,6 +3,8 @@ package internal
 import (
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Admin struct {
@@ -76,5 +78,22 @@ func (as *AuthService) ScanAndClean() {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
-	// TODO:
+	if len(as.sessions) == 0 {
+		log.Warnln("=> auth service, scan and clean abort, no sessions")
+		return
+	}
+
+	log.Warnf("=> auth service, scan and clean [%d sessions] start ...", len(as.sessions))
+	var toRemove []string
+	for _, s := range as.sessions {
+		sessionDuration := time.Since(s.CreatedAt)
+		if sessionDuration > as.ttl {
+			log.Warnf("=>\twill clean the session with token: %s", s.Token)
+			toRemove = append(toRemove, s.Token)
+		}
+	}
+
+	for _, t := range toRemove {
+		delete(as.sessions, t)
+	}
 }

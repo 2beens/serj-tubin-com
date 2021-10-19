@@ -108,6 +108,12 @@ func NewServer(
 		authService.sessions[devLoginSession.Token] = devLoginSession
 	}
 
+	go func() {
+		for range time.Tick(time.Hour * 8) {
+			authService.ScanAndClean()
+		}
+	}()
+
 	s := &Server{
 		config:                config,
 		blogApi:               blogApi,
