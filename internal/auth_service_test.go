@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -28,25 +29,49 @@ func TestAuthService_IsLogged(t *testing.T) {
 	assert.True(t, authService.IsLogged(token)) // idempotent
 }
 
-func TestAuthService_MultiLogin_Then_Logout(t *testing.T) {
+func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 	authService := NewAuthService(time.Hour)
 	require.NotNil(t, authService)
 
 	loginsCount := 10
 
+	var wg sync.WaitGroup
+	wg.Add(loginsCount)
+
+	newTokensChan := make(chan string)
 	addedTokens := map[string]struct{}{}
 	for i := 0; i < loginsCount; i++ {
-		newToken, err := authService.Login(time.Now())
-		require.NoError(t, err)
-		addedTokens[newToken] = struct{}{}
+		// simluate many logins comming at once
+		go func() {
+			newToken, err := authService.Login(time.Now())
+			require.NoError(t, err)
+			newTokensChan <- newToken
+			wg.Done()
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(newTokensChan)
+	}()
+
+	for t := range newTokensChan {
+		addedTokens[t] = struct{}{}
 	}
 
 	// assert we have created all different logins/tokens
 	assert.Len(t, addedTokens, loginsCount)
 
-	for token, _ := range addedTokens {
-		assert.True(t, authService.Logout(token))
+	wg.Add(loginsCount)
+	for token := range addedTokens {
+		// simluate many logouts requested at once
+		go func(token string) {
+			assert.True(t, authService.Logout(token))
+			wg.Done()
+		}(token)
 	}
+	wg.Wait()
+
 	assert.Empty(t, authService.sessions) // all sessions logged out
 }
 
