@@ -17,6 +17,8 @@ type LoginSession struct {
 	CreatedAt time.Time
 }
 
+// TODO: store login sessions in redis maybe?
+
 type AuthService struct {
 	mutex    sync.Mutex
 	ttl      time.Duration
