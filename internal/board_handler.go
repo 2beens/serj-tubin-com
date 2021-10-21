@@ -15,14 +15,18 @@ import (
 )
 
 type BoardHandler struct {
-	board        *Board
-	loginSession *LoginSession
+	board       *Board
+	authService *AuthService
 }
 
-func NewBoardHandler(router *mux.Router, board *Board, loginSession *LoginSession) *BoardHandler {
+func NewBoardHandler(
+	router *mux.Router,
+	board *Board,
+	authService *AuthService,
+) *BoardHandler {
 	handler := &BoardHandler{
-		board:        board,
-		loginSession: loginSession,
+		board:       board,
+		authService: authService,
 	}
 
 	router.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
@@ -277,13 +281,13 @@ func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handl
 			}
 
 			authToken := r.Header.Get("X-SERJ-TOKEN")
-			if authToken == "" || handler.loginSession.Token == "" {
+			if authToken == "" {
 				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
 
-			if handler.loginSession.Token != authToken {
+			if !handler.authService.IsLogged(authToken) {
 				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return

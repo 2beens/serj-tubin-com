@@ -23,8 +23,8 @@ type testingInternals struct {
 	lastInitialMessage   *BoardMessage
 
 	// blog
-	blogApi      *blog.TestApi
-	loginSession *LoginSession
+	blogApi     *blog.TestApi
+	authService *AuthService
 }
 
 func newTestingInternals() *testingInternals {
@@ -113,8 +113,10 @@ func newTestingInternals() *testingInternals {
 	loginSession := &LoginSession{
 		Token:     "tokenAbc123",
 		CreatedAt: now,
-		TTL:       0,
 	}
+
+	authService := NewAuthService(time.Hour)
+	authService.sessions["tokenAbc123"] = loginSession
 
 	return &testingInternals{
 		aeroTestClient:       aeroClient,
@@ -123,6 +125,6 @@ func newTestingInternals() *testingInternals {
 		initialBoardMessages: initialBoardMessages,
 		lastInitialMessage:   initialBoardMessages[1],
 		blogApi:              blogApi,
-		loginSession:         loginSession,
+		authService:          authService,
 	}
 }

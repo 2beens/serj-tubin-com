@@ -14,20 +14,20 @@ import (
 )
 
 type NotesBoxHandler struct {
-	api          notes_box.Api
-	loginSession *LoginSession
-	instr        *instrumentation.Instrumentation
+	api         notes_box.Api
+	authService *AuthService
+	instr       *instrumentation.Instrumentation
 }
 
 func NewNotesBoxHandler(
 	api notes_box.Api,
-	loginSession *LoginSession,
+	authService *AuthService,
 	instrumentation *instrumentation.Instrumentation,
 ) *NotesBoxHandler {
 	return &NotesBoxHandler{
-		api:          api,
-		loginSession: loginSession,
-		instr:        instrumentation,
+		api:         api,
+		authService: authService,
+		instr:       instrumentation,
 	}
 }
 
@@ -181,13 +181,13 @@ func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Ha
 			//	https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#preflighted_requests
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 
-			if authToken == "" || handler.loginSession.Token == "" {
-				log.Tracef("[missing token] [notes handler] [%s] unauthorized => %s", handler.loginSession.Token, r.URL.Path)
+			if authToken == "" {
+				log.Tracef("[missing token] [notes handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
-			if authToken != handler.loginSession.Token {
-				log.Tracef("[invalid token] [notes handler] ['%s' != '%s'] unauthorized => %s", authToken, handler.loginSession.Token, r.URL.Path)
+			if !handler.authService.IsLogged(authToken) {
+				log.Tracef("[invalid token] [notes handler] unauthorized token %s => %s", authToken, r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}

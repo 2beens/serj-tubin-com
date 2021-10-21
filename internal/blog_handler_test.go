@@ -86,7 +86,7 @@ func TestBlogHandler_handleAll(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/blog/all", nil)
@@ -116,7 +116,7 @@ func TestBlogHandler_handleGetPage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/blog/page/2/size/2", nil)
@@ -136,7 +136,7 @@ func TestBlogHandler_handleDelete(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("DELETE", "/blog/delete/3", nil)
@@ -158,8 +158,10 @@ func TestBlogHandler_handleDelete(t *testing.T) {
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 
-	handler.loginSession.Token = "mylittlesecret"
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
+	handler.authService.sessions["mylittlesecret"] = &LoginSession{
+		Token: "mylittlesecret",
+	}
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -172,7 +174,7 @@ func TestBlogHandler_handleNewBlog_notLoggedIn(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
@@ -194,7 +196,7 @@ func TestBlogHandler_handleUpdateBlog_notLoggedIn(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
@@ -220,7 +222,7 @@ func TestBlogHandler_handleNewBlog_wrongToken(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
@@ -231,7 +233,9 @@ func TestBlogHandler_handleNewBlog_wrongToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	handler.loginSession.Token = "mywrongsecret"
+	handler.authService.sessions["mywrongsecret"] = &LoginSession{
+		Token: "mywrongsecret",
+	}
 
 	rr := httptest.NewRecorder()
 
@@ -247,7 +251,7 @@ func TestBlogHandler_handleUpdateBlog_wrongToken(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
@@ -259,7 +263,9 @@ func TestBlogHandler_handleUpdateBlog_wrongToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	handler.loginSession.Token = "mywrongsecret"
+	handler.authService.sessions["mywrongsecret"] = &LoginSession{
+		Token: "mywrongsecret",
+	}
 
 	rr := httptest.NewRecorder()
 
@@ -278,7 +284,7 @@ func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
@@ -289,7 +295,9 @@ func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	handler.loginSession.Token = "mylittlesecret"
+	handler.authService.sessions["mylittlesecret"] = &LoginSession{
+		Token: "mylittlesecret",
+	}
 
 	rr := httptest.NewRecorder()
 
@@ -312,7 +320,7 @@ func TestBlogHandler_handleUpdateBlog_correctToken(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginSession)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
@@ -324,7 +332,9 @@ func TestBlogHandler_handleUpdateBlog_correctToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	handler.loginSession.Token = "mylittlesecret"
+	handler.authService.sessions["mylittlesecret"] = &LoginSession{
+		Token: "mylittlesecret",
+	}
 
 	rr := httptest.NewRecorder()
 

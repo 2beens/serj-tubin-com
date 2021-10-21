@@ -11,7 +11,7 @@ import (
 
 func TestNewMiscHandler(t *testing.T) {
 	mainRouter := mux.NewRouter()
-	handler := NewMiscHandler(mainRouter, nil, nil, "dummy", &LoginSession{}, &Admin{})
+	handler := NewMiscHandler(mainRouter, nil, nil, "dummy", &AuthService{}, &Admin{})
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
 

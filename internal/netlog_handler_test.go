@@ -86,13 +86,14 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 	loginSession := &LoginSession{
 		Token:     "tokenAbc123",
 		CreatedAt: time.Now(),
-		TTL:       0,
 	}
+	authService := NewAuthService(time.Hour)
+	authService.sessions[loginSession.Token] = loginSession
 	netlogApi := netlog.NewTestApi()
 
 	r := mux.NewRouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(r, netlogApi, instr, browserReqSecret, loginSession)
+	handler := NewNetlogHandler(r, netlogApi, instr, browserReqSecret, authService)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 
@@ -117,14 +118,15 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 	loginSession := &LoginSession{
 		Token:     "tokenAbc123",
 		CreatedAt: time.Now(),
-		TTL:       0,
 	}
+	authService := NewAuthService(time.Hour)
+	authService.sessions[loginSession.Token] = loginSession
 	netlogApi := netlog.NewTestApi()
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginSession)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, authService)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -149,8 +151,9 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 	loginSession := &LoginSession{
 		Token:     "tokenAbc123",
 		CreatedAt: time.Now(),
-		TTL:       0,
 	}
+	authService := NewAuthService(time.Hour)
+	authService.sessions[loginSession.Token] = loginSession
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -174,7 +177,7 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginSession)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, authService)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -197,7 +200,7 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 
 func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 	browserReqSecret := "rakija"
-	loginSession := &LoginSession{}
+	authService := NewAuthService(time.Hour)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -223,7 +226,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginSession)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, authService)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -255,7 +258,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 
 func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 	browserReqSecret := "beer"
-	loginSession := &LoginSession{}
+	authService := NewAuthService(time.Hour)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -281,7 +284,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginSession)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, authService)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -321,8 +324,9 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	loginSession := &LoginSession{
 		Token:     "tokenAbc123",
 		CreatedAt: time.Now(),
-		TTL:       0,
 	}
+	authService := NewAuthService(time.Hour)
+	authService.sessions[loginSession.Token] = loginSession
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -379,7 +383,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, "browserReqSecret", loginSession)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, "browserReqSecret", authService)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)

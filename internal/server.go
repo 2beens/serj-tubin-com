@@ -45,8 +45,8 @@ type Server struct {
 	openWeatherApiKey string
 	versionInfo       string
 
-	loginSession *LoginSession
-	admin        *Admin
+	authService *AuthService
+	admin       *Admin
 
 	// metrics
 	instr *instrumentation.Instrumentation
@@ -97,10 +97,22 @@ func NewServer(
 	instr := instrumentation.NewInstrumentation("backend", "server1")
 	instr.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
-	loginSession := &LoginSession{}
+	// TODO: make configurable ?
+	ttl := 24 * 7 * time.Hour // max login session duration - 7 days
+	authService := NewAuthService(ttl)
 	if config.IsDev {
-		loginSession.Token = "test-token"
+		devLoginSession := &LoginSession{
+			Token:     "test-token",
+			CreatedAt: time.Now(),
+		}
+		authService.sessions[devLoginSession.Token] = devLoginSession
 	}
+
+	go func() {
+		for range time.Tick(time.Hour * 8) {
+			authService.ScanAndClean()
+		}
+	}()
 
 	s := &Server{
 		config:                config,
@@ -113,7 +125,7 @@ func NewServer(
 		netlogVisitsApi:       netlogVisitsApi,
 		notesBoxApi:           notesBoxApi,
 		versionInfo:           versionInfo,
-		loginSession:          loginSession,
+		authService:           authService,
 		admin:                 admin,
 
 		//metrics
@@ -138,11 +150,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	notesRouter := r.PathPrefix("/notes").Subrouter()
 
 	// TODO: refactor this - return handlers, but define routes here, similar to notes handler
-	if NewBlogHandler(blogRouter, s.blogApi, s.loginSession) == nil {
+	if NewBlogHandler(blogRouter, s.blogApi, s.authService) == nil {
 		return nil, errors.New("blog handler is nil")
 	}
 
-	if NewBoardHandler(boardRouter, s.board, s.loginSession) == nil {
+	if NewBoardHandler(boardRouter, s.board, s.authService) == nil {
 		return nil, errors.New("board handler is nil")
 	}
 
@@ -152,15 +164,15 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("weather handler is nil")
 	}
 
-	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.loginSession, s.admin) == nil {
+	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {
 		panic("misc handler is nil")
 	}
 
-	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginSession) == nil {
+	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.authService) == nil {
 		panic("netlog visits handler is nil")
 	}
 
-	notesHandler := NewNotesBoxHandler(s.notesBoxApi, s.loginSession, s.instr)
+	notesHandler := NewNotesBoxHandler(s.notesBoxApi, s.authService, s.instr)
 	notesRouter.HandleFunc("", notesHandler.handleList).Methods("GET", "OPTIONS").Name("list-notes")
 	notesRouter.HandleFunc("", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
 	notesRouter.HandleFunc("", notesHandler.handleUpdate).Methods("PUT", "OPTIONS").Name("update-note")

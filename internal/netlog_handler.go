@@ -17,7 +17,7 @@ import (
 type NetlogHandler struct {
 	browserRequestsSecret string
 	netlogApi             netlog.Api
-	loginSession          *LoginSession
+	authService           *AuthService
 	instr                 *instrumentation.Instrumentation
 }
 
@@ -26,13 +26,13 @@ func NewNetlogHandler(
 	netlogApi netlog.Api,
 	instrumentation *instrumentation.Instrumentation,
 	browserRequestsSecret string,
-	loginSession *LoginSession,
+	authService *AuthService,
 ) *NetlogHandler {
 	handler := &NetlogHandler{
 		netlogApi:             netlogApi,
 		instr:                 instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
-		loginSession:          loginSession,
+		authService:           authService,
 	}
 
 	router.HandleFunc("/new", handler.handleNewVisit).Methods("POST", "OPTIONS").Name("new-visit")
@@ -240,12 +240,12 @@ func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Hand
 				return
 			}
 
-			if authToken == "" || handler.loginSession.Token == "" {
+			if authToken == "" {
 				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
-			if authToken != handler.loginSession.Token {
+			if !handler.authService.IsLogged(authToken) {
 				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return

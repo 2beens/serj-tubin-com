@@ -84,7 +84,7 @@ func TestBoardHandler_handleMessagesCount(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.board, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/count", nil)
@@ -101,7 +101,7 @@ func TestBoardHandler_handleGetAllMessages(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.board, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/all", nil)
@@ -128,7 +128,7 @@ func TestBoardHandler_handleGetLastMessages(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.board, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/last/2", nil)
@@ -154,7 +154,7 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.board, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/page/2/size/2", nil)
@@ -209,7 +209,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.board, internals.authService)
 	require.NotNil(t, handler)
 
 	// wrong session token
@@ -300,7 +300,7 @@ func TestBoardHandler_handleMessagesRange(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.board, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/from/1/to/3", nil)
@@ -338,7 +338,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginSession)
+	handler := NewBoardHandler(r, internals.board, internals.authService)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/messages/new", nil)
