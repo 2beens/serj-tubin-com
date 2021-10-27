@@ -3,6 +3,7 @@ main
 
 .idea/
 test_root/
+.vscode/
 
 # Binaries for programs and plugins
 *.exe

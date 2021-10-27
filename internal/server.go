@@ -296,7 +296,7 @@ func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.Cancel
 	if err := httpServer.Shutdown(ctx); err != nil {
 		log.Error(" >>> failed to gracefully shutdown http server")
 	}
-	log.Warn("server shut down")
+	log.Warnln("server shut down")
 }
 
 func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {

@@ -3,6 +3,7 @@ package pkg
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"os"
 	"unsafe"
 )
 
@@ -31,4 +32,19 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 func GenerateRandomString(s int) (string, error) {
 	b, err := GenerateRandomBytes(s)
 	return base64.URLEncoding.EncodeToString(b), err
+}
+
+// DirectoryExists returns whether the given file or directory exists
+func PathExists(path string, isDir bool) (bool, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if (isDir && stat.IsDir()) || (!isDir && !stat.IsDir()) {
+		return true, nil
+	}
+	return false, err
 }
