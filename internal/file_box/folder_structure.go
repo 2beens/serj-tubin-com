@@ -26,11 +26,11 @@ type File struct {
 }
 
 type Folder struct {
-	Id         int       `json:"id"`
-	Name       string    `json:"name"`
-	Path       string    `json:"path"`
-	Subfolders []*Folder `json:"subfolders"`
-	Files      []*File   `json:"files"`
+	Id         int           `json:"id"`
+	Name       string        `json:"name"`
+	Path       string        `json:"path"`
+	Subfolders []*Folder     `json:"subfolders"`
+	Files      map[int]*File `json:"files"`
 }
 
 func NewRootFolder(path string) *Folder {
@@ -39,7 +39,7 @@ func NewRootFolder(path string) *Folder {
 		Name:       "root",
 		Path:       path,
 		Subfolders: []*Folder{},
-		Files:      []*File{},
+		Files:      make(map[int]*File),
 	}
 }
 

@@ -64,9 +64,14 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	folderId := r.Form.Get("folderId")
-	if folderId == "" {
+	folderIdParam := r.Form.Get("folderId")
+	if folderIdParam == "" {
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+		return
+	}
+	folderId, err := strconv.Atoi(folderIdParam)
+	if err != nil {
+		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
 		return
 	}
 
@@ -88,10 +93,7 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("File Size: %+v\n", fileHeader.Size)
 	fmt.Printf("MIME Header: %+v\n", fileHeader.Header)
 
-	// TODO
-	dirId := 1000
-
-	if err := handler.api.Save(fileHeader.Filename, dirId, file); err != nil {
+	if err := handler.api.Save(fileHeader.Filename, folderId, file); err != nil {
 		// TODO;
 		fmt.Print(err)
 	}

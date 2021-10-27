@@ -19,6 +19,7 @@ import (
 
 var (
 	ErrFolderNotFound = errors.New("folder not found")
+	ErrFileNotFound   = errors.New("file not found")
 )
 
 type DiskApi struct {
@@ -63,7 +64,8 @@ func (da *DiskApi) Save(filename string, folderId int, file io.Reader) error {
 
 	timestampNs := time.Now().Nanosecond()
 	newFileName := fmt.Sprintf("%d_%s", timestampNs, filename)
-	dst, err := os.Create(newFileName)
+	newFilePath := path.Join(folder.Path, newFileName)
+	dst, err := os.Create(newFilePath)
 	if err != nil {
 		return err
 	}
@@ -76,10 +78,10 @@ func (da *DiskApi) Save(filename string, folderId int, file io.Reader) error {
 	newFile := &File{
 		Id:   timestampNs,
 		Name: newFileName,
-		Path: path.Join(folder.Path, newFileName),
+		Path: newFilePath,
 	}
 
-	folder.Files = append(folder.Files, newFile)
+	folder.Files[timestampNs] = newFile
 
 	// save folder structure to disk
 	if err := saveRootFolder(da.rootPath, da.root); err != nil {
@@ -93,19 +95,50 @@ func (da *DiskApi) Get(id, folderId int) (*File, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
-	panic("not implemented")
+	log.Debugf("getting file: %d, folder id: %d", id, folderId)
+
+	folder := da.getFolder(da.root, folderId)
+	if folder == nil {
+		return nil, ErrFolderNotFound
+	}
+
+	file, ok := folder.Files[folderId]
+	if !ok {
+		return nil, ErrFileNotFound
+	}
+
+	return file, nil
 }
 
 func (da *DiskApi) GetFolder(id int) (*Folder, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
-	panic("not implemented")
+	log.Debugf("getting folder id: %d", id)
+
+	folder := da.getFolder(da.root, id)
+	if folder == nil {
+		return nil, ErrFolderNotFound
+	}
+
+	return folder, nil
 }
 
 func (da *DiskApi) ListFiles(folderId int) ([]*File, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
-	panic("not implemented")
+	log.Debugf("getting files list from folder id: %d", folderId)
+
+	folder := da.getFolder(da.root, folderId)
+	if folder == nil {
+		return nil, ErrFolderNotFound
+	}
+
+	var files []*File
+	for _, f := range folder.Files {
+		files = append(files, f)
+	}
+
+	return files, nil
 }
