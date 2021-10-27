@@ -58,7 +58,9 @@ func NewFolderInfo(folder *Folder) *FileInfo {
 		Children: []*FileInfo{},
 	}
 
-	// TODO:
+	for _, subFolder := range folder.Subfolders {
+		folderInfo.Children = append(folderInfo.Children, NewFolderInfo(subFolder))
+	}
 
 	return folderInfo
 }
