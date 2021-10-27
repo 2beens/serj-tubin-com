@@ -23,7 +23,6 @@ func NewFileService(rootPath string) (*FileService, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &FileService{
 		api: api,
 	}, nil

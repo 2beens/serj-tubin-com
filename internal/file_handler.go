@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/2beens/serjtubincom/internal/file_box"
 	log "github.com/sirupsen/logrus"
@@ -26,13 +27,33 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	folderId := r.Form.Get("folderId")
-	if folderId == "" {
-		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+	idParam := r.Form.Get("id")
+	if idParam == "" {
+		http.Error(w, "error, file ID empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "error, file ID invalid", http.StatusBadRequest)
 		return
 	}
 
+	folderIdParam := r.Form.Get("folderId")
+	if folderIdParam == "" {
+		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+		return
+	}
+	folderId, err := strconv.Atoi(folderIdParam)
+	if err != nil {
+		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	file, err := handler.api.Get(id, folderId)
+	log.Debugf("reading from file: %s", file.Path)
+
 	// TODO:
+
 }
 
 // handleSave - save file or create a directory
