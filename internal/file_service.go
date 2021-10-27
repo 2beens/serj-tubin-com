@@ -32,9 +32,9 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	handler := NewFileHandler(fs.api)
 
 	r := mux.NewRouter()
-	r.HandleFunc("", handler.handleGet).Methods("GET", "OPTIONS")
-	r.HandleFunc("/folders", handler.handleGetFilesList).Methods("GET", "OPTIONS")
-	r.HandleFunc("", handler.handleGet).Methods("POST", "OPTIONS")
+	r.HandleFunc("/folder/{folderId}/file/{id}", handler.handleGet).Methods("GET", "OPTIONS")
+	r.HandleFunc("/folder/{folderId}/files", handler.handleGetFilesList).Methods("GET", "OPTIONS")
+	r.HandleFunc("/folder/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 

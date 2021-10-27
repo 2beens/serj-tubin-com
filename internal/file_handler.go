@@ -1,11 +1,13 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/2beens/serjtubincom/internal/file_box"
+	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,13 +23,9 @@ func NewFileHandler(api file_box.Api) *FileHandler {
 
 // handleGet - get file content
 func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		log.Errorf("add new note failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
-	}
+	vars := mux.Vars(r)
 
-	idParam := r.Form.Get("id")
+	idParam := vars["id"]
 	if idParam == "" {
 		http.Error(w, "error, file ID empty", http.StatusBadRequest)
 		return
@@ -38,7 +36,7 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	folderIdParam := r.Form.Get("folderId")
+	folderIdParam := vars["folderId"]
 	if folderIdParam == "" {
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
 		return
@@ -58,13 +56,9 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 
 // handleSave - save file or create a directory
 func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		log.Errorf("add new note failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
-	}
+	vars := mux.Vars(r)
 
-	folderIdParam := r.Form.Get("folderId")
+	folderIdParam := vars["folderId"]
 	if folderIdParam == "" {
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
 		return
@@ -107,17 +101,44 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 
 // handleGetFilesList - return tree structure of a given directory/path
 func (handler *FileHandler) handleGetFilesList(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		log.Errorf("add new note failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
-	}
+	vars := mux.Vars(r)
 
-	folderId := r.Form.Get("folderId")
-	if folderId == "" {
+	folderIdParam := vars["folderId"]
+	if folderIdParam == "" {
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
 		return
 	}
+	folderId, err := strconv.Atoi(folderIdParam)
+	if err != nil {
+		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
+		return
+	}
 
-	// TODO:
+	filesListRaw, err := handler.api.ListFiles(folderId)
+	if err != nil {
+		http.Error(w, "internal error <sad face>", http.StatusInternalServerError)
+		return
+	}
+
+	if len(filesListRaw) == 0 {
+		WriteResponseBytes(w, "application/json", []byte("[]"))
+		return
+	}
+
+	var filesList []file_box.FileInfo
+	for _, f := range filesListRaw {
+		filesList = append(filesList, file_box.FileInfo{
+			Id:   f.Id,
+			Name: f.Name,
+		})
+	}
+
+	filesListJson, err := json.Marshal(filesList)
+	if err != nil {
+		log.Errorf("marshal files list error: %s", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	WriteResponseBytes(w, "application/json", []byte(filesListJson))
 }

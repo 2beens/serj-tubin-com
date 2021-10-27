@@ -25,6 +25,11 @@ type File struct {
 	// Size int    `json:"size"`
 }
 
+type FileInfo struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 type Folder struct {
 	Id         int           `json:"id"`
 	Name       string        `json:"name"`
