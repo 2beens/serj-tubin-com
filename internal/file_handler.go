@@ -93,12 +93,16 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("File Size: %+v\n", fileHeader.Size)
 	fmt.Printf("MIME Header: %+v\n", fileHeader.Header)
 
-	if err := handler.api.Save(fileHeader.Filename, folderId, file); err != nil {
-		// TODO;
-		fmt.Print(err)
+	newFileId, err := handler.api.Save(fileHeader.Filename, folderId, file)
+	if err != nil {
+		log.Printf("save new file: %s", err)
+		http.Error(w, "failed to save file", http.StatusInternalServerError)
+		return
 	}
 
-	fmt.Fprintf(w, "Successfully Uploaded File\n")
+	log.Tracef("new file added %d: [%s] added", newFileId, fileHeader.Filename)
+
+	WriteResponse(w, "", fmt.Sprintf("added:%d", newFileId))
 }
 
 // handleGetFilesList - return tree structure of a given directory/path

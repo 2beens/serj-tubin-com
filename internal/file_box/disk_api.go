@@ -51,7 +51,7 @@ func (da *DiskApi) getFolder(parent *Folder, id int) *Folder {
 	return nil
 }
 
-func (da *DiskApi) Save(filename string, folderId int, file io.Reader) error {
+func (da *DiskApi) Save(filename string, folderId int, file io.Reader) (int, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
@@ -59,7 +59,7 @@ func (da *DiskApi) Save(filename string, folderId int, file io.Reader) error {
 
 	folder := da.getFolder(da.root, folderId)
 	if folder == nil {
-		return ErrFolderNotFound
+		return -1, ErrFolderNotFound
 	}
 
 	timestampNs := time.Now().Nanosecond()
@@ -67,12 +67,12 @@ func (da *DiskApi) Save(filename string, folderId int, file io.Reader) error {
 	newFilePath := path.Join(folder.Path, newFileName)
 	dst, err := os.Create(newFilePath)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
-		return err
+		return -1, err
 	}
 
 	newFile := &File{
@@ -85,10 +85,10 @@ func (da *DiskApi) Save(filename string, folderId int, file io.Reader) error {
 
 	// save folder structure to disk
 	if err := saveRootFolder(da.rootPath, da.root); err != nil {
-		return err
+		return -1, err
 	}
 
-	return nil
+	return timestampNs, nil
 }
 
 func (da *DiskApi) Get(id, folderId int) (*File, error) {
