@@ -25,9 +25,12 @@ type File struct {
 	// Size int    `json:"size"`
 }
 
+// FileInfo used for clients, to hide the path
 type FileInfo struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	Id       int         `json:"id"`
+	Name     string      `json:"name"`
+	File     string      `json:"file,omitempty"`
+	Children []*FileInfo `json:"children,omitempty"`
 }
 
 type Folder struct {
@@ -46,6 +49,18 @@ func NewRootFolder(path string) *Folder {
 		Subfolders: []*Folder{},
 		Files:      make(map[int]*File),
 	}
+}
+
+func NewFolderInfo(folder *Folder) *FileInfo {
+	folderInfo := &FileInfo{
+		Id:       folder.Id,
+		Name:     folder.Name,
+		Children: []*FileInfo{},
+	}
+
+	// TODO:
+
+	return folderInfo
 }
 
 func rootPathExists(rootPath string) error {

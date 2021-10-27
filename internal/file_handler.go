@@ -54,6 +54,24 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {
+	root, err := handler.api.GetFolder(0)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusBadRequest)
+		return
+	}
+
+	rootInfo := file_box.NewFolderInfo(root)
+	rootInfoJson, err := json.Marshal(rootInfo)
+	if err != nil {
+		log.Errorf("marshal root folder error: %s", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	WriteResponseBytes(w, "application/json", []byte(rootInfoJson))
+}
+
 // handleSave - save file or create a directory
 func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
