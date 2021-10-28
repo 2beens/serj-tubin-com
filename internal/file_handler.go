@@ -1,9 +1,12 @@
 package internal
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/2beens/serjtubincom/internal/file_box"
@@ -47,11 +50,21 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := handler.api.Get(id, folderId)
-	log.Debugf("reading from file: %s", file.Path)
+	fileInfo, err := handler.api.Get(id, folderId)
+	log.Debugf("reading from file: %s", fileInfo.Path)
 
-	// TODO:
+	fileContent, err := os.ReadFile(fileInfo.Path)
+	if err != nil {
+		log.Errorf("read file [%s]: %s", fileInfo.Path, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 
+	if _, err := io.Copy(w, bytes.NewReader(fileContent)); err != nil {
+		log.Errorf("copy file content for [%s]: %s", fileInfo.Path, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {
