@@ -26,6 +26,12 @@ func NewFileHandler(api file_box.Api) *FileHandler {
 
 // handleGet - get file content
 func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "GET, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	vars := mux.Vars(r)
 
 	idParam := vars["id"]
@@ -68,6 +74,12 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "GET, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	root, err := handler.api.GetFolder(0)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusBadRequest)
@@ -87,6 +99,12 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 
 // handleSave - save file or create a directory
 func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "POST, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	vars := mux.Vars(r)
 
 	folderIdParam := vars["folderId"]
@@ -132,6 +150,12 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 
 // handleGetFilesList - return tree structure of a given directory/path
 func (handler *FileHandler) handleGetFilesList(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "GET, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	vars := mux.Vars(r)
 
 	folderIdParam := vars["folderId"]

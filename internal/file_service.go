@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/file_box"
+	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -36,6 +37,10 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	r.HandleFunc("/folder/{folderId}/file/{id}", handler.handleGet).Methods("GET", "OPTIONS")
 	r.HandleFunc("/folder/{folderId}/files", handler.handleGetFilesList).Methods("GET", "OPTIONS")
 	r.HandleFunc("/folder/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
+
+	r.Use(middleware.LogRequest())
+	r.Use(middleware.Cors())
+	r.Use(middleware.DrainAndCloseRequest())
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 
