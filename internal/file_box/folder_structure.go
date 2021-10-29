@@ -23,7 +23,7 @@ type File struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 	Type string `json:"type"`
-	Size int    `json:"size"`
+	Size int64  `json:"size"`
 }
 
 // FileInfo used for clients, to hide the path

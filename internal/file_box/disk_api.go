@@ -51,7 +51,13 @@ func (da *DiskApi) getFolder(parent *Folder, id int) *Folder {
 	return nil
 }
 
-func (da *DiskApi) Save(filename string, folderId int, file io.Reader) (int, error) {
+func (da *DiskApi) Save(
+	filename string,
+	folderId int,
+	size int64,
+	fileType string,
+	file io.Reader,
+) (int, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
@@ -81,6 +87,8 @@ func (da *DiskApi) Save(filename string, folderId int, file io.Reader) (int, err
 		Id:   timestampNs,
 		Name: newFileName,
 		Path: newFilePath,
+		Type: fileType,
+		Size: size,
 	}
 
 	folder.Files[timestampNs] = newFile

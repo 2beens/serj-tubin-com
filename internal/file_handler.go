@@ -139,7 +139,20 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	log.Printf("MIME Header: %+v\n", fileHeader.Header)
 	log.Printf("Content-Type: %+v\n", fileHeader.Header["Content-Type"])
 
-	newFileId, err := handler.api.Save(fileHeader.Filename, folderId, file)
+	fileType := "unknown"
+	if t, ok := fileHeader.Header["Content-Type"]; ok {
+		if len(t) > 0 {
+			fileType = t[0]
+		}
+	}
+
+	newFileId, err := handler.api.Save(
+		fileHeader.Filename,
+		folderId,
+		fileHeader.Size,
+		fileType,
+		file,
+	)
 	if err != nil {
 		log.Errorf("save new file: %s", err)
 		http.Error(w, "failed to save file", http.StatusInternalServerError)
