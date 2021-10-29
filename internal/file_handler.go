@@ -141,7 +141,7 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	rootInfo := file_box.NewFolderInfo(root)
+	rootInfo := file_box.NewFolderInfo(-1, root)
 	rootInfoJson, err := json.Marshal(rootInfo)
 	if err != nil {
 		log.Errorf("marshal root folder error: %s", err)
@@ -150,6 +150,49 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 	}
 
 	WriteResponseBytes(w, "application/json", []byte(rootInfoJson))
+}
+
+func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "POST, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	parentIdParam := vars["parentId"]
+	if parentIdParam == "" {
+		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+		return
+	}
+	parentId, err := strconv.Atoi(parentIdParam)
+	if err != nil {
+		http.Error(w, "error, parent folder ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		log.Errorf("create child folder failed, parse form error: %s", err)
+		http.Error(w, "parse form error", http.StatusInternalServerError)
+		return
+	}
+
+	name := r.Form.Get("name")
+	if name == "" {
+		http.Error(w, "error, folder name empty", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("creating child folder [%s] for folder [%d]", name, parentId)
+
+	if f, err := handler.api.NewFolder(parentId, name); err != nil {
+		log.Errorf("create child folder for %d: %s", parentId, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	} else {
+		log.Printf("child folder [%d][%s] for folder [%d] created", f.Id, f.Name, parentId)
+		WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("created:%d", f.Id)))
+	}
 }
 
 // handleSave - save file or create a directory

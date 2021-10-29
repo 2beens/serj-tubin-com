@@ -29,7 +29,9 @@ type File struct {
 // FileInfo used for clients, to hide the path
 type FileInfo struct {
 	Id       int         `json:"id"`
+	ParentId int         `json:"parent_id"`
 	Name     string      `json:"name"`
+	IsFile   bool        `json:"is_file"`
 	File     string      `json:"file,omitempty"`
 	Children []*FileInfo `json:"children,omitempty"`
 }
@@ -52,22 +54,26 @@ func NewRootFolder(path string) *Folder {
 	}
 }
 
-func NewFolderInfo(folder *Folder) *FileInfo {
+func NewFolderInfo(parentId int, folder *Folder) *FileInfo {
 	folderInfo := &FileInfo{
 		Id:       folder.Id,
+		ParentId: parentId,
 		Name:     folder.Name,
 		Children: []*FileInfo{},
+		IsFile:   false,
 	}
 
 	for _, subFolder := range folder.Subfolders {
-		folderInfo.Children = append(folderInfo.Children, NewFolderInfo(subFolder))
+		folderInfo.Children = append(folderInfo.Children, NewFolderInfo(folder.Id, subFolder))
 	}
 
 	for _, file := range folder.Files {
 		folderInfo.Children = append(folderInfo.Children, &FileInfo{
-			Id:   file.Id,
-			Name: file.Name,
-			File: file.Type,
+			Id:       file.Id,
+			ParentId: folder.Id,
+			Name:     file.Name,
+			File:     file.Type,
+			IsFile:   true,
 		})
 	}
 

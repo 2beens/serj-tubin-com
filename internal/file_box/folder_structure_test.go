@@ -10,13 +10,13 @@ import (
 
 func TestNewFolderInfo(t *testing.T) {
 	rootFolder := getTestRootFolder()
-	folderInfo := NewFolderInfo(rootFolder)
+	folderInfo := NewFolderInfo(rootFolder.Id, rootFolder)
 	assert.NotNil(t, folderInfo)
 
 	folderInfoJson, err := json.Marshal(folderInfo)
 	require.NoError(t, err)
 	assert.Equal(t,
-		`{"id":0,"name":"root","children":[{"id":1,"name":"f1","children":[{"id":11,"name":"f11","children":[{"id":100,"name":"file1"}]}]},{"id":2,"name":"f2"},{"id":100,"name":"file1"}]}`,
+		`{"id":0,"parent_id":0,"name":"root","is_file":false,"children":[{"id":1,"parent_id":0,"name":"f1","is_file":false,"children":[{"id":11,"parent_id":1,"name":"f11","is_file":false,"children":[{"id":100,"parent_id":11,"name":"file1","is_file":true}]}]},{"id":2,"parent_id":0,"name":"f2","is_file":false},{"id":100,"parent_id":0,"name":"file1","is_file":true}]}`,
 		string(folderInfoJson),
 	)
 }

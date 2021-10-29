@@ -10,5 +10,6 @@ type Api interface {
 	Delete(id, folderId int) error
 	GetRootFolder() (*Folder, error)
 	GetFolder(id int) (*Folder, error)
+	NewFolder(parentId int, name string) (*Folder, error)
 	ListFiles(folderId int) ([]*File, error)
 }

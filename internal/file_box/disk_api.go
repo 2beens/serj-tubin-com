@@ -43,7 +43,7 @@ func (da *DiskApi) getFolder(parent *Folder, id int) *Folder {
 	if id == parent.Id {
 		return parent
 	}
-	for _, f := range da.root.Subfolders {
+	for _, f := range parent.Subfolders {
 		if sf := da.getFolder(f, id); sf != nil {
 			return sf
 		}
@@ -147,7 +147,7 @@ func (da *DiskApi) Delete(id, folderId int) error {
 		return fmt.Errorf("file deleted, but failed to save structure info: %w", err)
 	}
 
-	log.Debugf("disk api: file [%s] deleted", file.Id)
+	log.Debugf("disk api: file [%d] deleted", file.Id)
 
 	return nil
 }
@@ -171,6 +171,48 @@ func (da *DiskApi) GetFolder(id int) (*Folder, error) {
 	}
 
 	return folder, nil
+}
+
+func (da *DiskApi) NewFolder(parentId int, name string) (*Folder, error) {
+	da.mutex.Lock()
+	defer da.mutex.Unlock()
+
+	log.Debugf("disk api: creating new child folder for: %d", parentId)
+
+	parentFolder := da.getFolder(da.root, parentId)
+	if parentFolder == nil {
+		return nil, ErrFolderNotFound
+	}
+
+	for _, subFolder := range parentFolder.Subfolders {
+		if subFolder.Name == name {
+			return nil, fmt.Errorf("child folder [%s] already exists", name)
+		}
+	}
+
+	newPath := path.Join(parentFolder.Path, name)
+	if err := os.Mkdir(newPath, 0755); err != nil {
+		return nil, fmt.Errorf("create child folder [%s]: %s", name, err)
+	} else {
+		log.Printf("new folder created: %s", name)
+	}
+
+	timestampNs := time.Now().Nanosecond()
+	newFolder := &Folder{
+		Id:         timestampNs,
+		Name:       name,
+		Path:       newPath,
+		Subfolders: []*Folder{},
+		Files:      make(map[int]*File),
+	}
+	parentFolder.Subfolders = append(parentFolder.Subfolders, newFolder)
+
+	// save folder structure to disk
+	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+		return nil, fmt.Errorf("child folder created, but failed to save structure info: %w", err)
+	}
+
+	return newFolder, nil
 }
 
 func (da *DiskApi) ListFiles(folderId int) ([]*File, error) {

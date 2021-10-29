@@ -38,6 +38,7 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	r.HandleFunc("/folder/{folderId}/file/{id}", handler.handleDelete).Methods("DELETE", "OPTIONS")
 	r.HandleFunc("/folder/{folderId}/files", handler.handleGetFilesList).Methods("GET", "OPTIONS")
 	r.HandleFunc("/folder/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
+	r.HandleFunc("/folder/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
 
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())
