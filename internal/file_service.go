@@ -35,6 +35,7 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	r := mux.NewRouter()
 	r.HandleFunc("/folder/root", handler.handleGetRoot).Methods("GET", "OPTIONS")
 	r.HandleFunc("/folder/{folderId}/file/{id}", handler.handleGet).Methods("GET", "OPTIONS")
+	r.HandleFunc("/folder/{folderId}/file/{id}", handler.handleDelete).Methods("DELETE", "OPTIONS")
 	r.HandleFunc("/folder/{folderId}/files", handler.handleGetFilesList).Methods("GET", "OPTIONS")
 	r.HandleFunc("/folder/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
 

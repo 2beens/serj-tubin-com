@@ -57,6 +57,11 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileInfo, err := handler.api.Get(id, folderId)
+	if err != nil {
+		log.Errorf("read file [%d]: %s", id, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	log.Debugf("reading from file: %s", fileInfo.Path)
 
 	fileContent, err := os.ReadFile(fileInfo.Path)
@@ -71,6 +76,56 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "DELETE, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	idParam := vars["id"]
+	if idParam == "" {
+		http.Error(w, "error, file ID empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "error, file ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	folderIdParam := vars["folderId"]
+	if folderIdParam == "" {
+		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+		return
+	}
+	folderId, err := strconv.Atoi(folderIdParam)
+	if err != nil {
+		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	log.Debugf("--> will try to delete file [%d] from folder [%d]", id, folderId)
+
+	fileInfo, err := handler.api.Get(id, folderId)
+	if err != nil {
+		log.Errorf("delete file [%d]: %s", id, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	log.Debugf("will delete file: %s", fileInfo.Path)
+
+	if err := handler.api.Delete(id, folderId); err != nil {
+		log.Errorf("delete file [%d]: %s", id, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", id)))
 }
 
 func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {

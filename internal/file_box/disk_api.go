@@ -61,14 +61,14 @@ func (da *DiskApi) Save(
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
-	log.Debugf("saving new file: %s, folder id: %d", filename, folderId)
+	log.Debugf("disk api: saving new file: %s, folder id: %d", filename, folderId)
 
 	folder := da.getFolder(da.root, folderId)
 	if folder == nil {
 		return -1, ErrFolderNotFound
 	}
 
-	log.Debugf("parent folder found: %s", folder.Path)
+	log.Debugf("disk api: parent folder found: %s", folder.Path)
 
 	timestampNs := time.Now().Nanosecond()
 	newFileName := fmt.Sprintf("%d_%s", timestampNs, filename)
@@ -105,19 +105,51 @@ func (da *DiskApi) Get(id, folderId int) (*File, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
-	log.Debugf("getting file: %d, folder id: %d", id, folderId)
+	log.Debugf("disk api: getting file: %d, folder id: %d", id, folderId)
 
 	folder := da.getFolder(da.root, folderId)
 	if folder == nil {
 		return nil, ErrFolderNotFound
 	}
 
-	file, ok := folder.Files[folderId]
+	file, ok := folder.Files[id]
 	if !ok {
 		return nil, ErrFileNotFound
 	}
 
 	return file, nil
+}
+
+func (da *DiskApi) Delete(id, folderId int) error {
+	da.mutex.Lock()
+	defer da.mutex.Unlock()
+
+	log.Debugf("disk api: deleting file: %d, folder id: %d", id, folderId)
+
+	folder := da.getFolder(da.root, folderId)
+	if folder == nil {
+		return ErrFolderNotFound
+	}
+
+	file, ok := folder.Files[id]
+	if !ok {
+		return ErrFileNotFound
+	}
+
+	if err := os.Remove(file.Path); err != nil {
+		return err
+	}
+
+	delete(folder.Files, file.Id)
+
+	// save folder structure to disk
+	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+		return fmt.Errorf("file deleted, but failed to save structure info: %w", err)
+	}
+
+	log.Debugf("disk api: file [%s] deleted", file.Id)
+
+	return nil
 }
 
 func (da *DiskApi) GetRootFolder() (*Folder, error) {
@@ -131,7 +163,7 @@ func (da *DiskApi) GetFolder(id int) (*Folder, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
-	log.Debugf("getting folder id: %d", id)
+	log.Debugf("disk api: getting folder id: %d", id)
 
 	folder := da.getFolder(da.root, id)
 	if folder == nil {
@@ -145,7 +177,7 @@ func (da *DiskApi) ListFiles(folderId int) ([]*File, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
-	log.Debugf("getting files list from folder id: %d", folderId)
+	log.Debugf("disk api: getting files list from folder id: %d", folderId)
 
 	folder := da.getFolder(da.root, folderId)
 	if folder == nil {
