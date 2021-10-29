@@ -16,7 +16,7 @@ func TestNewFolderInfo(t *testing.T) {
 	folderInfoJson, err := json.Marshal(folderInfo)
 	require.NoError(t, err)
 	assert.Equal(t,
-		`{"id":0,"name":"root","children":[{"id":1,"name":"f1","children":[{"id":11,"name":"f11"}]},{"id":2,"name":"f2"}]}`,
+		`{"id":0,"name":"root","children":[{"id":1,"name":"f1","children":[{"id":11,"name":"f11","children":[{"id":100,"name":"file1"}]}]},{"id":2,"name":"f2"},{"id":100,"name":"file1"}]}`,
 		string(folderInfoJson),
 	)
 }

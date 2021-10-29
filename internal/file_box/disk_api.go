@@ -112,6 +112,13 @@ func (da *DiskApi) Get(id, folderId int) (*File, error) {
 	return file, nil
 }
 
+func (da *DiskApi) GetRootFolder() (*Folder, error) {
+	if da.root == nil {
+		return nil, errors.New("root folder not created / nil")
+	}
+	return da.root, nil
+}
+
 func (da *DiskApi) GetFolder(id int) (*Folder, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()

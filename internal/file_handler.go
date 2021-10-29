@@ -80,7 +80,7 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	root, err := handler.api.GetFolder(0)
+	root, err := handler.api.GetRootFolder()
 	if err != nil {
 		http.Error(w, "internal error", http.StatusBadRequest)
 		return

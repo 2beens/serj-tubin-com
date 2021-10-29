@@ -22,7 +22,8 @@ type File struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 	Path string `json:"path"`
-	// Size int    `json:"size"`
+	Type string `json:"type"`
+	Size int    `json:"size"`
 }
 
 // FileInfo used for clients, to hide the path
@@ -60,6 +61,14 @@ func NewFolderInfo(folder *Folder) *FileInfo {
 
 	for _, subFolder := range folder.Subfolders {
 		folderInfo.Children = append(folderInfo.Children, NewFolderInfo(subFolder))
+	}
+
+	for _, file := range folder.Files {
+		folderInfo.Children = append(folderInfo.Children, &FileInfo{
+			Id:   file.Id,
+			Name: file.Name,
+			File: file.Type,
+		})
 	}
 
 	return folderInfo
