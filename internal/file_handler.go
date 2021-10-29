@@ -118,13 +118,15 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("new file upload incoming for folder [%d]", folderId)
+
 	// Maximum upload of 10 MB files
 	r.ParseMultipartForm(10 << 20)
 
 	// Get handler for filename, size and headers
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
-		log.Printf("get file: %s", err)
+		log.Errorf("get file: %s", err)
 		http.Error(w, "failed to get file", http.StatusInternalServerError)
 		return
 	}
@@ -132,13 +134,14 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	log.Printf("will try to save file: %s", fileHeader.Filename)
 
 	defer file.Close()
-	fmt.Printf("Uploaded File: %+v\n", fileHeader.Filename)
-	fmt.Printf("File Size: %+v\n", fileHeader.Size)
-	fmt.Printf("MIME Header: %+v\n", fileHeader.Header)
+	log.Printf("Uploaded File: %+v\n", fileHeader.Filename)
+	log.Printf("File Size: %+v\n", fileHeader.Size)
+	log.Printf("MIME Header: %+v\n", fileHeader.Header)
+	log.Printf("Content-Type: %+v\n", fileHeader.Header["Content-Type"])
 
 	newFileId, err := handler.api.Save(fileHeader.Filename, folderId, file)
 	if err != nil {
-		log.Printf("save new file: %s", err)
+		log.Errorf("save new file: %s", err)
 		http.Error(w, "failed to save file", http.StatusInternalServerError)
 		return
 	}

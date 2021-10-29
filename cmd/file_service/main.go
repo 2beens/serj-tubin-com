@@ -16,7 +16,7 @@ func main() {
 	// TODO: for config
 	host := "localhost"
 	port := 1987
-	rootPath := "/Users/serj/Projects/serj-tubin-com/test_root"
+	rootPath := "/Users/serj/Documents/projects/serj-tubin-com/test_root"
 
 	fileService, err := internal.NewFileService(rootPath)
 	if err != nil {

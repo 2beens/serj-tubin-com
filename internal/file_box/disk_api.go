@@ -62,6 +62,8 @@ func (da *DiskApi) Save(filename string, folderId int, file io.Reader) (int, err
 		return -1, ErrFolderNotFound
 	}
 
+	log.Debugf("parent folder found: %s", folder.Path)
+
 	timestampNs := time.Now().Nanosecond()
 	newFileName := fmt.Sprintf("%d_%s", timestampNs, filename)
 	newFilePath := path.Join(folder.Path, newFileName)
