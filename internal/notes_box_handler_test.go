@@ -7,8 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/notes_box"
+	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,12 +36,8 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	_, err = api.Add(n2)
 	require.NoError(t, err)
 
-	loginSession := &LoginSession{
-		Token:     "mylittlesecret",
-		CreatedAt: now,
-	}
-	authService := NewAuthService(time.Hour)
-	authService.sessions[loginSession.Token] = loginSession
+	db, _ := redismock.NewClientMock()
+	authService := auth.NewAuthService(time.Hour, db)
 
 	instr := instrumentation.NewTestInstrumentation()
 	handler := NewNotesBoxHandler(api, authService, instr)

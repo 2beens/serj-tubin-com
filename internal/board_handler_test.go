@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -237,8 +238,9 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	// correct secret - messages should get removed
 	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
-	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	require.NoError(t, err)
+	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
+	internals.redisMock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 	rr = httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
@@ -250,8 +252,9 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	// delete same message again - and fail to do so
 	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
-	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	require.NoError(t, err)
+	internals.redisMock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	rr = httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
@@ -263,8 +266,9 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	// delete another one
 	req, err = http.NewRequest("DELETE", "/messages/delete/3", nil)
-	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	require.NoError(t, err)
+	internals.redisMock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	rr = httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)

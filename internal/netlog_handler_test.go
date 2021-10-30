@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/netlog"
+	"github.com/go-redis/redismock/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -82,13 +84,11 @@ func TestNewNetlogHandler(t *testing.T) {
 }
 
 func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
+	db, mock := redismock.NewClientMock()
+	mock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+
 	browserReqSecret := "beer"
-	loginSession := &LoginSession{
-		Token:     "tokenAbc123",
-		CreatedAt: time.Now(),
-	}
-	authService := NewAuthService(time.Hour)
-	authService.sessions[loginSession.Token] = loginSession
+	authService := auth.NewAuthService(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	r := mux.NewRouter()
@@ -114,13 +114,11 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 }
 
 func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
+	db, mock := redismock.NewClientMock()
+	mock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+
 	browserReqSecret := "beer"
-	loginSession := &LoginSession{
-		Token:     "tokenAbc123",
-		CreatedAt: time.Now(),
-	}
-	authService := NewAuthService(time.Hour)
-	authService.sessions[loginSession.Token] = loginSession
+	authService := auth.NewAuthService(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	r := mux.NewRouter()
@@ -147,13 +145,11 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 }
 
 func TestNetlogHandler_handleGetAll(t *testing.T) {
+	db, mock := redismock.NewClientMock()
+	mock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+
 	browserReqSecret := "beer"
-	loginSession := &LoginSession{
-		Token:     "tokenAbc123",
-		CreatedAt: time.Now(),
-	}
-	authService := NewAuthService(time.Hour)
-	authService.sessions[loginSession.Token] = loginSession
+	authService := auth.NewAuthService(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -199,8 +195,10 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 }
 
 func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
+	db, _ := redismock.NewClientMock()
+
 	browserReqSecret := "rakija"
-	authService := NewAuthService(time.Hour)
+	authService := auth.NewAuthService(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -257,8 +255,10 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 }
 
 func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
+	db, _ := redismock.NewClientMock()
+
 	browserReqSecret := "beer"
-	authService := NewAuthService(time.Hour)
+	authService := auth.NewAuthService(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -321,12 +321,10 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 }
 
 func TestNetlogHandler_handleGetPage(t *testing.T) {
-	loginSession := &LoginSession{
-		Token:     "tokenAbc123",
-		CreatedAt: time.Now(),
-	}
-	authService := NewAuthService(time.Hour)
-	authService.sessions[loginSession.Token] = loginSession
+	db, mock := redismock.NewClientMock()
+	mock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+
+	authService := auth.NewAuthService(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()

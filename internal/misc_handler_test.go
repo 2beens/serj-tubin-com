@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,7 +12,7 @@ import (
 
 func TestNewMiscHandler(t *testing.T) {
 	mainRouter := mux.NewRouter()
-	handler := NewMiscHandler(mainRouter, nil, nil, "dummy", &AuthService{}, &Admin{})
+	handler := NewMiscHandler(mainRouter, nil, nil, "dummy", &auth.Service{}, &auth.Admin{})
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
 

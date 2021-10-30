@@ -151,7 +151,8 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 	loggedOut, err := handler.authService.Logout(authToken)
 	if err != nil {
 		log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
-		http.Error(w, "internal error", http.StatusUnauthorized)
+		http.Error(w, "no can do", http.StatusUnauthorized)
+		return
 	}
 	if !loggedOut {
 		http.Error(w, "no can do", http.StatusUnauthorized)

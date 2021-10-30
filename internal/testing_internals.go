@@ -9,6 +9,8 @@ import (
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
+	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redismock/v8"
 )
 
 const (
@@ -26,6 +28,10 @@ type testingInternals struct {
 	// blog
 	blogApi     *blog.TestApi
 	authService *auth.Service
+
+	// redis
+	redisClient *redis.Client
+	redisMock   redismock.ClientMock
 }
 
 func newTestingInternals() *testingInternals {
@@ -111,12 +117,13 @@ func newTestingInternals() *testingInternals {
 		}
 	}
 
+	redisClient, redisMock := redismock.NewClientMock()
+
+	authService := auth.NewAuthService(time.Hour, redisClient)
 	// loginSession := &LoginSession{
 	// 	Token:     "tokenAbc123",
 	// 	CreatedAt: now,
 	// }
-
-	authService := auth.NewAuthService(time.Hour, nil)
 	// authService.sessions["tokenAbc123"] = loginSession
 
 	return &testingInternals{
@@ -127,5 +134,7 @@ func newTestingInternals() *testingInternals {
 		lastInitialMessage:   initialBoardMessages[1],
 		blogApi:              blogApi,
 		authService:          authService,
+		redisClient:          redisClient,
+		redisMock:            redisMock,
 	}
 }

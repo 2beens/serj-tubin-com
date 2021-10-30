@@ -9,6 +9,7 @@ require (
 	github.com/coocood/freecache v1.1.0
 	github.com/dgraph-io/ristretto v0.0.3
 	github.com/go-redis/redis/v8 v8.11.4
+	github.com/go-redis/redismock/v8 v8.0.6
 	github.com/gorilla/mux v1.7.4
 	github.com/jackc/pgx/v4 v4.9.2
 	github.com/prometheus/client_golang v1.10.0
