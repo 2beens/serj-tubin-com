@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/gorilla/mux"
 	// TODO: maybe try logging from uber
 	// https://github.com/uber-go/zap
@@ -16,13 +17,13 @@ import (
 
 type BoardHandler struct {
 	board       *Board
-	authService *AuthService
+	authService *auth.Service
 }
 
 func NewBoardHandler(
 	router *mux.Router,
 	board *Board,
-	authService *AuthService,
+	authService *auth.Service,
 ) *BoardHandler {
 	handler := &BoardHandler{
 		board:       board,

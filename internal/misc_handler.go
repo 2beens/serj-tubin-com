@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -14,8 +15,8 @@ type MiscHandler struct {
 	geoIp         *GeoIp
 	quotesManager *QuotesManager
 	versionInfo   string
-	authService   *AuthService
-	admin         *Admin
+	authService   *auth.Service
+	admin         *auth.Admin
 }
 
 func NewMiscHandler(
@@ -23,8 +24,8 @@ func NewMiscHandler(
 	geoIp *GeoIp,
 	quotesManager *QuotesManager,
 	versionInfo string,
-	authService *AuthService,
-	admin *Admin,
+	authService *auth.Service,
+	admin *auth.Admin,
 ) *MiscHandler {
 	handler := &MiscHandler{
 		geoIp:         geoIp,

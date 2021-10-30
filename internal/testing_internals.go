@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
 )
@@ -24,7 +25,7 @@ type testingInternals struct {
 
 	// blog
 	blogApi     *blog.TestApi
-	authService *AuthService
+	authService *auth.Service
 }
 
 func newTestingInternals() *testingInternals {
@@ -115,7 +116,7 @@ func newTestingInternals() *testingInternals {
 	// 	CreatedAt: now,
 	// }
 
-	authService := NewAuthService(time.Hour, nil)
+	authService := auth.NewAuthService(time.Hour, nil)
 	// authService.sessions["tokenAbc123"] = loginSession
 
 	return &testingInternals{

@@ -56,17 +56,13 @@ func main() {
 		log.Errorf("browser secret not set. use SERJ_BROWSER_REQ_SECRET")
 	}
 
-	admin := &internal.Admin{
-		Username:     adminUsername,
-		PasswordHash: adminPasswordHash,
-	}
-
 	server, err := internal.NewServer(
 		cfg,
 		openWeatherApiKey,
 		browserRequestsSecret,
 		versionInfo,
-		admin,
+		adminUsername,
+		adminPasswordHash,
 	)
 	if err != nil {
 		log.Fatal(err)

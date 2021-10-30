@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/cache"
 	"github.com/2beens/serjtubincom/internal/config"
@@ -47,8 +48,8 @@ type Server struct {
 	openWeatherApiKey string
 	versionInfo       string
 
-	authService *AuthService
-	admin       *Admin
+	authService *auth.Service
+	admin       *auth.Admin
 
 	// metrics
 	instr *instrumentation.Instrumentation
@@ -59,7 +60,8 @@ func NewServer(
 	openWeatherApiKey string,
 	browserRequestsSecret string,
 	versionInfo string,
-	admin *Admin,
+	adminUsername string,
+	adminPasswordHash string,
 ) (*Server, error) {
 	boardAeroClient, err := aerospike.NewBoardAeroClient(config.AeroHost, config.AeroPort, config.AeroNamespace, config.AeroMessagesSet)
 	if err != nil {
@@ -115,7 +117,7 @@ func NewServer(
 
 	// TODO: make configurable ?
 	ttl := 24 * 7 * time.Hour // max login session duration - 7 days
-	authService := NewAuthService(ttl, rdb)
+	authService := auth.NewAuthService(ttl, rdb)
 	// if config.IsDev {
 	// 	devLoginSession := &LoginSession{
 	// 		Token:     "test-token",
@@ -129,6 +131,11 @@ func NewServer(
 			authService.ScanAndClean()
 		}
 	}()
+
+	admin := &auth.Admin{
+		Username:     adminUsername,
+		PasswordHash: adminPasswordHash,
+	}
 
 	s := &Server{
 		config:                config,

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
@@ -17,7 +18,7 @@ import (
 type NetlogHandler struct {
 	browserRequestsSecret string
 	netlogApi             netlog.Api
-	authService           *AuthService
+	authService           *auth.Service
 	instr                 *instrumentation.Instrumentation
 }
 
@@ -26,7 +27,7 @@ func NewNetlogHandler(
 	netlogApi netlog.Api,
 	instrumentation *instrumentation.Instrumentation,
 	browserRequestsSecret string,
-	authService *AuthService,
+	authService *auth.Service,
 ) *NetlogHandler {
 	handler := &NetlogHandler{
 		netlogApi:             netlogApi,

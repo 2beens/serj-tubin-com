@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/notes_box"
 	"github.com/gorilla/mux"
@@ -15,13 +16,13 @@ import (
 
 type NotesBoxHandler struct {
 	api         notes_box.Api
-	authService *AuthService
+	authService *auth.Service
 	instr       *instrumentation.Instrumentation
 }
 
 func NewNotesBoxHandler(
 	api notes_box.Api,
-	authService *AuthService,
+	authService *auth.Service,
 	instrumentation *instrumentation.Instrumentation,
 ) *NotesBoxHandler {
 	return &NotesBoxHandler{

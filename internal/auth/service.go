@@ -1,4 +1,4 @@
-package internal
+package auth
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 )
@@ -21,7 +22,7 @@ type LoginSession struct {
 	CreatedAt time.Time
 }
 
-type AuthService struct {
+type Service struct {
 	mutex       sync.Mutex // TODO: now with redis maybe not needed
 	redisClient *redis.Client
 	ttl         time.Duration
@@ -30,18 +31,18 @@ type AuthService struct {
 func NewAuthService(
 	ttl time.Duration,
 	redisClient *redis.Client,
-) *AuthService {
-	return &AuthService{
+) *Service {
+	return &Service{
 		ttl:         ttl,
 		redisClient: redisClient,
 	}
 }
 
-func (as *AuthService) Login(createdAt time.Time) (string, error) {
+func (as *Service) Login(createdAt time.Time) (string, error) {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
-	token, err := GenerateRandomString(35)
+	token, err := pkg.GenerateRandomString(35)
 	if err != nil {
 		return "", err
 	}
@@ -61,7 +62,7 @@ func (as *AuthService) Login(createdAt time.Time) (string, error) {
 	return token, nil
 }
 
-func (as *AuthService) Logout(token string) (bool, error) {
+func (as *Service) Logout(token string) (bool, error) {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
@@ -91,7 +92,7 @@ func (as *AuthService) Logout(token string) (bool, error) {
 	return createdAtUnix > 0, nil
 }
 
-func (as *AuthService) IsLogged(token string) (bool, error) {
+func (as *Service) IsLogged(token string) (bool, error) {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
@@ -117,7 +118,7 @@ func (as *AuthService) IsLogged(token string) (bool, error) {
 }
 
 // will run through all sessions, check the TTL, and clean them if old
-func (as *AuthService) ScanAndClean() {
+func (as *Service) ScanAndClean() {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 

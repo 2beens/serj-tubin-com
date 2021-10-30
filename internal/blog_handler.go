@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -15,13 +16,13 @@ import (
 
 type BlogHandler struct {
 	blogApi     blog.Api
-	authService *AuthService
+	authService *auth.Service
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
 	blogApi blog.Api,
-	authService *AuthService,
+	authService *auth.Service,
 ) *BlogHandler {
 	handler := &BlogHandler{
 		blogApi:     blogApi,
