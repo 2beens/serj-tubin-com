@@ -16,21 +16,33 @@ import (
 )
 
 type FileService struct {
-	api file_box.Api
+	api         file_box.Api
+	authService *AuthService
+	admin       *Admin
 }
 
-func NewFileService(rootPath string) (*FileService, error) {
+func NewFileService(rootPath string, admin *Admin) (*FileService, error) {
 	api, err := file_box.NewDiskApi(rootPath)
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: make configurable ?
+	ttl := 24 * 7 * time.Hour // max login session duration - 7 days
+	authService := NewAuthService(ttl)
+	go func() {
+		for range time.Tick(time.Hour * 8) {
+			authService.ScanAndClean()
+		}
+	}()
+
 	return &FileService{
 		api: api,
 	}, nil
 }
 
 func (fs *FileService) SetupAndServe(host string, port int) {
-	handler := NewFileHandler(fs.api)
+	handler := NewFileHandler(fs.api, fs.authService)
 
 	r := mux.NewRouter()
 	r.HandleFunc("/f/root", handler.handleGetRoot).Methods("GET", "OPTIONS")
@@ -41,6 +53,7 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	r.HandleFunc("/f/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
 	r.HandleFunc("/f/{folderId}/c", handler.handleGetFilesList).Methods("GET", "OPTIONS")
 
+	r.Use(handler.authMiddleware())
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())
 	r.Use(middleware.DrainAndCloseRequest())

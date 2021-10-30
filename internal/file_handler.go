@@ -15,12 +15,14 @@ import (
 )
 
 type FileHandler struct {
-	api file_box.Api
+	api         file_box.Api
+	authService *AuthService
 }
 
-func NewFileHandler(api file_box.Api) *FileHandler {
+func NewFileHandler(api file_box.Api, authService *AuthService) *FileHandler {
 	return &FileHandler{
-		api: api,
+		api:         api,
+		authService: authService,
 	}
 }
 
@@ -342,4 +344,31 @@ func (handler *FileHandler) handleGetFilesList(w http.ResponseWriter, r *http.Re
 	}
 
 	WriteResponseBytes(w, "application/json", []byte(filesListJson))
+}
+
+func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == "OPTIONS" {
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			authToken := r.Header.Get("X-SERJ-TOKEN")
+			if authToken == "" {
+				log.Tracef("[missing token] unauthorized => %s", r.URL.Path)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+
+			if !handler.authService.IsLogged(authToken) {
+				log.Tracef("[invalid token] unauthorized => %s", r.URL.Path)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
