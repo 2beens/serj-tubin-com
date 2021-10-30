@@ -1,9 +1,13 @@
 package internal
 
 import (
+	"context"
+	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,18 +21,19 @@ type LoginSession struct {
 	CreatedAt time.Time
 }
 
-// TODO: store login sessions in redis maybe?
-
 type AuthService struct {
-	mutex    sync.Mutex
-	ttl      time.Duration
-	sessions map[string]*LoginSession
+	mutex       sync.Mutex // TODO: now with redis maybe not needed
+	redisClient *redis.Client
+	ttl         time.Duration
 }
 
-func NewAuthService(ttl time.Duration) *AuthService {
+func NewAuthService(
+	ttl time.Duration,
+	redisClient *redis.Client,
+) *AuthService {
 	return &AuthService{
-		ttl:      ttl,
-		sessions: make(map[string]*LoginSession),
+		ttl:         ttl,
+		redisClient: redisClient,
 	}
 }
 
@@ -41,38 +46,74 @@ func (as *AuthService) Login(createdAt time.Time) (string, error) {
 		return "", err
 	}
 
-	// i don't care if token already exists
-	as.sessions[token] = &LoginSession{
-		Token:     token,
-		CreatedAt: createdAt,
+	sessionKey := fmt.Sprintf("session||%s", token)
+	cmdSet := as.redisClient.Set(context.Background(), sessionKey, createdAt.Unix(), 0)
+	if err := cmdSet.Err(); err != nil {
+		return "", err
+	}
+
+	// add token to list of sessions
+	cmdSAdd := as.redisClient.SAdd(context.Background(), "sessions", token)
+	if err := cmdSAdd.Err(); err != nil {
+		return "", err
 	}
 
 	return token, nil
 }
 
-func (as *AuthService) Logout(token string) bool {
+func (as *AuthService) Logout(token string) (bool, error) {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
-	if s, ok := as.sessions[token]; !ok {
-		return false
-	} else {
-		delete(as.sessions, s.Token)
+	sessionKey := fmt.Sprintf("session||%s", token)
+	cmd := as.redisClient.Get(context.Background(), sessionKey)
+	if err := cmd.Err(); err != nil {
+		return false, err
 	}
 
-	return true
+	createdAtUnixStr := cmd.Val()
+	createdAtUnix, err := strconv.ParseInt(createdAtUnixStr, 10, 64)
+	if err != nil {
+		return false, err
+	}
+
+	cmdSet := as.redisClient.Set(context.Background(), sessionKey, 0, 0)
+	if err := cmdSet.Err(); err != nil {
+		return false, err
+	}
+
+	// remove token from the list of sessions
+	cmdSRem := as.redisClient.SRem(context.Background(), "sessions", token)
+	if err := cmdSRem.Err(); err != nil {
+		return false, err
+	}
+
+	return createdAtUnix > 0, nil
 }
 
-func (as *AuthService) IsLogged(token string) bool {
+func (as *AuthService) IsLogged(token string) (bool, error) {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
-	for _, s := range as.sessions {
-		if s.Token == token {
-			return true
-		}
+	sessionKey := fmt.Sprintf("session||%s", token)
+	cmd := as.redisClient.Get(context.Background(), sessionKey)
+	if err := cmd.Err(); err != nil {
+		return false, err
 	}
-	return false
+
+	createdAtUnixStr := cmd.Val()
+	createdAtUnix, err := strconv.ParseInt(createdAtUnixStr, 10, 64)
+	if err != nil {
+		return false, err
+	}
+
+	createdAt := time.Unix(createdAtUnix, 0)
+	sessionDuration := time.Since(createdAt)
+	if sessionDuration > as.ttl {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // will run through all sessions, check the TTL, and clean them if old
@@ -80,22 +121,56 @@ func (as *AuthService) ScanAndClean() {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
-	if len(as.sessions) == 0 {
+	cmd := as.redisClient.SMembers(context.Background(), "sessions")
+	if err := cmd.Err(); err != nil {
+		log.Errorf("!!! auth service, scan and clean, get sessions: %s", err)
+		return
+	}
+
+	sessionTokens := cmd.Val()
+	if len(sessionTokens) == 0 {
 		log.Warnln("=> auth service, scan and clean abort, no sessions")
 		return
 	}
 
-	log.Warnf("=> auth service, scan and clean [%d sessions] start ...", len(as.sessions))
+	log.Warnf("=> auth service, scan and clean [%d sessions] start ...", len(sessionTokens))
 	var toRemove []string
-	for _, s := range as.sessions {
-		sessionDuration := time.Since(s.CreatedAt)
+	for _, token := range sessionTokens {
+		sessionKey := fmt.Sprintf("session||%s", token)
+		cmd := as.redisClient.Get(context.Background(), sessionKey)
+		if err := cmd.Err(); err != nil {
+			log.Errorf("=> auth service, scan and clean token %s: %s", token, err)
+			continue
+		}
+
+		createdAtUnixStr := cmd.Val()
+		createdAtUnix, err := strconv.ParseInt(createdAtUnixStr, 10, 64)
+		if err != nil {
+			log.Errorf("=> auth service, scan and clean token %s: %s", token, err)
+			continue
+		}
+
+		createdAt := time.Unix(createdAtUnix, 0)
+		sessionDuration := time.Since(createdAt)
 		if sessionDuration > as.ttl {
-			log.Warnf("=>\twill clean the session with token: %s", s.Token)
-			toRemove = append(toRemove, s.Token)
+			log.Warnf("=>\twill clean the session with token: %s", token)
+			toRemove = append(toRemove, token)
 		}
 	}
 
-	for _, t := range toRemove {
-		delete(as.sessions, t)
+	for _, token := range toRemove {
+		sessionKey := fmt.Sprintf("session||%s", token)
+		cmdSet := as.redisClient.Set(context.Background(), sessionKey, 0, 0)
+		if err := cmdSet.Err(); err != nil {
+			log.Errorf("=> auth service, clean token %s: %s", token, err)
+			continue
+		}
+
+		// remove token from the list of sessions
+		cmdSRem := as.redisClient.SRem(context.Background(), "sessions", token)
+		if err := cmdSRem.Err(); err != nil {
+			log.Errorf("=> auth service, clean token %s: %s", token, err)
+			continue
+		}
 	}
 }

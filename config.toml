@@ -20,6 +20,9 @@ prometheus_metrics_host = "localhost"
 postgres_port = "5432"
 postgres_host = "postgres"
 postgres_db_name = "serj_blogs"
+# REDIS
+redis_host = "redis"
+redis_port = "6379"
 
 [development]
 host = "localhost"
@@ -43,6 +46,9 @@ prometheus_metrics_host = "localhost"
 postgres_port = "5432"
 postgres_host = "localhost"
 postgres_db_name = "serj_blogs"
+# REDIS
+redis_host = "localhost"
+redis_port = "6379"
 
 [production]
 host = "localhost"
@@ -66,3 +72,6 @@ prometheus_metrics_host = "localhost"
 postgres_port = "5432"
 postgres_host = "localhost"
 postgres_db_name = "serj_blogs"
+# REDIS
+redis_host = "localhost"
+redis_port = "6379"

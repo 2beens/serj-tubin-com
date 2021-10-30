@@ -110,13 +110,13 @@ func newTestingInternals() *testingInternals {
 		}
 	}
 
-	loginSession := &LoginSession{
-		Token:     "tokenAbc123",
-		CreatedAt: now,
-	}
+	// loginSession := &LoginSession{
+	// 	Token:     "tokenAbc123",
+	// 	CreatedAt: now,
+	// }
 
-	authService := NewAuthService(time.Hour)
-	authService.sessions["tokenAbc123"] = loginSession
+	authService := NewAuthService(time.Hour, nil)
+	// authService.sessions["tokenAbc123"] = loginSession
 
 	return &testingInternals{
 		aeroTestClient:       aeroClient,

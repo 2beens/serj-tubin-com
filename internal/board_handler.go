@@ -287,7 +287,12 @@ func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handl
 				return
 			}
 
-			if !handler.authService.IsLogged(authToken) {
+			isLogged, err := handler.authService.IsLogged(authToken)
+			if err != nil {
+				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+				http.Error(w, "internal error", http.StatusUnauthorized)
+			}
+			if !isLogged {
 				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return

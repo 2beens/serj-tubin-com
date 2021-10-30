@@ -2,6 +2,7 @@ main
 *.log
 
 .idea/
+test_root/
 
 # Binaries for programs and plugins
 *.exe

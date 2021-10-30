@@ -10,13 +10,13 @@ import (
 )
 
 func TestAuthService_NewAuthService(t *testing.T) {
-	authService := NewAuthService(time.Hour)
+	authService := NewAuthService(time.Hour, nil)
 	require.NotNil(t, authService)
 	require.NotNil(t, authService.sessions)
 }
 
 func TestAuthService_IsLogged(t *testing.T) {
-	authService := NewAuthService(time.Hour)
+	authService := NewAuthService(time.Hour, nil)
 	require.NotNil(t, authService)
 
 	assert.False(t, authService.IsLogged("invalid token"))
@@ -30,7 +30,7 @@ func TestAuthService_IsLogged(t *testing.T) {
 }
 
 func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
-	authService := NewAuthService(time.Hour)
+	authService := NewAuthService(time.Hour, nil)
 	require.NotNil(t, authService)
 
 	loginsCount := 10
@@ -76,7 +76,7 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 }
 
 func TestAuthService_Login_Logout(t *testing.T) {
-	authService := NewAuthService(time.Hour)
+	authService := NewAuthService(time.Hour, nil)
 	require.NotNil(t, authService)
 
 	token1, err := authService.Login(time.Now())
@@ -99,7 +99,7 @@ func TestAuthService_ScanAndClean(t *testing.T) {
 	ttl := time.Hour
 	now := time.Now()
 
-	authService := NewAuthService(ttl)
+	authService := NewAuthService(ttl, nil)
 	require.NotNil(t, authService)
 
 	oldToken, err := authService.Login(now.Add(-2 * ttl))

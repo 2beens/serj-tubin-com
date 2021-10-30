@@ -186,7 +186,13 @@ func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Ha
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
-			if !handler.authService.IsLogged(authToken) {
+
+			isLogged, err := handler.authService.IsLogged(authToken)
+			if err != nil {
+				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+				http.Error(w, "internal error", http.StatusUnauthorized)
+			}
+			if !isLogged {
 				log.Tracef("[invalid token] [notes handler] unauthorized token %s => %s", authToken, r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return

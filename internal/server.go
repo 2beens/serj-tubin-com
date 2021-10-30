@@ -19,6 +19,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/2beens/serjtubincom/internal/notes_box"
+	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -32,6 +33,7 @@ const (
 
 type Server struct {
 	config          *config.Config
+	redisClient     *redis.Client
 	blogApi         blog.Api
 	geoIp           *GeoIp
 	quotesManager   *QuotesManager
@@ -97,16 +99,30 @@ func NewServer(
 	instr := instrumentation.NewInstrumentation("backend", "server1")
 	instr.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr: net.JoinHostPort(config.RedisHost, config.RedisPort),
+		// TODO:
+		// Password: redisPass,
+		DB: 0, // use default DB
+	})
+
+	rdbStatus := rdb.Ping(context.Background())
+	if err := rdbStatus.Err(); err != nil {
+		log.Errorf("--> failed to ping redis: %s", err)
+	} else {
+		log.Printf("redis ping: %s", rdbStatus.Val())
+	}
+
 	// TODO: make configurable ?
 	ttl := 24 * 7 * time.Hour // max login session duration - 7 days
-	authService := NewAuthService(ttl)
-	if config.IsDev {
-		devLoginSession := &LoginSession{
-			Token:     "test-token",
-			CreatedAt: time.Now(),
-		}
-		authService.sessions[devLoginSession.Token] = devLoginSession
-	}
+	authService := NewAuthService(ttl, rdb)
+	// if config.IsDev {
+	// 	devLoginSession := &LoginSession{
+	// 		Token:     "test-token",
+	// 		CreatedAt: time.Now(),
+	// 	}
+	// 	authService.sessions[devLoginSession.Token] = devLoginSession
+	// }
 
 	go func() {
 		for range time.Tick(time.Hour * 8) {
