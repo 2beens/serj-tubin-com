@@ -152,6 +152,48 @@ func (da *DiskApi) Delete(id, folderId int) error {
 	return nil
 }
 
+func (da *DiskApi) DeleteFolder(folderId int) error {
+	if folderId == 0 {
+		return errors.New("cannot delete root folder")
+	}
+
+	da.mutex.Lock()
+	defer da.mutex.Unlock()
+
+	log.Debugf("disk api: deleting folder: %d", folderId)
+
+	folder := da.getFolder(da.root, folderId)
+	if folder == nil {
+		return ErrFolderNotFound
+	}
+
+	parentFolder := da.getFolder(da.root, folder.ParentId)
+	if folder == nil {
+		return fmt.Errorf("cannot find parent folder %d", folder.ParentId)
+	}
+
+	if err := os.RemoveAll(folder.Path); err != nil {
+		return err
+	}
+
+	var subfolders []*Folder
+	for _, sf := range parentFolder.Subfolders {
+		if sf.Id != folder.Id {
+			subfolders = append(subfolders, sf)
+		}
+	}
+	parentFolder.Subfolders = subfolders
+
+	// save folder structure to disk
+	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+		return fmt.Errorf("folder %d deleted, but failed to save structure info: %w", folderId, err)
+	}
+
+	log.Debugf("disk api: folder [%d] [%s] deleted", folderId, folder.Name)
+
+	return nil
+}
+
 func (da *DiskApi) GetRootFolder() (*Folder, error) {
 	if da.root == nil {
 		return nil, errors.New("root folder not created / nil")
@@ -200,6 +242,7 @@ func (da *DiskApi) NewFolder(parentId int, name string) (*Folder, error) {
 	timestampNs := time.Now().Nanosecond()
 	newFolder := &Folder{
 		Id:         timestampNs,
+		ParentId:   parentId,
 		Name:       name,
 		Path:       newPath,
 		Subfolders: []*Folder{},

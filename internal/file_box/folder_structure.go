@@ -38,6 +38,7 @@ type FileInfo struct {
 
 type Folder struct {
 	Id         int           `json:"id"`
+	ParentId   int           `json:"parent_id"`
 	Name       string        `json:"name"`
 	Path       string        `json:"path"`
 	Subfolders []*Folder     `json:"subfolders"`

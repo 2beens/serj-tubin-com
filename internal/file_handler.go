@@ -78,6 +78,37 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (handler *FileHandler) handleDeleteFolder(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "DELETE, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	folderIdParam := vars["folderId"]
+	if folderIdParam == "" {
+		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+		return
+	}
+	folderId, err := strconv.Atoi(folderIdParam)
+	if err != nil {
+		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	log.Debugf("--> will try to delete folder [%d]", folderId)
+
+	if err := handler.api.DeleteFolder(folderId); err != nil {
+		log.Errorf("delete folder [%d]: %s", folderId, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", folderId)))
+}
+
 // TODO: find out how to set app permissions only for one specific folder and its children
 func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" {
