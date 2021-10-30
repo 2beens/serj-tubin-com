@@ -33,12 +33,12 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	handler := NewFileHandler(fs.api)
 
 	r := mux.NewRouter()
-	r.HandleFunc("/folder/root", handler.handleGetRoot).Methods("GET", "OPTIONS")
-	r.HandleFunc("/folder/{folderId}/file/{id}", handler.handleGet).Methods("GET", "OPTIONS")
-	r.HandleFunc("/folder/{folderId}/file/{id}", handler.handleDelete).Methods("DELETE", "OPTIONS")
-	r.HandleFunc("/folder/{folderId}/files", handler.handleGetFilesList).Methods("GET", "OPTIONS")
-	r.HandleFunc("/folder/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
-	r.HandleFunc("/folder/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
+	r.HandleFunc("/f/root", handler.handleGetRoot).Methods("GET", "OPTIONS")
+	r.HandleFunc("/f/{folderId}/c/{id}", handler.handleGet).Methods("GET", "OPTIONS")
+	r.HandleFunc("/f/{folderId}/c/{id}", handler.handleDelete).Methods("DELETE", "OPTIONS")
+	r.HandleFunc("/f/{folderId}/c", handler.handleGetFilesList).Methods("GET", "OPTIONS")
+	r.HandleFunc("/f/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
+	r.HandleFunc("/f/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
 
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())

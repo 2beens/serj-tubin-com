@@ -78,6 +78,7 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// TODO: find out how to set app permissions only for one specific folder and its children
 func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" {
 		w.Header().Add("Allow", "DELETE, OPTIONS")
