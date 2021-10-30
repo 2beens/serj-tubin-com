@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"time"
 
 	"github.com/2beens/serjtubincom/pkg"
 	log "github.com/sirupsen/logrus"
@@ -19,7 +20,7 @@ const (
 )
 
 type File struct {
-	Id   int    `json:"id"`
+	Id   int64  `json:"id"`
 	Name string `json:"name"`
 	Path string `json:"path"`
 	Type string `json:"type"`
@@ -28,8 +29,8 @@ type File struct {
 
 // FileInfo used for clients, to hide the path
 type FileInfo struct {
-	Id       int         `json:"id"`
-	ParentId int         `json:"parent_id"`
+	Id       int64       `json:"id"`
+	ParentId int64       `json:"parent_id"`
 	Name     string      `json:"name"`
 	IsFile   bool        `json:"is_file"`
 	File     string      `json:"file,omitempty"`
@@ -37,12 +38,18 @@ type FileInfo struct {
 }
 
 type Folder struct {
-	Id         int           `json:"id"`
-	ParentId   int           `json:"parent_id"`
-	Name       string        `json:"name"`
-	Path       string        `json:"path"`
-	Subfolders []*Folder     `json:"subfolders"`
-	Files      map[int]*File `json:"files"`
+	Id         int64           `json:"id"`
+	ParentId   int64           `json:"parent_id"`
+	Name       string          `json:"name"`
+	Path       string          `json:"path"`
+	Subfolders []*Folder       `json:"subfolders"`
+	Files      map[int64]*File `json:"files"`
+}
+
+// NewId returns a simple unix time in micro
+// fair enough for usecase of a simple folder/file ID
+func NewId() int64 {
+	return time.Now().UnixMicro()
 }
 
 func NewRootFolder(path string) *Folder {
@@ -51,11 +58,11 @@ func NewRootFolder(path string) *Folder {
 		Name:       "root",
 		Path:       path,
 		Subfolders: []*Folder{},
-		Files:      make(map[int]*File),
+		Files:      make(map[int64]*File),
 	}
 }
 
-func NewFolderInfo(parentId int, folder *Folder) *FileInfo {
+func NewFolderInfo(parentId int64, folder *Folder) *FileInfo {
 	folderInfo := &FileInfo{
 		Id:       folder.Id,
 		ParentId: parentId,

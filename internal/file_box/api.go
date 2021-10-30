@@ -5,12 +5,12 @@ import "io"
 var _ Api = (*DiskApi)(nil)
 
 type Api interface {
-	Get(id, folderId int) (*File, error)
-	Save(filename string, folderId int, size int64, fileType string, file io.Reader) (int, error)
-	Delete(id, folderId int) error
+	Get(id, folderId int64) (*File, error)
+	Save(filename string, folderId int64, size int64, fileType string, file io.Reader) (int64, error)
+	Delete(id, folderId int64) error
 	GetRootFolder() (*Folder, error)
-	GetFolder(id int) (*Folder, error)
-	DeleteFolder(folderId int) error
-	NewFolder(parentId int, name string) (*Folder, error)
-	ListFiles(folderId int) ([]*File, error)
+	GetFolder(id int64) (*Folder, error)
+	DeleteFolder(folderId int64) error
+	NewFolder(parentId int64, name string) (*Folder, error)
+	ListFiles(folderId int64) ([]*File, error)
 }

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"sync"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -39,7 +38,7 @@ func NewDiskApi(rootPath string) (*DiskApi, error) {
 	}, nil
 }
 
-func (da *DiskApi) getFolder(parent *Folder, id int) *Folder {
+func (da *DiskApi) getFolder(parent *Folder, id int64) *Folder {
 	if id == parent.Id {
 		return parent
 	}
@@ -53,11 +52,11 @@ func (da *DiskApi) getFolder(parent *Folder, id int) *Folder {
 
 func (da *DiskApi) Save(
 	filename string,
-	folderId int,
+	folderId int64,
 	size int64,
 	fileType string,
 	file io.Reader,
-) (int, error) {
+) (int64, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
@@ -70,8 +69,8 @@ func (da *DiskApi) Save(
 
 	log.Debugf("disk api: parent folder found: %s", folder.Path)
 
-	timestampNs := time.Now().Nanosecond()
-	newFileName := fmt.Sprintf("%d_%s", timestampNs, filename)
+	newId := NewId()
+	newFileName := fmt.Sprintf("%d_%s", newId, filename)
 	newFilePath := path.Join(folder.Path, newFileName)
 	dst, err := os.Create(newFilePath)
 	if err != nil {
@@ -84,24 +83,24 @@ func (da *DiskApi) Save(
 	}
 
 	newFile := &File{
-		Id:   timestampNs,
+		Id:   newId,
 		Name: newFileName,
 		Path: newFilePath,
 		Type: fileType,
 		Size: size,
 	}
 
-	folder.Files[timestampNs] = newFile
+	folder.Files[newId] = newFile
 
 	// save folder structure to disk
 	if err := saveRootFolder(da.rootPath, da.root); err != nil {
 		return -1, err
 	}
 
-	return timestampNs, nil
+	return newId, nil
 }
 
-func (da *DiskApi) Get(id, folderId int) (*File, error) {
+func (da *DiskApi) Get(id, folderId int64) (*File, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
@@ -120,7 +119,7 @@ func (da *DiskApi) Get(id, folderId int) (*File, error) {
 	return file, nil
 }
 
-func (da *DiskApi) Delete(id, folderId int) error {
+func (da *DiskApi) Delete(id, folderId int64) error {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
@@ -152,7 +151,7 @@ func (da *DiskApi) Delete(id, folderId int) error {
 	return nil
 }
 
-func (da *DiskApi) DeleteFolder(folderId int) error {
+func (da *DiskApi) DeleteFolder(folderId int64) error {
 	if folderId == 0 {
 		return errors.New("cannot delete root folder")
 	}
@@ -201,7 +200,7 @@ func (da *DiskApi) GetRootFolder() (*Folder, error) {
 	return da.root, nil
 }
 
-func (da *DiskApi) GetFolder(id int) (*Folder, error) {
+func (da *DiskApi) GetFolder(id int64) (*Folder, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
@@ -215,7 +214,7 @@ func (da *DiskApi) GetFolder(id int) (*Folder, error) {
 	return folder, nil
 }
 
-func (da *DiskApi) NewFolder(parentId int, name string) (*Folder, error) {
+func (da *DiskApi) NewFolder(parentId int64, name string) (*Folder, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
@@ -239,14 +238,13 @@ func (da *DiskApi) NewFolder(parentId int, name string) (*Folder, error) {
 		log.Printf("new folder created: %s", name)
 	}
 
-	timestampNs := time.Now().Nanosecond()
 	newFolder := &Folder{
-		Id:         timestampNs,
+		Id:         NewId(),
 		ParentId:   parentId,
 		Name:       name,
 		Path:       newPath,
 		Subfolders: []*Folder{},
-		Files:      make(map[int]*File),
+		Files:      make(map[int64]*File),
 	}
 	parentFolder.Subfolders = append(parentFolder.Subfolders, newFolder)
 
@@ -258,7 +256,7 @@ func (da *DiskApi) NewFolder(parentId int, name string) (*Folder, error) {
 	return newFolder, nil
 }
 
-func (da *DiskApi) ListFiles(folderId int) ([]*File, error) {
+func (da *DiskApi) ListFiles(folderId int64) ([]*File, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 

@@ -27,7 +27,7 @@ func getTestRootFolder() *Folder {
 		Name:       "root",
 		Path:       "/mnt/root",
 		Subfolders: []*Folder{},
-		Files:      make(map[int]*File),
+		Files:      make(map[int64]*File),
 	}
 
 	f1 := &Folder{
@@ -35,14 +35,14 @@ func getTestRootFolder() *Folder {
 		Name:       "f1",
 		Path:       "/mnt/f1",
 		Subfolders: []*Folder{},
-		Files:      make(map[int]*File),
+		Files:      make(map[int64]*File),
 	}
 	f2 := &Folder{
 		Id:         2,
 		Name:       "f2",
 		Path:       "/mnt/f2",
 		Subfolders: []*Folder{},
-		Files:      make(map[int]*File),
+		Files:      make(map[int64]*File),
 	}
 	rootFolder.Subfolders = append(rootFolder.Subfolders, f1)
 	rootFolder.Subfolders = append(rootFolder.Subfolders, f2)
@@ -59,7 +59,7 @@ func getTestRootFolder() *Folder {
 		Name:       "f11",
 		Path:       "/mnt/f1/f11",
 		Subfolders: []*Folder{},
-		Files:      make(map[int]*File),
+		Files:      make(map[int64]*File),
 	}
 	f1.Subfolders = append(f1.Subfolders, f11)
 

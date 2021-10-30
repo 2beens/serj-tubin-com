@@ -39,7 +39,7 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error, file ID empty", http.StatusBadRequest)
 		return
 	}
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
 		http.Error(w, "error, file ID invalid", http.StatusBadRequest)
 		return
@@ -50,7 +50,7 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
 		return
 	}
-	folderId, err := strconv.Atoi(folderIdParam)
+	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
 	if err != nil {
 		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
 		return
@@ -92,7 +92,7 @@ func (handler *FileHandler) handleDeleteFolder(w http.ResponseWriter, r *http.Re
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
 		return
 	}
-	folderId, err := strconv.Atoi(folderIdParam)
+	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
 	if err != nil {
 		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
 		return
@@ -124,7 +124,7 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "error, file ID empty", http.StatusBadRequest)
 		return
 	}
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
 		http.Error(w, "error, file ID invalid", http.StatusBadRequest)
 		return
@@ -135,7 +135,7 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
 		return
 	}
-	folderId, err := strconv.Atoi(folderIdParam)
+	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
 	if err != nil {
 		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
 		return
@@ -198,7 +198,7 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
 		return
 	}
-	parentId, err := strconv.Atoi(parentIdParam)
+	parentId, err := strconv.ParseInt(parentIdParam, 10, 64)
 	if err != nil {
 		http.Error(w, "error, parent folder ID invalid", http.StatusBadRequest)
 		return
@@ -242,7 +242,7 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
 		return
 	}
-	folderId, err := strconv.Atoi(folderIdParam)
+	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
 	if err != nil {
 		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
 		return
@@ -309,7 +309,7 @@ func (handler *FileHandler) handleGetFilesList(w http.ResponseWriter, r *http.Re
 		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
 		return
 	}
-	folderId, err := strconv.Atoi(folderIdParam)
+	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
 	if err != nil {
 		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
 		return
