@@ -24,12 +24,12 @@ func TestAuthService_IsLogged(t *testing.T) {
 	authService := NewAuthService(time.Hour, db)
 	require.NotNil(t, authService)
 
-	mock.ExpectGet("session||invalid token").SetErr(redis.Nil)
+	mock.ExpectGet(sessionKeyPrefix + "invalid token").SetErr(redis.Nil)
 	isLogged, err := authService.IsLogged("invalid token")
 	require.Equal(t, "redis: nil", err.Error())
 	assert.False(t, isLogged)
 
-	mock.ExpectGet("session||invalid token").SetErr(redis.Nil)
+	mock.ExpectGet(sessionKeyPrefix + "invalid token").SetErr(redis.Nil)
 	isLogged, err = authService.IsLogged("invalid token")
 	require.Equal(t, "redis: nil", err.Error())
 	assert.False(t, isLogged) // idempotent

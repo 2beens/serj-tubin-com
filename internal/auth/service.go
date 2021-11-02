@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -10,6 +9,11 @@ import (
 	"github.com/2beens/serjtubincom/pkg"
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
+)
+
+const (
+	sessionKeyPrefix = "serj-service-session||"
+	tokensSetKey     = "serj-service-sessions"
 )
 
 type Admin struct {
@@ -47,14 +51,14 @@ func (as *Service) Login(createdAt time.Time) (string, error) {
 		return "", err
 	}
 
-	sessionKey := fmt.Sprintf("session||%s", token)
+	sessionKey := sessionKeyPrefix + token
 	cmdSet := as.redisClient.Set(context.Background(), sessionKey, createdAt.Unix(), 0)
 	if err := cmdSet.Err(); err != nil {
 		return "", err
 	}
 
 	// add token to list of sessions
-	cmdSAdd := as.redisClient.SAdd(context.Background(), "sessions", token)
+	cmdSAdd := as.redisClient.SAdd(context.Background(), tokensSetKey, token)
 	if err := cmdSAdd.Err(); err != nil {
 		return "", err
 	}
@@ -66,7 +70,7 @@ func (as *Service) Logout(token string) (bool, error) {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
-	sessionKey := fmt.Sprintf("session||%s", token)
+	sessionKey := sessionKeyPrefix + token
 	cmd := as.redisClient.Get(context.Background(), sessionKey)
 	if err := cmd.Err(); err != nil {
 		return false, err
@@ -84,7 +88,7 @@ func (as *Service) Logout(token string) (bool, error) {
 	}
 
 	// remove token from the list of sessions
-	cmdSRem := as.redisClient.SRem(context.Background(), "sessions", token)
+	cmdSRem := as.redisClient.SRem(context.Background(), tokensSetKey, token)
 	if err := cmdSRem.Err(); err != nil {
 		return false, err
 	}
@@ -96,7 +100,7 @@ func (as *Service) IsLogged(token string) (bool, error) {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
-	sessionKey := fmt.Sprintf("session||%s", token)
+	sessionKey := sessionKeyPrefix + token
 	cmd := as.redisClient.Get(context.Background(), sessionKey)
 	if err := cmd.Err(); err != nil {
 		return false, err
@@ -122,7 +126,7 @@ func (as *Service) ScanAndClean() {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
-	cmd := as.redisClient.SMembers(context.Background(), "sessions")
+	cmd := as.redisClient.SMembers(context.Background(), tokensSetKey)
 	if err := cmd.Err(); err != nil {
 		log.Errorf("!!! auth service, scan and clean, get sessions: %s", err)
 		return
@@ -137,7 +141,7 @@ func (as *Service) ScanAndClean() {
 	log.Warnf("=> auth service, scan and clean [%d sessions] start ...", len(sessionTokens))
 	var toRemove []string
 	for _, token := range sessionTokens {
-		sessionKey := fmt.Sprintf("session||%s", token)
+		sessionKey := sessionKeyPrefix + token
 		cmd := as.redisClient.Get(context.Background(), sessionKey)
 		if err := cmd.Err(); err != nil {
 			log.Errorf("=> auth service, scan and clean token %s: %s", token, err)
@@ -160,7 +164,7 @@ func (as *Service) ScanAndClean() {
 	}
 
 	for _, token := range toRemove {
-		sessionKey := fmt.Sprintf("session||%s", token)
+		sessionKey := sessionKeyPrefix + token
 		cmdSet := as.redisClient.Set(context.Background(), sessionKey, 0, 0)
 		if err := cmdSet.Err(); err != nil {
 			log.Errorf("=> auth service, clean token %s: %s", token, err)
@@ -168,7 +172,7 @@ func (as *Service) ScanAndClean() {
 		}
 
 		// remove token from the list of sessions
-		cmdSRem := as.redisClient.SRem(context.Background(), "sessions", token)
+		cmdSRem := as.redisClient.SRem(context.Background(), tokensSetKey, token)
 		if err := cmdSRem.Err(); err != nil {
 			log.Errorf("=> auth service, clean token %s: %s", token, err)
 			continue
