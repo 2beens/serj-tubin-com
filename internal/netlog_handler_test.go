@@ -85,7 +85,7 @@ func TestNewNetlogHandler(t *testing.T) {
 
 func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	mock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	browserReqSecret := "beer"
 	authService := auth.NewAuthService(time.Hour, db)
@@ -115,7 +115,7 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 
 func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	mock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	browserReqSecret := "beer"
 	authService := auth.NewAuthService(time.Hour, db)
@@ -146,7 +146,7 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 
 func TestNetlogHandler_handleGetAll(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	mock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	browserReqSecret := "beer"
 	authService := auth.NewAuthService(time.Hour, db)
@@ -322,7 +322,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 
 func TestNetlogHandler_handleGetPage(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	mock.ExpectGet("session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	authService := auth.NewAuthService(time.Hour, db)
 	netlogApi := netlog.NewTestApi()

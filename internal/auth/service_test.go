@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -24,6 +25,12 @@ func TestAuthService_IsLogged(t *testing.T) {
 	authService := NewAuthService(time.Hour, db)
 	require.NotNil(t, authService)
 
+	testToken := "test_token"
+	randStringFunc := func(s int) (string, error) {
+		return testToken, nil
+	}
+	authService.randStringFunc = randStringFunc
+
 	mock.ExpectGet(sessionKeyPrefix + "invalid token").SetErr(redis.Nil)
 	isLogged, err := authService.IsLogged("invalid token")
 	require.Equal(t, "redis: nil", err.Error())
@@ -34,16 +41,22 @@ func TestAuthService_IsLogged(t *testing.T) {
 	require.Equal(t, "redis: nil", err.Error())
 	assert.False(t, isLogged) // idempotent
 
-	// token, err := authService.Login(time.Now())
-	// require.NoError(t, err)
-	// require.NotEmpty(t, token)
+	now := time.Now()
+	sessionKey := sessionKeyPrefix + testToken
+	mock.ExpectSet(sessionKey, now.Unix(), 0).SetVal(fmt.Sprintf("%d", now.Unix()))
+	mock.ExpectSAdd(tokensSetKey, testToken).SetVal(1)
+	token, err := authService.Login(now)
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
 
-	// isLogged, err = authService.IsLogged(token)
-	// require.NoError(t, err)
-	// assert.True(t, isLogged)
-	// isLogged, err = authService.IsLogged(token)
-	// require.NoError(t, err)
-	// assert.True(t, isLogged) // idempotent
+	mock.ExpectGet(sessionKey).SetVal(fmt.Sprintf("%d", now.Unix()))
+	isLogged, err = authService.IsLogged(token)
+	require.NoError(t, err)
+	assert.True(t, isLogged)
+	mock.ExpectGet(sessionKey).SetVal(fmt.Sprintf("%d", now.Unix()))
+	isLogged, err = authService.IsLogged(token)
+	require.NoError(t, err)
+	assert.True(t, isLogged) // idempotent
 }
 
 // func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
