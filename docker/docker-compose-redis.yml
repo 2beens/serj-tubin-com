@@ -1,0 +1,13 @@
+version: "3.7"
+  
+# redis for the auth service (maybe others later)
+
+services:
+  redis:
+    image: redis
+    command: ["redis-server", "--appendonly", "yes"]
+    container_name: st-redis
+    volumes: 
+     - ./docker-data-redis:/data
+    ports:
+     - 6379:6379

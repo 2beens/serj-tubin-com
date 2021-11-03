@@ -30,3 +30,4 @@ bin/
 
 docker/docker-data-aerospike
 docker/docker-data-postgres
+docker/docker-data-redis
