@@ -62,6 +62,7 @@ func NewServer(
 	versionInfo string,
 	adminUsername string,
 	adminPasswordHash string,
+	redisPassword string,
 ) (*Server, error) {
 	boardAeroClient, err := aerospike.NewBoardAeroClient(config.AeroHost, config.AeroPort, config.AeroNamespace, config.AeroMessagesSet)
 	if err != nil {
@@ -102,10 +103,9 @@ func NewServer(
 	instr.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr: net.JoinHostPort(config.RedisHost, config.RedisPort),
-		// TODO:
-		// Password: redisPass,
-		DB: 0, // use default DB
+		Addr:     net.JoinHostPort(config.RedisHost, config.RedisPort),
+		Password: redisPassword,
+		DB:       0, // use default DB
 	})
 
 	rdbStatus := rdb.Ping(context.Background())

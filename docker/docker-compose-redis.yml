@@ -1,13 +1,15 @@
 version: "3.7"
   
 # redis for the auth service (maybe others later)
+# remote connect:
+#   - redis-cli -h host -p port -a password
 
 services:
   redis:
     image: redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    command: redis-server --appendonly yes --requirepass ${SERJ_REDIS_PASS}
     container_name: st-redis
-    volumes: 
-     - ./docker-data-redis:/data
+    volumes:
+     - /home/serj/docker-redis-data:/data
     ports:
      - 6379:6379

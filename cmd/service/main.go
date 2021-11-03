@@ -56,6 +56,11 @@ func main() {
 		log.Errorf("browser secret not set. use SERJ_BROWSER_REQ_SECRET")
 	}
 
+	redisPassword := os.Getenv("SERJ_REDIS_PASS")
+	if redisPassword == "" {
+		log.Errorf("redis password not set. use SERJ_REDIS_PASS")
+	}
+
 	server, err := internal.NewServer(
 		cfg,
 		openWeatherApiKey,
@@ -63,6 +68,7 @@ func main() {
 		versionInfo,
 		adminUsername,
 		adminPasswordHash,
+		redisPassword,
 	)
 	if err != nil {
 		log.Fatal(err)
