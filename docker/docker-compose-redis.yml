@@ -5,7 +5,7 @@ version: "3.7"
 services:
   redis:
     image: redis
-    command: ["redis-server", "--appendonly", "yes"]
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     container_name: st-redis
     volumes: 
      - ./docker-data-redis:/data
