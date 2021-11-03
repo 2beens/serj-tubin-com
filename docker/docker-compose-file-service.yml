@@ -1,0 +1,28 @@
+version: "3.7"
+
+services:
+  # redis for the auth service
+  redis:
+    image: redis
+    container_name: st-redis
+    volumes: 
+     - ./redis-data:/data
+    ports:
+     - 6379:6379
+
+  # TODO: add this once the file service PR is merged
+  # serj-tubin-service:
+  #   image: golang:latest
+  #   volumes:
+  #     - ..:/go/src/serj-tubin-com-file-service
+  #   entrypoint: ["/bin/sh","-c"]
+  #   command:
+  #     - |
+  #       go build -o bin/file-service cmd/file-service/main.go
+  #       ./bin/file-service -env dockerdev
+  #   ports:
+  #     - "1987:1987"
+  #   working_dir: /go/src/serj-tubin-com-file-service
+  #   environment:
+  #     SERJ_TUBIN_COM_ADMIN_USERNAME: todo
+  #     SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: todo
