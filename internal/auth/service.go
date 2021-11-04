@@ -27,8 +27,8 @@ type LoginSession struct {
 }
 
 type Service struct {
-	mutex       sync.Mutex // TODO: now with redis maybe not needed
-	redisClient *redis.Client
+	mutex       sync.Mutex    // TODO: now with redis maybe not needed
+	redisClient *redis.Client // TODO: add one more cachine layer above redis
 	ttl         time.Duration
 	// ability to inject random string generator func for tokens (for unit testing)
 	randStringFunc func(s int) (string, error)

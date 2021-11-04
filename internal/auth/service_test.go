@@ -127,22 +127,22 @@ func TestAuthService_IsLogged(t *testing.T) {
 // 	assert.True(t, authService.Logout(token2))
 // }
 
-// func TestAuthService_ScanAndClean(t *testing.T) {
-// 	ttl := time.Hour
-// 	now := time.Now()
+func TestAuthService_ScanAndClean(t *testing.T) {
+	ttl := time.Hour
+	now := time.Now()
+	then := now.Add(-2 * time.Hour)
 
-// 	authService := NewAuthService(ttl, nil)
-// 	require.NotNil(t, authService)
+	db, mock := redismock.NewClientMock()
 
-// 	oldToken, err := authService.Login(now.Add(-2 * ttl))
-// 	require.NoError(t, err)
-// 	goodToken, err := authService.Login(now)
-// 	require.NoError(t, err)
+	authService := NewAuthService(ttl, db)
+	require.NotNil(t, authService)
 
-// 	assert.Len(t, authService.sessions, 2)
-// 	authService.ScanAndClean()
-// 	assert.Len(t, authService.sessions, 1)
-
-// 	assert.False(t, authService.IsLogged(oldToken))
-// 	assert.True(t, authService.IsLogged(goodToken))
-// }
+	// expected calls
+	t1, t2 := "token1", "token2"
+	mock.ExpectSMembers(tokensSetKey).SetVal([]string{t1, t2})
+	mock.ExpectGet(t1).SetVal(fmt.Sprintf("%d", then.Unix()))
+	mock.ExpectGet(t2).SetVal(fmt.Sprintf("%d", now.Unix()))
+	// expect deleted only t2, old life
+	mock.ExpectDel(t2)
+	mock.ExpectSRem(tokensSetKey, t2)
+}
