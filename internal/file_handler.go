@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -16,10 +17,10 @@ import (
 
 type FileHandler struct {
 	api         file_box.Api
-	authService *AuthService
+	authService *auth.Service
 }
 
-func NewFileHandler(api file_box.Api, authService *AuthService) *FileHandler {
+func NewFileHandler(api file_box.Api, authService *auth.Service) *FileHandler {
 	return &FileHandler{
 		api:         api,
 		authService: authService,
@@ -362,8 +363,14 @@ func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
-			if !handler.authService.IsLogged(authToken) {
-				log.Tracef("[invalid token] unauthorized => %s", r.URL.Path)
+			isLogged, err := handler.authService.IsLogged(authToken)
+			if err != nil {
+				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+			if !isLogged {
+				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}

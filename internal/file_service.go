@@ -3,41 +3,60 @@ package internal
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/2beens/serjtubincom/internal/middleware"
+	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
 type FileService struct {
 	api         file_box.Api
-	authService *AuthService
-	admin       *Admin
+	authService *auth.Service
 }
 
-func NewFileService(rootPath string, admin *Admin) (*FileService, error) {
+func NewFileService(
+	rootPath string,
+	redisHost string,
+	redisPort int,
+	redisPassword string,
+) (*FileService, error) {
 	api, err := file_box.NewDiskApi(rootPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: make configurable ?
-	ttl := 24 * 7 * time.Hour // max login session duration - 7 days
-	authService := NewAuthService(ttl)
-	go func() {
-		for range time.Tick(time.Hour * 8) {
-			authService.ScanAndClean()
-		}
-	}()
+	authServiceRedisEndpoint := net.JoinHostPort(redisHost, fmt.Sprintf("%d", redisPort))
+	log.Debugf("connecting to auth service redis: %s", authServiceRedisEndpoint)
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     authServiceRedisEndpoint,
+		Password: redisPassword,
+		DB:       0, // use default DB
+	})
+
+	rdbStatus := rdb.Ping(context.Background())
+	if err := rdbStatus.Err(); err != nil {
+		log.Errorf("--> failed to ping redis: %s", err)
+	} else {
+		log.Printf("redis ping: %s", rdbStatus.Val())
+	}
+
+	// TTL here is not needed, as the token cleanup is done in the main service
+	ttl := 0 * time.Hour
+	authService := auth.NewAuthService(ttl, rdb)
 
 	return &FileService{
-		api: api,
+		api:         api,
+		authService: authService,
 	}, nil
 }
 
