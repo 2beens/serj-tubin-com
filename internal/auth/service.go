@@ -168,7 +168,7 @@ func (as *Service) ScanAndClean() {
 
 	for _, token := range toRemove {
 		sessionKey := sessionKeyPrefix + token
-		cmdSet := as.redisClient.Set(context.Background(), sessionKey, 0, 0)
+		cmdSet := as.redisClient.Del(context.Background(), sessionKey)
 		if err := cmdSet.Err(); err != nil {
 			log.Errorf("=> auth service, clean token %s: %s", token, err)
 			continue
