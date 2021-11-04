@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/gorilla/mux"
+
 	// TODO: maybe try logging from uber
 	// https://github.com/uber-go/zap
 	log "github.com/sirupsen/logrus"
@@ -16,13 +18,13 @@ import (
 
 type BoardHandler struct {
 	board       *Board
-	authService *AuthService
+	authService *auth.Service
 }
 
 func NewBoardHandler(
 	router *mux.Router,
 	board *Board,
-	authService *AuthService,
+	authService *auth.Service,
 ) *BoardHandler {
 	handler := &BoardHandler{
 		board:       board,
@@ -287,7 +289,13 @@ func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handl
 				return
 			}
 
-			if !handler.authService.IsLogged(authToken) {
+			isLogged, err := handler.authService.IsLogged(authToken)
+			if err != nil {
+				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+			if !isLogged {
 				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return

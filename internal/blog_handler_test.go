@@ -2,11 +2,13 @@ package internal
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/gorilla/mux"
@@ -159,9 +161,7 @@ func TestBlogHandler_handleDelete(t *testing.T) {
 	rr = httptest.NewRecorder()
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	handler.authService.sessions["mylittlesecret"] = &LoginSession{
-		Token: "mylittlesecret",
-	}
+	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -232,10 +232,8 @@ func TestBlogHandler_handleNewBlog_wrongToken(t *testing.T) {
 	req.PostForm.Add("title", "Nonsense")
 	req.PostForm.Add("content", "This content makes no sense")
 
-	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	handler.authService.sessions["mywrongsecret"] = &LoginSession{
-		Token: "mywrongsecret",
-	}
+	req.Header.Set("X-SERJ-TOKEN", "mywrongsecret")
+	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	rr := httptest.NewRecorder()
 
@@ -262,10 +260,8 @@ func TestBlogHandler_handleUpdateBlog_wrongToken(t *testing.T) {
 	req.PostForm.Add("title", "Nonsense")
 	req.PostForm.Add("content", "This content makes no sense")
 
-	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	handler.authService.sessions["mywrongsecret"] = &LoginSession{
-		Token: "mywrongsecret",
-	}
+	req.Header.Set("X-SERJ-TOKEN", "wrongsecret")
+	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	rr := httptest.NewRecorder()
 
@@ -295,9 +291,7 @@ func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	handler.authService.sessions["mylittlesecret"] = &LoginSession{
-		Token: "mylittlesecret",
-	}
+	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	rr := httptest.NewRecorder()
 
@@ -332,9 +326,7 @@ func TestBlogHandler_handleUpdateBlog_correctToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	handler.authService.sessions["mylittlesecret"] = &LoginSession{
-		Token: "mylittlesecret",
-	}
+	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	rr := httptest.NewRecorder()
 

@@ -11,6 +11,7 @@ Environment="SERJ_TUBIN_COM_SECRET_WORD=secret goes here"
 Environment="SERJ_TUBIN_COM_ADMIN_USERNAME=username here"
 Environment="SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH=pass hash here"
 Environment="SERJ_BROWSER_REQ_SECRET=pass here"
+Environment="SERJ_REDIS_PASS=pass here"
 WorkingDirectory=/home/serj/serj-tubin-com
 ExecStart=/home/serj/serj-tubin-com/service -env=production -config=/home/serj/serj-tubin-com/config.toml
 

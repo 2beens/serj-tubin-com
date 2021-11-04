@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -15,13 +16,13 @@ import (
 
 type BlogHandler struct {
 	blogApi     blog.Api
-	authService *AuthService
+	authService *auth.Service
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
 	blogApi blog.Api,
-	authService *AuthService,
+	authService *auth.Service,
 ) *BlogHandler {
 	handler := &BlogHandler{
 		blogApi:     blogApi,
@@ -256,7 +257,13 @@ func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
-			if !handler.authService.IsLogged(authToken) {
+			isLogged, err := handler.authService.IsLogged(authToken)
+			if err != nil {
+				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+			if !isLogged {
 				log.Tracef("[invalid token] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return

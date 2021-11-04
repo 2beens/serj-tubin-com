@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/notes_box"
 	"github.com/gorilla/mux"
@@ -15,13 +16,13 @@ import (
 
 type NotesBoxHandler struct {
 	api         notes_box.Api
-	authService *AuthService
+	authService *auth.Service
 	instr       *instrumentation.Instrumentation
 }
 
 func NewNotesBoxHandler(
 	api notes_box.Api,
-	authService *AuthService,
+	authService *auth.Service,
 	instrumentation *instrumentation.Instrumentation,
 ) *NotesBoxHandler {
 	return &NotesBoxHandler{
@@ -186,7 +187,14 @@ func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Ha
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
-			if !handler.authService.IsLogged(authToken) {
+
+			isLogged, err := handler.authService.IsLogged(authToken)
+			if err != nil {
+				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+			if !isLogged {
 				log.Tracef("[invalid token] [notes handler] unauthorized token %s => %s", authToken, r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return

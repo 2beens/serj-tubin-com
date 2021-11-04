@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
@@ -17,7 +18,7 @@ import (
 type NetlogHandler struct {
 	browserRequestsSecret string
 	netlogApi             netlog.Api
-	authService           *AuthService
+	authService           *auth.Service
 	instr                 *instrumentation.Instrumentation
 }
 
@@ -26,7 +27,7 @@ func NewNetlogHandler(
 	netlogApi netlog.Api,
 	instrumentation *instrumentation.Instrumentation,
 	browserRequestsSecret string,
-	authService *AuthService,
+	authService *auth.Service,
 ) *NetlogHandler {
 	handler := &NetlogHandler{
 		netlogApi:             netlogApi,
@@ -245,7 +246,14 @@ func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Hand
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
-			if !handler.authService.IsLogged(authToken) {
+
+			isLogged, err := handler.authService.IsLogged(authToken)
+			if err != nil {
+				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+				http.Error(w, "no can do", http.StatusUnauthorized)
+				return
+			}
+			if !isLogged {
 				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return

@@ -20,6 +20,7 @@ services:
       SERJ_TUBIN_COM_ADMIN_USERNAME: todo
       SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: todo
       SERJ_BROWSER_REQ_SECRET: todo
+      SERJ_REDIS_PASS: todo
 
   # https://hub.docker.com/_/postgres
   postgres:
@@ -42,6 +43,15 @@ services:
       - ./docker-data-aerospike:/opt/aerospike/data
     environment:
       NAMESPACE: serj-tubin-com
+
+  redis:
+    image: redis
+    # command: redis-server --appendonly yes --requirepass ${SERJ_REDIS_PASS}
+    container_name: st-redis
+    volumes:
+     - ./docker-data-redis:/data
+    ports:
+     - 6379:6379
 
   adminer:
     image: adminer

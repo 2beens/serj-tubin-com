@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -14,8 +15,8 @@ type MiscHandler struct {
 	geoIp         *GeoIp
 	quotesManager *QuotesManager
 	versionInfo   string
-	authService   *AuthService
-	admin         *Admin
+	authService   *auth.Service
+	admin         *auth.Admin
 }
 
 func NewMiscHandler(
@@ -23,8 +24,8 @@ func NewMiscHandler(
 	geoIp *GeoIp,
 	quotesManager *QuotesManager,
 	versionInfo string,
-	authService *AuthService,
-	admin *Admin,
+	authService *auth.Service,
+	admin *auth.Admin,
 ) *MiscHandler {
 	handler := &MiscHandler{
 		geoIp:         geoIp,
@@ -147,7 +148,13 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if handler.authService.Logout(authToken) {
+	loggedOut, err := handler.authService.Logout(authToken)
+	if err != nil {
+		log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+		http.Error(w, "no can do", http.StatusUnauthorized)
+		return
+	}
+	if !loggedOut {
 		http.Error(w, "no can do", http.StatusUnauthorized)
 		return
 	}

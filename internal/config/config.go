@@ -30,6 +30,9 @@ type Config struct {
 	PostgresPort   string `toml:"postgres_port"`
 	PostgresHost   string `toml:"postgres_host"`
 	PostgresDBName string `toml:"postgres_db_name"`
+	// Redis
+	RedisHost string `toml:"redis_host"`
+	RedisPort string `toml:"redis_port"`
 }
 
 type Toml struct {
