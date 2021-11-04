@@ -34,7 +34,6 @@ const (
 
 type Server struct {
 	config          *config.Config
-	redisClient     *redis.Client
 	blogApi         blog.Api
 	geoIp           *GeoIp
 	quotesManager   *QuotesManager
@@ -118,13 +117,14 @@ func NewServer(
 	// TODO: make configurable ?
 	ttl := 24 * 7 * time.Hour // max login session duration - 7 days
 	authService := auth.NewAuthService(ttl, rdb)
-	// if config.IsDev {
-	// 	devLoginSession := &LoginSession{
-	// 		Token:     "test-token",
-	// 		CreatedAt: time.Now(),
-	// 	}
-	// 	authService.sessions[devLoginSession.Token] = devLoginSession
-	// }
+	if config.IsDev {
+		authService.RandStringFunc = func(s int) (string, error) {
+			return "test-token", nil
+		}
+		if t, err := authService.Login(time.Now()); err != nil || t != "test-token" {
+			panic("test auth service failed to initialize")
+		}
+	}
 
 	go func() {
 		for range time.Tick(time.Hour * 8) {

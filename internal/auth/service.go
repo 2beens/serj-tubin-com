@@ -30,8 +30,8 @@ type Service struct {
 	mutex       sync.Mutex    // TODO: now with redis maybe not needed
 	redisClient *redis.Client // TODO: add one more cachine layer above redis
 	ttl         time.Duration
-	// ability to inject random string generator func for tokens (for unit testing)
-	randStringFunc func(s int) (string, error)
+	// ability to inject random string generator func for tokens (for unit and dev testing)
+	RandStringFunc func(s int) (string, error)
 }
 
 func NewAuthService(
@@ -41,7 +41,7 @@ func NewAuthService(
 	return &Service{
 		ttl:            ttl,
 		redisClient:    redisClient,
-		randStringFunc: pkg.GenerateRandomString,
+		RandStringFunc: pkg.GenerateRandomString,
 	}
 }
 
@@ -49,7 +49,7 @@ func (as *Service) Login(createdAt time.Time) (string, error) {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
 
-	token, err := as.randStringFunc(35)
+	token, err := as.RandStringFunc(35)
 	if err != nil {
 		return "", err
 	}

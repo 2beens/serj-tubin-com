@@ -29,7 +29,7 @@ func TestAuthService_IsLogged(t *testing.T) {
 	randStringFunc := func(s int) (string, error) {
 		return testToken, nil
 	}
-	authService.randStringFunc = randStringFunc
+	authService.RandStringFunc = randStringFunc
 
 	mock.ExpectGet(sessionKeyPrefix + "invalid token").SetErr(redis.Nil)
 	isLogged, err := authService.IsLogged("invalid token")

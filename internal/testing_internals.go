@@ -118,13 +118,7 @@ func newTestingInternals() *testingInternals {
 	}
 
 	redisClient, redisMock := redismock.NewClientMock()
-
 	authService := auth.NewAuthService(time.Hour, redisClient)
-	// loginSession := &LoginSession{
-	// 	Token:     "tokenAbc123",
-	// 	CreatedAt: now,
-	// }
-	// authService.sessions["tokenAbc123"] = loginSession
 
 	return &testingInternals{
 		aeroTestClient:       aeroClient,
