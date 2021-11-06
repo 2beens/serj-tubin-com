@@ -15,20 +15,20 @@ import (
 )
 
 type NotesBoxHandler struct {
-	api         notes_box.Api
-	authService *auth.Service
-	instr       *instrumentation.Instrumentation
+	api          notes_box.Api
+	loginChecker *auth.LoginChecker
+	instr        *instrumentation.Instrumentation
 }
 
 func NewNotesBoxHandler(
 	api notes_box.Api,
-	authService *auth.Service,
+	loginChecker *auth.LoginChecker,
 	instrumentation *instrumentation.Instrumentation,
 ) *NotesBoxHandler {
 	return &NotesBoxHandler{
-		api:         api,
-		authService: authService,
-		instr:       instrumentation,
+		api:          api,
+		loginChecker: loginChecker,
+		instr:        instrumentation,
 	}
 }
 
@@ -188,7 +188,7 @@ func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Ha
 				return
 			}
 
-			isLogged, err := handler.authService.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

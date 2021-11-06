@@ -88,7 +88,7 @@ func TestBlogHandler_handleAll(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/blog/all", nil)
@@ -118,7 +118,7 @@ func TestBlogHandler_handleGetPage(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/blog/page/2/size/2", nil)
@@ -138,7 +138,7 @@ func TestBlogHandler_handleDelete(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("DELETE", "/blog/delete/3", nil)
@@ -174,7 +174,7 @@ func TestBlogHandler_handleNewBlog_notLoggedIn(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
@@ -196,7 +196,7 @@ func TestBlogHandler_handleUpdateBlog_notLoggedIn(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
@@ -222,7 +222,7 @@ func TestBlogHandler_handleNewBlog_wrongToken(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
@@ -249,7 +249,7 @@ func TestBlogHandler_handleUpdateBlog_wrongToken(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
@@ -280,7 +280,7 @@ func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
@@ -314,7 +314,7 @@ func TestBlogHandler_handleUpdateBlog_correctToken(t *testing.T) {
 	internals := newTestingInternals()
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.authService)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)

@@ -18,7 +18,7 @@ import (
 type NetlogHandler struct {
 	browserRequestsSecret string
 	netlogApi             netlog.Api
-	authService           *auth.Service
+	loginChecker          *auth.LoginChecker
 	instr                 *instrumentation.Instrumentation
 }
 
@@ -27,13 +27,13 @@ func NewNetlogHandler(
 	netlogApi netlog.Api,
 	instrumentation *instrumentation.Instrumentation,
 	browserRequestsSecret string,
-	authService *auth.Service,
+	loginChecker *auth.LoginChecker,
 ) *NetlogHandler {
 	handler := &NetlogHandler{
 		netlogApi:             netlogApi,
 		instr:                 instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
-		authService:           authService,
+		loginChecker:          loginChecker,
 	}
 
 	router.HandleFunc("/new", handler.handleNewVisit).Methods("POST", "OPTIONS").Name("new-visit")
@@ -247,7 +247,7 @@ func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Hand
 				return
 			}
 
-			isLogged, err := handler.authService.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

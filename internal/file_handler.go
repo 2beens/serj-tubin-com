@@ -16,14 +16,14 @@ import (
 )
 
 type FileHandler struct {
-	api         file_box.Api
-	authService *auth.Service
+	api          file_box.Api
+	loginChecker *auth.LoginChecker
 }
 
-func NewFileHandler(api file_box.Api, authService *auth.Service) *FileHandler {
+func NewFileHandler(api file_box.Api, loginChecker *auth.LoginChecker) *FileHandler {
 	return &FileHandler{
-		api:         api,
-		authService: authService,
+		api:          api,
+		loginChecker: loginChecker,
 	}
 }
 
@@ -363,7 +363,7 @@ func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
-			isLogged, err := handler.authService.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

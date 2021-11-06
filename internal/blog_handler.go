@@ -15,18 +15,18 @@ import (
 )
 
 type BlogHandler struct {
-	blogApi     blog.Api
-	authService *auth.Service
+	blogApi      blog.Api
+	loginChecker *auth.LoginChecker
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
 	blogApi blog.Api,
-	authService *auth.Service,
+	loginChecker *auth.LoginChecker,
 ) *BlogHandler {
 	handler := &BlogHandler{
-		blogApi:     blogApi,
-		authService: authService,
+		blogApi:      blogApi,
+		loginChecker: loginChecker,
 	}
 
 	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
@@ -257,7 +257,7 @@ func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
-			isLogged, err := handler.authService.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

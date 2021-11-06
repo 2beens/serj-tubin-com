@@ -17,18 +17,18 @@ import (
 )
 
 type BoardHandler struct {
-	board       *Board
-	authService *auth.Service
+	board        *Board
+	loginChecker *auth.LoginChecker
 }
 
 func NewBoardHandler(
 	router *mux.Router,
 	board *Board,
-	authService *auth.Service,
+	loginChecker *auth.LoginChecker,
 ) *BoardHandler {
 	handler := &BoardHandler{
-		board:       board,
-		authService: authService,
+		board:        board,
+		loginChecker: loginChecker,
 	}
 
 	router.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
@@ -289,7 +289,7 @@ func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handl
 				return
 			}
 
-			isLogged, err := handler.authService.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

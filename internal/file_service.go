@@ -19,8 +19,8 @@ import (
 )
 
 type FileService struct {
-	api         file_box.Api
-	authService *auth.Service
+	api          file_box.Api
+	loginChecker *auth.LoginChecker
 }
 
 func NewFileService(
@@ -50,18 +50,14 @@ func NewFileService(
 		log.Printf("redis ping: %s", rdbStatus.Val())
 	}
 
-	// TTL here is not needed, as the token cleanup is done in the main service
-	ttl := 0 * time.Hour
-	authService := auth.NewAuthService(ttl, rdb)
-
 	return &FileService{
-		api:         api,
-		authService: authService,
+		api:          api,
+		loginChecker: auth.NewLoginChecker(auth.DefaultTTL, rdb),
 	}, nil
 }
 
 func (fs *FileService) SetupAndServe(host string, port int) {
-	handler := NewFileHandler(fs.api, fs.authService)
+	handler := NewFileHandler(fs.api, fs.loginChecker)
 
 	r := mux.NewRouter()
 	r.HandleFunc("/f/root", handler.handleGetRoot).Methods("GET", "OPTIONS")

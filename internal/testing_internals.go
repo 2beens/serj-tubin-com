@@ -25,9 +25,9 @@ type testingInternals struct {
 	initialBoardMessages map[int]*BoardMessage
 	lastInitialMessage   *BoardMessage
 
-	// blog
-	blogApi     *blog.TestApi
-	authService *auth.Service
+	blogApi      *blog.TestApi
+	authService  *auth.Service
+	loginChecker *auth.LoginChecker
 
 	// redis
 	redisClient *redis.Client
@@ -119,6 +119,7 @@ func newTestingInternals() *testingInternals {
 
 	redisClient, redisMock := redismock.NewClientMock()
 	authService := auth.NewAuthService(time.Hour, redisClient)
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	return &testingInternals{
 		aeroTestClient:       aeroClient,
@@ -128,6 +129,7 @@ func newTestingInternals() *testingInternals {
 		lastInitialMessage:   initialBoardMessages[1],
 		blogApi:              blogApi,
 		authService:          authService,
+		loginChecker:         loginChecker,
 		redisClient:          redisClient,
 		redisMock:            redisMock,
 	}

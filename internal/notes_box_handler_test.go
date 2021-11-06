@@ -37,10 +37,10 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	require.NoError(t, err)
 
 	db, _ := redismock.NewClientMock()
-	authService := auth.NewAuthService(time.Hour, db)
+	loginChecker := auth.NewLoginChecker(time.Hour, db)
 
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNotesBoxHandler(api, authService, instr)
+	handler := NewNotesBoxHandler(api, loginChecker, instr)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "", nil)

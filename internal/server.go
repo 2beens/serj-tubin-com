@@ -47,8 +47,10 @@ type Server struct {
 	openWeatherApiKey string
 	versionInfo       string
 
-	authService *auth.Service
-	admin       *auth.Admin
+	redisClient  *redis.Client
+	loginChecker *auth.LoginChecker
+	authService  *auth.Service
+	admin        *auth.Admin
 
 	// metrics
 	instr *instrumentation.Instrumentation
@@ -114,9 +116,7 @@ func NewServer(
 		log.Printf("redis ping: %s", rdbStatus.Val())
 	}
 
-	// TODO: make configurable ?
-	ttl := 24 * 7 * time.Hour // max login session duration - 7 days
-	authService := auth.NewAuthService(ttl, rdb)
+	authService := auth.NewAuthService(auth.DefaultTTL, rdb)
 	if config.IsDev {
 		authService.RandStringFunc = func(s int) (string, error) {
 			return "test-token", nil
@@ -125,6 +125,8 @@ func NewServer(
 			panic("test auth service failed to initialize")
 		}
 	}
+
+	loginChecker := auth.NewLoginChecker(auth.DefaultTTL, rdb)
 
 	go func() {
 		for range time.Tick(time.Hour * 8) {
@@ -148,8 +150,11 @@ func NewServer(
 		netlogVisitsApi:       netlogVisitsApi,
 		notesBoxApi:           notesBoxApi,
 		versionInfo:           versionInfo,
-		authService:           authService,
-		admin:                 admin,
+
+		redisClient:  rdb,
+		authService:  authService,
+		loginChecker: loginChecker,
+		admin:        admin,
 
 		//metrics
 		instr: instr,
@@ -173,11 +178,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	notesRouter := r.PathPrefix("/notes").Subrouter()
 
 	// TODO: refactor this - return handlers, but define routes here, similar to notes handler
-	if NewBlogHandler(blogRouter, s.blogApi, s.authService) == nil {
+	if NewBlogHandler(blogRouter, s.blogApi, s.loginChecker) == nil {
 		return nil, errors.New("blog handler is nil")
 	}
 
-	if NewBoardHandler(boardRouter, s.board, s.authService) == nil {
+	if NewBoardHandler(boardRouter, s.board, s.loginChecker) == nil {
 		return nil, errors.New("board handler is nil")
 	}
 
@@ -191,11 +196,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("misc handler is nil")
 	}
 
-	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.authService) == nil {
+	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginChecker) == nil {
 		panic("netlog visits handler is nil")
 	}
 
-	notesHandler := NewNotesBoxHandler(s.notesBoxApi, s.authService, s.instr)
+	notesHandler := NewNotesBoxHandler(s.notesBoxApi, s.loginChecker, s.instr)
 	notesRouter.HandleFunc("", notesHandler.handleList).Methods("GET", "OPTIONS").Name("list-notes")
 	notesRouter.HandleFunc("", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
 	notesRouter.HandleFunc("", notesHandler.handleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
@@ -278,6 +283,12 @@ func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.Cancel
 	log.Debug("graceful shutdown initiated ...")
 
 	cancel()
+
+	if s.redisClient != nil {
+		if err := s.redisClient.Close(); err != nil {
+			log.Errorf("failed to close redis client conn: %s", err)
+		}
+	}
 
 	s.board.Close()
 

@@ -88,12 +88,12 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	browserReqSecret := "beer"
-	authService := auth.NewAuthService(time.Hour, db)
+	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	r := mux.NewRouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(r, netlogApi, instr, browserReqSecret, authService)
+	handler := NewNetlogHandler(r, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 
@@ -118,13 +118,13 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	browserReqSecret := "beer"
-	authService := auth.NewAuthService(time.Hour, db)
+	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, authService)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -149,7 +149,7 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	browserReqSecret := "beer"
-	authService := auth.NewAuthService(time.Hour, db)
+	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -173,7 +173,7 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, authService)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -198,7 +198,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 	db, _ := redismock.NewClientMock()
 
 	browserReqSecret := "rakija"
-	authService := auth.NewAuthService(time.Hour, db)
+	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -224,7 +224,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, authService)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -258,7 +258,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 	db, _ := redismock.NewClientMock()
 
 	browserReqSecret := "beer"
-	authService := auth.NewAuthService(time.Hour, db)
+	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -284,7 +284,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, authService)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -324,7 +324,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
-	authService := auth.NewAuthService(time.Hour, db)
+	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := netlog.NewTestApi()
 
 	now := time.Now()
@@ -381,7 +381,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, "browserReqSecret", authService)
+	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, "browserReqSecret", loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
