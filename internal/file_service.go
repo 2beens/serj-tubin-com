@@ -68,9 +68,9 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	r.HandleFunc("/f/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
 	r.HandleFunc("/f/{folderId}/c", handler.handleGetFilesList).Methods("GET", "OPTIONS")
 
-	r.Use(handler.authMiddleware())
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())
+	r.Use(handler.authMiddleware())
 	r.Use(middleware.DrainAndCloseRequest())
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)

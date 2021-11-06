@@ -213,10 +213,10 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	}).Methods("GET", "POST", "PUT", "OPTIONS").Name("unknown")
 
 	r.Use(middleware.PanicRecovery(s.instr))
+	r.Use(middleware.RequestMetrics(s.instr))
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())
 	r.Use(middleware.DrainAndCloseRequest())
-	r.Use(middleware.RequestMetrics(s.instr))
 
 	return r, nil
 }
