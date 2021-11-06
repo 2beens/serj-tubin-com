@@ -67,6 +67,20 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debugf("reading from file: %s", fileInfo.Path)
 
+	if fileInfo.IsPrivate {
+		isLogged, err := handler.isLogged(r)
+		if err != nil {
+			log.Tracef("[file handler] [private file] %s => %s", r.URL.Path, err)
+			http.Error(w, "no can do", http.StatusUnauthorized)
+			return
+		}
+		if !isLogged {
+			log.Tracef("[invalid token] [private file] unauthorized => %s", r.URL.Path)
+			http.Error(w, "no can do", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	fileContent, err := os.ReadFile(fileInfo.Path)
 	if err != nil {
 		log.Errorf("read file [%s]: %s", fileInfo.Path, err)
@@ -395,6 +409,20 @@ func (handler *FileHandler) handleGetFilesList(w http.ResponseWriter, r *http.Re
 	WriteResponseBytes(w, "application/json", []byte(filesListJson))
 }
 
+func (handler *FileHandler) isLogged(r *http.Request) (bool, error) {
+	authToken := r.Header.Get("X-SERJ-TOKEN")
+	if authToken == "" {
+		return false, fmt.Errorf("[missing token] unauthorized => %s", r.URL.Path)
+	}
+
+	isLogged, err := handler.loginChecker.IsLogged(authToken)
+	if err != nil {
+		return false, fmt.Errorf("[failed login check] => %s: %s", r.URL.Path, err)
+	}
+
+	return isLogged, nil
+}
+
 func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -404,21 +432,14 @@ func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
-			authToken := r.Header.Get("X-SERJ-TOKEN")
-			if authToken == "" {
-				log.Tracef("[missing token] unauthorized => %s", r.URL.Path)
-				http.Error(w, "no can do", http.StatusUnauthorized)
-				return
-			}
-
-			isLogged, err := handler.loginChecker.IsLogged(authToken)
+			isLogged, err := handler.isLogged(r)
 			if err != nil {
-				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+				log.Tracef("[file handler] %s => %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
 			if !isLogged {
-				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[invalid token] [file handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
