@@ -29,7 +29,7 @@ func NewFileHandler(api file_box.Api, loginChecker *auth.LoginChecker) *FileHand
 
 // handleGet - get file content
 func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -82,7 +82,7 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *FileHandler) handleDeleteFolder(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "DELETE, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -114,7 +114,7 @@ func (handler *FileHandler) handleDeleteFolder(w http.ResponseWriter, r *http.Re
 
 // TODO: find out how to set app permissions only for one specific folder and its children
 func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "DELETE, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -164,7 +164,7 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 }
 
 func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -188,7 +188,7 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 }
 
 func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -232,7 +232,7 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 
 // handleSave - save file or create a directory
 func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -299,7 +299,7 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 
 // handleGetFilesList - return tree structure of a given directory/path
 func (handler *FileHandler) handleGetFilesList(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -350,7 +350,7 @@ func (handler *FileHandler) handleGetFilesList(w http.ResponseWriter, r *http.Re
 func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "OPTIONS" {
+			if r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
 				return

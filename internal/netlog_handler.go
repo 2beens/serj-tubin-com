@@ -48,7 +48,7 @@ func NewNetlogHandler(
 }
 
 func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -123,7 +123,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 }
 
 func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -172,7 +172,7 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 }
 
 func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -218,7 +218,7 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "OPTIONS" {
+			if r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
 				return

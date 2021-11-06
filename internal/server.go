@@ -117,14 +117,14 @@ func NewServer(
 	}
 
 	authService := auth.NewAuthService(auth.DefaultTTL, rdb)
-	if config.IsDev {
-		authService.RandStringFunc = func(s int) (string, error) {
-			return "test-token", nil
-		}
-		if t, err := authService.Login(time.Now()); err != nil || t != "test-token" {
-			panic("test auth service failed to initialize")
-		}
-	}
+	// if config.IsDev {
+	// 	authService.RandStringFunc = func(s int) (string, error) {
+	// 		return "test-token", nil
+	// 	}
+	// 	if t, err := authService.Login(time.Now()); err != nil || t != "test-token" {
+	// 		panic("test auth service failed to initialize")
+	// 	}
+	// }
 
 	loginChecker := auth.NewLoginChecker(auth.DefaultTTL, rdb)
 

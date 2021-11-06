@@ -235,7 +235,7 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "OPTIONS" {
+			if r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
 				return

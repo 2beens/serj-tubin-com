@@ -33,7 +33,7 @@ func NewNotesBoxHandler(
 }
 
 func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -72,7 +72,7 @@ func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *NotesBoxHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "PUT, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -172,7 +172,7 @@ func (h *NotesBoxHandler) handleList(w http.ResponseWriter, r *http.Request) {
 func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "OPTIONS" {
+			if r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
 				return

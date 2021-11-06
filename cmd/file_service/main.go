@@ -28,6 +28,11 @@ func main() {
 		log.Fatalln("auth service redis password not set. use SERJ_REDIS_PASS")
 	}
 
+	if redisPassword == "<skip>" {
+		log.Warnln("skipping redis password")
+		redisPassword = ""
+	}
+
 	logging.Setup("", true, "debug")
 
 	fileService, err := internal.NewFileService(*rootPath, *redisHost, *redisPort, redisPassword)
