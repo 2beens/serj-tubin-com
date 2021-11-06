@@ -50,6 +50,33 @@ func (da *DiskApi) getFolder(parent *Folder, id int64) *Folder {
 	return nil
 }
 
+func (da *DiskApi) UpdateFileInfo(
+	id int64,
+	folderId int64,
+	newName string,
+	isPrivate bool,
+) error {
+	file, err := da.Get(id, folderId)
+	if err != nil {
+		return err
+	}
+
+	da.mutex.Lock()
+	defer da.mutex.Unlock()
+
+	file.Name = newName
+	file.IsPrivate = isPrivate
+
+	// save folder structure to disk
+	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+		return fmt.Errorf("file updated, but failed to save structure info: %w", err)
+	}
+
+	log.Debugf("disk api: file [%d] updated", file.Id)
+
+	return nil
+}
+
 func (da *DiskApi) Save(
 	filename string,
 	folderId int64,

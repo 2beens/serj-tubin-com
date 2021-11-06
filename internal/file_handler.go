@@ -81,6 +81,54 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (handler *FileHandler) handleUpdateFileInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.Header().Add("Allow", "POST, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	idParam := vars["id"]
+	if idParam == "" {
+		http.Error(w, "error, file ID empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		http.Error(w, "error, file ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	folderIdParam := vars["folderId"]
+	if folderIdParam == "" {
+		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+		return
+	}
+	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
+	if err != nil {
+		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	newName := r.Form.Get("name")
+	isPrivateStr := r.Form.Get("is_private")
+	if isPrivateStr == "" {
+		http.Error(w, "error, 'is private' empty", http.StatusBadRequest)
+		return
+	}
+	isPrivate := isPrivateStr == "true"
+
+	if err := handler.api.UpdateFileInfo(id, folderId, newName, isPrivate); err != nil {
+		log.Errorf("update file info [%d]: %s", id, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("updated:%d", id)))
+}
+
 func (handler *FileHandler) handleDeleteFolder(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "DELETE, OPTIONS")

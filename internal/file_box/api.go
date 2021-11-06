@@ -6,6 +6,7 @@ var _ Api = (*DiskApi)(nil)
 
 type Api interface {
 	Get(id, folderId int64) (*File, error)
+	UpdateFileInfo(id int64, folderId int64, newName string, isPrivate bool) error
 	Save(filename string, folderId int64, size int64, fileType string, file io.Reader) (int64, error)
 	Delete(id, folderId int64) error
 	GetRootFolder() (*Folder, error)

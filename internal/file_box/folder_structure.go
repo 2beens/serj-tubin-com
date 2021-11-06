@@ -20,21 +20,23 @@ const (
 )
 
 type File struct {
-	Id   int64  `json:"id"`
-	Name string `json:"name"`
-	Path string `json:"path"`
-	Type string `json:"type"`
-	Size int64  `json:"size"`
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
+	IsPrivate bool   `json:"is_private"`
+	Path      string `json:"path"`
+	Type      string `json:"type"`
+	Size      int64  `json:"size"`
 }
 
 // FileInfo used for clients, to hide the path
 type FileInfo struct {
-	Id       int64       `json:"id"`
-	ParentId int64       `json:"parent_id"`
-	Name     string      `json:"name"`
-	IsFile   bool        `json:"is_file"`
-	File     string      `json:"file,omitempty"`
-	Children []*FileInfo `json:"children,omitempty"`
+	Id        int64       `json:"id"`
+	ParentId  int64       `json:"parent_id"`
+	Name      string      `json:"name"`
+	IsPrivate bool        `json:"is_private"`
+	IsFile    bool        `json:"is_file"`
+	File      string      `json:"file,omitempty"`
+	Children  []*FileInfo `json:"children,omitempty"`
 }
 
 type Folder struct {
@@ -77,11 +79,12 @@ func NewFolderInfo(parentId int64, folder *Folder) *FileInfo {
 
 	for _, file := range folder.Files {
 		folderInfo.Children = append(folderInfo.Children, &FileInfo{
-			Id:       file.Id,
-			ParentId: folder.Id,
-			Name:     file.Name,
-			File:     file.Type,
-			IsFile:   true,
+			Id:        file.Id,
+			ParentId:  folder.Id,
+			IsPrivate: file.IsPrivate,
+			Name:      file.Name,
+			File:      file.Type,
+			IsFile:    true,
 		})
 	}
 
