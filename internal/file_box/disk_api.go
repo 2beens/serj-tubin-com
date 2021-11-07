@@ -111,7 +111,7 @@ func (da *DiskApi) Save(
 
 	newFile := &File{
 		Id:        newId,
-		Name:      newFileName,
+		Name:      filename,
 		IsPrivate: true,
 		Path:      newFilePath,
 		Type:      fileType,
