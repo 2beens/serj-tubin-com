@@ -126,6 +126,12 @@ func (handler *FileHandler) handleUpdateFileInfo(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if err := r.ParseForm(); err != nil {
+		log.Errorf("update file info failed, parse form error: %s", err)
+		http.Error(w, "parse form error", http.StatusInternalServerError)
+		return
+	}
+
 	newName := r.Form.Get("name")
 	isPrivateStr := r.Form.Get("is_private")
 	if isPrivateStr == "" {
