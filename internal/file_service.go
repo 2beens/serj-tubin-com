@@ -60,18 +60,23 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	handler := NewFileHandler(fs.api, fs.loginChecker)
 
 	r := mux.NewRouter()
-	r.HandleFunc("/f/root", handler.handleGetRoot).Methods("GET", "OPTIONS")
-	r.HandleFunc("/f/{folderId}/c/{id}", handler.handleGet).Methods("GET", "OPTIONS")
-	r.HandleFunc("/f/{folderId}/c/{id}", handler.handleUpdateFileInfo).Methods("POST", "OPTIONS")
-	r.HandleFunc("/f/{folderId}/c/{id}", handler.handleDelete).Methods("DELETE", "OPTIONS")
-	r.HandleFunc("/f/{folderId}", handler.handleDeleteFolder).Methods("DELETE", "OPTIONS")
-	r.HandleFunc("/f/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
-	r.HandleFunc("/f/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
-	r.HandleFunc("/f/{folderId}/c", handler.handleGetFilesList).Methods("GET", "OPTIONS")
+
+	fileServiceRouter := r.PathPrefix("/f").Subrouter()
+	fileServiceRouter.HandleFunc("/root", handler.handleGetRoot).Methods("GET", "OPTIONS")
+	fileServiceRouter.HandleFunc("/{folderId}/c/{id}", handler.handleUpdateFileInfo).Methods("POST", "OPTIONS")
+	fileServiceRouter.HandleFunc("/{folderId}/c/{id}", handler.handleDelete).Methods("DELETE", "OPTIONS")
+	fileServiceRouter.HandleFunc("/{folderId}", handler.handleDeleteFolder).Methods("DELETE", "OPTIONS")
+	fileServiceRouter.HandleFunc("/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
+	fileServiceRouter.HandleFunc("/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
+	fileServiceRouter.HandleFunc("/{folderId}/c", handler.handleGetFilesList).Methods("GET", "OPTIONS")
 
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())
-	r.Use(handler.authMiddleware())
+	fileServiceRouter.Use(handler.authMiddleware())
+
+	// get a file content
+	r.HandleFunc("/link/{folderId}/c/{id}", handler.handleGet).Methods("GET", "OPTIONS")
+
 	r.Use(middleware.DrainAndCloseRequest())
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
