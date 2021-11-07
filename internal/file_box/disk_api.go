@@ -110,11 +110,12 @@ func (da *DiskApi) Save(
 	}
 
 	newFile := &File{
-		Id:   newId,
-		Name: newFileName,
-		Path: newFilePath,
-		Type: fileType,
-		Size: size,
+		Id:        newId,
+		Name:      newFileName,
+		IsPrivate: true,
+		Path:      newFilePath,
+		Type:      fileType,
+		Size:      size,
 	}
 
 	folder.Files[newId] = newFile
