@@ -322,7 +322,11 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	log.Printf("new file upload incoming for folder [%d]", folderId)
 
 	// Maximum upload of 10 MB files
-	r.ParseMultipartForm(10 << 20)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		log.Errorf("get file, parse multipart form: %s", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 
 	// Get handler for filename, size and headers
 	file, fileHeader, err := r.FormFile("file")
@@ -334,7 +338,11 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("will try to save file: %s", fileHeader.Filename)
 
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Errorf("failed to close file properly [%]: %s", fileHeader.Filename, err)
+		}
+	}()
 	log.Printf("Uploaded File: %+v\n", fileHeader.Filename)
 	log.Printf("File Size: %+v\n", fileHeader.Size)
 	log.Printf("MIME Header: %+v\n", fileHeader.Header)
@@ -363,56 +371,6 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	log.Tracef("new file added %d: [%s] added", newFileId, fileHeader.Filename)
 
 	WriteResponse(w, "", fmt.Sprintf("added:%d", newFileId))
-}
-
-// handleGetFilesList - return tree structure of a given directory/path
-func (handler *FileHandler) handleGetFilesList(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "GET, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	vars := mux.Vars(r)
-
-	folderIdParam := vars["folderId"]
-	if folderIdParam == "" {
-		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
-		return
-	}
-	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
-	if err != nil {
-		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
-		return
-	}
-
-	filesListRaw, err := handler.api.ListFiles(folderId)
-	if err != nil {
-		http.Error(w, "internal error <sad face>", http.StatusInternalServerError)
-		return
-	}
-
-	if len(filesListRaw) == 0 {
-		WriteResponseBytes(w, "application/json", []byte("[]"))
-		return
-	}
-
-	var filesList []file_box.FileInfo
-	for _, f := range filesListRaw {
-		filesList = append(filesList, file_box.FileInfo{
-			Id:   f.Id,
-			Name: f.Name,
-		})
-	}
-
-	filesListJson, err := json.Marshal(filesList)
-	if err != nil {
-		log.Errorf("marshal files list error: %s", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	WriteResponseBytes(w, "application/json", []byte(filesListJson))
 }
 
 func (handler *FileHandler) isLogged(r *http.Request) (bool, error) {

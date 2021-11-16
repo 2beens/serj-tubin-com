@@ -13,5 +13,4 @@ type Api interface {
 	GetFolder(id int64) (*Folder, error)
 	DeleteFolder(folderId int64) error
 	NewFolder(parentId int64, name string) (*Folder, error)
-	ListFiles(folderId int64) ([]*File, error)
 }

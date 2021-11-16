@@ -68,14 +68,12 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	fileServiceRouter.HandleFunc("/{folderId}", handler.handleDeleteFolder).Methods("DELETE", "OPTIONS")
 	fileServiceRouter.HandleFunc("/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
 	fileServiceRouter.HandleFunc("/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
-	fileServiceRouter.HandleFunc("/{folderId}/c", handler.handleGetFilesList).Methods("GET", "OPTIONS")
+	// get a file content
+	r.HandleFunc("/link/{folderId}/c/{id}", handler.handleGet).Methods("GET", "OPTIONS")
 
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())
 	fileServiceRouter.Use(handler.authMiddleware())
-
-	// get a file content
-	r.HandleFunc("/link/{folderId}/c/{id}", handler.handleGet).Methods("GET", "OPTIONS")
 
 	r.Use(middleware.DrainAndCloseRequest())
 

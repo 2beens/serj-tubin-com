@@ -278,22 +278,3 @@ func (da *DiskApi) NewFolder(parentId int64, name string) (*Folder, error) {
 
 	return newFolder, nil
 }
-
-func (da *DiskApi) ListFiles(folderId int64) ([]*File, error) {
-	da.mutex.Lock()
-	defer da.mutex.Unlock()
-
-	log.Debugf("disk api: getting files list from folder id: %d", folderId)
-
-	folder := da.getFolder(da.root, folderId)
-	if folder == nil {
-		return nil, ErrFolderNotFound
-	}
-
-	var files []*File
-	for _, f := range folder.Files {
-		files = append(files, f)
-	}
-
-	return files, nil
-}
