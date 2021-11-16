@@ -71,12 +71,12 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		isLogged, err := handler.isLogged(r)
 		if err != nil {
 			log.Tracef("[file handler] [private file] %s => %s", r.URL.Path, err)
-			http.Error(w, "no can do", http.StatusUnauthorized)
+			http.NotFound(w, r)
 			return
 		}
 		if !isLogged {
 			log.Tracef("[invalid token] [private file] unauthorized => %s", r.URL.Path)
-			http.Error(w, "no can do", http.StatusUnauthorized)
+			http.NotFound(w, r)
 			return
 		}
 	}

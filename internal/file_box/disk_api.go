@@ -11,11 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// files can reside in main dir, in e.g. /var
-// inside, a subfolders can be created by the client (e.g. photos, pdfs, ...)
-// in each subfolder, we have the files named like:
-//		<timestamp-nanosecond>_<file-name>.<extension>
-
 var (
 	ErrFolderNotFound = errors.New("folder not found")
 	ErrFileNotFound   = errors.New("file not found")
