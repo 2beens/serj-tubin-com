@@ -45,7 +45,7 @@ func (da *DiskApi) getFolder(parent *Folder, id int64) *Folder {
 	return nil
 }
 
-func (da *DiskApi) UpdateFileInfo(
+func (da *DiskApi) UpdateInfo(
 	id int64,
 	folderId int64,
 	newName string,

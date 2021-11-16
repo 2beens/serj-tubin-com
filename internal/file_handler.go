@@ -17,10 +17,10 @@ import (
 
 type FileHandler struct {
 	api          file_box.Api
-	loginChecker *auth.LoginChecker
+	loginChecker auth.Checker
 }
 
-func NewFileHandler(api file_box.Api, loginChecker *auth.LoginChecker) *FileHandler {
+func NewFileHandler(api file_box.Api, loginChecker auth.Checker) *FileHandler {
 	return &FileHandler{
 		api:          api,
 		loginChecker: loginChecker,
@@ -140,7 +140,7 @@ func (handler *FileHandler) handleUpdateFileInfo(w http.ResponseWriter, r *http.
 	}
 	isPrivate := isPrivateStr == "true"
 
-	if err := handler.api.UpdateFileInfo(id, folderId, newName, isPrivate); err != nil {
+	if err := handler.api.UpdateInfo(id, folderId, newName, isPrivate); err != nil {
 		log.Errorf("update file info [%d]: %s", id, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -340,7 +340,7 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err := file.Close(); err != nil {
-			log.Errorf("failed to close file properly [%]: %s", fileHeader.Filename, err)
+			log.Errorf("failed to close file properly [%s]: %s", fileHeader.Filename, err)
 		}
 	}()
 	log.Printf("Uploaded File: %+v\n", fileHeader.Filename)
