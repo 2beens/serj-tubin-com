@@ -3,6 +3,7 @@ package file_box
 import "io"
 
 var _ Api = (*DiskApi)(nil)
+var _ Api = (*DiskTestApi)(nil)
 
 type Api interface {
 	Get(id, folderId int64) (*File, error)

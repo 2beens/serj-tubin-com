@@ -14,14 +14,20 @@ import (
 )
 
 func TestNewFileHandler(t *testing.T) {
-	api := file_box.NewDiskTestApi()
+	tempRootDir := t.TempDir()
+	api, err := file_box.NewDiskTestApi(tempRootDir)
+	require.NoError(t, err)
+
 	loginChecker := auth.NewLoginTestChecker()
 	fileHandler := NewFileHandler(api, loginChecker)
 	assert.NotNil(t, fileHandler)
 }
 
 func TestNewFileHandler_handleGet(t *testing.T) {
-	api := file_box.NewDiskTestApi()
+	tempRootDir := t.TempDir()
+	api, err := file_box.NewDiskTestApi(tempRootDir)
+	require.NoError(t, err)
+
 	loginChecker := auth.NewLoginTestChecker()
 	fileHandler := NewFileHandler(api, loginChecker)
 

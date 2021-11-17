@@ -1,20 +1,30 @@
 package file_box
 
 import (
+	"errors"
 	"io"
 	"sync"
 )
 
 type DiskTestApi struct {
-	mutex sync.RWMutex
+	rootPath string
+	root     *Folder
+	mutex    sync.Mutex
 }
 
-func NewDiskTestApi() *DiskTestApi {
-	return &DiskTestApi{}
+func NewDiskTestApi(tempDirPath string) (*DiskTestApi, error) {
+	root, err := getRootFolder(tempDirPath)
+	if err != nil {
+		return nil, err
+	}
+	return &DiskTestApi{
+		rootPath: tempDirPath,
+		root:     root,
+	}, nil
 }
 
 func (da *DiskTestApi) Get(id, folderId int64) (*File, error) {
-	panic("implement me")
+	return nil, errors.New("not implemented")
 }
 
 func (da *DiskTestApi) UpdateInfo(id int64, folderId int64, newName string, isPrivate bool) error {
