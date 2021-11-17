@@ -16,7 +16,7 @@ func TestNewFolderInfo(t *testing.T) {
 	folderInfoJson, err := json.Marshal(folderInfo)
 	require.NoError(t, err)
 	assert.Equal(t,
-		`{"id":0,"parent_id":0,"name":"root","is_file":false,"children":[{"id":1,"parent_id":0,"name":"f1","is_file":false,"children":[{"id":11,"parent_id":1,"name":"f11","is_file":false,"children":[{"id":100,"parent_id":11,"name":"file1","is_file":true}]}]},{"id":2,"parent_id":0,"name":"f2","is_file":false},{"id":100,"parent_id":0,"name":"file1","is_file":true}]}`,
+		`{"id":0,"parent_id":0,"name":"root","is_private":false,"is_file":false,"children":[{"id":1,"parent_id":0,"name":"f1","is_private":false,"is_file":false,"children":[{"id":11,"parent_id":1,"name":"f11","is_private":false,"is_file":false,"children":[{"id":100,"parent_id":11,"name":"file1","is_private":false,"is_file":true}]}]},{"id":2,"parent_id":0,"name":"f2","is_private":false,"is_file":false},{"id":100,"parent_id":0,"name":"file1","is_private":false,"is_file":true}]}`,
 		string(folderInfoJson),
 	)
 }
