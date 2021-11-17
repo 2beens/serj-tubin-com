@@ -116,9 +116,11 @@ func getRootFolder(rootPath string) (*Folder, error) {
 	}
 
 	if !rootFolderJsonExists {
-		log.Debugf(("root folder JSON does not exist, creating a fresh copy ..."))
+		log.Debugln("root folder JSON does not exist, creating a fresh copy ...")
 		rootFolder := NewRootFolder(rootPath)
-		saveRootFolder(rootPath, rootFolder)
+		if err := saveRootFolder(rootPath, rootFolder); err != nil {
+			return nil, fmt.Errorf("root folder created, but failed to save: %w", err)
+		}
 		return rootFolder, nil
 	}
 
