@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/2beens/serjtubincom/internal"
+	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/2beens/serjtubincom/internal/logging"
 	log "github.com/sirupsen/logrus"
 )
@@ -35,7 +35,7 @@ func main() {
 
 	logging.Setup("", true, "debug")
 
-	fileService, err := internal.NewFileService(*rootPath, *redisHost, *redisPort, redisPassword)
+	fileService, err := file_box.NewFileService(*rootPath, *redisHost, *redisPort, redisPassword)
 	if err != nil {
 		log.Fatalf("failed to create file service: %s", err)
 	}

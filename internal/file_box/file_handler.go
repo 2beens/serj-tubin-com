@@ -1,4 +1,4 @@
-package internal
+package file_box
 
 import (
 	"bytes"
@@ -9,18 +9,18 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
 type FileHandler struct {
-	api          file_box.Api
+	api          *DiskApi
 	loginChecker auth.Checker
 }
 
-func NewFileHandler(api file_box.Api, loginChecker auth.Checker) *FileHandler {
+func NewFileHandler(api *DiskApi, loginChecker auth.Checker) *FileHandler {
 	return &FileHandler{
 		api:          api,
 		loginChecker: loginChecker,
@@ -146,7 +146,7 @@ func (handler *FileHandler) handleUpdateFileInfo(w http.ResponseWriter, r *http.
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("updated:%d", id)))
+	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("updated:%d", id)))
 }
 
 func (handler *FileHandler) handleDeleteFolder(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +177,7 @@ func (handler *FileHandler) handleDeleteFolder(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", folderId)))
+	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", folderId)))
 }
 
 // TODO: find out how to set app permissions only for one specific folder and its children
@@ -228,7 +228,7 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", id)))
+	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", id)))
 }
 
 func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {
@@ -244,7 +244,7 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	rootInfo := file_box.NewFolderInfo(-1, root)
+	rootInfo := NewFolderInfo(-1, root)
 	rootInfoJson, err := json.Marshal(rootInfo)
 	if err != nil {
 		log.Errorf("marshal root folder error: %s", err)
@@ -252,7 +252,7 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", []byte(rootInfoJson))
+	internal.WriteResponseBytes(w, "application/json", []byte(rootInfoJson))
 }
 
 func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Request) {
@@ -294,7 +294,7 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	} else {
 		log.Printf("child folder [%d][%s] for folder [%d] created", f.Id, f.Name, parentId)
-		WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("created:%d", f.Id)))
+		internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("created:%d", f.Id)))
 	}
 }
 
@@ -370,7 +370,7 @@ func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	log.Tracef("new file added %d: [%s] added", newFileId, fileHeader.Filename)
 
-	WriteResponse(w, "", fmt.Sprintf("added:%d", newFileId))
+	internal.WriteResponse(w, "", fmt.Sprintf("added:%d", newFileId))
 }
 
 func (handler *FileHandler) isLogged(r *http.Request) (bool, error) {

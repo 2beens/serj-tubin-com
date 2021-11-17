@@ -1,4 +1,4 @@
-package internal
+package file_box
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
@@ -19,7 +18,7 @@ import (
 )
 
 type FileService struct {
-	api          file_box.Api
+	api          *DiskApi
 	loginChecker *auth.LoginChecker
 }
 
@@ -29,7 +28,7 @@ func NewFileService(
 	redisPort int,
 	redisPassword string,
 ) (*FileService, error) {
-	api, err := file_box.NewDiskApi(rootPath)
+	api, err := NewDiskApi(rootPath)
 	if err != nil {
 		return nil, err
 	}
