@@ -95,7 +95,7 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (handler *FileHandler) handleUpdateFileInfo(w http.ResponseWriter, r *http.Request) {
+func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)

@@ -1,9 +1,12 @@
 package file_box
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -27,6 +30,7 @@ func TestNewFileHandler_handleGet(t *testing.T) {
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
 	require.NoError(t, err)
+	require.NotNil(t, api)
 
 	var addedFiles []int64
 	parentId := int64(0) // root = id 0
@@ -79,4 +83,100 @@ func TestNewFileHandler_handleGet(t *testing.T) {
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusNotFound, rr.Code)
 	assert.Equal(t, "404 page not found\n", rr.Body.String())
+}
+
+func TestNewFileHandler_handleUpdateInfo(t *testing.T) {
+	tempRootDir := t.TempDir()
+	api, err := NewDiskApi(tempRootDir)
+	require.NoError(t, err)
+	require.NotNil(t, api)
+
+	parentId := int64(0) // root = id 0
+	fileContentString := "random test file content"
+	fileContent := strings.NewReader(fileContentString)
+	fileName := "test-name"
+	fileId, err := api.Save(
+		fileName,
+		parentId,
+		fileContent.Size(),
+		"rand-binary",
+		fileContent,
+	)
+	require.NoError(t, err)
+	assert.True(t, fileId > 0)
+	assert.Len(t, api.root.Files, 1)
+
+	loginChecker := auth.NewLoginTestChecker()
+	fileHandler := NewFileHandler(api, loginChecker)
+
+	r := mux.NewRouter()
+	r.HandleFunc("/{folderId}/c/{id}", fileHandler.handleUpdateInfo).Methods("GET", "OPTIONS")
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("/%d/c/%d", parentId, fileId), nil)
+	require.NoError(t, err)
+	req.PostForm = url.Values{}
+	req.PostForm.Add("is_private", "false")
+	req.PostForm.Add("name", "safari")
+
+	// before
+	file := api.root.Files[fileId]
+	assert.Equal(t, fileName, file.Name)
+	assert.True(t, file.IsPrivate)
+
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, fmt.Sprintf("updated:%d", fileId), rr.Body.String())
+
+	// after
+	assert.Equal(t, "safari", file.Name)
+	assert.False(t, file.IsPrivate)
+	fileContentRetrieved, err := os.ReadFile(file.Path)
+	require.NoError(t, err)
+	assert.Equal(t, fileContentString, string(fileContentRetrieved))
+}
+
+func TestNewFileHandler_handleGetRoot(t *testing.T) {
+	tempRootDir := t.TempDir()
+	api, err := NewDiskApi(tempRootDir)
+	require.NoError(t, err)
+	require.NotNil(t, api)
+
+	rootId := int64(0)
+	fileContent := strings.NewReader("random test file content")
+	fileName := "test-name"
+	fileId, err := api.Save(
+		fileName,
+		rootId,
+		fileContent.Size(),
+		"rand-binary",
+		fileContent,
+	)
+	require.NoError(t, err)
+	assert.True(t, fileId > 0)
+	assert.Len(t, api.root.Files, 1)
+
+	loginChecker := auth.NewLoginTestChecker()
+	fileHandler := NewFileHandler(api, loginChecker)
+
+	r := mux.NewRouter()
+	r.HandleFunc("/root", fileHandler.handleGetRoot).Methods("GET", "OPTIONS")
+
+	req, err := http.NewRequest("GET", "/root", nil)
+	require.NoError(t, err)
+
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	rootJson := rr.Body.String()
+	require.NotEmpty(t, rootJson)
+
+	var retrievedRoot FileInfo
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &retrievedRoot))
+	require.NotNil(t, retrievedRoot)
+	require.Len(t, retrievedRoot.Children, 1)
+	assert.False(t, retrievedRoot.IsFile)
+	assert.Equal(t, retrievedRoot.Children[0].Name, fileName)
+	assert.True(t, retrievedRoot.Children[0].IsPrivate)
+	assert.True(t, retrievedRoot.Children[0].IsFile)
 }

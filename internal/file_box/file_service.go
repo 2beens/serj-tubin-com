@@ -62,7 +62,7 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 
 	fileServiceRouter := r.PathPrefix("/f").Subrouter()
 	fileServiceRouter.HandleFunc("/root", handler.handleGetRoot).Methods("GET", "OPTIONS")
-	fileServiceRouter.HandleFunc("/{folderId}/c/{id}", handler.handleUpdateFileInfo).Methods("POST", "OPTIONS")
+	fileServiceRouter.HandleFunc("/{folderId}/c/{id}", handler.handleUpdateInfo).Methods("POST", "OPTIONS")
 	fileServiceRouter.HandleFunc("/{folderId}/c/{id}", handler.handleDelete).Methods("DELETE", "OPTIONS")
 	fileServiceRouter.HandleFunc("/{folderId}", handler.handleDeleteFolder).Methods("DELETE", "OPTIONS")
 	fileServiceRouter.HandleFunc("/{folderId}", handler.handleSave).Methods("POST", "OPTIONS")
