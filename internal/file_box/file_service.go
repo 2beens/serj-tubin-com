@@ -55,9 +55,7 @@ func NewFileService(
 	}, nil
 }
 
-func (fs *FileService) SetupAndServe(host string, port int) {
-	handler := NewFileHandler(fs.api, fs.loginChecker)
-
+func RouterSetup(handler *FileHandler) *mux.Router {
 	r := mux.NewRouter()
 
 	fileServiceRouter := r.PathPrefix("/f").Subrouter()
@@ -75,6 +73,13 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	fileServiceRouter.Use(handler.authMiddleware())
 
 	r.Use(middleware.DrainAndCloseRequest())
+
+	return r
+}
+
+func (fs *FileService) SetupAndServe(host string, port int) {
+	handler := NewFileHandler(fs.api, fs.loginChecker)
+	r := RouterSetup(handler)
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 

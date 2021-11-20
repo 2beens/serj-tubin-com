@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,7 +60,7 @@ func TestNewFileHandler_handleGet(t *testing.T) {
 	loginChecker := auth.NewLoginTestChecker()
 	fileHandler := NewFileHandler(api, loginChecker)
 
-	r := mux.NewRouter()
+	r := RouterSetup(fileHandler)
 	r.HandleFunc("/link/{folderId}/c/{id}", fileHandler.handleGet).Methods("GET", "OPTIONS")
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("/link/0/c/%d", addedFiles[4]), nil)
@@ -128,7 +127,7 @@ func TestNewFileHandler_handleUpdateInfo(t *testing.T) {
 	loginChecker := auth.NewLoginTestChecker()
 	fileHandler := NewFileHandler(api, loginChecker)
 
-	r := mux.NewRouter()
+	r := RouterSetup(fileHandler)
 	r.HandleFunc("/{folderId}/c/{id}", fileHandler.handleUpdateInfo).Methods("GET", "OPTIONS")
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("/%d/c/%d", parentId, fileId), nil)
@@ -177,7 +176,7 @@ func TestNewFileHandler_handleGetRoot(t *testing.T) {
 	loginChecker := auth.NewLoginTestChecker()
 	fileHandler := NewFileHandler(api, loginChecker)
 
-	r := mux.NewRouter()
+	r := RouterSetup(fileHandler)
 	r.HandleFunc("/root", fileHandler.handleGetRoot).Methods("GET", "OPTIONS")
 
 	req, err := http.NewRequest("GET", "/root", nil)
