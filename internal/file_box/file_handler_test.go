@@ -83,6 +83,25 @@ func TestNewFileHandler_handleGet(t *testing.T) {
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusNotFound, rr.Code)
 	assert.Equal(t, "404 page not found\n", rr.Body.String())
+
+	// private file, but logged in - should return the file
+	loginChecker.LoggedSessions["test-token"] = true
+	req, err = http.NewRequest("GET", fmt.Sprintf("/link/0/c/%d", addedFiles[8]), nil)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, "random test content 9", rr.Body.String())
+
+	// private file, but logged out - should not return the file
+	loginChecker.LoggedSessions["test-token"] = false
+	req, err = http.NewRequest("GET", fmt.Sprintf("/link/0/c/%d", addedFiles[8]), nil)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+	assert.Equal(t, "404 page not found\n", rr.Body.String())
 }
 
 func TestNewFileHandler_handleUpdateInfo(t *testing.T) {

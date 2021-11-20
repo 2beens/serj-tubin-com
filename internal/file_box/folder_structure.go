@@ -49,9 +49,9 @@ type Folder struct {
 }
 
 // NewId returns a simple unix time in micro
-// fair enough for usecase of a simple folder/file ID
+// fair enough for use case of a simple folder/file ID
 func NewId() int64 {
-	return time.Now().UnixMicro()
+	return time.Now().UnixNano()
 }
 
 func NewRootFolder(path string) *Folder {

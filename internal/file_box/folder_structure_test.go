@@ -21,6 +21,11 @@ func TestNewFolderInfo(t *testing.T) {
 	)
 }
 
+func TestNewId(t *testing.T) {
+	id := NewId()
+	assert.True(t, id > 0)
+}
+
 func getTestRootFolder() *Folder {
 	rootFolder := &Folder{
 		Id:         0,
