@@ -61,7 +61,6 @@ func TestNewFileHandler_handleGet(t *testing.T) {
 	fileHandler := NewFileHandler(api, loginChecker)
 
 	r := RouterSetup(fileHandler)
-	r.HandleFunc("/link/{folderId}/c/{id}", fileHandler.handleGet).Methods("GET", "OPTIONS")
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("/link/0/c/%d", addedFiles[4]), nil)
 	require.NoError(t, err)
@@ -103,6 +102,65 @@ func TestNewFileHandler_handleGet(t *testing.T) {
 	assert.Equal(t, "404 page not found\n", rr.Body.String())
 }
 
+func TestNewFileHandler_handleDeleteFile(t *testing.T) {
+	tempRootDir := t.TempDir()
+	api, err := NewDiskApi(tempRootDir)
+	require.NoError(t, err)
+	require.NotNil(t, api)
+
+	var addedFiles []int64
+	parentId := int64(0) // root = id 0
+	filesLen := 10
+	for i := 1; i <= filesLen; i++ {
+		randomContent := strings.NewReader(fmt.Sprintf("random test content %d", i))
+		fileName := fmt.Sprintf("file_%d", i)
+		fileId, err := api.Save(
+			fileName,
+			parentId,
+			randomContent.Size(),
+			"rand-binary",
+			randomContent,
+		)
+		require.NoError(t, err)
+		assert.True(t, fileId > 0)
+
+		// make the first 5 files not private
+		if i <= 5 {
+			require.NoError(t, api.UpdateInfo(fileId, parentId, fileName, false))
+		}
+
+		addedFiles = append(addedFiles, fileId)
+	}
+	assert.Len(t, api.root.Files, filesLen)
+	require.Len(t, addedFiles, filesLen)
+
+	loginChecker := auth.NewLoginTestChecker()
+	loginChecker.LoggedSessions["test-token"] = true
+	fileHandler := NewFileHandler(api, loginChecker)
+
+	r := RouterSetup(fileHandler)
+
+	// before delete, file there?
+	file1, err := api.Get(addedFiles[0], 0)
+	require.NoError(t, err)
+	assert.NotNil(t, file1)
+
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("/f/0/c/%d", addedFiles[0]), nil)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
+	require.NoError(t, err)
+
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, fmt.Sprintf("deleted:%d", addedFiles[0]), rr.Body.String())
+
+	assert.Len(t, api.root.Files, filesLen-1)
+
+	file1, err = api.Get(addedFiles[0], 0)
+	assert.ErrorIs(t, err, ErrFileNotFound)
+	assert.Nil(t, file1)
+}
+
 func TestNewFileHandler_handleUpdateInfo(t *testing.T) {
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
@@ -125,13 +183,14 @@ func TestNewFileHandler_handleUpdateInfo(t *testing.T) {
 	assert.Len(t, api.root.Files, 1)
 
 	loginChecker := auth.NewLoginTestChecker()
+	loginChecker.LoggedSessions["test-token"] = true
 	fileHandler := NewFileHandler(api, loginChecker)
 
 	r := RouterSetup(fileHandler)
-	r.HandleFunc("/{folderId}/c/{id}", fileHandler.handleUpdateInfo).Methods("GET", "OPTIONS")
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("/%d/c/%d", parentId, fileId), nil)
+	req, err := http.NewRequest("POST", fmt.Sprintf("/f/%d/c/%d", parentId, fileId), nil)
 	require.NoError(t, err)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	req.PostForm = url.Values{}
 	req.PostForm.Add("is_private", "false")
 	req.PostForm.Add("name", "safari")
@@ -174,17 +233,18 @@ func TestNewFileHandler_handleGetRoot(t *testing.T) {
 	assert.Len(t, api.root.Files, 1)
 
 	loginChecker := auth.NewLoginTestChecker()
+	loginChecker.LoggedSessions["test-token"] = true
 	fileHandler := NewFileHandler(api, loginChecker)
 
 	r := RouterSetup(fileHandler)
-	r.HandleFunc("/root", fileHandler.handleGetRoot).Methods("GET", "OPTIONS")
 
-	req, err := http.NewRequest("GET", "/root", nil)
+	req, err := http.NewRequest("GET", "/f/root", nil)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, http.StatusOK, rr.Code)
 
 	rootJson := rr.Body.String()
 	require.NotEmpty(t, rootJson)
@@ -197,4 +257,26 @@ func TestNewFileHandler_handleGetRoot(t *testing.T) {
 	assert.Equal(t, retrievedRoot.Children[0].Name, fileName)
 	assert.True(t, retrievedRoot.Children[0].IsPrivate)
 	assert.True(t, retrievedRoot.Children[0].IsFile)
+
+	// now log out and try - no root should return
+	loginChecker.LoggedSessions["test-token"] = false
+	req, err = http.NewRequest("GET", "/f/root", nil)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
+	require.NoError(t, err)
+
+	rr = httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+	assert.Equal(t, "404 page not found\n", rr.Body.String())
+
+	// now missing token - no root should return
+	req, err = http.NewRequest("GET", "/f/root", nil)
+	require.NoError(t, err)
+
+	rr = httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+	assert.Equal(t, "404 page not found\n", rr.Body.String())
 }
+
+// TODO: add the rest :)

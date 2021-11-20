@@ -180,7 +180,6 @@ func (handler *FileHandler) handleDeleteFolder(w http.ResponseWriter, r *http.Re
 	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", folderId)))
 }
 
-// TODO: find out how to set app permissions only for one specific folder and its children
 func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "DELETE, OPTIONS")
@@ -399,12 +398,12 @@ func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handle
 			isLogged, err := handler.isLogged(r)
 			if err != nil {
 				log.Tracef("[file handler] %s => %s", r.URL.Path, err)
-				http.Error(w, "no can do", http.StatusUnauthorized)
+				http.NotFound(w, r) // deliberately return not found
 				return
 			}
 			if !isLogged {
 				log.Tracef("[invalid token] [file handler] unauthorized => %s", r.URL.Path)
-				http.Error(w, "no can do", http.StatusUnauthorized)
+				http.NotFound(w, r) // deliberately return not found
 				return
 			}
 
