@@ -36,7 +36,7 @@ fi
 
 #   3 build project
 echo "--> building project ..."
-go build -o /home/serj/serj-tubin-com/service cmd/service/main.go
+go build -o /home/serj/serj-tubin-com/bin/service cmd/service/main.go
 echo "--> build project done"
 
 #   4 restart service and show info
