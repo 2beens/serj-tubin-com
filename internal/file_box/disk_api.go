@@ -190,7 +190,7 @@ func (da *DiskApi) DeleteFolder(folderId int64) error {
 	}
 
 	parentFolder := da.getFolder(da.root, folder.ParentId)
-	if folder == nil {
+	if parentFolder == nil {
 		return fmt.Errorf("cannot find parent folder %d", folder.ParentId)
 	}
 
