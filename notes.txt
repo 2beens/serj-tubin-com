@@ -63,3 +63,9 @@ some ideas:
 apr-2021 - DB replication and high availability:
  - instead of using google drive API to backup netlog visits, let's get a new server somewhere else and setup the replication and HA
  - https://www.postgresql.org/docs/9.2/high-availability.html
+
+- 21-11-2021 notes
+ - file service is set on serjmisc
+ - the frontend is deployed to sshssr
+ - will need to setup the A record to hit the file service endpoing on misc server ✅
+ - will need to setup HTTPS on that endpoint ✅
