@@ -21,6 +21,10 @@ func main() {
 	port := flag.Int("port", 1987, "port for the file service")
 	redisHost := flag.String("rhost", "localhost", "auth service redis host")
 	redisPort := flag.Int("rport", 6379, "auth service redis port")
+
+	logToStdout := flag.Bool("log-to-stdout", true, "log to stdout")
+	logFilePath := flag.String("log-file-path", "", "path of the log file. empty - not logging to file")
+	logLevel := flag.String("log-level", "trace", "log level")
 	flag.Parse()
 
 	if *rootPath == "" {
@@ -37,7 +41,7 @@ func main() {
 		redisPassword = ""
 	}
 
-	logging.Setup("", true, "debug")
+	logging.Setup(*logFilePath, *logToStdout, *logLevel)
 
 	fileService, err := file_box.NewFileService(*rootPath, *redisHost, *redisPort, redisPassword)
 	if err != nil {

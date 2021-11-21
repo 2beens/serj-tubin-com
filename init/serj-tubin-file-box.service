@@ -1,0 +1,14 @@
+[Unit]
+Description=File system service for personal serj-tubin.com site/service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+User=serj
+Environment="SERJ_REDIS_PASS=pass here"
+WorkingDirectory=/home/serj/serj-tubin-com
+ExecStart=/home/serj/serj-tubin-com/bin/file-box -rootpath PATH_GOES_HERE -log-to-stdout=false -log-file-path=LOG_PATH_HERE
+
+[Install]
+WantedBy=multi-user.target
