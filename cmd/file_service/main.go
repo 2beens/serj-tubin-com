@@ -15,13 +15,17 @@ func main() {
 
 	rootPath := flag.String(
 		"rootpath",
-		"/Users/serj/Documents/projects/serj-tubin-com/test_root",
+		"",
 		"root path for the files storage",
 	)
 	port := flag.Int("port", 1987, "port for the file service")
 	redisHost := flag.String("rhost", "localhost", "auth service redis host")
 	redisPort := flag.Int("rport", 6379, "auth service redis port")
 	flag.Parse()
+
+	if *rootPath == "" {
+		log.Fatalln("rootpath for files storage not specified")
+	}
 
 	redisPassword := os.Getenv("SERJ_REDIS_PASS")
 	if redisPassword == "" {
