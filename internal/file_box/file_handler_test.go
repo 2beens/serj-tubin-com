@@ -145,7 +145,7 @@ func TestNewFileHandler_handleDeleteFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, file1)
 
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("/f/0/c/%d", addedFiles[0]), nil)
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("/f/del/0/c/%d", addedFiles[0]), nil)
 	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	require.NoError(t, err)
 

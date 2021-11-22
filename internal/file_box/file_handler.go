@@ -297,8 +297,8 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// handleSave - save file or create a directory
-func (handler *FileHandler) handleSave(w http.ResponseWriter, r *http.Request) {
+// handleUpload - save file or create a directory
+func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
