@@ -10,8 +10,10 @@ func DrainAndCloseRequest() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r)
-			_, _ = io.Copy(io.Discard, r.Body)
-			_ = r.Body.Close()
+			if r.Body != nil {
+				_, _ = io.Copy(io.Discard, r.Body)
+				_ = r.Body.Close()
+			}
 		})
 	}
 }

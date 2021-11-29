@@ -17,18 +17,18 @@ import (
 )
 
 type BoardHandler struct {
-	board       *Board
-	authService *auth.Service
+	board        *Board
+	loginChecker *auth.LoginChecker
 }
 
 func NewBoardHandler(
 	router *mux.Router,
 	board *Board,
-	authService *auth.Service,
+	loginChecker *auth.LoginChecker,
 ) *BoardHandler {
 	handler := &BoardHandler{
-		board:       board,
-		authService: authService,
+		board:        board,
+		loginChecker: loginChecker,
 	}
 
 	router.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
@@ -166,7 +166,7 @@ func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.
 }
 
 func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -270,7 +270,7 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "OPTIONS" {
+			if r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
 				return
@@ -289,7 +289,7 @@ func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handl
 				return
 			}
 
-			isLogged, err := handler.authService.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

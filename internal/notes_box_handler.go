@@ -15,25 +15,25 @@ import (
 )
 
 type NotesBoxHandler struct {
-	api         notes_box.Api
-	authService *auth.Service
-	instr       *instrumentation.Instrumentation
+	api          notes_box.Api
+	loginChecker *auth.LoginChecker
+	instr        *instrumentation.Instrumentation
 }
 
 func NewNotesBoxHandler(
 	api notes_box.Api,
-	authService *auth.Service,
+	loginChecker *auth.LoginChecker,
 	instrumentation *instrumentation.Instrumentation,
 ) *NotesBoxHandler {
 	return &NotesBoxHandler{
-		api:         api,
-		authService: authService,
-		instr:       instrumentation,
+		api:          api,
+		loginChecker: loginChecker,
+		instr:        instrumentation,
 	}
 }
 
 func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -72,7 +72,7 @@ func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *NotesBoxHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "PUT, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
@@ -172,7 +172,7 @@ func (h *NotesBoxHandler) handleList(w http.ResponseWriter, r *http.Request) {
 func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "OPTIONS" {
+			if r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
 				return
@@ -188,7 +188,7 @@ func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Ha
 				return
 			}
 
-			isLogged, err := handler.authService.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

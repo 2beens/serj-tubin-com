@@ -15,18 +15,18 @@ import (
 )
 
 type BlogHandler struct {
-	blogApi     blog.Api
-	authService *auth.Service
+	blogApi      blog.Api
+	loginChecker *auth.LoginChecker
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
 	blogApi blog.Api,
-	authService *auth.Service,
+	loginChecker *auth.LoginChecker,
 ) *BlogHandler {
 	handler := &BlogHandler{
-		blogApi:     blogApi,
-		authService: authService,
+		blogApi:      blogApi,
+		loginChecker: loginChecker,
 	}
 
 	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
@@ -235,7 +235,7 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "OPTIONS" {
+			if r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
 				return
@@ -257,7 +257,7 @@ func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
-			isLogged, err := handler.authService.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

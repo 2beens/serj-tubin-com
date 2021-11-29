@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	DefaultTTL       = 24 * 7 * time.Hour
 	sessionKeyPrefix = "serj-service-session||"
 	tokensSetKey     = "serj-service-sessions"
 )
@@ -97,31 +98,6 @@ func (as *Service) Logout(token string) (bool, error) {
 	}
 
 	return createdAtUnix > 0, nil
-}
-
-func (as *Service) IsLogged(token string) (bool, error) {
-	as.mutex.Lock()
-	defer as.mutex.Unlock()
-
-	sessionKey := sessionKeyPrefix + token
-	cmd := as.redisClient.Get(context.Background(), sessionKey)
-	if err := cmd.Err(); err != nil {
-		return false, err
-	}
-
-	createdAtUnixStr := cmd.Val()
-	createdAtUnix, err := strconv.ParseInt(createdAtUnixStr, 10, 64)
-	if err != nil {
-		return false, err
-	}
-
-	createdAt := time.Unix(createdAtUnix, 0)
-	sessionDuration := time.Since(createdAt)
-	if sessionDuration > as.ttl {
-		return false, nil
-	}
-
-	return true, nil
 }
 
 // will run through all sessions, check the TTL, and clean them if old

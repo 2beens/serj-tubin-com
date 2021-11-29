@@ -35,18 +35,13 @@ else
 fi
 
 #   3 build project
-echo "--> building project ..."
-go build -o /home/serj/serj-tubin-com/bin/service cmd/service/main.go
-echo "--> build project done"
+echo "--> building file box service ..."
+go build -o /home/serj/serj-tubin-com/bin/file-box cmd/file_service/main.go
+echo "--> build file box service done"
 
 #   4 restart service and show info
-echo "--> restarting service ..."
-sudo systemctl restart serj-tubin-backend.service
-sudo systemctl status serj-tubin-backend.service
-echo "--> service restarted"
-
-# build netlog backup tool (initiated by crontab)
-echo "--> building netlog backup tool ..."
-go build -o /home/serj/serj-tubin-com/netlog-backup cmd/netlog_gd_backup/main.go
-
+echo "--> restarting file box service ..."
+sudo systemctl restart serj-tubin-file-box.service
+sudo systemctl status serj-tubin-file-box.service
+echo "--> file box service restarted"
 echo "==> all done! <3"
