@@ -26,6 +26,24 @@ services:
       SERJ_BROWSER_REQ_SECRET: todo
       SERJ_REDIS_PASS: todo
 
+  fileservice:
+    image: golang:latest
+    depends_on:
+      - redis
+    volumes:
+      - ..:/go/src/serj-tubin-com-file-service
+      - ./docker-data-file-service:/file-service-data
+    entrypoint: ["/bin/sh","-c"]
+    command:
+      - |
+        go build -o bin/file-service cmd/file_service/main.go
+        ./bin/file-service -rhost='st-redis' -rootpath='/file-service-data' -log-to-stdout=true -log-file-path='/file-service-data/logs'
+    ports:
+      - "1987:1987"
+    working_dir: /go/src/serj-tubin-com-file-service
+    environment:
+      SERJ_REDIS_PASS: todo
+
   # https://hub.docker.com/_/postgres
   postgres:
     image: postgres:latest
