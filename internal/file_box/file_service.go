@@ -82,7 +82,6 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	r := RouterSetup(handler)
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
-
 	httpServer := &http.Server{
 		Handler:      r,
 		Addr:         ipAndPort,

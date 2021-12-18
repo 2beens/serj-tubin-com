@@ -1,8 +1,12 @@
 version: "3.7"
 
 services:
-  serj-tubin-service:
+  goservice:
     image: golang:latest
+    depends_on:
+      - postgres
+      - aerospike
+      - redis
     volumes:
       - ..:/go/src/serj-tubin-com
     entrypoint: ["/bin/sh","-c"]
@@ -18,8 +22,26 @@ services:
     environment:
       OPEN_WEATHER_API_KEY: todo
       SERJ_TUBIN_COM_ADMIN_USERNAME: todo
-      SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: todo
+      SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: $$2a$$14$$gPDY7P8qGduPi.OKoPKzM.N/MTyZpP.q2tmbprdHH.1jyw7fK3KfW
       SERJ_BROWSER_REQ_SECRET: todo
+      SERJ_REDIS_PASS: todo
+
+  fileservice:
+    image: golang:latest
+    depends_on:
+      - redis
+    volumes:
+      - ..:/go/src/serj-tubin-com-file-service
+      - ./docker-data-file-service:/file-service-data
+    entrypoint: ["/bin/sh","-c"]
+    command:
+      - |
+        go build -o bin/file-service cmd/file_service/main.go
+        ./bin/file-service -host='0.0.0.0' -rhost='st-redis' -rootpath='/file-service-data' -log-to-stdout=true -log-file-path='/file-service-data/logs'
+    ports:
+      - "1987:1987"
+    working_dir: /go/src/serj-tubin-com-file-service
+    environment:
       SERJ_REDIS_PASS: todo
 
   # https://hub.docker.com/_/postgres
@@ -46,7 +68,7 @@ services:
 
   redis:
     image: redis
-    # command: redis-server --appendonly yes --requirepass ${SERJ_REDIS_PASS}
+    command: redis-server --appendonly yes --requirepass todo
     container_name: st-redis
     volumes:
      - ./docker-data-redis:/data
@@ -55,6 +77,8 @@ services:
 
   adminer:
     image: adminer
+    depends_on:
+      - postgres
     restart: always
     ports:
-      - 8080:8080
+      - 8081:8080

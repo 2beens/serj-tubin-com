@@ -18,6 +18,7 @@ func main() {
 		"",
 		"root path for the files storage",
 	)
+	host := flag.String("host", "localhost", "host for the file service")
 	port := flag.Int("port", 1987, "port for the file service")
 	redisHost := flag.String("rhost", "localhost", "auth service redis host")
 	redisPort := flag.Int("rport", 6379, "auth service redis port")
@@ -48,5 +49,5 @@ func main() {
 		log.Fatalf("failed to create file service: %s", err)
 	}
 
-	fileService.SetupAndServe("localhost", *port)
+	fileService.SetupAndServe(*host, *port)
 }
