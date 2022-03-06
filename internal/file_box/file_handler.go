@@ -28,8 +28,6 @@ func NewFileHandler(api *DiskApi, loginChecker auth.Checker) *FileHandler {
 	}
 }
 
-const MAX_FILE_SIZE = 1024 * 1024 * 999 // 999 MB
-
 // handleGet - get file content
 func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
@@ -254,7 +252,7 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	internal.WriteResponseBytes(w, "application/json", []byte(rootInfoJson))
+	internal.WriteResponseBytes(w, "application/json", rootInfoJson)
 }
 
 func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Request) {
@@ -323,7 +321,8 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 
 	log.Printf("new file upload incoming for folder [%d]", folderId)
 
-	if err := r.ParseMultipartForm(MAX_FILE_SIZE); err != nil {
+	const maxFileSize = 1024 * 1024 * 999 // 999 MB
+	if err := r.ParseMultipartForm(maxFileSize); err != nil {
 		log.Errorf("get file, parse multipart form: %s", err)
 		http.Error(w, "internal error or file too big", http.StatusInternalServerError)
 		return

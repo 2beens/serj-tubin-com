@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"sort"
 	"time"
 
 	"github.com/2beens/serjtubincom/pkg"
@@ -20,12 +21,13 @@ const (
 )
 
 type File struct {
-	Id        int64  `json:"id"`
-	Name      string `json:"name"`
-	IsPrivate bool   `json:"is_private"`
-	Path      string `json:"path"`
-	Type      string `json:"type"`
-	Size      int64  `json:"size"`
+	Id        int64     `json:"id"`
+	Name      string    `json:"name"`
+	IsPrivate bool      `json:"is_private"`
+	Path      string    `json:"path"`
+	Type      string    `json:"type"`
+	Size      int64     `json:"size"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // FileInfo used for clients, to hide the path
@@ -36,6 +38,7 @@ type FileInfo struct {
 	IsPrivate bool        `json:"is_private"`
 	IsFile    bool        `json:"is_file"`
 	File      string      `json:"file,omitempty"`
+	CreatedAt time.Time   `json:"created_at"`
 	Children  []*FileInfo `json:"children,omitempty"`
 }
 
@@ -46,6 +49,7 @@ type Folder struct {
 	Path       string          `json:"path"`
 	Subfolders []*Folder       `json:"subfolders"`
 	Files      map[int64]*File `json:"files"`
+	CreatedAt  time.Time       `json:"created_at"`
 }
 
 // NewId returns a simple unix time in micro
@@ -66,18 +70,30 @@ func NewRootFolder(path string) *Folder {
 
 func NewFolderInfo(parentId int64, folder *Folder) *FileInfo {
 	folderInfo := &FileInfo{
-		Id:       folder.Id,
-		ParentId: parentId,
-		Name:     folder.Name,
-		Children: []*FileInfo{},
-		IsFile:   false,
+		Id:        folder.Id,
+		ParentId:  parentId,
+		Name:      folder.Name,
+		Children:  []*FileInfo{},
+		IsFile:    false,
+		CreatedAt: folder.CreatedAt,
 	}
 
+	sort.Slice(folder.Subfolders, func(i, j int) bool {
+		return folder.Subfolders[i].Name < folder.Subfolders[j].Name
+	})
 	for _, subFolder := range folder.Subfolders {
 		folderInfo.Children = append(folderInfo.Children, NewFolderInfo(folder.Id, subFolder))
 	}
 
-	for _, file := range folder.Files {
+	files := make([]*File, 0, len(folder.Files))
+	for _, f := range folder.Files {
+		files = append(files, f)
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Name < files[j].Name
+	})
+	for _, file := range files {
 		folderInfo.Children = append(folderInfo.Children, &FileInfo{
 			Id:        file.Id,
 			ParentId:  folder.Id,
@@ -85,6 +101,7 @@ func NewFolderInfo(parentId int64, folder *Folder) *FileInfo {
 			Name:      file.Name,
 			File:      file.Type,
 			IsFile:    true,
+			CreatedAt: file.CreatedAt,
 		})
 	}
 

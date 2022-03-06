@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -111,6 +112,7 @@ func (da *DiskApi) Save(
 		Path:      newFilePath,
 		Type:      fileType,
 		Size:      size,
+		CreatedAt: time.Now(),
 	}
 
 	folder.Files[newId] = newFile
@@ -268,6 +270,7 @@ func (da *DiskApi) NewFolder(parentId int64, name string) (*Folder, error) {
 		Path:       newPath,
 		Subfolders: []*Folder{},
 		Files:      make(map[int64]*File),
+		CreatedAt:  time.Now(),
 	}
 	parentFolder.Subfolders = append(parentFolder.Subfolders, newFolder)
 
