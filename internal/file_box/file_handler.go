@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/auth"
@@ -26,6 +27,8 @@ func NewFileHandler(api *DiskApi, loginChecker auth.Checker) *FileHandler {
 		loginChecker: loginChecker,
 	}
 }
+
+const MAX_FILE_SIZE = 1024 * 1024 * 999 // 999 MB
 
 // handleGet - get file content
 func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
@@ -320,56 +323,58 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 
 	log.Printf("new file upload incoming for folder [%d]", folderId)
 
-	// Maximum upload of 10 MB files
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
+	if err := r.ParseMultipartForm(MAX_FILE_SIZE); err != nil {
 		log.Errorf("get file, parse multipart form: %s", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		http.Error(w, "internal error or file too big", http.StatusInternalServerError)
 		return
 	}
 
-	// Get handler for filename, size and headers
-	file, fileHeader, err := r.FormFile("file")
-	if err != nil {
-		log.Errorf("get file: %s", err)
-		http.Error(w, "failed to get file", http.StatusInternalServerError)
-		return
-	}
+	var addedFileIds []string
+	files := r.MultipartForm.File["files"]
+	for _, fileHeader := range files {
+		log.Printf("trying to save file: %s", fileHeader.Filename)
+		file, err := fileHeader.Open()
+		if err != nil {
+			log.Errorf("upload file: %s", err)
+			http.Error(w, "failed to upload file [cannot open file]", http.StatusInternalServerError)
+			return
+		}
 
-	log.Printf("will try to save file: %s", fileHeader.Filename)
+		log.Printf("File Size: %+v\n", fileHeader.Size)
+		log.Printf("MIME Header: %+v\n", fileHeader.Header)
+		log.Printf("Content-Type: %+v\n", fileHeader.Header["Content-Type"])
 
-	defer func() {
+		fileType := "unknown"
+		if t, ok := fileHeader.Header["Content-Type"]; ok {
+			if len(t) > 0 {
+				fileType = t[0]
+			}
+		}
+
+		newFileId, err := handler.api.Save(
+			fileHeader.Filename,
+			folderId,
+			fileHeader.Size,
+			fileType,
+			file,
+		)
+		if err != nil {
+			log.Errorf("upload new file: %s", err)
+			http.Error(w, "failed to upload file", http.StatusInternalServerError)
+			file.Close()
+			return
+		}
+
+		addedFileIds = append(addedFileIds, fmt.Sprintf("%d", newFileId))
+
 		if err := file.Close(); err != nil {
 			log.Errorf("failed to close file properly [%s]: %s", fileHeader.Filename, err)
 		}
-	}()
-	log.Printf("Uploaded File: %+v\n", fileHeader.Filename)
-	log.Printf("File Size: %+v\n", fileHeader.Size)
-	log.Printf("MIME Header: %+v\n", fileHeader.Header)
-	log.Printf("Content-Type: %+v\n", fileHeader.Header["Content-Type"])
 
-	fileType := "unknown"
-	if t, ok := fileHeader.Header["Content-Type"]; ok {
-		if len(t) > 0 {
-			fileType = t[0]
-		}
+		log.Tracef("new file added %d: [%s] added", newFileId, fileHeader.Filename)
 	}
 
-	newFileId, err := handler.api.Save(
-		fileHeader.Filename,
-		folderId,
-		fileHeader.Size,
-		fileType,
-		file,
-	)
-	if err != nil {
-		log.Errorf("save new file: %s", err)
-		http.Error(w, "failed to save file", http.StatusInternalServerError)
-		return
-	}
-
-	log.Tracef("new file added %d: [%s] added", newFileId, fileHeader.Filename)
-
-	internal.WriteResponse(w, "", fmt.Sprintf("added:%d", newFileId))
+	internal.WriteResponse(w, "", fmt.Sprintf("added:%s", strings.Join(addedFileIds, ",")))
 }
 
 func (handler *FileHandler) isLogged(r *http.Request) (bool, error) {

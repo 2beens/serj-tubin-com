@@ -25,7 +25,7 @@ func TestNewFileHandler(t *testing.T) {
 	assert.NotNil(t, fileHandler)
 }
 
-func TestNewFileHandler_handleGet(t *testing.T) {
+func TestFileHandler_handleGet(t *testing.T) {
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
 	require.NoError(t, err)
@@ -102,7 +102,7 @@ func TestNewFileHandler_handleGet(t *testing.T) {
 	assert.Equal(t, "404 page not found\n", rr.Body.String())
 }
 
-func TestNewFileHandler_handleDeleteFile(t *testing.T) {
+func TestFileHandler_handleDeleteFile(t *testing.T) {
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
 	require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestNewFileHandler_handleDeleteFile(t *testing.T) {
 	assert.Nil(t, file1)
 }
 
-func TestNewFileHandler_handleUpdateInfo(t *testing.T) {
+func TestFileHandler_handleUpdateInfo(t *testing.T) {
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
 	require.NoError(t, err)
@@ -212,7 +212,7 @@ func TestNewFileHandler_handleUpdateInfo(t *testing.T) {
 	assert.Equal(t, fileContentString, string(fileContentRetrieved))
 }
 
-func TestNewFileHandler_handleGetRoot(t *testing.T) {
+func TestFileHandler_handleGetRoot(t *testing.T) {
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
 	require.NoError(t, err)
