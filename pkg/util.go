@@ -1,9 +1,13 @@
 package pkg
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"crypto/rand"
 	"encoding/base64"
+	"io"
 	"os"
+	"path/filepath"
 	"unsafe"
 )
 
@@ -47,4 +51,54 @@ func PathExists(path string, isDir bool) (bool, error) {
 		return true, nil
 	}
 	return false, err
+}
+
+func Compress(src string, buf io.Writer) error {
+	// tar > gzip > buf
+	gzipWriter := gzip.NewWriter(buf)
+	tarWriter := tar.NewWriter(gzipWriter)
+
+	// walk through every file in the folder
+	if err := filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
+		// generate tar header
+		header, err := tar.FileInfoHeader(fi, file)
+		if err != nil {
+			return err
+		}
+
+		// must provide real name
+		// (see https://golang.org/src/archive/tar/common.go?#L626)
+		header.Name = filepath.ToSlash(file)
+
+		// write header
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return err
+		}
+
+		// if not a dir, write file content
+		if !fi.IsDir() {
+			data, err := os.Open(file)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(tarWriter, data); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// produce tar
+	if err := tarWriter.Close(); err != nil {
+		return err
+	}
+	// produce gzip
+	if err := gzipWriter.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

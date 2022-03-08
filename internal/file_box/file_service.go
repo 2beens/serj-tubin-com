@@ -65,6 +65,8 @@ func RouterSetup(handler *FileHandler) *mux.Router {
 	fileServiceRouter.HandleFunc("/del/{folderId}", handler.handleDeleteFolder).Methods("DELETE", "OPTIONS")
 	fileServiceRouter.HandleFunc("/upload/{folderId}", handler.handleUpload).Methods("POST", "OPTIONS")
 	fileServiceRouter.HandleFunc("/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
+	fileServiceRouter.HandleFunc("/download/folder/{folderId}", handler.handleDownloadFolder).Methods("GET", "OPTIONS")
+	fileServiceRouter.HandleFunc("/download/file/{id}/parent/{folderId}", handler.handleDownloadFile).Methods("GET", "OPTIONS")
 	// get a file content
 	r.HandleFunc("/link/{folderId}/c/{id}", handler.handleGet).Methods("GET", "OPTIONS")
 

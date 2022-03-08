@@ -12,6 +12,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -25,6 +26,89 @@ func NewFileHandler(api *DiskApi, loginChecker auth.Checker) *FileHandler {
 	return &FileHandler{
 		api:          api,
 		loginChecker: loginChecker,
+	}
+}
+
+func (handler *FileHandler) handleDownloadFolder(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.Header().Add("Allow", "GET, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	folderIdParam := vars["folderId"]
+	if folderIdParam == "" {
+		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+		return
+	}
+	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
+	if err != nil {
+		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	log.Debugf("--> will try to download folder [%d]", folderId)
+
+	folder, err := handler.api.GetFolder(folderId)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	if err := pkg.Compress(folder.Path, w); err != nil {
+		log.Errorf("compress folder [%s]: %s", folder.Path, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (handler *FileHandler) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.Header().Add("Allow", "GET, OPTIONS")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	idParam := vars["id"]
+	if idParam == "" {
+		http.Error(w, "error, file ID empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		http.Error(w, "error, file ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	folderIdParam := vars["folderId"]
+	if folderIdParam == "" {
+		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+		return
+	}
+	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
+	if err != nil {
+		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	log.Debugf("--> will try to download file [%d] from [%d]", id, folderId)
+
+	file, err := handler.api.Get(id, folderId)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	if err := pkg.Compress(file.Path, w); err != nil {
+		log.Errorf("compress file [%s]: %s", file.Path, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
 	}
 }
 
