@@ -49,7 +49,7 @@ func TestFileHandler_handleGet(t *testing.T) {
 
 		// make the first 5 files not private
 		if i <= 5 {
-			require.NoError(t, api.UpdateInfo(fileId, parentId, fileName, false))
+			require.NoError(t, api.UpdateInfo(fileId, fileName, false))
 		}
 
 		addedFiles = append(addedFiles, fileId)
@@ -62,20 +62,20 @@ func TestFileHandler_handleGet(t *testing.T) {
 
 	r := RouterSetup(fileHandler)
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("/link/0/c/%d", addedFiles[4]), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[4]), nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, "random test content 5", rr.Body.String())
 
-	req, err = http.NewRequest("GET", fmt.Sprintf("/link/0/c/%d", addedFiles[0]), nil)
+	req, err = http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[0]), nil)
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, "random test content 1", rr.Body.String())
 
 	// private file - should not return anything
-	req, err = http.NewRequest("GET", fmt.Sprintf("/link/0/c/%d", addedFiles[8]), nil)
+	req, err = http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[8]), nil)
 	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
@@ -84,18 +84,18 @@ func TestFileHandler_handleGet(t *testing.T) {
 
 	// private file, but logged in - should return the file
 	loginChecker.LoggedSessions["test-token"] = true
-	req, err = http.NewRequest("GET", fmt.Sprintf("/link/0/c/%d", addedFiles[8]), nil)
-	req.Header.Set("X-SERJ-TOKEN", "test-token")
+	req, err = http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[8]), nil)
 	require.NoError(t, err)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, "random test content 9", rr.Body.String())
 
 	// private file, but logged out - should not return the file
 	loginChecker.LoggedSessions["test-token"] = false
-	req, err = http.NewRequest("GET", fmt.Sprintf("/link/0/c/%d", addedFiles[8]), nil)
-	req.Header.Set("X-SERJ-TOKEN", "test-token")
+	req, err = http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[8]), nil)
 	require.NoError(t, err)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusNotFound, rr.Code)
@@ -126,7 +126,7 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 
 		// make the first 5 files not private
 		if i <= 5 {
-			require.NoError(t, api.UpdateInfo(fileId, parentId, fileName, false))
+			require.NoError(t, api.UpdateInfo(fileId, fileName, false))
 		}
 
 		addedFiles = append(addedFiles, fileId)
@@ -141,24 +141,32 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 	r := RouterSetup(fileHandler)
 
 	// before delete, file there?
-	file1, err := api.Get(addedFiles[0], 0)
+	file1, parent, err := api.Get(addedFiles[0])
 	require.NoError(t, err)
 	assert.NotNil(t, file1)
+	assert.Equal(t, parentId, parent.Id)
 
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("/f/del/0/c/%d", addedFiles[0]), nil)
-	req.Header.Set("X-SERJ-TOKEN", "test-token")
+	req, err := http.NewRequest("POST", "/f/del", nil)
 	require.NoError(t, err)
+	req.PostForm = url.Values{}
+	req.PostForm.Add("ids", fmt.Sprintf("%d,%d", addedFiles[0], addedFiles[2]))
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
 
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, fmt.Sprintf("deleted:%d", addedFiles[0]), rr.Body.String())
+	assert.Equal(t, fmt.Sprintf("deleted:%d", 2), rr.Body.String())
 
-	assert.Len(t, api.root.Files, filesLen-1)
+	assert.Len(t, api.root.Files, filesLen-2)
 
-	file1, err = api.Get(addedFiles[0], 0)
+	file, parent, err := api.Get(addedFiles[0])
 	assert.ErrorIs(t, err, ErrFileNotFound)
-	assert.Nil(t, file1)
+	assert.Nil(t, file)
+	assert.Nil(t, parent)
+	file, parent, err = api.Get(addedFiles[2])
+	assert.ErrorIs(t, err, ErrFileNotFound)
+	assert.Nil(t, file)
+	assert.Nil(t, parent)
 }
 
 func TestFileHandler_handleUpdateInfo(t *testing.T) {
@@ -188,7 +196,7 @@ func TestFileHandler_handleUpdateInfo(t *testing.T) {
 
 	r := RouterSetup(fileHandler)
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("/f/%d/c/%d", parentId, fileId), nil)
+	req, err := http.NewRequest("POST", fmt.Sprintf("/f/update/%d", fileId), nil)
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	req.PostForm = url.Values{}
@@ -239,8 +247,8 @@ func TestFileHandler_handleGetRoot(t *testing.T) {
 	r := RouterSetup(fileHandler)
 
 	req, err := http.NewRequest("GET", "/f/root", nil)
-	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	require.NoError(t, err)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
 
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
@@ -261,8 +269,8 @@ func TestFileHandler_handleGetRoot(t *testing.T) {
 	// now log out and try - no root should return
 	loginChecker.LoggedSessions["test-token"] = false
 	req, err = http.NewRequest("GET", "/f/root", nil)
-	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	require.NoError(t, err)
+	req.Header.Set("X-SERJ-TOKEN", "test-token")
 
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)

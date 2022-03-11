@@ -46,13 +46,40 @@ func (da *DiskApi) getFolder(parent *Folder, id int64) *Folder {
 	return nil
 }
 
+func (da *DiskApi) getFile(id int64) (*File, *Folder) {
+	for _, f := range da.root.Files {
+		if f.Id == id {
+			return f, da.root
+		}
+	}
+	for _, f := range da.root.Subfolders {
+		if file, parent := da.getFileRecursive(id, f); file != nil {
+			return file, parent
+		}
+	}
+	return nil, nil
+}
+
+func (da *DiskApi) getFileRecursive(id int64, folder *Folder) (*File, *Folder) {
+	for _, f := range folder.Files {
+		if f.Id == id {
+			return f, folder
+		}
+	}
+	for _, f := range folder.Subfolders {
+		if file, parent := da.getFileRecursive(id, f); file != nil {
+			return file, parent
+		}
+	}
+	return nil, nil
+}
+
 func (da *DiskApi) UpdateInfo(
 	id int64,
-	folderId int64,
 	newName string,
 	isPrivate bool,
 ) error {
-	file, err := da.Get(id, folderId)
+	file, _, err := da.Get(id)
 	if err != nil {
 		return err
 	}
@@ -125,34 +152,29 @@ func (da *DiskApi) Save(
 	return newId, nil
 }
 
-func (da *DiskApi) Get(id, folderId int64) (*File, error) {
+func (da *DiskApi) Get(id int64) (*File, *Folder, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
-	log.Debugf("disk api: getting file: %d, folder id: %d", id, folderId)
+	log.Debugf("disk api: getting file: %d", id)
 
-	folder := da.getFolder(da.root, folderId)
-	if folder == nil {
-		return nil, ErrFolderNotFound
+	file, parent := da.getFile(id)
+	if file == nil {
+		return nil, nil, ErrFileNotFound
 	}
 
-	file, ok := folder.Files[id]
-	if !ok {
-		return nil, ErrFileNotFound
-	}
-
-	return file, nil
+	return file, parent, nil
 }
 
-func (da *DiskApi) Delete(id, folderId int64) error {
+func (da *DiskApi) Delete(id int64) error {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
-	log.Debugf("disk api: deleting file: %d, folder id: %d", id, folderId)
+	log.Debugf("disk api: deleting file: %d", id)
 
-	folder := da.getFolder(da.root, folderId)
-	if folder == nil {
-		return ErrFolderNotFound
+	file, folder := da.getFile(id)
+	if file == nil {
+		return ErrFileNotFound
 	}
 
 	file, ok := folder.Files[id]
@@ -168,6 +190,7 @@ func (da *DiskApi) Delete(id, folderId int64) error {
 
 	// save folder structure to disk
 	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+		// TODO: send metrics and create alarms for cases like this one
 		return fmt.Errorf("file deleted, but failed to save structure info: %w", err)
 	}
 

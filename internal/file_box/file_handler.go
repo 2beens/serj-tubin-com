@@ -85,20 +85,9 @@ func (handler *FileHandler) handleDownloadFile(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	folderIdParam := vars["folderId"]
-	if folderIdParam == "" {
-		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
-		return
-	}
-	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
-	if err != nil {
-		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
-		return
-	}
+	log.Debugf("--> will try to download file [%d]", id)
 
-	log.Debugf("--> will try to download file [%d] from [%d]", id, folderId)
-
-	file, err := handler.api.Get(id, folderId)
+	file, _, err := handler.api.Get(id)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -133,18 +122,7 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	folderIdParam := vars["folderId"]
-	if folderIdParam == "" {
-		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
-		return
-	}
-	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
-	if err != nil {
-		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
-		return
-	}
-
-	fileInfo, err := handler.api.Get(id, folderId)
+	fileInfo, _, err := handler.api.Get(id)
 	if err != nil {
 		log.Errorf("read file [%d]: %s", id, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -200,17 +178,6 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	folderIdParam := vars["folderId"]
-	if folderIdParam == "" {
-		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
-		return
-	}
-	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
-	if err != nil {
-		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
-		return
-	}
-
 	if err := r.ParseForm(); err != nil {
 		log.Errorf("update file info failed, parse form error: %s", err)
 		http.Error(w, "parse form error", http.StatusInternalServerError)
@@ -225,7 +192,7 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 	}
 	isPrivate := isPrivateStr == "true"
 
-	if err := handler.api.UpdateInfo(id, folderId, newName, isPrivate); err != nil {
+	if err := handler.api.UpdateInfo(id, newName, isPrivate); err != nil {
 		log.Errorf("update file info [%d]: %s", id, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -234,85 +201,69 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("updated:%d", id)))
 }
 
-func (handler *FileHandler) handleDeleteFolder(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "DELETE, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	vars := mux.Vars(r)
-
-	folderIdParam := vars["folderId"]
-	if folderIdParam == "" {
-		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
-		return
-	}
-	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
-	if err != nil {
-		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
-		return
-	}
-
-	log.Debugf("--> will try to delete folder [%d]", folderId)
-
-	if err := handler.api.DeleteFolder(folderId); err != nil {
-		log.Errorf("delete folder [%d]: %s", folderId, err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", folderId)))
-}
-
 func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "DELETE, OPTIONS")
+		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	vars := mux.Vars(r)
-
-	idParam := vars["id"]
-	if idParam == "" {
-		http.Error(w, "error, file ID empty", http.StatusBadRequest)
-		return
-	}
-	id, err := strconv.ParseInt(idParam, 10, 64)
+	err := r.ParseForm()
 	if err != nil {
-		http.Error(w, "error, file ID invalid", http.StatusBadRequest)
+		log.Errorf("delete files/folders, parse form error: %s", err)
+		http.Error(w, "parse form error", http.StatusInternalServerError)
 		return
 	}
 
-	folderIdParam := vars["folderId"]
-	if folderIdParam == "" {
-		http.Error(w, "error, folder ID empty", http.StatusBadRequest)
+	idsParam := r.Form.Get("ids")
+	if idsParam == "" {
+		http.Error(w, "error, IDs parameter empty", http.StatusBadRequest)
 		return
 	}
-	folderId, err := strconv.ParseInt(folderIdParam, 10, 64)
-	if err != nil {
-		http.Error(w, "error, folder ID invalid", http.StatusBadRequest)
-		return
+	idsRaw := strings.Split(idsParam, ",")
+	var ids []int64
+	for _, idRaw := range idsRaw {
+		id, err := strconv.ParseInt(idRaw, 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error, file/folder ID [%s] invalid", idRaw), http.StatusBadRequest)
+			return
+		}
+		ids = append(ids, id)
 	}
 
-	log.Debugf("--> will try to delete file [%d] from folder [%d]", id, folderId)
+	log.Debugf("--> will try to delete [%d] items", len(ids))
 
-	fileInfo, err := handler.api.Get(id, folderId)
-	if err != nil {
-		log.Errorf("delete file [%d]: %s", id, err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+	deletedCount := 0
+	for _, id := range ids {
+		log.Debugf("-> tryint to delete item: %d", id)
+
+		fileInfo, _, err := handler.api.Get(id)
+		if err != nil && err != ErrFileNotFound {
+			log.Errorf("delete file [%d]: %s", id, err)
+			//http.Error(w, "internal error", http.StatusInternalServerError)
+			//return
+		} else if fileInfo != nil {
+			log.Debugf("will delete file: %s", fileInfo.Path)
+			if err := handler.api.Delete(id); err != nil {
+				log.Errorf("delete file [%d]: %s", id, err)
+				//http.Error(w, "internal error", http.StatusInternalServerError)
+				//return
+				continue
+			}
+			deletedCount++
+		} else {
+			// not a file - try to delete folder instead
+			if err := handler.api.DeleteFolder(id); err != nil {
+				log.Errorf("delete folder [%d]: %s", id, err)
+				//http.Error(w, "internal error", http.StatusInternalServerError)
+				//return
+				continue
+			}
+			deletedCount++
+		}
 	}
-	log.Debugf("will delete file: %s", fileInfo.Path)
 
-	if err := handler.api.Delete(id, folderId); err != nil {
-		log.Errorf("delete file [%d]: %s", id, err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", id)))
+	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", deletedCount)))
 }
 
 func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {
