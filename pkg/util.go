@@ -59,7 +59,11 @@ func Compress(src string, buf io.Writer) error {
 	tarWriter := tar.NewWriter(gzipWriter)
 
 	// walk through every file in the folder
-	if err := filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
+	if walkErr := filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		// generate tar header
 		header, err := tar.FileInfoHeader(fi, file)
 		if err != nil {
@@ -87,8 +91,8 @@ func Compress(src string, buf io.Writer) error {
 		}
 
 		return nil
-	}); err != nil {
-		return err
+	}); walkErr != nil {
+		return walkErr
 	}
 
 	// produce tar
