@@ -60,13 +60,14 @@ func RouterSetup(handler *FileHandler) *mux.Router {
 
 	fileServiceRouter := r.PathPrefix("/f").Subrouter()
 	fileServiceRouter.HandleFunc("/root", handler.handleGetRoot).Methods("GET", "OPTIONS")
-	fileServiceRouter.HandleFunc("/{folderId}/c/{id}", handler.handleUpdateInfo).Methods("POST", "OPTIONS")
-	fileServiceRouter.HandleFunc("/del/{folderId}/c/{id}", handler.handleDelete).Methods("DELETE", "OPTIONS")
-	fileServiceRouter.HandleFunc("/del/{folderId}", handler.handleDeleteFolder).Methods("DELETE", "OPTIONS")
+	fileServiceRouter.HandleFunc("/update/{id}", handler.handleUpdateInfo).Methods("POST", "OPTIONS")
+	fileServiceRouter.HandleFunc("/del", handler.handleDelete).Methods("POST", "OPTIONS")
 	fileServiceRouter.HandleFunc("/upload/{folderId}", handler.handleUpload).Methods("POST", "OPTIONS")
 	fileServiceRouter.HandleFunc("/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
+	fileServiceRouter.HandleFunc("/download/folder/{folderId}", handler.handleDownloadFolder).Methods("GET", "OPTIONS")
+	fileServiceRouter.HandleFunc("/download/file/{id}", handler.handleDownloadFile).Methods("GET", "OPTIONS")
 	// get a file content
-	r.HandleFunc("/link/{folderId}/c/{id}", handler.handleGet).Methods("GET", "OPTIONS")
+	r.HandleFunc("/link/{id}", handler.handleGet).Methods("GET", "OPTIONS")
 
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())

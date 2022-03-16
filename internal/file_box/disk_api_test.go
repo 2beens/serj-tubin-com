@@ -31,7 +31,7 @@ func TestDiskApi_UpdateInfo(t *testing.T) {
 	// non-existing file
 	file1Id := int64(100)
 	parentId := int64(0)
-	err = api.UpdateInfo(file1Id, parentId, "new-name", false)
+	err = api.UpdateInfo(file1Id, "new-name", false)
 	require.Error(t, err)
 	assert.Equal(t, err.Error(), "file not found")
 
@@ -50,17 +50,18 @@ func TestDiskApi_UpdateInfo(t *testing.T) {
 	assert.Equal(t, fileName, file1.Name)
 	assert.True(t, file1.IsPrivate)
 
-	err = api.UpdateInfo(file1Id, parentId, "new-name", false)
+	err = api.UpdateInfo(file1Id, "new-name", false)
 	require.NoError(t, err)
 
 	// after update
 	assert.Equal(t, "new-name", file1.Name)
 	assert.False(t, file1.IsPrivate)
 
-	file1retrieved, err := api.Get(file1Id, parentId)
+	file1retrieved, parent, err := api.Get(file1Id)
 	require.NoError(t, err)
 	assert.Equal(t, "new-name", file1retrieved.Name)
 	assert.False(t, file1retrieved.IsPrivate)
+	assert.Equal(t, parentId, parent.Id)
 }
 
 func TestDiskApi_Save_InRoot(t *testing.T) {
@@ -89,13 +90,11 @@ func TestDiskApi_Save_InRoot(t *testing.T) {
 	assert.Len(t, api.root.Files, filesLen)
 	require.Len(t, addedFiles, filesLen)
 
-	file1, err := api.Get(addedFiles[0], parentId)
+	file1, parent, err := api.Get(addedFiles[0])
 	require.NoError(t, err)
 	require.NotNil(t, file1)
 	require.NotEmpty(t, file1.Path)
-
-	_, err = api.Get(addedFiles[0], 1000) // get correct file, but wrong parent folder ID
-	assert.ErrorIs(t, err, ErrFolderNotFound)
+	assert.Equal(t, parentId, parent.Id)
 
 	file1Content, err := os.ReadFile(file1.Path)
 	require.NoError(t, err)
@@ -140,7 +139,7 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 	assert.Len(t, folder1.Files, 1)
 	assert.Len(t, folder1.Subfolders, 0)
 
-	retrievedFile2, err := api.Get(file2Id, folder1.Id)
+	retrievedFile2, _, err := api.Get(file2Id)
 	require.NoError(t, err)
 	require.NotNil(t, retrievedFile2)
 	assert.Equal(t, file2Id, retrievedFile2.Id)
@@ -148,12 +147,12 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 	assert.True(t, retrievedFile2.IsPrivate)
 
 	// now test delete
-	err = api.Delete(1000, folder1.Id) // try delete non existing file
+	err = api.Delete(1000) // try delete non existing file
 	assert.ErrorIs(t, err, ErrFileNotFound)
 
-	err = api.Delete(file2Id, folder1.Id)
+	err = api.Delete(file2Id)
 	require.NoError(t, err)
-	retrievedFile2, err = api.Get(file2Id, folder1.Id)
+	retrievedFile2, _, err = api.Get(file2Id)
 	assert.ErrorIs(t, err, ErrFileNotFound)
 	require.Nil(t, retrievedFile2)
 
