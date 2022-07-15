@@ -92,7 +92,7 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	// allowed up to 15,000 queries per hour
 	// https://freegeoip.app/
 	geoIpUrl := fmt.Sprintf("%s/json/%s", gi.freeGeoipAPIUrl, userIp)
-	log.Debugf("calling geo ip info: %s", geoIpUrl)
+	log.Debugf("calling geo ip info for ip: %s", geoIpUrl)
 
 	resp, err := gi.httpClient.Get(geoIpUrl)
 	if err != nil {
@@ -104,6 +104,8 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read geo ip response bytes: %s", err)
 	}
+
+	log.Debugf("calling geo ip info for ip: %s, response: %s", respBytes)
 
 	err = json.Unmarshal(respBytes, geoIpResponse)
 	if err != nil {

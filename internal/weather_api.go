@@ -146,10 +146,14 @@ func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry s
 
 func (w *WeatherApi) GetWeatherCity(city, countryCode string) (*WeatherCity, error) {
 	cityName := strings.ToLower(city)
+	log.Debugf("weather-api: get weather city for: %s", cityName)
+
 	citiesList, found := w.citiesData[cityName]
 	if !found {
 		return nil, ErrNotFound
 	}
+
+	log.Debugf("weather-api: get weather city for: %s, found %d cities", cityName, len(*citiesList))
 
 	if len(*citiesList) == 1 {
 		return &(*citiesList)[0], nil
@@ -158,10 +162,13 @@ func (w *WeatherApi) GetWeatherCity(city, countryCode string) (*WeatherCity, err
 	country := strings.ToLower(countryCode)
 	for i := range *citiesList {
 		c := (*citiesList)[i]
+		log.Debugf("weather-api: get weather city for: %s, checking %s == %s", cityName, c.Country, country)
 		if strings.ToLower(c.Country) == country {
 			return &c, nil
 		}
 	}
+
+	log.Debugf("weather-api: get weather city for: %s, nothing found in the end ...", cityName)
 
 	return nil, ErrNotFound
 }
