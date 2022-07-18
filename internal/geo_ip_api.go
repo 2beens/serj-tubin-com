@@ -12,20 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// type GeoIpInfo struct {
-// 	Ip          string  `json:"ip"`
-// 	CountryCode string  `json:"country_code"`
-// 	CountryName string  `json:"country_name"`
-// 	RegionCode  string  `json:"region_code"`
-// 	RegionName  string  `json:"region_name"`
-// 	City        string  `json:"city"`
-// 	ZipCode     string  `json:"zip_code"`
-// 	TimeZone    string  `json:"time_zone"`
-// 	Latitude    float32 `json:"latitude"`
-// 	Longitude   float32 `json:"longitude"`
-// 	MetroCode   int     `json:"metro_code"`
-// }
-
 type GeoIp struct {
 	ipBaseEndpoint string
 	ipBaseAPIKey   string
@@ -35,20 +21,6 @@ type GeoIp struct {
 }
 
 var (
-	// devGeoIpInfo = GeoIpInfo{
-	// 	Ip:          "127.0.0.1",
-	// 	CountryCode: "de",
-	// 	CountryName: "Germany",
-	// 	RegionCode:  "",
-	// 	RegionName:  "",
-	// 	City:        "Berlin",
-	// 	ZipCode:     "12099",
-	// 	TimeZone:    "",
-	// 	Latitude:    0,
-	// 	Longitude:   0,
-	// 	MetroCode:   0,
-	// }
-
 	devGeoIpInfo = GeoIpInfo{
 		Data: GeoIpInfoData{
 			IP: "127.0.0.1",

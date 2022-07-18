@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -11,8 +10,7 @@ import (
 
 type LoginChecker struct {
 	ttl         time.Duration
-	mutex       sync.Mutex    // TODO: now with redis maybe not needed
-	redisClient *redis.Client // TODO: add one more cachine layer above redis
+	redisClient *redis.Client
 }
 
 func NewLoginChecker(ttl time.Duration, redisClient *redis.Client) *LoginChecker {
@@ -23,9 +21,6 @@ func NewLoginChecker(ttl time.Duration, redisClient *redis.Client) *LoginChecker
 }
 
 func (as *LoginChecker) IsLogged(token string) (bool, error) {
-	as.mutex.Lock()
-	defer as.mutex.Unlock()
-
 	sessionKey := sessionKeyPrefix + token
 	cmd := as.redisClient.Get(context.Background(), sessionKey)
 	if err := cmd.Err(); err != nil {
