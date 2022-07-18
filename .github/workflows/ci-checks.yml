@@ -10,7 +10,7 @@ jobs:
       - name: Run linter
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.31
+          version: v1.47.0
   unit-tests:
     name: unit tests
     runs-on: ubuntu-latest
