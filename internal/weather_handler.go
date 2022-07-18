@@ -54,9 +54,12 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo.City, geoIpInfo.CountryCode)
+	locationInfo := geoIpInfo.Data.Location
+	log.Debugf("weather-handler: handle current for city [%s] and country code [%s]", locationInfo.City.Name, locationInfo.Country.Name)
+
+	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City.Name, locationInfo.Country.Alpha2)
 	if err != nil {
-		log.Errorf("error getting current weather city from geo ip info: %s", err)
+		log.Errorf("error getting current weather city from geo ip info for city [%s] and country code [%s]: %s", err, locationInfo.City.Name, locationInfo.Country.Alpha2)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}
@@ -91,9 +94,12 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo.City, geoIpInfo.CountryCode)
+	locationInfo := geoIpInfo.Data.Location
+	log.Debugf("weather-handler: handle tomorrow weather for city [%s] and country code [%s]", locationInfo.City.Name, locationInfo.Country.Name)
+
+	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City.Name, locationInfo.Country.Alpha2)
 	if err != nil {
-		log.Errorf("error getting weather city from geo ip info: %s", err)
+		log.Errorf("handle weather tomorrow: error getting weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}
@@ -140,9 +146,12 @@ func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	city, err := handler.weatherApi.GetWeatherCity(geoIpInfo.City, geoIpInfo.CountryCode)
+	locationInfo := geoIpInfo.Data.Location
+	log.Debugf("weather-handler: handle 5 days weather for city [%s] and country code [%s]", locationInfo.City.Name, locationInfo.Country.Name)
+
+	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City.Name, locationInfo.Country.Alpha2)
 	if err != nil {
-		log.Errorf("error getting weather city from geo ip info: %s", err)
+		log.Errorf("handle weather 5 days: error getting weather city from geo ip info: %s", err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}

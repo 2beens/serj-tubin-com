@@ -75,7 +75,7 @@ func (handler *MiscHandler) handleWhereAmI(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.City, geoIpInfo.CountryName)
+	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.Data.Location.City.Name, geoIpInfo.Data.Location.Country.Name)
 	WriteResponse(w, "application/json", geoResp)
 }
 
