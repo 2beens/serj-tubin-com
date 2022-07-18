@@ -59,6 +59,7 @@ type Server struct {
 func NewServer(
 	config *config.Config,
 	openWeatherApiKey string,
+	ipBaseAPIKey string,
 	browserRequestsSecret string,
 	versionInfo string,
 	adminUsername string,
@@ -145,7 +146,7 @@ func NewServer(
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
-		geoIp:                 NewGeoIp("https://freegeoip.app", http.DefaultClient),
+		geoIp:                 NewGeoIp("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient),
 		board:                 board,
 		netlogVisitsApi:       netlogVisitsApi,
 		notesBoxApi:           notesBoxApi,

@@ -37,6 +37,11 @@ func main() {
 		log.Errorf("open weather API key not set, use OPEN_WEATHER_API_KEY env var to set it")
 	}
 
+	ipBaseAPIKey := os.Getenv("IP_BASE_API_KEY")
+	if ipBaseAPIKey == "" {
+		log.Errorf("ip base API key not set, use IP_BASE_API_KEY env var to set it")
+	}
+
 	versionInfo, err := tryGetLastCommitHash()
 	if err != nil {
 		log.Tracef("failed to get last commit hash / version info: %s", err)
@@ -64,6 +69,7 @@ func main() {
 	server, err := internal.NewServer(
 		cfg,
 		openWeatherApiKey,
+		ipBaseAPIKey,
 		browserRequestsSecret,
 		versionInfo,
 		adminUsername,

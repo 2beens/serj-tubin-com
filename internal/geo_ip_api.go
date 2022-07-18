@@ -6,56 +6,75 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/coocood/freecache"
 	log "github.com/sirupsen/logrus"
 )
 
-type GeoIpInfo struct {
-	Ip          string  `json:"ip"`
-	CountryCode string  `json:"country_code"`
-	CountryName string  `json:"country_name"`
-	RegionCode  string  `json:"region_code"`
-	RegionName  string  `json:"region_name"`
-	City        string  `json:"city"`
-	ZipCode     string  `json:"zip_code"`
-	TimeZone    string  `json:"time_zone"`
-	Latitude    float32 `json:"latitude"`
-	Longitude   float32 `json:"longitude"`
-	MetroCode   int     `json:"metro_code"`
-}
+// type GeoIpInfo struct {
+// 	Ip          string  `json:"ip"`
+// 	CountryCode string  `json:"country_code"`
+// 	CountryName string  `json:"country_name"`
+// 	RegionCode  string  `json:"region_code"`
+// 	RegionName  string  `json:"region_name"`
+// 	City        string  `json:"city"`
+// 	ZipCode     string  `json:"zip_code"`
+// 	TimeZone    string  `json:"time_zone"`
+// 	Latitude    float32 `json:"latitude"`
+// 	Longitude   float32 `json:"longitude"`
+// 	MetroCode   int     `json:"metro_code"`
+// }
 
 type GeoIp struct {
-	freeGeoipAPIUrl string
-	httpClient      *http.Client
-	cache           *freecache.Cache
-	mutex           sync.RWMutex
+	ipBaseEndpoint string
+	ipBaseAPIKey   string
+	httpClient     *http.Client
+	cache          *freecache.Cache
+	mutex          sync.RWMutex
 }
 
 var (
+	// devGeoIpInfo = GeoIpInfo{
+	// 	Ip:          "127.0.0.1",
+	// 	CountryCode: "de",
+	// 	CountryName: "Germany",
+	// 	RegionCode:  "",
+	// 	RegionName:  "",
+	// 	City:        "Berlin",
+	// 	ZipCode:     "12099",
+	// 	TimeZone:    "",
+	// 	Latitude:    0,
+	// 	Longitude:   0,
+	// 	MetroCode:   0,
+	// }
+
 	devGeoIpInfo = GeoIpInfo{
-		Ip:          "127.0.0.1",
-		CountryCode: "de",
-		CountryName: "Germany",
-		RegionCode:  "",
-		RegionName:  "",
-		City:        "Berlin",
-		ZipCode:     "12099",
-		TimeZone:    "",
-		Latitude:    0,
-		Longitude:   0,
-		MetroCode:   0,
+		Data: GeoIpInfoData{
+			IP: "127.0.0.1",
+			Location: GeoLocation{
+				City: City{
+					Name: "Berlin",
+				},
+				Country: Country{
+					Alpha2: "DE",
+					Alpha3: "DEU",
+					Name:   "Germany",
+				},
+			},
+		},
 	}
 )
 
-func NewGeoIp(freeGeoipAPIUrl string, httpClient *http.Client) *GeoIp {
+func NewGeoIp(ipBaseEndpoint, ipBaseAPIKey string, httpClient *http.Client) *GeoIp {
 	megabyte := 1024 * 1024
 	cacheSize := 50 * megabyte
 
 	return &GeoIp{
-		freeGeoipAPIUrl: freeGeoipAPIUrl,
-		httpClient:      httpClient,
-		cache:           freecache.NewCache(cacheSize),
+		ipBaseEndpoint: ipBaseEndpoint,
+		ipBaseAPIKey:   ipBaseAPIKey,
+		httpClient:     httpClient,
+		cache:          freecache.NewCache(cacheSize),
 	}
 }
 
@@ -89,10 +108,8 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	}
 	gi.mutex.RUnlock()
 
-	// allowed up to 15,000 queries per hour
-	// https://freegeoip.app/
-	geoIpUrl := fmt.Sprintf("%s/json/%s", gi.freeGeoipAPIUrl, userIp)
-	log.Debugf("calling geo ip info for ip: %s", geoIpUrl)
+	geoIpUrl := fmt.Sprintf("%s/v2/info?apikey=%s&ip=%s", gi.ipBaseEndpoint, gi.ipBaseAPIKey, userIp)
+	log.Debugf("calling geo ip info: %s", geoIpUrl)
 
 	resp, err := gi.httpClient.Get(geoIpUrl)
 	if err != nil {
@@ -105,7 +122,7 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 		return nil, fmt.Errorf("failed to read geo ip response bytes: %s", err)
 	}
 
-	log.Debugf("calling geo ip info for ip: %s, response: %s", respBytes)
+	log.Debugf("calling geo ip info for ip: %s, response: %s", geoIpUrl, respBytes)
 
 	err = json.Unmarshal(respBytes, geoIpResponse)
 	if err != nil {
@@ -122,4 +139,80 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	gi.mutex.Unlock()
 
 	return geoIpResponse, nil
+}
+
+type GeoIpInfo struct {
+	Data GeoIpInfoData `json:"data"`
+}
+
+type GeoIpInfoData struct {
+	Timezone struct {
+		ID               string    `json:"id"`
+		CurrentTime      time.Time `json:"current_time"`
+		Code             string    `json:"code"`
+		IsDaylightSaving bool      `json:"is_daylight_saving"`
+		GmtOffset        int       `json:"gmt_offset"`
+	} `json:"timezone"`
+	IP         string `json:"ip"`
+	Type       string `json:"type"`
+	Connection struct {
+		Asn          int    `json:"asn"`
+		Organization string `json:"organization"`
+		Isp          string `json:"isp"`
+	} `json:"connection"`
+	Location GeoLocation `json:"location"`
+}
+
+type GeoLocation struct {
+	GeonamesID int     `json:"geonames_id"`
+	Latitude   float64 `json:"latitude"`
+	Longitude  float64 `json:"longitude"`
+	Zip        string  `json:"zip"`
+	Continent  struct {
+		Code           string `json:"code"`
+		Name           string `json:"name"`
+		NameTranslated string `json:"name_translated"`
+	} `json:"continent"`
+	Country Country `json:"country"`
+	City    City    `json:"city"`
+	Region  Region  `json:"region"`
+}
+
+type Region struct {
+	Fips           string `json:"fips"`
+	Alpha2         string `json:"alpha2"`
+	Name           string `json:"name"`
+	NameTranslated string `json:"name_translated"`
+}
+
+type City struct {
+	Name           string `json:"name"`
+	NameTranslated string `json:"name_translated"`
+}
+
+type Country struct {
+	Alpha2       string     `json:"alpha2"`
+	Alpha3       string     `json:"alpha3"`
+	CallingCodes []string   `json:"calling_codes"`
+	Currencies   []Currency `json:"currencies"`
+	Emoji        string     `json:"emoji"`
+	Ioc          string     `json:"ioc"`
+	Languages    []struct {
+		Name       string `json:"name"`
+		NameNative string `json:"name_native"`
+	} `json:"languages"`
+	Name              string   `json:"name"`
+	NameTranslated    string   `json:"name_translated"`
+	Timezones         []string `json:"timezones"`
+	IsInEuropeanUnion bool     `json:"is_in_european_union"`
+}
+
+type Currency struct {
+	Symbol        string `json:"symbol"`
+	Name          string `json:"name"`
+	SymbolNative  string `json:"symbol_native"`
+	DecimalDigits int    `json:"decimal_digits"`
+	Rounding      int    `json:"rounding"`
+	Code          string `json:"code"`
+	NamePlural    string `json:"name_plural"`
 }

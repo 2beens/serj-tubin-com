@@ -12,7 +12,7 @@ import (
 )
 
 // example API call
-// http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=0af09f7bce2fd9cbea44d6740f3c8e27
+// http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=TODO
 
 type WeatherApi struct {
 	cache             *freecache.Cache
