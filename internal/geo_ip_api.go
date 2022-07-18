@@ -1,14 +1,14 @@
 package internal
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sync"
 	"time"
 
-	"github.com/coocood/freecache"
+	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,8 +16,7 @@ type GeoIp struct {
 	ipBaseEndpoint string
 	ipBaseAPIKey   string
 	httpClient     *http.Client
-	cache          *freecache.Cache
-	mutex          sync.RWMutex
+	redisClient    *redis.Client
 }
 
 var (
@@ -38,15 +37,16 @@ var (
 	}
 )
 
-func NewGeoIp(ipBaseEndpoint, ipBaseAPIKey string, httpClient *http.Client) *GeoIp {
-	megabyte := 1024 * 1024
-	cacheSize := 50 * megabyte
-
+func NewGeoIp(
+	ipBaseEndpoint, ipBaseAPIKey string,
+	httpClient *http.Client,
+	redisClient *redis.Client,
+) *GeoIp {
 	return &GeoIp{
 		ipBaseEndpoint: ipBaseEndpoint,
 		ipBaseAPIKey:   ipBaseAPIKey,
 		httpClient:     httpClient,
-		cache:          freecache.NewCache(cacheSize),
+		redisClient:    redisClient,
 	}
 }
 
@@ -62,28 +62,32 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 		return &devGeoIpInfo, nil
 	}
 
-	geoIpResponse := &GeoIpInfo{}
+	// try to get geo ip info from redis
+	userIpKey := fmt.Sprintf("ip-info::%s", userIp)
+	cmd := gi.redisClient.Get(context.Background(), userIpKey)
+	if err := cmd.Err(); err != nil {
+		log.Errorf("failed to find ip info from redis for [%s]: %s", userIpKey, err)
+	}
 
-	// TODO: seems like freecache already solves sync issues (can be removed?)
-	gi.mutex.RLock()
-	if geoIpInfoBytes, err := gi.cache.Get([]byte(userIp)); err == nil {
-		log.Tracef("found geo ip info for %s in cache", userIp)
-		if err = json.Unmarshal(geoIpInfoBytes, geoIpResponse); err == nil {
-			gi.mutex.RUnlock()
+	geoIpResponse := &GeoIpInfo{}
+	if geoIpInfoBytes := cmd.Val(); geoIpInfoBytes != "" {
+		log.Tracef("found geo ip info for [%s] in redis cache", userIp)
+		if err = json.Unmarshal([]byte(geoIpInfoBytes), geoIpResponse); err == nil {
 			return geoIpResponse, nil
 		}
 
-		log.Errorf("failed to unmarshal cached geo ip info %s: %s", userIp, err)
-		// continue, and try getting it from Geo IP API
+		log.Errorf("failed to unmarshal cached ip info from redis for %s: %s", userIp, err)
+		// continue, and try getting it from IP Base API
 	} else {
-		log.Debugf("failed to get cached geo ip info value for %s: %s", userIp, err)
+		log.Debugf("ip info value from redis not found for [%s]", userIp)
 	}
-	gi.mutex.RUnlock()
 
-	geoIpUrl := fmt.Sprintf("%s/v2/info?apikey=%s&ip=%s", gi.ipBaseEndpoint, gi.ipBaseAPIKey, userIp)
-	log.Debugf("calling geo ip info: %s", geoIpUrl)
+	log.Debugf("will ask ip base API for ip info: %s", userIp)
 
-	resp, err := gi.httpClient.Get(geoIpUrl)
+	ipBaseUrl := fmt.Sprintf("%s/v2/info?apikey=%s&ip=%s", gi.ipBaseEndpoint, gi.ipBaseAPIKey, userIp)
+	log.Debugf("calling geo ip info: %s", ipBaseUrl)
+
+	resp, err := gi.httpClient.Get(ipBaseUrl)
 	if err != nil {
 		return nil, fmt.Errorf("error getting freegeoip response: %s", err.Error())
 	}
@@ -94,21 +98,20 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 		return nil, fmt.Errorf("failed to read geo ip response bytes: %s", err)
 	}
 
-	log.Debugf("calling geo ip info for ip: %s, response: %s", geoIpUrl, respBytes)
+	log.Debugf("calling ip base info for ip: %s, response: %s", ipBaseUrl, respBytes)
 
 	err = json.Unmarshal(respBytes, geoIpResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal geo ip response bytes: %s", err)
 	}
 
-	// set cache
-	gi.mutex.Lock()
-	if err = gi.cache.Set([]byte(userIp), respBytes, GeoIpCacheExpire); err != nil {
-		log.Errorf("failed to write geo ip cache for %s: %s", userIp, err)
+	// cache response in redis
+	cmdSet := gi.redisClient.Set(context.Background(), userIpKey, respBytes, 0)
+	if err := cmdSet.Err(); err != nil {
+		log.Errorf("failed to cache ip info in redis for %s: %s", userIp, err)
 	} else {
-		log.Debugf("geo ip cache set for: %s", userIp)
+		log.Debugf("ip info cache set in redis for: %s", userIp)
 	}
-	gi.mutex.Unlock()
 
 	return geoIpResponse, nil
 }

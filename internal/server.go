@@ -146,7 +146,7 @@ func NewServer(
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
-		geoIp:                 NewGeoIp("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient),
+		geoIp:                 NewGeoIp("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient, rdb),
 		board:                 board,
 		netlogVisitsApi:       netlogVisitsApi,
 		notesBoxApi:           notesBoxApi,
