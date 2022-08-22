@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -13,6 +14,7 @@ import (
 )
 
 type GeoIp struct {
+	mu             sync.Mutex
 	ipBaseEndpoint string
 	ipBaseAPIKey   string
 	httpClient     *http.Client
@@ -62,6 +64,14 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 		return &devGeoIpInfo, nil
 	}
 
+	// ipbase api free plan contains only 150 calls
+	// the frontend client makes 3 concurrent requests upon home page opened: /whereami, weather current,
+	// and weather forecast (5 days); all these result in 3 concurrent (and unnecessary) requests to
+	// my poor ipbase free plan, thus a mutex is required here to reduce this number, and try getting
+	// cached ip info value from redis
+	gi.mu.Lock()
+	defer gi.mu.Unlock()
+
 	// try to get geo ip info from redis
 	userIpKey := fmt.Sprintf("ip-info::%s", userIp)
 	cmd := gi.redisClient.Get(context.Background(), userIpKey)
@@ -93,7 +103,7 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	}
 	defer resp.Body.Close()
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read geo ip response bytes: %s", err)
 	}
