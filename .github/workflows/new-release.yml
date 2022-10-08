@@ -18,4 +18,5 @@ jobs:
           key: ${{ secrets.SSR2_KEY_RSA }}
           script: |
             echo "running script ..."
+            sh ${{ secrets.SSR2_TEST_SCRIPT }}
             sh ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }}
