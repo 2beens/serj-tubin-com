@@ -11,8 +11,8 @@ echo "current dir: $(pwd)"
 
 echo "--> git: fetching ..."
 git fetch --all
-echo "--> git: checkout ..."
-git checkout ci-release
+echo "--> git: checkout master ..."
+git checkout master
 echo "--> git: rebase ..."
 git rebase
 
