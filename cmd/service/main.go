@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
@@ -66,6 +69,11 @@ func main() {
 		log.Errorf("redis password not set. use SERJ_REDIS_PASS")
 	}
 
+	chOsInterrupt := make(chan os.Signal, 1)
+	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
 	server, err := internal.NewServer(
 		cfg,
 		openWeatherApiKey,
@@ -80,7 +88,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server.Serve(cfg.Host, cfg.Port)
+	server.Serve(ctx, cfg.Host, cfg.Port)
+
+	receivedSig := <-chOsInterrupt
+	log.Warnf("signal [%s] received ...", receivedSig)
+	cancel()
+
+	// go to sleep 🥱
+	server.GracefulShutdown()
 }
 
 // tryGetLastCommitHash will try to get the last commit hash

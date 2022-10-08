@@ -7,8 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
@@ -33,6 +31,8 @@ const (
 )
 
 type Server struct {
+	httpServer *http.Server
+
 	config          *config.Config
 	blogApi         blog.Api
 	geoIp           *GeoIp
@@ -222,7 +222,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	return r, nil
 }
 
-func (s *Server) Serve(host string, port int) {
+func (s *Server) Serve(ctx context.Context, host string, port int) {
 	router, err := s.routerSetup()
 	if err != nil {
 		log.Fatalf("failed to setup router: %s", err)
@@ -230,7 +230,7 @@ func (s *Server) Serve(host string, port int) {
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 
-	httpServer := &http.Server{
+	s.httpServer = &http.Server{
 		Handler:      router,
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
@@ -238,12 +238,9 @@ func (s *Server) Serve(host string, port int) {
 		ConnState:    s.connStateMetrics,
 	}
 
-	chOsInterrupt := make(chan os.Signal, 1)
-	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
-
 	go func() {
 		log.Infof(" > server listening on: [%s]", ipAndPort)
-		log.Fatal(httpServer.ListenAndServe())
+		log.Fatal(s.httpServer.ListenAndServe())
 	}()
 
 	metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
@@ -253,18 +250,10 @@ func (s *Server) Serve(host string, port int) {
 		log.Println(http.ListenAndServe(metricsAddr, nil))
 	}()
 
-	// netlog backup unix socket
-	ctx, cancel := context.WithCancel(context.Background())
-	s.setNetlogBackupUnixSocket(ctx)
-
 	s.instr.GaugeLifeSignal.Set(1)
-	receivedSig := <-chOsInterrupt
 
-	log.Warnf("signal [%s] received ...", receivedSig)
-	s.instr.GaugeLifeSignal.Set(0)
-
-	// go to sleep 🥱
-	s.gracefulShutdown(httpServer, cancel)
+	// netlog backup unix socket
+	s.setNetlogBackupUnixSocket(ctx)
 }
 
 func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
@@ -280,10 +269,11 @@ func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
 	}
 }
 
-func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.CancelFunc) {
+func (s *Server) GracefulShutdown() {
 	log.Debug("graceful shutdown initiated ...")
 
-	cancel()
+	// TODO: probably not needed to be set explicitly
+	s.instr.GaugeLifeSignal.Set(0)
 
 	if s.redisClient != nil {
 		if err := s.redisClient.Close(); err != nil {
@@ -305,7 +295,7 @@ func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.Cancel
 	maxWaitDuration := time.Second * 15
 	ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
 	defer timeoutCancel()
-	if err := httpServer.Shutdown(ctx); err != nil {
+	if err := s.httpServer.Shutdown(ctx); err != nil {
 		log.Error(" >>> failed to gracefully shutdown http server")
 	}
 	log.Warnln("server shut down")
