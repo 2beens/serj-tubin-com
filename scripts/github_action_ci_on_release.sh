@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Note: this script is being ran by GitHub Actions, upon new release. Check the repo actions for more details.
+
 set -e # abort on errors
 
 echo "running new release script ..."
@@ -21,8 +23,7 @@ echo "--> build project done"
 
 #   4 restart service and show info
 echo "--> restarting service ..."
-sudo systemctl restart serj-tubin-backend.service
-sudo systemctl status serj-tubin-backend.service
+echo "${SERJ_PASS}\n" | sudo /bin/systemctl restart serj-tubin-backend.service
 echo "--> service restarted"
 
 # build netlog backup tool (initiated by crontab)

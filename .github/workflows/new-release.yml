@@ -16,7 +16,4 @@ jobs:
           port: ${{ secrets.SSR2_PORT }}
           username: ${{ secrets.SSR2_USERNAME }}
           key: ${{ secrets.SSR2_KEY_RSA }}
-          script: |
-            echo "new releaase script starting ..."
-            sh ${{ secrets.SSR2_TEST_SCRIPT }}
-            sh ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }}
+          script: sh ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }}
