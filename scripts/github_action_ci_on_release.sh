@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -e # abort on errors
+
+echo "running new release script ..."
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+cd $SCRIPT_DIR/..
+
+git fetch --all
+git checkout master
+git rebase
+
+#   3 build project
+echo "--> building project ..."
+go build -o /home/serj/serj-tubin-com/bin/service cmd/service/main.go
+echo "--> build project done"
+
+#   4 restart service and show info
+echo "--> restarting service ..."
+sudo systemctl restart serj-tubin-backend.service
+sudo systemctl status serj-tubin-backend.service
+echo "--> service restarted"
+
+# build netlog backup tool (initiated by crontab)
+echo "--> building netlog backup tool ..."
+go build -o /home/serj/serj-tubin-com/netlog-backup cmd/netlog_gd_backup/main.go
+
+echo "==> all done! <3"
