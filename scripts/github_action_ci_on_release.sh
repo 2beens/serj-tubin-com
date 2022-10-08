@@ -9,10 +9,10 @@ echo "running new release script ..."
 cd /home/serj/serj-tubin-com
 echo "current dir: $(pwd)"
 
-echo "--> git: fetching ..."
-git fetch --all
 echo "--> git: checkout master ..."
 git checkout master
+echo "--> git: fetching ..."
+git fetch --all
 echo "--> git: rebase ..."
 git rebase
 
