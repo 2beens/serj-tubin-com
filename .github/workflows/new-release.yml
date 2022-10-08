@@ -15,5 +15,7 @@ jobs:
           host: ${{ secrets.SSR2_HOST }}
           port: ${{ secrets.SSR2_PORT }}
           username: ${{ secrets.SSR2_USERNAME }}
-          key: ${{ secrets.SSR2_KEY_ED25519 }}
-          script: sh ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }}
+          key: ${{ secrets.SSR2_KEY_RSA }}
+          script: |
+            echo "running script ..."
+            sh ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }}
