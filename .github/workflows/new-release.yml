@@ -1,0 +1,19 @@
+name: Run remote server build/deploy script
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: Run remote build script 
+    runs-on: ubuntu-latest
+    steps:
+      - name: executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSR2_HOST }}
+          port: ${{ secrets.SSR2_PORT }}
+          username: ${{ secrets.SSR2_USERNAME }}
+          key: ${{ secrets.SSR2_KEY_ED25519 }}
+          script: sh ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }}

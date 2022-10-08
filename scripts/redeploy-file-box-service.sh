@@ -2,6 +2,9 @@
 set -o pipefail # abort on errors in pipeline
 set -e          # abort on errors
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+cd $SCRIPT_DIR/..
+
 #   1 get branch name
 skip_rebase=false
 branch="master"
