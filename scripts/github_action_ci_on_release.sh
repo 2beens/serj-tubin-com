@@ -21,8 +21,8 @@ echo "--> build project done"
 
 #   4 restart service and show info
 echo "--> restarting service ..."
-sudo systemctl restart serj-tubin-backend.service
-sudo systemctl status serj-tubin-backend.service
+sudo /bin/systemctl restart serj-tubin-backend.service
+sudo /bin/systemctl status serj-tubin-backend.service
 echo "--> service restarted"
 
 # build netlog backup tool (initiated by crontab)
