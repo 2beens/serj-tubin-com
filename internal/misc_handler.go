@@ -48,7 +48,7 @@ func NewMiscHandler(
 }
 
 func (handler *MiscHandler) handleRoot(w http.ResponseWriter, r *http.Request) {
-	WriteResponse(w, "", "I'm OK, thanks")
+	WriteResponse(w, "", "I'm OK, thanks ;)")
 }
 
 func (handler *MiscHandler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
