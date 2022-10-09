@@ -85,7 +85,6 @@ func TestBoard_AllMessages(t *testing.T) {
 	assert.Equal(t, 0, messages[2].ID)
 	assert.Equal(t, 4, messages[3].ID)
 	assert.Equal(t, 1, messages[4].ID)
-
 }
 
 func TestBoard_DeleteMessage(t *testing.T) {

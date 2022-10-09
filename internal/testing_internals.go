@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -93,21 +94,20 @@ func newTestingInternals() *testingInternals {
 		panic(err)
 	}
 
-	// FIXME: when storing messages in a loop, we got some race condition
-	// indication of a design smell
-	//for _, m := range initialBoardMessages {
-	//	fmt.Printf("++ %d %s: %d\n", m.ID, m.Author, m.Timestamp)
-	//	if err := board.NewMessage(*m); err != nil {
-	//		panic(err)
-	//	}
-	//}
+	// FIXME: when storing messages in a loop, we seem to get a race condition
+	// indication of a design smell 🤔
+	// for i := range initialBoardMessages {
+	// 	if _, err := board.NewMessage(*initialBoardMessages[i]); err != nil {
+	// 		panic(err)
+	// 	}
+	// }
 
 	boardCache.ClearFunctionCallsLog()
 
 	// blog stuff
 	blogApi := blog.NewBlogTestApi()
 	for i := 0; i < blogPostsCount; i++ {
-		if err = blogApi.AddBlog(&blog.Blog{
+		if err = blogApi.AddBlog(context.Background(), &blog.Blog{
 			Id:        i,
 			Title:     fmt.Sprintf("blog%dtitle", i),
 			CreatedAt: now.Add(time.Minute * time.Duration(i)),

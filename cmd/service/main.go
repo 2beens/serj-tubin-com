@@ -75,6 +75,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	server, err := internal.NewServer(
+		ctx,
 		cfg,
 		openWeatherApiKey,
 		ipBaseAPIKey,

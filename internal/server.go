@@ -34,7 +34,7 @@ type Server struct {
 	httpServer *http.Server
 
 	config          *config.Config
-	blogApi         blog.Api
+	blogApi         *blog.PsqlApi
 	geoIp           *GeoIp
 	quotesManager   *QuotesManager
 	board           *Board
@@ -57,6 +57,7 @@ type Server struct {
 }
 
 func NewServer(
+	ctx context.Context,
 	config *config.Config,
 	openWeatherApiKey string,
 	ipBaseAPIKey string,
@@ -86,7 +87,7 @@ func NewServer(
 		return nil, errors.New("open weather API key not set")
 	}
 
-	blogApi, err := blog.NewBlogPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
+	blogApi, err := blog.NewBlogPsqlApi(ctx, config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create blog api: %s", err)
 	}

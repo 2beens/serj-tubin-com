@@ -66,7 +66,7 @@ func (handler *BlogHandler) handleNewBlog(w http.ResponseWriter, r *http.Request
 		Content:   content,
 	}
 
-	if err := handler.blogApi.AddBlog(newBlog); err != nil {
+	if err := handler.blogApi.AddBlog(r.Context(), newBlog); err != nil {
 		log.Errorf("add new blog failed: %s", err)
 		http.Error(w, "add new blog failed", http.StatusInternalServerError)
 		return
@@ -116,7 +116,7 @@ func (handler *BlogHandler) handleUpdateBlog(w http.ResponseWriter, r *http.Requ
 		Content:   content,
 	}
 
-	if err := handler.blogApi.UpdateBlog(blog); err != nil {
+	if err := handler.blogApi.UpdateBlog(r.Context(), blog); err != nil {
 		log.Errorf("update blog failed: %s", err)
 		http.Error(w, "update blog failed", http.StatusInternalServerError)
 		return
@@ -139,7 +139,7 @@ func (handler *BlogHandler) handleDeleteBlog(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	deleted, err := handler.blogApi.DeleteBlog(id)
+	deleted, err := handler.blogApi.DeleteBlog(r.Context(), id)
 	if err != nil {
 		log.Printf("failed to delete blog %d: %s", id, err)
 		http.Error(w, "error, blog not deleted, internal server error", http.StatusInternalServerError)
@@ -154,7 +154,7 @@ func (handler *BlogHandler) handleDeleteBlog(w http.ResponseWriter, r *http.Requ
 }
 
 func (handler *BlogHandler) handleAll(w http.ResponseWriter, r *http.Request) {
-	allBlogs, err := handler.blogApi.All()
+	allBlogs, err := handler.blogApi.All(r.Context())
 	if err != nil {
 		log.Errorf("get all blogs error: %s", err)
 		http.Error(w, "get all blogs error", http.StatusInternalServerError)
@@ -200,7 +200,7 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	blogPosts, err := handler.blogApi.GetBlogsPage(page, size)
+	blogPosts, err := handler.blogApi.GetBlogsPage(r.Context(), page, size)
 	if err != nil {
 		log.Errorf("get blogs error: %s", err)
 		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
@@ -220,7 +220,7 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	totalBlogsCount, err := handler.blogApi.BlogsCount()
+	totalBlogsCount, err := handler.blogApi.BlogsCount(r.Context())
 	if err != nil {
 		log.Errorf("get blogs error: %s", err)
 		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
