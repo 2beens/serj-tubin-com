@@ -2,6 +2,7 @@ package aerospike
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -41,7 +42,8 @@ func TestNewBoardAeroClient_NewAeroClientFailed(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, boardClient)
 
-	assert.True(t, errors.Is(boardClient.CheckConnection(), dummyErr))
+	checkConnErr := boardClient.CheckConnection()
+	assert.True(t, errors.Is(checkConnErr, dummyErr), fmt.Sprintf("expecting err: [%s], but got: [%s]", dummyErr, checkConnErr))
 }
 
 func TestBoardAeroClient_CheckConnection(t *testing.T) {
