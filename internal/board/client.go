@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
-	"github.com/2beens/serjtubincom/internal/cache"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,11 +17,11 @@ const (
 
 type Client struct {
 	aeroClient aerospike.Client
-	cache      cache.Cache
+	cache      Cache
 	mutex      sync.RWMutex
 }
 
-func NewClient(aeroClient aerospike.Client, cache cache.Cache) (*Client, error) {
+func NewClient(aeroClient aerospike.Client, cache Cache) (*Client, error) {
 	if aeroClient == nil {
 		return nil, aerospike.ErrAeroClientNil
 	}

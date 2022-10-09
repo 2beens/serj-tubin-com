@@ -10,7 +10,6 @@ import (
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/board"
-	"github.com/2beens/serjtubincom/internal/cache"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
 )
@@ -18,7 +17,7 @@ import (
 type Internals struct {
 	AeroTestClient       *aerospike.BoardAeroTestClient
 	BoardClient          *board.Client
-	BoardCache           *cache.BoardTestCache
+	BoardCache           *board.BoardTestCache
 	InitialBoardMessages map[int]*board.Message
 	LastInitialMessage   *board.Message
 
@@ -67,7 +66,7 @@ func NewTestingInternals() *Internals {
 	}
 
 	aeroClient := aerospike.NewBoardAeroTestClient()
-	boardCache := cache.NewBoardTestCache()
+	boardCache := board.NewBoardTestCache()
 
 	boardClient, err := board.NewClient(aeroClient, boardCache)
 	if err != nil {

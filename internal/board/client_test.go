@@ -6,12 +6,11 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
-	"github.com/2beens/serjtubincom/internal/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func getTestBoardClient() (*Client, *cache.BoardTestCache, *aerospike.BoardAeroTestClient, map[int]*Message) {
+func getTestBoardClient() (*Client, *BoardTestCache, *aerospike.BoardAeroTestClient, map[int]*Message) {
 	now := time.Now()
 	initialBoardMessages := map[int]*Message{
 		0: {
@@ -47,7 +46,7 @@ func getTestBoardClient() (*Client, *cache.BoardTestCache, *aerospike.BoardAeroT
 	}
 
 	aeroClient := aerospike.NewBoardAeroTestClient()
-	boardCache := cache.NewBoardTestCache()
+	boardCache := NewBoardTestCache()
 	boardClient, err := NewClient(aeroClient, boardCache)
 	if err != nil {
 		panic(err)
@@ -75,12 +74,12 @@ func getTestBoardClient() (*Client, *cache.BoardTestCache, *aerospike.BoardAeroT
 }
 
 func TestNewBoard(t *testing.T) {
-	board, err := NewClient(nil, cache.NewBoardTestCache())
+	board, err := NewClient(nil, NewBoardTestCache())
 	assert.Equal(t, aerospike.ErrAeroClientNil, err)
 	assert.Nil(t, board)
 
 	aeroTestClient := aerospike.NewBoardAeroTestClient()
-	board, err = NewClient(aeroTestClient, cache.NewBoardTestCache())
+	board, err = NewClient(aeroTestClient, NewBoardTestCache())
 	require.NoError(t, err)
 	require.NotNil(t, board)
 }
@@ -106,9 +105,9 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 
 	funcCallsLog := boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 3)
-	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[0])
-	assert.Equal(t, cache.FuncSet, funcCallsLog[1])
-	assert.Equal(t, cache.FuncGetHit, funcCallsLog[2])
+	assert.Equal(t, FuncGetMiss, funcCallsLog[0])
+	assert.Equal(t, FuncSet, funcCallsLog[1])
+	assert.Equal(t, FuncGetHit, funcCallsLog[2])
 
 	boardCache.ClearFunctionCallsLog()
 
@@ -127,8 +126,8 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 
 	funcCallsLog = boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 2)
-	assert.Equal(t, cache.FuncGetHit, funcCallsLog[0])
-	assert.Equal(t, cache.FuncGetHit, funcCallsLog[1])
+	assert.Equal(t, FuncGetHit, funcCallsLog[0])
+	assert.Equal(t, FuncGetHit, funcCallsLog[1])
 }
 
 func TestBoard_AllMessages(t *testing.T) {
@@ -348,8 +347,8 @@ func TestBoard_GetMessagesPage(t *testing.T) {
 	// cache calls check
 	funcCallsLog := boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 2)
-	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[0])
-	assert.Equal(t, cache.FuncSet, funcCallsLog[1])
+	assert.Equal(t, FuncGetMiss, funcCallsLog[0])
+	assert.Equal(t, FuncSet, funcCallsLog[1])
 
 	// size greater than total - get all messages
 	messages, err = boardClient.GetMessagesPage(2, 12)
@@ -382,11 +381,11 @@ func TestBoard_GetMessagesPage(t *testing.T) {
 	// cache calls check
 	funcCallsLog = boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 7)
-	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[0])
-	assert.Equal(t, cache.FuncSet, funcCallsLog[1])
-	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[2])
-	assert.Equal(t, cache.FuncSet, funcCallsLog[3])
-	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[4])
-	assert.Equal(t, cache.FuncSet, funcCallsLog[5])
-	assert.Equal(t, cache.FuncGetHit, funcCallsLog[6])
+	assert.Equal(t, FuncGetMiss, funcCallsLog[0])
+	assert.Equal(t, FuncSet, funcCallsLog[1])
+	assert.Equal(t, FuncGetMiss, funcCallsLog[2])
+	assert.Equal(t, FuncSet, funcCallsLog[3])
+	assert.Equal(t, FuncGetMiss, funcCallsLog[4])
+	assert.Equal(t, FuncSet, funcCallsLog[5])
+	assert.Equal(t, FuncGetHit, funcCallsLog[6])
 }
