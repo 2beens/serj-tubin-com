@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/aerospike"
+	boardAero "github.com/2beens/serjtubincom/internal/board/aerospike"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func getTestBoardClient() (*Client, *BoardTestCache, *aerospike.BoardAeroTestClient, map[int]*Message) {
+func getTestBoardClient() (*Client, *BoardTestCache, *boardAero.BoardAeroTestClient, map[int]*Message) {
 	now := time.Now()
 	initialBoardMessages := map[int]*Message{
 		0: {
@@ -45,7 +46,7 @@ func getTestBoardClient() (*Client, *BoardTestCache, *aerospike.BoardAeroTestCli
 		},
 	}
 
-	aeroClient := aerospike.NewBoardAeroTestClient()
+	aeroClient := boardAero.NewBoardAeroTestClient()
 	boardCache := NewBoardTestCache()
 	boardClient, err := NewClient(aeroClient, boardCache)
 	if err != nil {
@@ -84,10 +85,10 @@ func getTestBoardClient() (*Client, *BoardTestCache, *aerospike.BoardAeroTestCli
 
 func TestNewBoard(t *testing.T) {
 	board, err := NewClient(nil, NewBoardTestCache())
-	assert.Equal(t, aerospike.ErrAeroClientNil, err)
+	assert.Equal(t, boardAero.ErrAeroClientNil, err)
 	assert.Nil(t, board)
 
-	aeroTestClient := aerospike.NewBoardAeroTestClient()
+	aeroTestClient := boardAero.NewBoardAeroTestClient()
 	board, err = NewClient(aeroTestClient, NewBoardTestCache())
 	require.NoError(t, err)
 	require.NotNil(t, board)

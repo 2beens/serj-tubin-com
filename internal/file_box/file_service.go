@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
@@ -20,9 +17,11 @@ import (
 type FileService struct {
 	api          *DiskApi
 	loginChecker *auth.LoginChecker
+	httpServer   *http.Server
 }
 
 func NewFileService(
+	ctx context.Context,
 	rootPath string,
 	redisHost string,
 	redisPort int,
@@ -42,7 +41,7 @@ func NewFileService(
 		DB:       0, // use default DB
 	})
 
-	rdbStatus := rdb.Ping(context.Background())
+	rdbStatus := rdb.Ping(ctx)
 	if err := rdbStatus.Err(); err != nil {
 		log.Errorf("--> failed to ping redis: %s", err)
 	} else {
@@ -83,35 +82,25 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	r := RouterSetup(handler)
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
-	httpServer := &http.Server{
+	fs.httpServer = &http.Server{
 		Handler:      r,
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
-	chOsInterrupt := make(chan os.Signal, 1)
-	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		log.Infof(" > server listening on: [%s]", ipAndPort)
-		log.Fatal(httpServer.ListenAndServe())
-	}()
-
-	receivedSig := <-chOsInterrupt
-
-	log.Warnf("signal [%s] received ...", receivedSig)
-
-	// go to sleep 🥱
-	fs.gracefulShutdown(httpServer)
+	log.Infof(" > server listening on: [%s]", ipAndPort)
+	log.Fatal(fs.httpServer.ListenAndServe())
 }
 
-func (fs *FileService) gracefulShutdown(httpServer *http.Server) {
-	maxWaitDuration := time.Second * 10
-	ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
-	defer timeoutCancel()
-	if err := httpServer.Shutdown(ctx); err != nil {
-		log.Error(" >>> failed to gracefully shutdown http server")
+func (fs *FileService) GracefulShutdown() {
+	if fs.httpServer != nil {
+		maxWaitDuration := time.Second * 10
+		ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
+		defer timeoutCancel()
+		if err := fs.httpServer.Shutdown(ctx); err != nil {
+			log.Error(" >>> failed to gracefully shutdown http server")
+		}
 	}
 	log.Warnln("server shut down")
 }

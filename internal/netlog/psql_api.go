@@ -44,7 +44,7 @@ func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) error {
 	}
 
 	rows, err := api.db.Query(
-		context.Background(),
+		ctx,
 		`INSERT INTO netlog.visit (title, source, url, timestamp) VALUES ($1, $2, $3, $4) RETURNING id;`,
 		visit.Title, visit.Source, visit.URL, visit.Timestamp,
 	)
@@ -73,7 +73,7 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 	var err error
 	if fromTimestamp != nil {
 		rows, err = api.db.Query(
-			context.Background(),
+			ctx,
 			`
 			SELECT
 				id, COALESCE(title, '') as title, COALESCE(source, '') as source, url, timestamp
@@ -83,7 +83,7 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 		)
 	} else {
 		rows, err = api.db.Query(
-			context.Background(),
+			ctx,
 			`
 			SELECT
 				id, COALESCE(title, '') as title, COALESCE(source, '') as source, url, timestamp
@@ -233,7 +233,7 @@ func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field 
 	`, sbQueryLike)
 
 	rows, err := api.db.Query(
-		context.Background(),
+		ctx,
 		query,
 		limit,
 		offset,

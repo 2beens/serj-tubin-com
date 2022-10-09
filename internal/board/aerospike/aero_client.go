@@ -2,8 +2,7 @@ package aerospike
 
 import "time"
 
-type Client interface {
-	Close()
+type AeroClient interface {
 	GetMessageIdCounter() (int, error)
 	IncrementMessageIdCounter(increment int) (int, error)
 

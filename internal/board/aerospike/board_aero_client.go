@@ -12,8 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// compile time check - ensure that BoardAeroClients implements Client interface
-var _ Client = (*BoardAeroClient)(nil)
+// compile time check - ensure that BoardAeroClients implements AeroClient interface
+var _ AeroClient = (*BoardAeroClient)(nil)
 
 var (
 	ErrAeroClientNil         = errors.New("aero client is nil")

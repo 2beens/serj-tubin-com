@@ -9,7 +9,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/board/aerospike"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/board"
@@ -28,11 +29,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	OneHour          = 60 * 60
-	GeoIpCacheExpire = OneHour * 5 // default expire in hours
-)
-
 type Server struct {
 	httpServer *http.Server
 
@@ -40,6 +36,7 @@ type Server struct {
 	blogApi         *blog.PsqlApi
 	geoIp           *geoip.Api
 	quotesManager   *misc.QuotesManager
+	boardAeroClient *aerospike.BoardAeroClient
 	boardClient     *board.Client
 	netlogVisitsApi *netlog.PsqlApi
 	notesBoxApi     *notes_box.PsqlApi
@@ -151,6 +148,7 @@ func NewServer(
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
 		geoIp:                 geoip.NewApi("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient, rdb),
+		boardAeroClient:       boardAeroClient,
 		boardClient:           boardClient,
 		netlogVisitsApi:       netlogVisitsApi,
 		notesBoxApi:           notesBoxApi,
@@ -285,8 +283,8 @@ func (s *Server) GracefulShutdown() {
 		}
 	}
 
-	if s.boardClient != nil {
-		s.boardClient.Close()
+	if s.boardAeroClient != nil {
+		s.boardAeroClient.Close()
 	}
 	if s.netlogVisitsApi != nil {
 		s.netlogVisitsApi.CloseDB()

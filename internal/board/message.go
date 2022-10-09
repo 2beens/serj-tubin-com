@@ -1,7 +1,7 @@
 package board
 
 import (
-	"github.com/2beens/serjtubincom/internal/aerospike"
+	"github.com/2beens/serjtubincom/internal/board/aerospike"
 	log "github.com/sirupsen/logrus"
 )
 

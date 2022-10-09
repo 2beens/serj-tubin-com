@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/2beens/serjtubincom/internal/logging"
@@ -44,10 +47,21 @@ func main() {
 
 	logging.Setup(*logFilePath, *logToStdout, *logLevel)
 
-	fileService, err := file_box.NewFileService(*rootPath, *redisHost, *redisPort, redisPassword)
+	ctx, cancel := context.WithCancel(context.Background())
+	chOsInterrupt := make(chan os.Signal, 1)
+	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
+
+	fileService, err := file_box.NewFileService(ctx, *rootPath, *redisHost, *redisPort, redisPassword)
 	if err != nil {
 		log.Fatalf("failed to create file service: %s", err)
 	}
 
-	fileService.SetupAndServe(*host, *port)
+	go fileService.SetupAndServe(*host, *port)
+
+	receivedSig := <-chOsInterrupt
+	log.Warnf("signal [%s] received ...", receivedSig)
+	cancel()
+
+	// go to sleep 🥱
+	fileService.GracefulShutdown()
 }
