@@ -68,6 +68,15 @@ func getTestBoardClient() (*Client, *BoardTestCache, *aerospike.BoardAeroTestCli
 		panic(err)
 	}
 
+	// FIXME: when storing messages in a loop, we got some race condition
+	// indication of a design smell
+	//for _, m := range initialBoardMessages {
+	//	fmt.Printf("++ %d %s: %d\n", m.ID, m.Author, m.Timestamp)
+	//	if err := boardClient.NewMessage(*m); err != nil {
+	//		panic(err)
+	//	}
+	//}
+
 	boardCache.ClearFunctionCallsLog()
 
 	return boardClient, boardCache, aeroClient, initialBoardMessages
