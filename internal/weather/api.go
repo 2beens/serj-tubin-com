@@ -1,6 +1,7 @@
-package internal
+package weather
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,19 +15,24 @@ import (
 // example API call
 // http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=TODO
 
-type WeatherApi struct {
+const (
+	oneHour            = 60 * 60
+	weatherCacheExpire = oneHour * 1 // default expire in hours
+)
+
+type Api struct {
 	cache             *freecache.Cache
 	openWeatherApiUrl string // http://api.openweathermap.org/data/2.5/weather
 	openWeatherApiKey string
-	citiesData        map[string]*[]WeatherCity
+	citiesData        map[string]*[]City
 	httpClient        *http.Client
 }
 
-func NewWeatherApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []WeatherCity, httpClient *http.Client) *WeatherApi {
+func NewApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []City, httpClient *http.Client) *Api {
 	megabyte := 1024 * 1024
 	cacheSize := 50 * megabyte
 
-	weatherApi := &WeatherApi{
+	weatherApi := &Api{
 		openWeatherApiUrl: openWeatherApiUrl,
 		openWeatherApiKey: openWeatherApiKey,
 		cache:             freecache.NewCache(cacheSize),
@@ -34,7 +40,7 @@ func NewWeatherApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []Wea
 	}
 
 	loadedCities := 0
-	weatherApi.citiesData = make(map[string]*[]WeatherCity)
+	weatherApi.citiesData = make(map[string]*[]City)
 	for i := range citiesData {
 		loadedCities++
 		c := citiesData[i]
@@ -42,7 +48,7 @@ func NewWeatherApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []Wea
 		if cList, ok := weatherApi.citiesData[cityName]; ok {
 			*cList = append(*cList, c)
 		} else {
-			weatherApi.citiesData[cityName] = &[]WeatherCity{c}
+			weatherApi.citiesData[cityName] = &[]City{c}
 		}
 	}
 
@@ -52,8 +58,8 @@ func NewWeatherApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []Wea
 	return weatherApi
 }
 
-func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApiResponse, error) {
-	weatherApiResponse := &WeatherApiResponse{}
+func (w *Api) GetWeatherCurrent(ctx context.Context, cityID int, cityName string) (*ApiResponse, error) {
+	weatherApiResponse := &ApiResponse{}
 
 	cacheKey := fmt.Sprintf("current::%d", cityID)
 	if currentCityWeatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
@@ -70,7 +76,12 @@ func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApi
 	weatherApiUrl := fmt.Sprintf("%s/weather?id=%d&appid=%s", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 
-	resp, err := w.httpClient.Get(weatherApiUrl)
+	req, err := http.NewRequest("GET", weatherApiUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := w.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
@@ -87,7 +98,7 @@ func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApi
 	}
 
 	// set cache
-	if err = w.cache.Set([]byte(cacheKey), respBytes, WeatherCacheExpire); err != nil {
+	if err = w.cache.Set([]byte(cacheKey), respBytes, weatherCacheExpire); err != nil {
 		log.Errorf("failed to write current weather cache for %s %d: %s", cityName, cityID, err)
 	} else {
 		log.Debugf("current weather cache set for city: %s", cityName)
@@ -97,8 +108,8 @@ func (w *WeatherApi) GetWeatherCurrent(cityID int, cityName string) (*WeatherApi
 }
 
 // Get5DaysWeatherForecast returns something like sunny, cloudy, etc
-func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry string) ([]WeatherInfo, error) {
-	weatherApiResponse := &WeatherApi5DaysResponse{}
+func (w *Api) Get5DaysWeatherForecast(ctx context.Context, cityID int, cityName, cityCountry string) ([]Info, error) {
+	weatherApiResponse := &Api5DaysResponse{}
 
 	cacheKey := fmt.Sprintf("5days::%d", cityID)
 	if weatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
@@ -118,7 +129,12 @@ func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry s
 	weatherApiUrl := fmt.Sprintf("%s/forecast?id=%d&appid=%s&units=metric", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api city info: %s", weatherApiUrl)
 
-	resp, err := w.httpClient.Get(weatherApiUrl)
+	req, err := http.NewRequest("GET", weatherApiUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := w.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
@@ -135,7 +151,7 @@ func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry s
 	}
 
 	// set cache
-	if err = w.cache.Set([]byte(cacheKey), respBytes, WeatherCacheExpire); err != nil {
+	if err = w.cache.Set([]byte(cacheKey), respBytes, weatherCacheExpire); err != nil {
 		log.Errorf("failed to write 5 days weather for %s %d: %s", cityName, cityID, err)
 	} else {
 		log.Debugf("5 days weather cache set for city: %s", cityName)
@@ -144,7 +160,7 @@ func (w *WeatherApi) Get5DaysWeatherForecast(cityID int, cityName, cityCountry s
 	return weatherApiResponse.List, nil
 }
 
-func (w *WeatherApi) GetWeatherCity(city, countryCode string) (*WeatherCity, error) {
+func (w *Api) GetWeatherCity(city, countryCode string) (*City, error) {
 	cityName := strings.ToLower(city)
 	log.Debugf("weather-api: get weather city for: %s", cityName)
 

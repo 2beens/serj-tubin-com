@@ -1,4 +1,4 @@
-package internal
+package geoip
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type GeoIp struct {
+type Api struct {
 	mu             sync.Mutex
 	ipBaseEndpoint string
 	ipBaseAPIKey   string
@@ -24,8 +24,8 @@ type GeoIp struct {
 }
 
 var (
-	devGeoIpInfo = GeoIpInfo{
-		Data: GeoIpInfoData{
+	devGeoIpInfo = IpInfo{
+		Data: IpInfoData{
 			IP: "127.0.0.1",
 			Location: GeoLocation{
 				City: City{
@@ -41,12 +41,12 @@ var (
 	}
 )
 
-func NewGeoIp(
+func NewApi(
 	ipBaseEndpoint, ipBaseAPIKey string,
 	httpClient *http.Client,
 	redisClient *redis.Client,
-) *GeoIp {
-	return &GeoIp{
+) *Api {
+	return &Api{
 		ipBaseEndpoint: ipBaseEndpoint,
 		ipBaseAPIKey:   ipBaseAPIKey,
 		httpClient:     httpClient,
@@ -54,7 +54,7 @@ func NewGeoIp(
 	}
 }
 
-func (gi *GeoIp) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*GeoIpInfo, error) {
+func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo, error) {
 	userIp, err := pkg.ReadUserIP(r)
 	if err != nil {
 		return nil, fmt.Errorf("error getting user ip: %s", err.Error())
@@ -81,7 +81,7 @@ func (gi *GeoIp) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*GeoIp
 		log.Errorf("failed to find ip info from redis for [%s]: %s", userIpKey, err)
 	}
 
-	geoIpResponse := &GeoIpInfo{}
+	geoIpResponse := &IpInfo{}
 	if geoIpInfoBytes := cmd.Val(); geoIpInfoBytes != "" {
 		log.Tracef("found geo ip info for [%s] in redis cache", userIp)
 		if err = json.Unmarshal([]byte(geoIpInfoBytes), geoIpResponse); err == nil {
@@ -99,7 +99,12 @@ func (gi *GeoIp) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*GeoIp
 	ipBaseUrl := fmt.Sprintf("%s/v2/info?apikey=%s&ip=%s", gi.ipBaseEndpoint, gi.ipBaseAPIKey, userIp)
 	log.Debugf("calling geo ip info: %s", ipBaseUrl)
 
-	resp, err := gi.httpClient.Get(ipBaseUrl)
+	req, err := http.NewRequest("GET", ipBaseUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := gi.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("error getting freegeoip response: %s", err.Error())
 	}
@@ -128,11 +133,11 @@ func (gi *GeoIp) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*GeoIp
 	return geoIpResponse, nil
 }
 
-type GeoIpInfo struct {
-	Data GeoIpInfoData `json:"data"`
+type IpInfo struct {
+	Data IpInfoData `json:"data"`
 }
 
-type GeoIpInfoData struct {
+type IpInfoData struct {
 	Timezone struct {
 		ID               string    `json:"id"`
 		CurrentTime      time.Time `json:"current_time"`

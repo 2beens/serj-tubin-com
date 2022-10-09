@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/geoip"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
@@ -13,7 +15,7 @@ import (
 )
 
 type MiscHandler struct {
-	geoIp         *GeoIp
+	geoIp         *geoip.Api
 	quotesManager *QuotesManager
 	versionInfo   string
 	authService   *auth.Service
@@ -22,7 +24,7 @@ type MiscHandler struct {
 
 func NewMiscHandler(
 	mainRouter *mux.Router,
-	geoIp *GeoIp,
+	geoIp *geoip.Api,
 	quotesManager *QuotesManager,
 	versionInfo string,
 	authService *auth.Service,

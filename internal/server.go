@@ -9,6 +9,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/geoip"
+
+	"github.com/2beens/serjtubincom/internal/weather"
+
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
@@ -25,9 +29,8 @@ import (
 )
 
 const (
-	OneHour            = 60 * 60
-	GeoIpCacheExpire   = OneHour * 5 // default expire in hours
-	WeatherCacheExpire = OneHour * 1 // default expire in hours
+	OneHour          = 60 * 60
+	GeoIpCacheExpire = OneHour * 5 // default expire in hours
 )
 
 type Server struct {
@@ -35,7 +38,7 @@ type Server struct {
 
 	config          *config.Config
 	blogApi         *blog.PsqlApi
-	geoIp           *GeoIp
+	geoIp           *geoip.Api
 	quotesManager   *QuotesManager
 	boardClient     *board.Client
 	netlogVisitsApi *netlog.PsqlApi
@@ -147,7 +150,7 @@ func NewServer(
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
-		geoIp:                 NewGeoIp("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient, rdb),
+		geoIp:                 geoip.NewApi("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient, rdb),
 		boardClient:           boardClient,
 		netlogVisitsApi:       netlogVisitsApi,
 		notesBoxApi:           notesBoxApi,
@@ -188,7 +191,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("board handler is nil")
 	}
 
-	if weatherHandler, err := NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
+	if weatherHandler, err := weather.NewHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
 		return nil, fmt.Errorf("failed to create weather handler: %w", err)
 	} else if weatherHandler == nil {
 		return nil, errors.New("weather handler is nil")

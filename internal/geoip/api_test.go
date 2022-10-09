@@ -1,4 +1,4 @@
-package internal
+package geoip
 
 import (
 	"context"
@@ -118,7 +118,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("ip-info::127.0.0.1").SetVal("")
 
-	geoIp := NewGeoIp(testServer.URL, "dummy-api-key", testServer.Client(), db)
+	geoIp := NewApi(testServer.URL, "dummy-api-key", testServer.Client(), db)
 	require.NotNil(t, geoIp)
 
 	req, err := http.NewRequest("GET", "/messages/count", nil)
@@ -150,7 +150,7 @@ func TestGeoIp_ReadUserIP(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("ip-info::127.0.0.1").SetVal("")
 
-	geoIp := NewGeoIp("not-needed", "dummy", nil, db)
+	geoIp := NewApi("not-needed", "dummy", nil, db)
 	require.NotNil(t, geoIp)
 
 	req, err := http.NewRequest("-", "-", nil)
