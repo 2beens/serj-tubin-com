@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/board"
+	"github.com/2beens/serjtubincom/internal/board/aerospike"
 
-	"github.com/2beens/serjtubincom/internal/aerospike"
 	as "github.com/aerospike/aerospike-client-go"
 )
 

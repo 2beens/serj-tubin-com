@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// compile time check - ensure that BoardAeroClients implements Client interface
-var _ Client = (*BoardAeroTestClient)(nil)
+// compile time check - ensure that BoardAeroClients implements AeroClient interface
+var _ AeroClient = (*BoardAeroTestClient)(nil)
 
 type BoardAeroTestClient struct {
 	AeroBinMaps map[string]AeroBinMap
@@ -123,8 +123,4 @@ func (tc *BoardAeroTestClient) GetMessageIdCounter() (int, error) {
 
 func (tc *BoardAeroTestClient) IncrementMessageIdCounter(increment int) (int, error) {
 	return len(tc.AeroBinMaps), nil
-}
-
-func (tc *BoardAeroTestClient) Close() {
-	// nop
 }

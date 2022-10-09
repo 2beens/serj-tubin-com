@@ -7,7 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/aerospike"
+	boardAero "github.com/2beens/serjtubincom/internal/board/aerospike"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,14 +17,14 @@ const (
 )
 
 type Client struct {
-	aeroClient aerospike.Client
+	aeroClient boardAero.AeroClient
 	cache      Cache
 	mutex      sync.RWMutex
 }
 
-func NewClient(aeroClient aerospike.Client, cache Cache) (*Client, error) {
+func NewClient(aeroClient boardAero.AeroClient, cache Cache) (*Client, error) {
 	if aeroClient == nil {
-		return nil, aerospike.ErrAeroClientNil
+		return nil, boardAero.ErrAeroClientNil
 	}
 
 	b := &Client{
@@ -91,12 +92,6 @@ func (c *Client) InvalidateCaches() {
 	c.cache.Clear()
 }
 
-func (c *Client) Close() {
-	if c != nil && c.aeroClient != nil {
-		c.aeroClient.Close()
-	}
-}
-
 func (c *Client) NewMessage(message Message) (int, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -106,7 +101,7 @@ func (c *Client) NewMessage(message Message) (int, error) {
 		return -1, fmt.Errorf("failed to get message id counter: %w", err)
 	}
 
-	bins := aerospike.AeroBinMap{
+	bins := boardAero.AeroBinMap{
 		"id":        newMessageId,
 		"author":    message.Author,
 		"timestamp": message.Timestamp,

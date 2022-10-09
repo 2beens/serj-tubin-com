@@ -3,9 +3,10 @@ package board
 import (
 	"testing"
 
+	"github.com/2beens/serjtubincom/internal/board/aerospike"
+
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/stretchr/testify/assert"
 )
 
