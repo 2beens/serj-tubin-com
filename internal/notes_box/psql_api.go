@@ -17,9 +17,7 @@ type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewPsqlApi(dbHost, dbPort, dbName string) (*PsqlApi, error) {
-	ctx := context.Background()
-
+func NewPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
 	dbPool, err := pgxpool.Connect(ctx, connString)
 	if err != nil {
@@ -39,13 +37,13 @@ func (api *PsqlApi) CloseDB() {
 	}
 }
 
-func (api *PsqlApi) Add(note *Note) (*Note, error) {
+func (api *PsqlApi) Add(ctx context.Context, note *Note) (*Note, error) {
 	if note.Content == "" || note.CreatedAt.IsZero() {
 		return nil, errors.New("note content or timestamp empty")
 	}
 
 	rows, err := api.db.Query(
-		context.Background(),
+		ctx,
 		`INSERT INTO note (title, created_at, content) VALUES ($1, $2, $3) RETURNING id;`,
 		note.Title, note.CreatedAt, note.Content,
 	)
@@ -69,9 +67,9 @@ func (api *PsqlApi) Add(note *Note) (*Note, error) {
 	return nil, errors.New("unexpected error, failed to insert note")
 }
 
-func (api *PsqlApi) Get(id int) (*Note, error) {
+func (api *PsqlApi) Get(ctx context.Context, id int) (*Note, error) {
 	rows, err := api.db.Query(
-		context.Background(),
+		ctx,
 		`SELECT * FROM note WHERE id = $1;`,
 		id,
 	)
@@ -103,13 +101,13 @@ func (api *PsqlApi) Get(id int) (*Note, error) {
 	return nil, errors.New("unexpected error, failed to get note")
 }
 
-func (b *PsqlApi) Update(note *Note) error {
+func (api *PsqlApi) Update(ctx context.Context, note *Note) error {
 	if note.Content == "" {
 		return errors.New("note content empty")
 	}
 
-	tag, err := b.db.Exec(
-		context.Background(),
+	tag, err := api.db.Exec(
+		ctx,
 		`UPDATE note SET title = $1, content = $2 WHERE id = $3;`,
 		note.Title, note.Content, note.Id,
 	)
@@ -124,9 +122,9 @@ func (b *PsqlApi) Update(note *Note) error {
 	return nil
 }
 
-func (api *PsqlApi) Delete(id int) (bool, error) {
+func (api *PsqlApi) Delete(ctx context.Context, id int) (bool, error) {
 	tag, err := api.db.Exec(
-		context.Background(),
+		ctx,
 		`DELETE FROM note WHERE id = $1`,
 		id,
 	)
@@ -139,9 +137,9 @@ func (api *PsqlApi) Delete(id int) (bool, error) {
 	return true, nil
 }
 
-func (api *PsqlApi) List() ([]Note, error) {
+func (api *PsqlApi) List(ctx context.Context) ([]Note, error) {
 	rows, err := api.db.Query(
-		context.Background(),
+		ctx,
 		`
 			SELECT
 				id, title, created_at, content

@@ -97,7 +97,7 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
-	notesBoxApi, err := notes_box.NewPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
+	notesBoxApi, err := notes_box.NewPsqlApi(ctx, config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create notes visits api: %s", err)
 	}
@@ -202,12 +202,12 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("netlog visits handler is nil")
 	}
 
-	notesHandler := NewNotesBoxHandler(s.notesBoxApi, s.loginChecker, s.instr)
-	notesRouter.HandleFunc("", notesHandler.handleList).Methods("GET", "OPTIONS").Name("list-notes")
-	notesRouter.HandleFunc("", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
-	notesRouter.HandleFunc("", notesHandler.handleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
-	notesRouter.HandleFunc("/{id}", notesHandler.handleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
-	notesRouter.Use(notesHandler.authMiddleware())
+	notesHandler := notes_box.NewHandler(s.notesBoxApi, s.loginChecker, s.instr)
+	notesRouter.HandleFunc("", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
+	notesRouter.HandleFunc("", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
+	notesRouter.HandleFunc("", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
+	notesRouter.HandleFunc("/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
+	notesRouter.Use(notesHandler.AuthMiddleware())
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
