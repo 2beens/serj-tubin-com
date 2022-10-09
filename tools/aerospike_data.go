@@ -7,7 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal"
+	"github.com/2beens/serjtubincom/internal/board"
+
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	as "github.com/aerospike/aerospike-client-go"
 )
@@ -76,13 +77,13 @@ func FixAerospikeData(namespace, set, host string, port int) error {
 	}
 
 	var records []*as.Result
-	var messages []*internal.BoardMessage
+	var messages []*board.Message
 	for rec := range recordSet.Results() {
 		if rec.Err != nil {
 			return fmt.Errorf("get all messages, record error: %w", rec.Err)
 		}
 
-		m := internal.MessageFromBins(aerospike.AeroBinMap(rec.Record.Bins))
+		m := board.MessageFromBins(aerospike.AeroBinMap(rec.Record.Bins))
 		messages = append(messages, &m)
 		records = append(records, rec)
 	}

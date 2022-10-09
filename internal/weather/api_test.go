@@ -1,18 +1,20 @@
-package internal
+package weather
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWeatherApi_NewWeatherApi(t *testing.T) {
 	citiesData := getTestCitiesData()
-	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData, nil)
+	weatherApi := NewApi("http://test.owa", "open_weather_test_key", citiesData, nil)
 	assert.NotNil(t, weatherApi)
 	assert.Len(t, weatherApi.citiesData, 7)
 }
@@ -20,7 +22,7 @@ func TestWeatherApi_NewWeatherApi(t *testing.T) {
 func TestWeatherApi_NewWeatherApi_DuplicateCities(t *testing.T) {
 	citiesData := getTestCitiesData()
 	// add city 0 twice, make sure all ok
-	citiesData = append(citiesData, WeatherCity{
+	citiesData = append(citiesData, City{
 		ID:       1,
 		Name:     "Virovitica",
 		State:    "Medjumurje",
@@ -31,14 +33,14 @@ func TestWeatherApi_NewWeatherApi_DuplicateCities(t *testing.T) {
 		Sunset:   0,
 	})
 
-	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData, nil)
+	weatherApi := NewApi("http://test.owa", "open_weather_test_key", citiesData, nil)
 	assert.NotNil(t, weatherApi)
 	assert.Len(t, weatherApi.citiesData, 7)
 }
 
 func TestWeatherApi_GetWeatherCity(t *testing.T) {
 	citiesData := getTestCitiesData()
-	weatherApi := NewWeatherApi("http://test.owa", "open_weather_test_key", citiesData, nil)
+	weatherApi := NewApi("http://test.owa", "open_weather_test_key", citiesData, nil)
 	assert.NotNil(t, weatherApi)
 
 	// not existent city
@@ -73,18 +75,18 @@ func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 		apiCallsCount++
 		assert.Equal(t, fmt.Sprintf("/weather?id=%d&appid=open_weather_test_key", londonCityId), r.RequestURI)
 		assert.Equal(t, http.MethodGet, r.Method)
-		WriteResponse(w, "application/json", weatherApiTestResponses[londonCityId])
+		pkg.WriteResponse(w, "application/json", weatherApiTestResponses[londonCityId])
 	})
 	testServer := httptest.NewServer(testServerHander)
 	defer testServer.Close()
 
 	citiesData := getTestCitiesData()
 	openWeatherTestKey := "open_weather_test_key"
-	weatherApi := NewWeatherApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
+	weatherApi := NewApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
 	require.NotNil(t, weatherApi)
 
 	// with cache miss
-	weather, err := weatherApi.GetWeatherCurrent(londonCityId, "London")
+	weather, err := weatherApi.GetWeatherCurrent(context.Background(), londonCityId, "London")
 	require.NotNil(t, weather)
 	require.NoError(t, err)
 	assert.Equal(t, "London", weather.Name)
@@ -97,7 +99,7 @@ func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 	assert.Equal(t, "09d", weather.WeatherDescriptions[0].Icon)
 
 	// with cache hit
-	weather, err = weatherApi.GetWeatherCurrent(londonCityId, "London")
+	weather, err = weatherApi.GetWeatherCurrent(context.Background(), londonCityId, "London")
 	require.NotNil(t, weather)
 	require.NoError(t, err)
 	assert.Equal(t, "London", weather.Name)
@@ -122,22 +124,22 @@ func TestWeatherApi_Get5DaysWeatherForecast(t *testing.T) {
 		fmt.Println(r.RequestURI)
 		assert.Equal(t, fmt.Sprintf("/forecast?id=%d&appid=open_weather_test_key&units=metric", altstadtCityId), r.RequestURI)
 		assert.Equal(t, http.MethodGet, r.Method)
-		WriteResponse(w, "application/json", weatherApiForecastTestResponses[altstadtCityId])
+		pkg.WriteResponse(w, "application/json", weatherApiForecastTestResponses[altstadtCityId])
 	})
 	testServer := httptest.NewServer(testServerHander)
 	defer testServer.Close()
 
 	citiesData := getTestCitiesData()
 	openWeatherTestKey := "open_weather_test_key"
-	weatherApi := NewWeatherApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
+	weatherApi := NewApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
 	assert.NotNil(t, weatherApi)
 
-	weatherForecast, err := weatherApi.Get5DaysWeatherForecast(altstadtCityId, "Altstadt", "DE")
+	weatherForecast, err := weatherApi.Get5DaysWeatherForecast(context.Background(), altstadtCityId, "Altstadt", "DE")
 	require.NoError(t, err)
 	require.NotNil(t, weatherForecast)
 	assert.Len(t, weatherForecast, 4)
 
-	weatherForecast, err = weatherApi.Get5DaysWeatherForecast(altstadtCityId, "Altstadt", "DE")
+	weatherForecast, err = weatherApi.Get5DaysWeatherForecast(context.Background(), altstadtCityId, "Altstadt", "DE")
 	require.NoError(t, err)
 	require.NotNil(t, weatherForecast)
 	assert.Len(t, weatherForecast, 4)
@@ -146,8 +148,8 @@ func TestWeatherApi_Get5DaysWeatherForecast(t *testing.T) {
 	assert.Equal(t, 1, apiCallsCount)
 }
 
-func getTestCitiesData() []WeatherCity {
-	return []WeatherCity{
+func getTestCitiesData() []City {
+	return []City{
 		{
 			ID:       0,
 			Name:     "Novi Sad",

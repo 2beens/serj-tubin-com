@@ -1,4 +1,4 @@
-package internal
+package misc
 
 import (
 	"encoding/json"
@@ -7,27 +7,29 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/geoip"
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-type MiscHandler struct {
-	geoIp         *GeoIp
+type Handler struct {
+	geoIp         *geoip.Api
 	quotesManager *QuotesManager
 	versionInfo   string
 	authService   *auth.Service
 	admin         *auth.Admin
 }
 
-func NewMiscHandler(
+func NewHandler(
 	mainRouter *mux.Router,
-	geoIp *GeoIp,
+	geoIp *geoip.Api,
 	quotesManager *QuotesManager,
 	versionInfo string,
 	authService *auth.Service,
 	admin *auth.Admin,
-) *MiscHandler {
-	handler := &MiscHandler{
+) *Handler {
+	handler := &Handler{
 		geoIp:         geoIp,
 		quotesManager: quotesManager,
 		versionInfo:   versionInfo,
@@ -47,11 +49,11 @@ func NewMiscHandler(
 	return handler
 }
 
-func (handler *MiscHandler) handleRoot(w http.ResponseWriter, r *http.Request) {
-	WriteResponse(w, "", "I'm OK, thanks ;)")
+func (handler *Handler) handleRoot(w http.ResponseWriter, r *http.Request) {
+	pkg.WriteResponse(w, "", "I'm OK, thanks ;)")
 }
 
-func (handler *MiscHandler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := handler.quotesManager.RandomQuote()
@@ -62,13 +64,13 @@ func (handler *MiscHandler) handleGetRandomQuote(w http.ResponseWriter, r *http.
 		return
 	}
 
-	WriteResponseBytes(w, "", qBytes)
+	pkg.WriteResponseBytes(w, "", qBytes)
 }
 
-func (handler *MiscHandler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r.Context(), r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
@@ -76,19 +78,19 @@ func (handler *MiscHandler) handleWhereAmI(w http.ResponseWriter, r *http.Reques
 	}
 
 	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.Data.Location.City.Name, geoIpInfo.Data.Location.Country.Name)
-	WriteResponse(w, "application/json", geoResp)
+	pkg.WriteResponse(w, "application/json", geoResp)
 }
 
-func (handler *MiscHandler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
-	ip, err := ReadUserIP(r)
+func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
+	ip, err := pkg.ReadUserIP(r)
 	if err != nil {
 		log.Errorf("failed to get user IP address: %s", err)
 		http.Error(w, "failed to get IP", http.StatusInternalServerError)
 	}
-	WriteResponse(w, "", ip)
+	pkg.WriteResponse(w, "", ip)
 }
 
-func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("login failed, parse form error: %s", err)
@@ -108,7 +110,7 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !CheckPasswordHash(password, handler.admin.PasswordHash) {
+	if !pkg.CheckPasswordHash(password, handler.admin.PasswordHash) {
 		log.Tracef("[password] failed login attempt for user: %s", username)
 		log.Println(handler.admin)
 		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
@@ -122,7 +124,7 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	token, err := handler.authService.Login(time.Now())
+	token, err := handler.authService.Login(r.Context(), time.Now())
 	if err != nil {
 		log.Errorf("login failed, generate token error: %s", err)
 		http.Error(w, "generate token error", http.StatusInternalServerError)
@@ -132,10 +134,10 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	// token should probably not be logged, but whatta hell
 	log.Tracef("new login, token: %s", token)
 
-	WriteResponse(w, "", fmt.Sprintf(`{"token": "%s"}`, token))
+	pkg.WriteResponse(w, "", fmt.Sprintf(`{"token": "%s"}`, token))
 }
 
-func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.WriteHeader(http.StatusOK)
@@ -148,7 +150,7 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	loggedOut, err := handler.authService.Logout(authToken)
+	loggedOut, err := handler.authService.Logout(r.Context(), authToken)
 	if err != nil {
 		log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 		http.Error(w, "no can do", http.StatusUnauthorized)
@@ -161,9 +163,9 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 
 	log.Printf("logout for [%s] success", authToken)
 
-	WriteResponse(w, "", "logged-out")
+	pkg.WriteResponse(w, "", "logged-out")
 }
 
-func (handler *MiscHandler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
-	WriteResponse(w, "", handler.versionInfo)
+func (handler *Handler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
+	pkg.WriteResponse(w, "", handler.versionInfo)
 }

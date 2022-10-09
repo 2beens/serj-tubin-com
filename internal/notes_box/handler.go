@@ -1,4 +1,4 @@
-package internal
+package notes_box
 
 import (
 	"encoding/json"
@@ -7,32 +7,33 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
-	"github.com/2beens/serjtubincom/internal/notes_box"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-type NotesBoxHandler struct {
-	api          notes_box.Api
+type Handler struct {
+	api          Api
 	loginChecker *auth.LoginChecker
 	instr        *instrumentation.Instrumentation
 }
 
-func NewNotesBoxHandler(
-	api notes_box.Api,
+func NewHandler(
+	api Api,
 	loginChecker *auth.LoginChecker,
 	instrumentation *instrumentation.Instrumentation,
-) *NotesBoxHandler {
-	return &NotesBoxHandler{
+) *Handler {
+	return &Handler{
 		api:          api,
 		loginChecker: loginChecker,
 		instr:        instrumentation,
 	}
 }
 
-func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -52,26 +53,26 @@ func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note := &notes_box.Note{
+	note := &Note{
 		Title:     title,
 		Content:   content,
 		CreatedAt: time.Now(),
 	}
 
-	addedNote, err := h.api.Add(note)
+	addedNote, err := handler.api.Add(r.Context(), note)
 	if err != nil {
 		log.Printf("failed to add new note [%s], [%s]: %s", note.CreatedAt, note.Title, err)
 		http.Error(w, "error, failed to add new note", http.StatusInternalServerError)
 		return
 	}
 
-	h.instr.CounterNotes.Inc()
+	handler.instr.CounterNotes.Inc()
 
 	log.Printf("new note added: [%s] [%s]: %d", addedNote.Title, addedNote.CreatedAt, addedNote.Id)
-	WriteResponse(w, "", fmt.Sprintf("added:%d", addedNote.Id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", addedNote.Id))
 }
 
-func (h *NotesBoxHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "PUT, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -101,24 +102,24 @@ func (h *NotesBoxHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note := &notes_box.Note{
+	note := &Note{
 		Id:      id,
 		Title:   title,
 		Content: content,
 		// CreatedAt: not updateable for now,
 	}
 
-	if err := h.api.Update(note); err != nil {
+	if err := handler.api.Update(r.Context(), note); err != nil {
 		log.Printf("failed to update note [%d], [%s]: %s", note.Id, note.Title, err)
 		http.Error(w, "error, failed to update note", http.StatusInternalServerError)
 		return
 	}
 
 	log.Printf("note updated: [%s] [%s]: %d", note.Title, note.CreatedAt, note.Id)
-	WriteResponse(w, "", fmt.Sprintf("updated:%d", note.Id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", note.Id))
 }
 
-func (h *NotesBoxHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	idStr := vars["id"]
@@ -132,7 +133,7 @@ func (h *NotesBoxHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleted, err := h.api.Delete(id)
+	deleted, err := handler.api.Delete(r.Context(), id)
 	if err != nil {
 		log.Printf("failed to delete note %d: %s", id, err)
 		http.Error(w, "error, note not deleted, internal server error", http.StatusInternalServerError)
@@ -140,14 +141,14 @@ func (h *NotesBoxHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if deleted {
-		WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
+		pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
 	} else {
-		WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
+		pkg.WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
 	}
 }
 
-func (h *NotesBoxHandler) handleList(w http.ResponseWriter, r *http.Request) {
-	notes, err := h.api.List()
+func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
+	notes, err := handler.api.List(r.Context())
 	if err != nil {
 		log.Errorf("list notes error: %s", err)
 		http.Error(w, "failed to get notes", http.StatusInternalServerError)
@@ -155,7 +156,7 @@ func (h *NotesBoxHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(notes) == 0 {
-		notes = []notes_box.Note{}
+		notes = []Note{}
 	}
 
 	notesJson, err := json.Marshal(notes)
@@ -166,10 +167,10 @@ func (h *NotesBoxHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resJson := fmt.Sprintf(`{"notes": %s, "total": %d}`, notesJson, len(notes))
-	WriteResponseBytes(w, "application/json", []byte(resJson))
+	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
-func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Handler {
+func (handler *Handler) AuthMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {
@@ -188,7 +189,7 @@ func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Ha
 				return
 			}
 
-			isLogged, err := handler.loginChecker.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(r.Context(), authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

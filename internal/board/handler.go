@@ -1,4 +1,4 @@
-package internal
+package board
 
 import (
 	"encoding/json"
@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/gorilla/mux"
 
@@ -16,18 +18,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type BoardHandler struct {
-	board        *Board
+type Handler struct {
+	boardClient  *Client
 	loginChecker *auth.LoginChecker
 }
 
 func NewBoardHandler(
 	router *mux.Router,
-	board *Board,
+	board *Client,
 	loginChecker *auth.LoginChecker,
-) *BoardHandler {
-	handler := &BoardHandler{
-		board:        board,
+) *Handler {
+	handler := &Handler{
+		boardClient:  board,
 		loginChecker: loginChecker,
 	}
 
@@ -44,7 +46,7 @@ func NewBoardHandler(
 	return handler
 }
 
-func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetMessagesPage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	// TODO: return JSON responses for errors too (or better, check accept-content header)
@@ -76,7 +78,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 		return
 	}
 
-	boardMessages, err := handler.board.GetMessagesPage(page, size)
+	boardMessages, err := handler.boardClient.GetMessagesPage(page, size)
 	if err != nil {
 		log.Errorf("get messages error: %s", err)
 		http.Error(w, "failed to get messages", http.StatusInternalServerError)
@@ -86,7 +88,7 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 	w.Header().Add("Content-Type", "application/json")
 
 	if len(boardMessages) == 0 {
-		WriteResponse(w, "application/json", "[]")
+		pkg.WriteResponse(w, "application/json", "[]")
 		return
 	}
 
@@ -97,10 +99,10 @@ func (handler *BoardHandler) handleGetMessagesPage(w http.ResponseWriter, r *htt
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", messagesJson)
+	pkg.WriteResponseBytes(w, "application/json", messagesJson)
 }
 
-func (handler *BoardHandler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	messageIdStr := vars["id"]
@@ -110,7 +112,7 @@ func (handler *BoardHandler) handleDeleteMessage(w http.ResponseWriter, r *http.
 		return
 	}
 
-	deleted, err := handler.board.DeleteMessage(messageIdStr)
+	deleted, err := handler.boardClient.DeleteMessage(messageIdStr)
 	if err != nil {
 		log.Errorf("handle delete message error: %s", err)
 		http.Error(w, "failed to delete message", http.StatusInternalServerError)
@@ -119,13 +121,13 @@ func (handler *BoardHandler) handleDeleteMessage(w http.ResponseWriter, r *http.
 
 	// TODO: again - return proper JSON / requested response format
 	if deleted {
-		WriteResponse(w, "", "true")
+		pkg.WriteResponse(w, "", "true")
 	} else {
-		WriteResponse(w, "", "false")
+		pkg.WriteResponse(w, "", "false")
 	}
 }
 
-func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleMessagesRange(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	fromStr := vars["from"]
@@ -143,7 +145,7 @@ func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.
 		return
 	}
 
-	boardMessages, err := handler.board.GetMessagesWithRange(from, to)
+	boardMessages, err := handler.boardClient.GetMessagesWithRange(from, to)
 	if err != nil {
 		log.Errorf("get messages error: %s", err)
 		http.Error(w, "failed to get messages", http.StatusBadRequest)
@@ -151,7 +153,7 @@ func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.
 	}
 
 	if len(boardMessages) == 0 {
-		WriteResponse(w, "application/json", "[]")
+		pkg.WriteResponse(w, "application/json", "[]")
 		return
 	}
 
@@ -162,10 +164,10 @@ func (handler *BoardHandler) handleMessagesRange(w http.ResponseWriter, r *http.
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", messagesJson)
+	pkg.WriteResponseBytes(w, "application/json", messagesJson)
 }
 
-func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleNewMessage(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -188,13 +190,13 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 		author = "anon"
 	}
 
-	boardMessage := BoardMessage{
+	boardMessage := Message{
 		Timestamp: time.Now().Unix(),
 		Author:    author,
 		Message:   message,
 	}
 
-	id, err := handler.board.NewMessage(boardMessage)
+	id, err := handler.boardClient.NewMessage(boardMessage)
 	if err != nil {
 		log.Errorf("store new message error: %s", err)
 		http.Error(w, "failed to store message", http.StatusInternalServerError)
@@ -202,11 +204,11 @@ func (handler *BoardHandler) handleNewMessage(w http.ResponseWriter, r *http.Req
 	}
 
 	// TODO: refactor and unify responses
-	WriteResponse(w, "", fmt.Sprintf("added:%d", id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", id))
 }
 
-func (handler *BoardHandler) handleMessagesCount(w http.ResponseWriter, r *http.Request) {
-	count, err := handler.board.MessagesCount()
+func (handler *Handler) handleMessagesCount(w http.ResponseWriter, r *http.Request) {
+	count, err := handler.boardClient.MessagesCount()
 	if err != nil {
 		log.Errorf("get all messages count error: %s", err)
 		http.Error(w, "failed to get messages count", http.StatusInternalServerError)
@@ -215,10 +217,10 @@ func (handler *BoardHandler) handleMessagesCount(w http.ResponseWriter, r *http.
 
 	resp := fmt.Sprintf(`{"count":%d}`, count)
 	// TODO: application/json is always returned, maybe add middleware which will add it to every request
-	WriteResponse(w, "application/json", resp)
+	pkg.WriteResponse(w, "application/json", resp)
 }
 
-func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var limit int
 	limitStr := vars["limit"]
@@ -235,14 +237,14 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		log.Print("getting all board messages ... ")
 	}
 
-	allBoardMessages, err := handler.board.AllMessagesCache(true)
+	allBoardMessages, err := handler.boardClient.AllMessagesCache(true)
 	if err != nil {
 		log.Errorf("get all messages error: %s", err)
 		http.Error(w, "failed to get all messages", http.StatusBadRequest)
 		return
 	}
 
-	var boardMessages []*BoardMessage
+	var boardMessages []*Message
 	if limit == 0 || limit >= len(allBoardMessages) {
 		boardMessages = allBoardMessages
 	} else {
@@ -253,7 +255,7 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 	}
 
 	if len(boardMessages) == 0 {
-		WriteResponse(w, "application/json", "[]")
+		pkg.WriteResponse(w, "application/json", "[]")
 		return
 	}
 
@@ -264,10 +266,10 @@ func (handler *BoardHandler) handleGetAllMessages(w http.ResponseWriter, r *http
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", messagesJson)
+	pkg.WriteResponseBytes(w, "application/json", messagesJson)
 }
 
-func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handler {
+func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {
@@ -289,7 +291,7 @@ func (handler *BoardHandler) authMiddleware() func(next http.Handler) http.Handl
 				return
 			}
 
-			isLogged, err := handler.loginChecker.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(r.Context(), authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

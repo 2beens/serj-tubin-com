@@ -1,5 +1,7 @@
 name: Run remote server build/deploy script
 
+# TODO: be aware that file box service is running on another machine (misc), and still has to be deployed manually
+
 on:
   release:
     types: [published]

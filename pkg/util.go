@@ -38,7 +38,7 @@ func GenerateRandomString(s int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), err
 }
 
-// DirectoryExists returns whether the given file or directory exists
+// PathExists returns whether the given file or directory exists
 func PathExists(path string, isDir bool) (bool, error) {
 	stat, err := os.Stat(path)
 	if err != nil {

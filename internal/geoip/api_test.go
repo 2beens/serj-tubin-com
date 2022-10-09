@@ -1,9 +1,12 @@
-package internal
+package geoip
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/assert"
@@ -103,7 +106,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 
 		if r.Method == http.MethodGet && r.URL.Path == "/v2/info" &&
 			r.URL.RawQuery == "apikey=dummy-api-key&ip=127.0.0.2" {
-			WriteResponse(w, "application/json", ipBaseTestResponse)
+			pkg.WriteResponse(w, "application/json", ipBaseTestResponse)
 			return
 		}
 
@@ -115,7 +118,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("ip-info::127.0.0.1").SetVal("")
 
-	geoIp := NewGeoIp(testServer.URL, "dummy-api-key", testServer.Client(), db)
+	geoIp := NewApi(testServer.URL, "dummy-api-key", testServer.Client(), db)
 	require.NotNil(t, geoIp)
 
 	req, err := http.NewRequest("GET", "/messages/count", nil)
@@ -123,7 +126,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 
 	// will return geoIpInfo - development Berlin
 	req.Header.Add("X-Real-Ip", "127.0.0.1:1234")
-	geoIpInfo, err := geoIp.GetRequestGeoInfo(req)
+	geoIpInfo, err := geoIp.GetRequestGeoInfo(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, geoIpInfo)
 	assert.Equal(t, &devGeoIpInfo, geoIpInfo)
@@ -131,7 +134,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 	// non-dev IP
 	ipAddr := "127.0.0.2"
 	req.Header.Set("X-Real-Ip", ipAddr)
-	geoIpInfo, err = geoIp.GetRequestGeoInfo(req)
+	geoIpInfo, err = geoIp.GetRequestGeoInfo(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, geoIpInfo)
 
@@ -147,7 +150,7 @@ func TestGeoIp_ReadUserIP(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("ip-info::127.0.0.1").SetVal("")
 
-	geoIp := NewGeoIp("not-needed", "dummy", nil, db)
+	geoIp := NewApi("not-needed", "dummy", nil, db)
 	require.NotNil(t, geoIp)
 
 	req, err := http.NewRequest("-", "-", nil)
@@ -156,7 +159,7 @@ func TestGeoIp_ReadUserIP(t *testing.T) {
 	// X-Real-Ip
 	ip := "127.0.0.10"
 	req.Header.Add("X-Real-Ip", ip)
-	userIp, err := ReadUserIP(req)
+	userIp, err := pkg.ReadUserIP(req)
 	require.NoError(t, err)
 	assert.Equal(t, ip, userIp)
 
@@ -164,13 +167,13 @@ func TestGeoIp_ReadUserIP(t *testing.T) {
 	req, err = http.NewRequest("-", "-", nil)
 	require.NoError(t, err)
 	req.Header.Set("X-Forwarded-For", ip)
-	userIp, err = ReadUserIP(req)
+	userIp, err = pkg.ReadUserIP(req)
 	require.NoError(t, err)
 	assert.Equal(t, ip, userIp)
 
 	// headers empty
 	req, err = http.NewRequest("-", "-", nil)
 	require.NoError(t, err)
-	_, err = ReadUserIP(req)
+	_, err = pkg.ReadUserIP(req)
 	require.EqualError(t, err, "ip addr  is invalid")
 }

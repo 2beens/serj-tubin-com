@@ -7,19 +7,21 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
-	"github.com/2beens/serjtubincom/internal/cache"
+	"github.com/2beens/serjtubincom/internal/board"
 	"github.com/2beens/serjtubincom/internal/config"
+	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/middleware"
+	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/2beens/serjtubincom/internal/notes_box"
+	"github.com/2beens/serjtubincom/internal/weather"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -27,17 +29,18 @@ import (
 )
 
 const (
-	OneHour            = 60 * 60
-	GeoIpCacheExpire   = OneHour * 5 // default expire in hours
-	WeatherCacheExpire = OneHour * 1 // default expire in hours
+	OneHour          = 60 * 60
+	GeoIpCacheExpire = OneHour * 5 // default expire in hours
 )
 
 type Server struct {
+	httpServer *http.Server
+
 	config          *config.Config
-	blogApi         blog.Api
-	geoIp           *GeoIp
-	quotesManager   *QuotesManager
-	board           *Board
+	blogApi         *blog.PsqlApi
+	geoIp           *geoip.Api
+	quotesManager   *misc.QuotesManager
+	boardClient     *board.Client
 	netlogVisitsApi *netlog.PsqlApi
 	notesBoxApi     *notes_box.PsqlApi
 
@@ -57,6 +60,7 @@ type Server struct {
 }
 
 func NewServer(
+	ctx context.Context,
 	config *config.Config,
 	openWeatherApiKey string,
 	ipBaseAPIKey string,
@@ -71,12 +75,12 @@ func NewServer(
 		return nil, fmt.Errorf("failed to create board aero client: %w", err)
 	}
 
-	boardCache, err := cache.NewBoardCache()
+	boardCache, err := board.NewBoardCache()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create board cache: %w", err)
 	}
 
-	board, err := NewBoard(boardAeroClient, boardCache)
+	boardClient, err := board.NewClient(boardAeroClient, boardCache)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
@@ -86,17 +90,17 @@ func NewServer(
 		return nil, errors.New("open weather API key not set")
 	}
 
-	blogApi, err := blog.NewBlogPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
+	blogApi, err := blog.NewBlogPsqlApi(ctx, config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create blog api: %s", err)
 	}
 
-	netlogVisitsApi, err := netlog.NewNetlogPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
+	netlogVisitsApi, err := netlog.NewNetlogPsqlApi(ctx, config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
-	notesBoxApi, err := notes_box.NewPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
+	notesBoxApi, err := notes_box.NewPsqlApi(ctx, config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create notes visits api: %s", err)
 	}
@@ -131,7 +135,7 @@ func NewServer(
 
 	go func() {
 		for range time.Tick(time.Hour * 8) {
-			authService.ScanAndClean()
+			authService.ScanAndClean(ctx)
 		}
 	}()
 
@@ -146,8 +150,8 @@ func NewServer(
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
-		geoIp:                 NewGeoIp("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient, rdb),
-		board:                 board,
+		geoIp:                 geoip.NewApi("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient, rdb),
+		boardClient:           boardClient,
 		netlogVisitsApi:       netlogVisitsApi,
 		notesBoxApi:           notesBoxApi,
 		versionInfo:           versionInfo,
@@ -161,7 +165,7 @@ func NewServer(
 		instr: instr,
 	}
 
-	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
+	s.quotesManager, err = misc.NewQuoteManager("./assets/quotes.csv")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create quote manager: %s", err)
 	}
@@ -179,34 +183,34 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	notesRouter := r.PathPrefix("/notes").Subrouter()
 
 	// TODO: refactor this - return handlers, but define routes here, similar to notes handler
-	if NewBlogHandler(blogRouter, s.blogApi, s.loginChecker) == nil {
+	if blog.NewBlogHandler(blogRouter, s.blogApi, s.loginChecker) == nil {
 		return nil, errors.New("blog handler is nil")
 	}
 
-	if NewBoardHandler(boardRouter, s.board, s.loginChecker) == nil {
+	if board.NewBoardHandler(boardRouter, s.boardClient, s.loginChecker) == nil {
 		return nil, errors.New("board handler is nil")
 	}
 
-	if weatherHandler, err := NewWeatherHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
+	if weatherHandler, err := weather.NewHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
 		return nil, fmt.Errorf("failed to create weather handler: %w", err)
 	} else if weatherHandler == nil {
 		return nil, errors.New("weather handler is nil")
 	}
 
-	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {
+	if misc.NewHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {
 		panic("misc handler is nil")
 	}
 
-	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginChecker) == nil {
+	if netlog.NewHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginChecker) == nil {
 		panic("netlog visits handler is nil")
 	}
 
-	notesHandler := NewNotesBoxHandler(s.notesBoxApi, s.loginChecker, s.instr)
-	notesRouter.HandleFunc("", notesHandler.handleList).Methods("GET", "OPTIONS").Name("list-notes")
-	notesRouter.HandleFunc("", notesHandler.handleAdd).Methods("POST", "OPTIONS").Name("new-note")
-	notesRouter.HandleFunc("", notesHandler.handleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
-	notesRouter.HandleFunc("/{id}", notesHandler.handleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
-	notesRouter.Use(notesHandler.authMiddleware())
+	notesHandler := notes_box.NewHandler(s.notesBoxApi, s.loginChecker, s.instr)
+	notesRouter.HandleFunc("", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
+	notesRouter.HandleFunc("", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
+	notesRouter.HandleFunc("", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
+	notesRouter.HandleFunc("/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
+	notesRouter.Use(notesHandler.AuthMiddleware())
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
@@ -222,7 +226,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	return r, nil
 }
 
-func (s *Server) Serve(host string, port int) {
+func (s *Server) Serve(ctx context.Context, host string, port int) {
 	router, err := s.routerSetup()
 	if err != nil {
 		log.Fatalf("failed to setup router: %s", err)
@@ -230,7 +234,7 @@ func (s *Server) Serve(host string, port int) {
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 
-	httpServer := &http.Server{
+	s.httpServer = &http.Server{
 		Handler:      router,
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
@@ -238,12 +242,9 @@ func (s *Server) Serve(host string, port int) {
 		ConnState:    s.connStateMetrics,
 	}
 
-	chOsInterrupt := make(chan os.Signal, 1)
-	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
-
 	go func() {
 		log.Infof(" > server listening on: [%s]", ipAndPort)
-		log.Fatal(httpServer.ListenAndServe())
+		log.Fatal(s.httpServer.ListenAndServe())
 	}()
 
 	metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
@@ -253,18 +254,10 @@ func (s *Server) Serve(host string, port int) {
 		log.Println(http.ListenAndServe(metricsAddr, nil))
 	}()
 
-	// netlog backup unix socket
-	ctx, cancel := context.WithCancel(context.Background())
-	s.setNetlogBackupUnixSocket(ctx)
-
 	s.instr.GaugeLifeSignal.Set(1)
-	receivedSig := <-chOsInterrupt
 
-	log.Warnf("signal [%s] received ...", receivedSig)
-	s.instr.GaugeLifeSignal.Set(0)
-
-	// go to sleep 🥱
-	s.gracefulShutdown(httpServer, cancel)
+	// netlog backup unix socket
+	s.setNetlogBackupUnixSocket(ctx)
 }
 
 func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
@@ -280,10 +273,11 @@ func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
 	}
 }
 
-func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.CancelFunc) {
+func (s *Server) GracefulShutdown() {
 	log.Debug("graceful shutdown initiated ...")
 
-	cancel()
+	// TODO: probably not needed to be set explicitly
+	s.instr.GaugeLifeSignal.Set(0)
 
 	if s.redisClient != nil {
 		if err := s.redisClient.Close(); err != nil {
@@ -291,8 +285,12 @@ func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.Cancel
 		}
 	}
 
-	s.board.Close()
-
+	if s.boardClient != nil {
+		s.boardClient.Close()
+	}
+	if s.netlogVisitsApi != nil {
+		s.netlogVisitsApi.CloseDB()
+	}
 	if s.blogApi != nil {
 		s.blogApi.CloseDB()
 	}
@@ -305,7 +303,7 @@ func (s *Server) gracefulShutdown(httpServer *http.Server, cancel context.Cancel
 	maxWaitDuration := time.Second * 15
 	ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
 	defer timeoutCancel()
-	if err := httpServer.Shutdown(ctx); err != nil {
+	if err := s.httpServer.Shutdown(ctx); err != nil {
 		log.Error(" >>> failed to gracefully shutdown http server")
 	}
 	log.Warnln("server shut down")

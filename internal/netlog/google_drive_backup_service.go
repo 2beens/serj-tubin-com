@@ -39,6 +39,7 @@ type GoogleDriveBackupService struct {
 }
 
 func NewGoogleDriveBackupService(
+	ctx context.Context,
 	credentialsJson []byte,
 	dbHost string,
 	dbPort string,
@@ -47,7 +48,6 @@ func NewGoogleDriveBackupService(
 	netlogUnixSocketFileName string,
 ) (*GoogleDriveBackupService, error) {
 	// https://github.com/googleapis/google-api-go-client/blob/master/drive/v3/drive-gen.go
-	ctx := context.Background()
 	driveService, err := drive.NewService(ctx, option.WithCredentialsJSON(credentialsJson))
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve drive client: %w", err)
@@ -77,7 +77,7 @@ func NewGoogleDriveBackupService(
 		backupsFolderId = rbf.Id
 	}
 
-	psqlApi, err := NewNetlogPsqlApi(dbHost, dbPort, dbName)
+	psqlApi, err := NewNetlogPsqlApi(ctx, dbHost, dbPort, dbName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PSQL api client: %w", err)
 	}
@@ -162,7 +162,7 @@ func DestroyAllFiles(credentialsJson []byte) error {
 	return nil
 }
 
-func (s *GoogleDriveBackupService) Reinit(baseTime time.Time) error {
+func (s *GoogleDriveBackupService) Reinit(ctx context.Context, baseTime time.Time) error {
 	log.Println("netlog visits backup reinit starting ...")
 
 	err := s.service.Files.
@@ -182,10 +182,10 @@ func (s *GoogleDriveBackupService) Reinit(baseTime time.Time) error {
 	s.backupsFolderId = backupsFolderId
 	s.lazarDusanPermission = permission
 
-	return s.DoBackup(baseTime)
+	return s.DoBackup(ctx, baseTime)
 }
 
-func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
+func (s *GoogleDriveBackupService) DoBackup(ctx context.Context, baseTime time.Time) error {
 	log.Println("DoBackup start ...")
 	if s == nil {
 		panic("service is nil")
@@ -200,7 +200,7 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 
 	if len(currentAllBackupFiles) == 0 {
 		log.Println("backups empty, creating initial backup file ...")
-		if err := s.createInitialBackupFile(baseTime); err != nil {
+		if err := s.createInitialBackupFile(ctx, baseTime); err != nil {
 			return err
 		}
 		log.Println("initial backup files created!")
@@ -259,7 +259,7 @@ func (s *GoogleDriveBackupService) DoBackup(baseTime time.Time) error {
 		log.Printf("!! warning, last saved file [%s] is empty", lastFile.Name)
 	}
 
-	visitsToBackup, err := s.psqlApi.GetAllVisits(&lastCreatedAt)
+	visitsToBackup, err := s.psqlApi.GetAllVisits(ctx, &lastCreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to get next backup visits: %w", err)
 	}
@@ -340,8 +340,8 @@ func (s *GoogleDriveBackupService) createRootBackupsFolder() (folderId string, c
 	return bfRes.Id, cp, nil
 }
 
-func (s *GoogleDriveBackupService) createInitialBackupFile(baseTime time.Time) error {
-	visits, err := s.psqlApi.GetAllVisits(nil)
+func (s *GoogleDriveBackupService) createInitialBackupFile(ctx context.Context, baseTime time.Time) error {
+	visits, err := s.psqlApi.GetAllVisits(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to get netlog visits from db: %w", err)
 	}

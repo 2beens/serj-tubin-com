@@ -1,4 +1,4 @@
-package cache
+package board
 
 import (
 	"fmt"
@@ -6,8 +6,15 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
+type Cache interface {
+	Get(key interface{}) (interface{}, bool)
+	Set(key, value interface{}, cost int64) bool
+	Clear()
+}
+
 var _ Cache = (*BoardCache)(nil)
 
+// TODO: remove this unnecessary cache wrapper
 type BoardCache struct {
 	cache *ristretto.Cache
 }

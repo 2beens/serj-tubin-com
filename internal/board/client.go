@@ -1,4 +1,4 @@
-package internal
+package board
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
-	"github.com/2beens/serjtubincom/internal/cache"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,18 +15,18 @@ const (
 	AllMessagesCacheKey = "all-messages"
 )
 
-type Board struct {
+type Client struct {
 	aeroClient aerospike.Client
-	cache      cache.Cache
+	cache      Cache
 	mutex      sync.RWMutex
 }
 
-func NewBoard(aeroClient aerospike.Client, cache cache.Cache) (*Board, error) {
+func NewClient(aeroClient aerospike.Client, cache Cache) (*Client, error) {
 	if aeroClient == nil {
 		return nil, aerospike.ErrAeroClientNil
 	}
 
-	b := &Board{
+	b := &Client{
 		aeroClient: aeroClient,
 		cache:      cache,
 	}
@@ -59,50 +58,50 @@ func NewBoard(aeroClient aerospike.Client, cache cache.Cache) (*Board, error) {
 	return b, nil
 }
 
-func (b *Board) SetAllMessagesCacheFromAero() error {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
+func (c *Client) SetAllMessagesCacheFromAero() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	allMessages, err := b.AllMessages(true)
+	allMessages, err := c.AllMessages(true)
 	if err != nil {
 		return err
 	}
 
 	// TODO: this is a super lazy way to cache messages
 	// not really sure, all messages should be really cached
-	b.CacheBoardMessages(AllMessagesCacheKey, allMessages)
+	c.CacheBoardMessages(AllMessagesCacheKey, allMessages)
 
 	return nil
 }
 
-func (b *Board) CacheBoardMessages(cacheKey string, messages []*BoardMessage) {
-	if !b.cache.Set(cacheKey, messages, int64(len(messages)*3)) {
+func (c *Client) CacheBoardMessages(cacheKey string, messages []*Message) {
+	if !c.cache.Set(cacheKey, messages, int64(len(messages)*3)) {
 		log.Errorf("failed to set cache for [%s]... for some reason", cacheKey)
 	} else {
 		log.Debugf("board messages cache set for [%s]", cacheKey)
 	}
 }
 
-func (b *Board) MessagesPageCacheKey(page, size int) string {
+func (c *Client) MessagesPageCacheKey(page, size int) string {
 	return fmt.Sprintf("messages::%d::%d", page, size)
 }
 
-func (b *Board) InvalidateCaches() {
+func (c *Client) InvalidateCaches() {
 	log.Tracef("invalidating cache")
-	b.cache.Clear()
+	c.cache.Clear()
 }
 
-func (b *Board) Close() {
-	if b != nil && b.aeroClient != nil {
-		b.aeroClient.Close()
+func (c *Client) Close() {
+	if c != nil && c.aeroClient != nil {
+		c.aeroClient.Close()
 	}
 }
 
-func (b *Board) NewMessage(message BoardMessage) (int, error) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
+func (c *Client) NewMessage(message Message) (int, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	newMessageId, err := b.aeroClient.IncrementMessageIdCounter(1)
+	newMessageId, err := c.aeroClient.IncrementMessageIdCounter(1)
 	if err != nil {
 		return -1, fmt.Errorf("failed to get message id counter: %w", err)
 	}
@@ -117,40 +116,40 @@ func (b *Board) NewMessage(message BoardMessage) (int, error) {
 	log.Debugf("saving message %d: %+v: %s - %s", newMessageId, message.Timestamp, message.Author, message.Message)
 
 	messageKey := strconv.Itoa(newMessageId)
-	if err := b.aeroClient.Put(messageKey, bins); err != nil {
+	if err := c.aeroClient.Put(messageKey, bins); err != nil {
 		return -1, fmt.Errorf("failed to do aero put: %w", err)
 	}
 
 	// omg, fix this laziness
-	b.InvalidateCaches()
+	c.InvalidateCaches()
 
 	return newMessageId, nil
 }
 
-func (b *Board) DeleteMessage(messageId string) (bool, error) {
+func (c *Client) DeleteMessage(messageId string) (bool, error) {
 	log.Tracef("board - about to delete message: %s", messageId)
-	b.InvalidateCaches()
-	return b.aeroClient.Delete(messageId)
+	c.InvalidateCaches()
+	return c.aeroClient.Delete(messageId)
 }
 
-func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
+func (c *Client) GetMessagesPage(page, size int) ([]*Message, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	log.Tracef("getting messages page %d, size %d", page, size)
 
-	totalMessagesCount, err := b.MessagesCount()
+	totalMessagesCount, err := c.MessagesCount()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all messages count: %w", err)
 	}
 
 	if size >= totalMessagesCount {
-		return b.AllMessagesCache(false)
+		return c.AllMessagesCache(false)
 	}
 
-	cacheKey := b.MessagesPageCacheKey(page, size)
-	if cachedMessages, found := b.cache.Get(cacheKey); found {
-		if messages, ok := cachedMessages.([]*BoardMessage); ok {
+	cacheKey := c.MessagesPageCacheKey(page, size)
+	if cachedMessages, found := c.cache.Get(cacheKey); found {
+		if messages, ok := cachedMessages.([]*Message); ok {
 			log.Tracef("%d messages found for page %d and size %d", len(messages), page, size)
 			return messages, nil
 		}
@@ -169,12 +168,12 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 		to = from + int64(size-1)
 	}
 
-	messagesBins, err := b.aeroClient.QueryByRange("id", from, to)
+	messagesBins, err := c.aeroClient.QueryByRange("id", from, to)
 	if err != nil {
 		return nil, fmt.Errorf("get messages page, failed to query aero spike for messages: %w", err)
 	}
 
-	var messages []*BoardMessage
+	var messages []*Message
 	for _, mBin := range messagesBins {
 		m := MessageFromBins(mBin)
 		messages = append(messages, &m)
@@ -182,20 +181,20 @@ func (b *Board) GetMessagesPage(page, size int) ([]*BoardMessage, error) {
 
 	log.Tracef("received %d messages from aerospike", len(messages))
 
-	b.CacheBoardMessages(cacheKey, messages)
+	c.CacheBoardMessages(cacheKey, messages)
 
 	return messages, nil
 }
 
-func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
+func (c *Client) GetMessagesWithRange(from, to int64) ([]*Message, error) {
 	log.Tracef("getting messages range from %d to %d", from, to)
 
-	messagesBins, err := b.aeroClient.QueryByRange("id", from, to)
+	messagesBins, err := c.aeroClient.QueryByRange("id", from, to)
 	if err != nil {
 		return nil, fmt.Errorf("get messages with range, failed to query aero spike for messages: %w", err)
 	}
 
-	var messages []*BoardMessage
+	var messages []*Message
 	for _, mBin := range messagesBins {
 		m := MessageFromBins(mBin)
 		messages = append(messages, &m)
@@ -206,9 +205,9 @@ func (b *Board) GetMessagesWithRange(from, to int64) ([]*BoardMessage, error) {
 	return messages, nil
 }
 
-func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) {
-	if allMessagesCached, found := b.cache.Get(AllMessagesCacheKey); found {
-		if allMessages, ok := allMessagesCached.([]*BoardMessage); ok {
+func (c *Client) AllMessagesCache(sortByTimestamp bool) ([]*Message, error) {
+	if allMessagesCached, found := c.cache.Get(AllMessagesCacheKey); found {
+		if allMessages, ok := allMessagesCached.([]*Message); ok {
 			log.Tracef("all %d messages found in cache", len(allMessages))
 			return allMessages, nil
 		}
@@ -216,25 +215,25 @@ func (b *Board) AllMessagesCache(sortByTimestamp bool) ([]*BoardMessage, error) 
 	}
 
 	log.Errorf("failed to get all messages cache, will get them from aerospike")
-	allMessages, err := b.AllMessages(sortByTimestamp)
+	allMessages, err := c.AllMessages(sortByTimestamp)
 	if err != nil {
 		return nil, err
 	}
 
-	b.CacheBoardMessages(AllMessagesCacheKey, allMessages)
+	c.CacheBoardMessages(AllMessagesCacheKey, allMessages)
 
 	return allMessages, nil
 }
 
-func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
+func (c *Client) AllMessages(sortByTimestamp bool) ([]*Message, error) {
 	log.Tracef("getting all messages from Aerospike")
 
-	messagesBins, err := b.aeroClient.ScanAll()
+	messagesBins, err := c.aeroClient.ScanAll()
 	if err != nil {
 		return nil, fmt.Errorf("get all messages, failed to query aero spike for messages: %w", err)
 	}
 
-	var messages []*BoardMessage
+	var messages []*Message
 	for _, mBin := range messagesBins {
 		m := MessageFromBins(mBin)
 		messages = append(messages, &m)
@@ -251,6 +250,6 @@ func (b *Board) AllMessages(sortByTimestamp bool) ([]*BoardMessage, error) {
 	return messages, nil
 }
 
-func (b *Board) MessagesCount() (int, error) {
-	return b.aeroClient.CountAll()
+func (c *Client) MessagesCount() (int, error) {
+	return c.aeroClient.CountAll()
 }

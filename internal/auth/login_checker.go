@@ -20,9 +20,9 @@ func NewLoginChecker(ttl time.Duration, redisClient *redis.Client) *LoginChecker
 	}
 }
 
-func (as *LoginChecker) IsLogged(token string) (bool, error) {
+func (as *LoginChecker) IsLogged(ctx context.Context, token string) (bool, error) {
 	sessionKey := sessionKeyPrefix + token
-	cmd := as.redisClient.Get(context.Background(), sessionKey)
+	cmd := as.redisClient.Get(ctx, sessionKey)
 	if err := cmd.Err(); err != nil {
 		return false, err
 	}

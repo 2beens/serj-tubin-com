@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"io/ioutil"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/config"
@@ -52,7 +55,7 @@ func main() {
 	}
 
 	// lazar.dusan.veliki@gmail.com // stara sifra
-	credentialsFileBytes, err := ioutil.ReadFile(*credentialsFile)
+	credentialsFileBytes, err := os.ReadFile(*credentialsFile)
 	if err != nil {
 		log.Fatalf("unable to read client secret file: %v", err)
 	}
@@ -65,7 +68,18 @@ func main() {
 		return
 	}
 
+	chOsInterrupt := make(chan os.Signal, 1)
+	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		receivedSig := <-chOsInterrupt
+		log.Warnf("signal [%s] received, canceling context ...", receivedSig)
+		cancel()
+	}()
+
 	s, err := netlog.NewGoogleDriveBackupService(
+		ctx,
 		credentialsFileBytes,
 		cfg.PostgresHost,
 		cfg.PostgresPort,
@@ -80,14 +94,14 @@ func main() {
 	baseTime := time.Now()
 
 	if *reinit {
-		if err := s.Reinit(baseTime); err != nil {
+		if err := s.Reinit(ctx, baseTime); err != nil {
 			log.Fatalf("reinit failed: %s", err)
 		}
 		log.Println("reinit done")
 		return
 	}
 
-	if err := s.DoBackup(baseTime); err != nil {
+	if err := s.DoBackup(ctx, baseTime); err != nil {
 		log.Fatalf("%+v", err)
 	}
 }

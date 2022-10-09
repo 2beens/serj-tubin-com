@@ -12,13 +12,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var _ Api = (*PsqlApi)(nil)
+
 type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewNetlogPsqlApi(dbHost, dbPort, dbName string) (*PsqlApi, error) {
-	ctx := context.Background()
-
+func NewNetlogPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
 	dbPool, err := pgxpool.Connect(ctx, connString)
 	if err != nil {
@@ -38,7 +38,7 @@ func (api *PsqlApi) CloseDB() {
 	}
 }
 
-func (api *PsqlApi) AddVisit(visit *Visit) error {
+func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) error {
 	if visit.URL == "" || visit.Timestamp.IsZero() {
 		return errors.New("visit url or timestamp empty")
 	}
@@ -68,7 +68,7 @@ func (api *PsqlApi) AddVisit(visit *Visit) error {
 	return errors.New("unexpected error, failed to insert visit")
 }
 
-func (api *PsqlApi) GetAllVisits(fromTimestamp *time.Time) ([]*Visit, error) {
+func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) ([]*Visit, error) {
 	var rows pgx.Rows
 	var err error
 	if fromTimestamp != nil {
@@ -121,7 +121,7 @@ func (api *PsqlApi) GetAllVisits(fromTimestamp *time.Time) ([]*Visit, error) {
 	return visits, nil
 }
 
-func (api *PsqlApi) GetVisits(keywords []string, field string, source string, limit int) ([]*Visit, error) {
+func (api *PsqlApi) GetVisits(ctx context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error) {
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT
@@ -133,7 +133,7 @@ func (api *PsqlApi) GetVisits(keywords []string, field string, source string, li
 	`, sbQueryLike)
 
 	rows, err := api.db.Query(
-		context.Background(),
+		ctx,
 		query,
 		limit,
 	)
@@ -167,11 +167,11 @@ func (api *PsqlApi) GetVisits(keywords []string, field string, source string, li
 	return visits, nil
 }
 
-func (api *PsqlApi) CountAll() (int, error) {
-	return api.Count([]string{}, "url", "all")
+func (api *PsqlApi) CountAll(ctx context.Context) (int, error) {
+	return api.Count(ctx, []string{}, "url", "all")
 }
 
-func (api *PsqlApi) Count(keywords []string, field string, source string) (int, error) {
+func (api *PsqlApi) Count(ctx context.Context, keywords []string, field string, source string) (int, error) {
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT COUNT(*)
@@ -181,7 +181,7 @@ func (api *PsqlApi) Count(keywords []string, field string, source string) (int, 
 	`, sbQueryLike)
 
 	rows, err := api.db.Query(
-		context.Background(),
+		ctx,
 		query,
 	)
 	if err != nil {
@@ -203,16 +203,16 @@ func (api *PsqlApi) Count(keywords []string, field string, source string) (int, 
 	return -1, errors.New("unexpected error, failed to get netlog visits count")
 }
 
-func (api *PsqlApi) GetVisitsPage(keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
+func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
 	limit := size
 	offset := (page - 1) * size
-	allVisitsCount, err := api.CountAll()
+	allVisitsCount, err := api.CountAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if allVisitsCount <= limit {
-		return api.GetVisits([]string{}, field, source, size)
+		return api.GetVisits(ctx, []string{}, field, source, size)
 	}
 
 	if allVisitsCount-offset < limit {

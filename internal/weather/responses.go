@@ -1,15 +1,15 @@
-package internal
+package weather
 
 import "time"
 
-type WeatherDescription struct {
+type Description struct {
 	ID          int    `json:"id"`
 	Main        string `json:"main"`
 	Description string `json:"description"`
 	Icon        string `json:"icon"`
 }
 
-type WeatherMain struct {
+type Main struct {
 	Temp      float64 `json:"temp"`
 	FeelsLike float64 `json:"feels_like"`
 	TempMin   float64 `json:"temp_min"`
@@ -39,7 +39,7 @@ type Rain struct {
 	ThreeH float64 `json:"3h"`
 }
 
-type WeatherSys struct {
+type Sys struct {
 	Type    int    `json:"type"`
 	ID      int    `json:"id"`
 	Country string `json:"country"`
@@ -48,8 +48,8 @@ type WeatherSys struct {
 	Pod     string `json:"pod"`
 }
 
-type WeatherApiResponse struct {
-	WeatherInfo
+type ApiResponse struct {
+	Info
 
 	Cod        int        `json:"cod"`
 	Message    int        `json:"message"`
@@ -62,31 +62,31 @@ type WeatherApiResponse struct {
 	Name       string     `json:"name"`
 }
 
-type WeatherApi5DaysResponse struct {
-	Cod     string        `json:"cod"`
-	Message float64       `json:"message"`
-	Cnt     float64       `json:"cnt"`
-	City    WeatherCity   `json:"city"`
-	List    []WeatherInfo `json:"list"`
+type Api5DaysResponse struct {
+	Cod     string  `json:"cod"`
+	Message float64 `json:"message"`
+	Cnt     float64 `json:"cnt"`
+	City    City    `json:"city"`
+	List    []Info  `json:"list"`
 }
 
-type WeatherInfo struct {
-	Dt                  int                  `json:"dt"`
-	Main                WeatherMain          `json:"main"`
-	WeatherDescriptions []WeatherDescription `json:"weather"`
-	Clouds              Clouds               `json:"clouds"`
-	Wind                Wind                 `json:"wind"`
-	Sys                 WeatherSys           `json:"sys"`
-	DtTxt               string               `json:"dt_txt"`
-	Rain                Rain                 `json:"rain,omitempty"`
+type Info struct {
+	Dt                  int           `json:"dt"`
+	Main                Main          `json:"main"`
+	WeatherDescriptions []Description `json:"weather"`
+	Clouds              Clouds        `json:"clouds"`
+	Wind                Wind          `json:"wind"`
+	Sys                 Sys           `json:"sys"`
+	DtTxt               string        `json:"dt_txt"`
+	Rain                Rain          `json:"rain,omitempty"`
 }
 
 // this can be done better, but - no time for hobby :)
-func (w *WeatherInfo) Timestamp() time.Time {
+func (w *Info) Timestamp() time.Time {
 	return time.Unix(int64(w.Dt), 0)
 }
 
-type WeatherCity struct {
+type City struct {
 	ID       int        `json:"id"`
 	Name     string     `json:"name"`
 	State    string     `json:"state"`
@@ -97,8 +97,8 @@ type WeatherCity struct {
 	Sunset   int        `json:"sunset"`
 }
 
-// used to return to frontend
-type WeatherInfoShort struct {
-	Timestamp           int                  `json:"timestamp"`
-	WeatherDescriptions []WeatherDescription `json:"descriptions"`
+// InfoShort - used to return to frontend
+type InfoShort struct {
+	Timestamp           int           `json:"timestamp"`
+	WeatherDescriptions []Description `json:"descriptions"`
 }

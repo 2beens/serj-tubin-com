@@ -1,7 +1,8 @@
-package internal
+package notes_box
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,45 +10,44 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
-	"github.com/2beens/serjtubincom/internal/notes_box"
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNotesBoxHandler_AllNotes(t *testing.T) {
-	api := notes_box.NewTestApi()
-
+	api := NewTestApi()
 	now := time.Now()
-
-	n1 := &notes_box.Note{
+	n1 := &Note{
 		Id:        1,
 		Title:     "title1",
 		Content:   "content1",
 		CreatedAt: now,
 	}
-	n2 := &notes_box.Note{
+	n2 := &Note{
 		Id:        2,
 		Title:     "title2",
 		Content:   "content2",
 		CreatedAt: now,
 	}
-	_, err := api.Add(n1)
+
+	ctx := context.Background()
+	_, err := api.Add(ctx, n1)
 	require.NoError(t, err)
-	_, err = api.Add(n2)
+	_, err = api.Add(ctx, n2)
 	require.NoError(t, err)
 
 	db, _ := redismock.NewClientMock()
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNotesBoxHandler(api, loginChecker, instr)
+	handler := NewHandler(api, loginChecker, instr)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "", nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	handler.handleList(rr, req)
+	handler.HandleList(rr, req)
 	require.NotNil(t, rr)
 
 	var body []byte

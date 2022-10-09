@@ -1,11 +1,14 @@
 package netlog
 
 import (
+	"context"
 	"errors"
 	"sort"
 	"strings"
 	"sync"
 )
+
+var _ Api = (*TestApi)(nil)
 
 type TestApi struct {
 	// visit ID to Visit
@@ -19,11 +22,7 @@ func NewTestApi() *TestApi {
 	}
 }
 
-func (api *TestApi) CloseDB() {
-	// NOP
-}
-
-func (api *TestApi) AddVisit(visit *Visit) error {
+func (api *TestApi) AddVisit(_ context.Context, visit *Visit) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
@@ -33,11 +32,11 @@ func (api *TestApi) AddVisit(visit *Visit) error {
 	return nil
 }
 
-func (api *TestApi) GetAllVisits() ([]*Visit, error) {
-	return api.GetVisits([]string{}, "url", "all", -1)
+func (api *TestApi) GetAllVisits(ctx context.Context) ([]*Visit, error) {
+	return api.GetVisits(ctx, []string{}, "url", "all", -1)
 }
 
-func (api *TestApi) GetVisits(keywords []string, field string, source string, limit int) ([]*Visit, error) {
+func (api *TestApi) GetVisits(_ context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
@@ -73,14 +72,14 @@ func (api *TestApi) GetVisits(keywords []string, field string, source string, li
 	return foundVisits, nil
 }
 
-func (api *TestApi) CountAll() (int, error) {
+func (api *TestApi) CountAll(_ context.Context) (int, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
 	return len(api.Visits), nil
 }
 
-func (api *TestApi) Count(keywords []string, field string, source string) (int, error) {
+func (api *TestApi) Count(_ context.Context, keywords []string, field string, source string) (int, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
@@ -108,12 +107,12 @@ func (api *TestApi) Count(keywords []string, field string, source string) (int, 
 	return count, nil
 }
 
-func (api *TestApi) GetVisitsPage(keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
+func (api *TestApi) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
 	if len(api.Visits) <= size {
-		return api.GetAllVisits()
+		return api.GetAllVisits(ctx)
 	}
 
-	foundVisits, err := api.GetVisits(keywords, field, source, -1)
+	foundVisits, err := api.GetVisits(ctx, keywords, field, source, -1)
 	if err != nil {
 		return nil, err
 	}

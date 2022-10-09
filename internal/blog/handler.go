@@ -1,4 +1,4 @@
-package internal
+package blog
 
 import (
 	"encoding/json"
@@ -9,22 +9,22 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/blog"
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-type BlogHandler struct {
-	blogApi      blog.Api
-	loginChecker *auth.LoginChecker
+type Handler struct {
+	blogApi      Api
+	loginChecker auth.Checker
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
-	blogApi blog.Api,
-	loginChecker *auth.LoginChecker,
-) *BlogHandler {
-	handler := &BlogHandler{
+	blogApi Api,
+	loginChecker auth.Checker,
+) *Handler {
+	handler := &Handler{
 		blogApi:      blogApi,
 		loginChecker: loginChecker,
 	}
@@ -40,7 +40,7 @@ func NewBlogHandler(
 	return handler
 }
 
-func (handler *BlogHandler) handleNewBlog(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleNewBlog(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("add new blog failed, parse form error: %s", err)
@@ -60,13 +60,13 @@ func (handler *BlogHandler) handleNewBlog(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	newBlog := &blog.Blog{
+	newBlog := &Blog{
 		Title:     title,
 		CreatedAt: time.Now(),
 		Content:   content,
 	}
 
-	if err := handler.blogApi.AddBlog(newBlog); err != nil {
+	if err := handler.blogApi.AddBlog(r.Context(), newBlog); err != nil {
 		log.Errorf("add new blog failed: %s", err)
 		http.Error(w, "add new blog failed", http.StatusInternalServerError)
 		return
@@ -75,10 +75,10 @@ func (handler *BlogHandler) handleNewBlog(w http.ResponseWriter, r *http.Request
 	log.Tracef("new blog %d: [%s] added", newBlog.Id, newBlog.Title)
 
 	// TODO: refactor and unify responses
-	WriteResponse(w, "", fmt.Sprintf("added:%d", newBlog.Id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", newBlog.Id))
 }
 
-func (handler *BlogHandler) handleUpdateBlog(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleUpdateBlog(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("update blog failed, parse form error: %s", err)
@@ -109,23 +109,23 @@ func (handler *BlogHandler) handleUpdateBlog(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	blog := &blog.Blog{
+	blog := &Blog{
 		Id:        id,
 		Title:     title,
 		CreatedAt: time.Now(),
 		Content:   content,
 	}
 
-	if err := handler.blogApi.UpdateBlog(blog); err != nil {
+	if err := handler.blogApi.UpdateBlog(r.Context(), blog); err != nil {
 		log.Errorf("update blog failed: %s", err)
 		http.Error(w, "update blog failed", http.StatusInternalServerError)
 		return
 	}
 
-	WriteResponse(w, "", fmt.Sprintf("updated:%d", blog.Id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", blog.Id))
 }
 
-func (handler *BlogHandler) handleDeleteBlog(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleDeleteBlog(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	idStr := vars["id"]
@@ -139,7 +139,7 @@ func (handler *BlogHandler) handleDeleteBlog(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	deleted, err := handler.blogApi.DeleteBlog(id)
+	deleted, err := handler.blogApi.DeleteBlog(r.Context(), id)
 	if err != nil {
 		log.Printf("failed to delete blog %d: %s", id, err)
 		http.Error(w, "error, blog not deleted, internal server error", http.StatusInternalServerError)
@@ -147,14 +147,15 @@ func (handler *BlogHandler) handleDeleteBlog(w http.ResponseWriter, r *http.Requ
 	}
 
 	if deleted {
-		WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
+		pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
 	} else {
-		WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
+		pkg.WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
 	}
 }
 
-func (handler *BlogHandler) handleAll(w http.ResponseWriter, r *http.Request) {
-	allBlogs, err := handler.blogApi.All()
+func (handler *Handler) handleAll(w http.ResponseWriter, r *http.Request) {
+	allBlogs, err := handler.blogApi.All(r.Context())
+
 	if err != nil {
 		log.Errorf("get all blogs error: %s", err)
 		http.Error(w, "get all blogs error", http.StatusInternalServerError)
@@ -168,10 +169,10 @@ func (handler *BlogHandler) handleAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", allBlogsJson)
+	pkg.WriteResponseBytes(w, "application/json", allBlogsJson)
 }
 
-func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	pageStr := vars["page"]
@@ -200,7 +201,7 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	blogPosts, err := handler.blogApi.GetBlogsPage(page, size)
+	blogPosts, err := handler.blogApi.GetBlogsPage(r.Context(), page, size)
 	if err != nil {
 		log.Errorf("get blogs error: %s", err)
 		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
@@ -210,7 +211,7 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 	w.Header().Add("Content-Type", "application/json")
 
 	if len(blogPosts) == 0 {
-		blogPosts = []*blog.Blog{}
+		blogPosts = []*Blog{}
 	}
 
 	blogPostsJson, err := json.Marshal(blogPosts)
@@ -220,7 +221,7 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	totalBlogsCount, err := handler.blogApi.BlogsCount()
+	totalBlogsCount, err := handler.blogApi.BlogsCount(r.Context())
 	if err != nil {
 		log.Errorf("get blogs error: %s", err)
 		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
@@ -229,10 +230,10 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 
 	resJson := fmt.Sprintf(`{"posts": %s, "total": %d}`, blogPostsJson, totalBlogsCount)
 
-	WriteResponseBytes(w, "application/json", []byte(resJson))
+	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
-func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handler {
+func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {
@@ -257,7 +258,7 @@ func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
-			isLogged, err := handler.loginChecker.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(r.Context(), authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

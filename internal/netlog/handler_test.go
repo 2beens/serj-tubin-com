@@ -1,4 +1,4 @@
-package internal
+package netlog
 
 import (
 	"encoding/json"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
-	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/go-redis/redismock/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -23,9 +22,9 @@ import (
 func TestNewNetlogHandler(t *testing.T) {
 	r := mux.NewRouter()
 	router := r.PathPrefix("/netlog").Subrouter()
-	netlogApi := netlog.NewTestApi()
+	netlogApi := NewTestApi()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(router, netlogApi, instr, "", nil)
+	handler := NewHandler(router, netlogApi, instr, "", nil)
 	require.NotNil(t, handler)
 	require.NotNil(t, router)
 
@@ -89,11 +88,11 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 
 	browserReqSecret := "beer"
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
-	netlogApi := netlog.NewTestApi()
+	netlogApi := NewTestApi()
 
 	r := mux.NewRouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(r, netlogApi, instr, browserReqSecret, loginChecker)
+	handler := NewHandler(r, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 
@@ -106,7 +105,7 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var visits []*netlog.Visit
+	var visits []*Visit
 	err = json.Unmarshal(rr.Body.Bytes(), &visits)
 	require.NoError(t, err)
 	require.NotNil(t, visits)
@@ -119,12 +118,12 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 
 	browserReqSecret := "beer"
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
-	netlogApi := netlog.NewTestApi()
+	netlogApi := NewTestApi()
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
+	handler := NewHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -138,7 +137,7 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 	netlogRouter.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 
-	var visits []*netlog.Visit
+	var visits []*Visit
 	err = json.Unmarshal(rr.Body.Bytes(), &visits)
 	require.Error(t, err)
 	require.Nil(t, visits)
@@ -150,17 +149,17 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 
 	browserReqSecret := "beer"
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
-	netlogApi := netlog.NewTestApi()
+	netlogApi := NewTestApi()
 
 	now := time.Now()
-	visit0 := netlog.Visit{
+	visit0 := Visit{
 		Id:        0,
 		Title:     "test title 0",
 		Source:    "chrome",
 		URL:       "test:url:0",
 		Timestamp: now,
 	}
-	visit1 := netlog.Visit{
+	visit1 := Visit{
 		Id:        1,
 		Title:     "test title 1",
 		Source:    "chrome",
@@ -173,7 +172,7 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
+	handler := NewHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -187,7 +186,7 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var visits []*netlog.Visit
+	var visits []*Visit
 	err = json.Unmarshal(rr.Body.Bytes(), &visits)
 	require.NoError(t, err)
 	require.NotNil(t, visits)
@@ -199,17 +198,17 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 
 	browserReqSecret := "rakija"
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
-	netlogApi := netlog.NewTestApi()
+	netlogApi := NewTestApi()
 
 	now := time.Now()
-	visit0 := netlog.Visit{
+	visit0 := Visit{
 		Id:        0,
 		Title:     "test title 0",
 		Source:    "chrome",
 		URL:       "test:url:0",
 		Timestamp: now,
 	}
-	visit1 := netlog.Visit{
+	visit1 := Visit{
 		Id:        1,
 		Title:     "test title 1",
 		Source:    "chrome",
@@ -224,7 +223,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
+	handler := NewHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -259,17 +258,17 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 
 	browserReqSecret := "beer"
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
-	netlogApi := netlog.NewTestApi()
+	netlogApi := NewTestApi()
 
 	now := time.Now()
-	visit0 := netlog.Visit{
+	visit0 := Visit{
 		Id:        0,
 		Title:     "test title 0",
 		Source:    "chrome",
 		URL:       "test:url:0",
 		Timestamp: now,
 	}
-	visit1 := netlog.Visit{
+	visit1 := Visit{
 		Id:        1,
 		Title:     "test title 1",
 		Source:    "chrome",
@@ -284,7 +283,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
+	handler := NewHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -325,17 +324,17 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
-	netlogApi := netlog.NewTestApi()
+	netlogApi := NewTestApi()
 
 	now := time.Now()
-	visit0 := netlog.Visit{
+	visit0 := Visit{
 		Id:        0,
 		Title:     "test title 0",
 		Source:    "chrome",
 		URL:       "test:url:0",
 		Timestamp: now,
 	}
-	visit1 := netlog.Visit{
+	visit1 := Visit{
 		Id:        1,
 		Title:     "test title 1",
 		Source:    "chrome",
@@ -347,7 +346,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	netlogApi.Visits[1] = visit1
 
 	for id := 2; id <= 8; id++ {
-		netlogApi.Visits[id] = netlog.Visit{
+		netlogApi.Visits[id] = Visit{
 			Id:        id,
 			Title:     fmt.Sprintf("test title %d", id),
 			Source:    "safari",
@@ -357,7 +356,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	}
 
 	for id := 9; id <= 12; id++ {
-		netlogApi.Visits[id] = netlog.Visit{
+		netlogApi.Visits[id] = Visit{
 			Id:        id,
 			Title:     fmt.Sprintf("other title %d", id),
 			Source:    "safari",
@@ -367,7 +366,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	}
 
 	for id := 12; id <= 15; id++ {
-		netlogApi.Visits[id] = netlog.Visit{
+		netlogApi.Visits[id] = Visit{
 			Id:        id,
 			Title:     fmt.Sprintf("test title %d", id),
 			Source:    "pc",
@@ -381,7 +380,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	instr := instrumentation.NewTestInstrumentation()
-	handler := NewNetlogHandler(netlogRouter, netlogApi, instr, "browserReqSecret", loginChecker)
+	handler := NewHandler(netlogRouter, netlogApi, instr, "browserReqSecret", loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -396,8 +395,8 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
 	type getVisitPageResp struct {
-		Visits []netlog.Visit `json:"visits"`
-		Total  int            `json:"total"`
+		Visits []Visit `json:"visits"`
+		Total  int     `json:"total"`
 	}
 
 	var resp *getVisitPageResp

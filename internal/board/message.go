@@ -1,19 +1,20 @@
-package internal
+package board
 
 import (
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	log "github.com/sirupsen/logrus"
 )
 
-type BoardMessage struct {
+type Message struct {
 	ID        int    `json:"id"`
 	Author    string `json:"author"`
 	Timestamp int64  `json:"timestamp"`
 	Message   string `json:"message"`
 }
 
-// TODO: maybe better return error on fail ot get any of the fields
-func MessageFromBins(bins aerospike.AeroBinMap) BoardMessage {
+func MessageFromBins(bins aerospike.AeroBinMap) Message {
+	// TODO: maybe better return error on fail or get any of the fields
+
 	id, ok := bins["id"].(int)
 	if !ok {
 		log.Errorln("get all messages, convert id to int failed!")
@@ -27,7 +28,7 @@ func MessageFromBins(bins aerospike.AeroBinMap) BoardMessage {
 		log.Errorln("get all messages, convert message to string failed!")
 	}
 
-	boardMessage := BoardMessage{
+	boardMessage := Message{
 		ID:      id,
 		Author:  author,
 		Message: message,

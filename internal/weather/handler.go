@@ -1,35 +1,39 @@
-package internal
+package weather
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/2beens/serjtubincom/internal/geoip"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-type WeatherHandler struct {
-	geoIp      *GeoIp
-	weatherApi *WeatherApi
+type Handler struct {
+	geoIp      *geoip.Api
+	weatherApi *Api
 }
 
 var (
 	ErrNotFound = errors.New("not found")
 )
 
-func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUrl, openWeatherApiKey string) (*WeatherHandler, error) {
+func NewHandler(weatherRouter *mux.Router, geoIp *geoip.Api, openWeatherAPIUrl, openWeatherApiKey string) (*Handler, error) {
 	citiesData, err := LoadCitiesData("./assets/city.list.json")
 	if err != nil {
 		log.Errorf("failed to load weather cities data: %s", err)
 		return nil, fmt.Errorf("failed to load weather cities data: %s", err)
 	}
 
-	handler := &WeatherHandler{
+	handler := &Handler{
 		geoIp: geoIp,
-		weatherApi: NewWeatherApi(
+		weatherApi: NewApi(
 			openWeatherAPIUrl,
 			openWeatherApiKey,
 			citiesData,
@@ -44,10 +48,30 @@ func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUr
 	return handler, nil
 }
 
-func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Request) {
+func LoadCitiesData(cityListDataPath string) ([]City, error) {
+	citiesJsonFile, err := os.Open(cityListDataPath)
+	if err != nil {
+		return []City{}, err
+	}
+
+	citiesJsonFileData, err := io.ReadAll(citiesJsonFile)
+	if err != nil {
+		return []City{}, err
+	}
+
+	var cities []City
+	err = json.Unmarshal(citiesJsonFileData, &cities)
+	if err != nil {
+		return []City{}, err
+	}
+
+	return cities, nil
+}
+
+func (handler *Handler) handleCurrent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r.Context(), r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
@@ -64,7 +88,7 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	weatherInfo, err := handler.weatherApi.GetWeatherCurrent(city.ID, city.Name)
+	weatherInfo, err := handler.weatherApi.GetWeatherCurrent(r.Context(), city.ID, city.Name)
 	if err != nil {
 		log.Errorf("error getting weather info: %s", err)
 		http.Error(w, "weather api error", http.StatusInternalServerError)
@@ -84,10 +108,10 @@ func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r.Context(), r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
@@ -104,7 +128,7 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city.ID, city.Name, city.Country)
+	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(r.Context(), city.ID, city.Name, city.Country)
 	if err != nil {
 		log.Errorf("error getting weather tomorrow info: %s", err)
 		http.Error(w, "weather tomorrow error", http.StatusInternalServerError)
@@ -112,11 +136,11 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	var weatherForecast []WeatherInfoShort
+	var weatherForecast []InfoShort
 	for _, w := range weatherInfo {
 		wt := w.Timestamp()
 		if wt.Day() == tomorrow.Day() && wt.Month() == tomorrow.Month() && wt.Year() == tomorrow.Year() {
-			weatherForecast = append(weatherForecast, WeatherInfoShort{
+			weatherForecast = append(weatherForecast, InfoShort{
 				Timestamp:           w.Dt,
 				WeatherDescriptions: w.WeatherDescriptions,
 			})
@@ -136,10 +160,10 @@ func (handler *WeatherHandler) handleTomorrow(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handle5Days(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r.Context(), r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
@@ -156,16 +180,16 @@ func (handler *WeatherHandler) handle5Days(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(city.ID, city.Name, city.Country)
+	weatherInfo, err := handler.weatherApi.Get5DaysWeatherForecast(r.Context(), city.ID, city.Name, city.Country)
 	if err != nil {
 		log.Errorf("error getting weather tomorrow info: %s", err)
 		http.Error(w, "weather tomorrow error", http.StatusInternalServerError)
 		return
 	}
 
-	var weatherForecast []WeatherInfoShort
+	var weatherForecast []InfoShort
 	for _, w := range weatherInfo {
-		weatherForecast = append(weatherForecast, WeatherInfoShort{
+		weatherForecast = append(weatherForecast, InfoShort{
 			Timestamp:           w.Dt,
 			WeatherDescriptions: w.WeatherDescriptions,
 		})

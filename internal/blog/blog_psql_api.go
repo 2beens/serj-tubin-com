@@ -19,9 +19,7 @@ type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewBlogPsqlApi(dbHost, dbPort, dbName string) (*PsqlApi, error) {
-	ctx := context.Background()
-
+func NewBlogPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
 	dbPool, err := pgxpool.Connect(ctx, connString)
 	if err != nil {
@@ -43,13 +41,13 @@ func (b *PsqlApi) CloseDB() {
 	}
 }
 
-func (b *PsqlApi) AddBlog(blog *Blog) error {
+func (b *PsqlApi) AddBlog(ctx context.Context, blog *Blog) error {
 	if blog.Content == "" || blog.Title == "" {
 		return errors.New("blog title or content empty")
 	}
 
 	rows, err := b.db.Query(
-		context.Background(),
+		ctx,
 		`INSERT INTO blog (title, created_at, content) VALUES ($1, $2, $3) RETURNING id;`,
 		blog.Title, blog.CreatedAt, blog.Content,
 	)
@@ -73,13 +71,13 @@ func (b *PsqlApi) AddBlog(blog *Blog) error {
 	return errors.New("unexpected error, failed to insert blog")
 }
 
-func (b *PsqlApi) UpdateBlog(blog *Blog) error {
+func (b *PsqlApi) UpdateBlog(ctx context.Context, blog *Blog) error {
 	if blog.Content == "" || blog.Title == "" {
 		return errors.New("blog title or content empty")
 	}
 
 	tag, err := b.db.Exec(
-		context.Background(),
+		ctx,
 		`UPDATE blog SET title = $1, content = $2 WHERE id = $3;`,
 		blog.Title, blog.Content, blog.Id,
 	)
@@ -94,9 +92,9 @@ func (b *PsqlApi) UpdateBlog(blog *Blog) error {
 	return nil
 }
 
-func (b *PsqlApi) DeleteBlog(id int) (bool, error) {
+func (b *PsqlApi) DeleteBlog(ctx context.Context, id int) (bool, error) {
 	tag, err := b.db.Exec(
-		context.Background(),
+		ctx,
 		`DELETE FROM blog WHERE id = $1`,
 		id,
 	)
@@ -109,9 +107,9 @@ func (b *PsqlApi) DeleteBlog(id int) (bool, error) {
 	return true, nil
 }
 
-func (b *PsqlApi) All() ([]*Blog, error) {
+func (b *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
 	rows, err := b.db.Query(
-		context.Background(),
+		ctx,
 		`SELECT * FROM blog ORDER BY id DESC;`,
 	)
 	if err != nil {
@@ -143,9 +141,9 @@ func (b *PsqlApi) All() ([]*Blog, error) {
 	return blogs, nil
 }
 
-func (b *PsqlApi) BlogsCount() (int, error) {
+func (b *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
 	rows, err := b.db.Query(
-		context.Background(),
+		ctx,
 		`SELECT COUNT(*) FROM blog;`,
 	)
 	if err != nil {
@@ -167,16 +165,16 @@ func (b *PsqlApi) BlogsCount() (int, error) {
 	return -1, errors.New("unexpected error, failed to get blogs count")
 }
 
-func (b *PsqlApi) GetBlogsPage(page, size int) ([]*Blog, error) {
+func (b *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error) {
 	limit := size
 	offset := (page - 1) * size
-	blogsCount, err := b.BlogsCount()
+	blogsCount, err := b.BlogsCount(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if blogsCount <= limit {
-		return b.All()
+		return b.All(ctx)
 	}
 
 	if blogsCount-offset < limit {
@@ -186,7 +184,7 @@ func (b *PsqlApi) GetBlogsPage(page, size int) ([]*Blog, error) {
 	log.Tracef("getting blogs, blogs count %d, limit %d, offset %d", blogsCount, limit, offset)
 
 	rows, err := b.db.Query(
-		context.Background(),
+		ctx,
 		`
 			SELECT * FROM blog
 			ORDER BY id DESC

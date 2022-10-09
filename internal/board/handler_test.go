@@ -1,4 +1,4 @@
-package internal
+package board
 
 import (
 	"encoding/json"
@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
+
+	"github.com/go-redis/redismock/v8"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,10 +85,12 @@ func TestNewBoardHandler(t *testing.T) {
 }
 
 func TestBoardHandler_handleMessagesCount(t *testing.T) {
-	internals := newTestingInternals()
+	boardClient, _, _, _ := getTestBoardClient()
+	redisClient, _ := redismock.NewClientMock()
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginChecker)
+	handler := NewBoardHandler(r, boardClient, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/count", nil)
@@ -99,10 +104,12 @@ func TestBoardHandler_handleMessagesCount(t *testing.T) {
 }
 
 func TestBoardHandler_handleGetAllMessages(t *testing.T) {
-	internals := newTestingInternals()
+	boardClient, _, _, initialBoardMessages := getTestBoardClient()
+	redisClient, _ := redismock.NewClientMock()
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginChecker)
+	handler := NewBoardHandler(r, boardClient, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/all", nil)
@@ -113,23 +120,25 @@ func TestBoardHandler_handleGetAllMessages(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var boardMessages []*BoardMessage
+	var boardMessages []*Message
 	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
 
 	// check all messages there
-	require.Len(t, boardMessages, len(internals.initialBoardMessages))
+	require.Len(t, boardMessages, len(initialBoardMessages))
 	for i := range boardMessages {
-		assert.NotNil(t, internals.initialBoardMessages[boardMessages[i].ID])
+		assert.NotNil(t, initialBoardMessages[boardMessages[i].ID])
 	}
 }
 
 func TestBoardHandler_handleGetLastMessages(t *testing.T) {
-	internals := newTestingInternals()
+	boardClient, _, _, _ := getTestBoardClient()
+	redisClient, _ := redismock.NewClientMock()
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginChecker)
+	handler := NewBoardHandler(r, boardClient, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/last/2", nil)
@@ -140,7 +149,7 @@ func TestBoardHandler_handleGetLastMessages(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var boardMessages []*BoardMessage
+	var boardMessages []*Message
 	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
@@ -152,10 +161,12 @@ func TestBoardHandler_handleGetLastMessages(t *testing.T) {
 }
 
 func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
-	internals := newTestingInternals()
+	boardClient, _, _, initialBoardMessages := getTestBoardClient()
+	redisClient, _ := redismock.NewClientMock()
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginChecker)
+	handler := NewBoardHandler(r, boardClient, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/page/2/size/2", nil)
@@ -165,7 +176,7 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var boardMessages []*BoardMessage
+	var boardMessages []*Message
 	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
@@ -194,7 +205,7 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
-	require.Len(t, boardMessages, len(internals.initialBoardMessages))
+	require.Len(t, boardMessages, len(initialBoardMessages))
 
 	// invalid arguments
 	req, err = http.NewRequest("GET", "/messages/page/invalid/size/2", nil)
@@ -207,10 +218,12 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 }
 
 func TestBoardHandler_handleDeleteMessage(t *testing.T) {
-	internals := newTestingInternals()
+	boardClient, _, _, initialBoardMessages := getTestBoardClient()
+	redisClient, redisMock := redismock.NewClientMock()
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginChecker)
+	handler := NewBoardHandler(r, boardClient, loginChecker)
 	require.NotNil(t, handler)
 
 	// wrong session token
@@ -221,9 +234,9 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	messagesCount, err := internals.board.MessagesCount()
+	messagesCount, err := boardClient.MessagesCount()
 	require.NoError(t, err)
-	assert.Equal(t, len(internals.initialBoardMessages), messagesCount)
+	assert.Equal(t, len(initialBoardMessages), messagesCount)
 
 	// session token missing
 	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
@@ -232,51 +245,51 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	messagesCount, err = internals.board.MessagesCount()
+	messagesCount, err = boardClient.MessagesCount()
 	require.NoError(t, err)
-	assert.Equal(t, len(internals.initialBoardMessages), messagesCount)
+	assert.Equal(t, len(initialBoardMessages), messagesCount)
 
 	// correct secret - messages should get removed
 	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
-	internals.redisMock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	redisMock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 	rr = httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	newCount, err := internals.board.aeroClient.CountAll()
+	newCount, err := boardClient.aeroClient.CountAll()
 	require.NoError(t, err)
 	assert.Equal(t, "true", rr.Body.String())
-	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
+	assert.Equal(t, len(initialBoardMessages)-1, newCount)
 
 	// delete same message again - and fail to do so
 	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
 	require.NoError(t, err)
-	internals.redisMock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	redisMock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	rr = httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	newCount, err = internals.board.aeroClient.CountAll()
+	newCount, err = boardClient.aeroClient.CountAll()
 	require.NoError(t, err)
 	assert.Equal(t, "false", rr.Body.String())
-	assert.Equal(t, len(internals.initialBoardMessages)-1, newCount)
+	assert.Equal(t, len(initialBoardMessages)-1, newCount)
 
 	// delete another one
 	req, err = http.NewRequest("DELETE", "/messages/delete/3", nil)
 	require.NoError(t, err)
-	internals.redisMock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	redisMock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	rr = httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	newCount, err = internals.board.aeroClient.CountAll()
+	newCount, err = boardClient.aeroClient.CountAll()
 	require.NoError(t, err)
 	assert.Equal(t, "true", rr.Body.String())
-	assert.Equal(t, len(internals.initialBoardMessages)-2, newCount)
+	assert.Equal(t, len(initialBoardMessages)-2, newCount)
 
 	// get all
 	req, err = http.NewRequest("GET", "/messages/all", nil)
@@ -287,11 +300,11 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var boardMessages []*BoardMessage
+	var boardMessages []*Message
 	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
-	require.Len(t, boardMessages, len(internals.initialBoardMessages)-2)
+	require.Len(t, boardMessages, len(initialBoardMessages)-2)
 
 	for i := range boardMessages {
 		// check deleted messages not received
@@ -301,10 +314,12 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 }
 
 func TestBoardHandler_handleMessagesRange(t *testing.T) {
-	internals := newTestingInternals()
+	boardClient, _, _, _ := getTestBoardClient()
+	redisClient, _ := redismock.NewClientMock()
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginChecker)
+	handler := NewBoardHandler(r, boardClient, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/from/1/to/3", nil)
@@ -314,7 +329,7 @@ func TestBoardHandler_handleMessagesRange(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var boardMessages []*BoardMessage
+	var boardMessages []*Message
 	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
@@ -339,10 +354,12 @@ func TestBoardHandler_handleMessagesRange(t *testing.T) {
 }
 
 func TestBoardHandler_handleNewMessage(t *testing.T) {
-	internals := newTestingInternals()
+	boardClient, _, aeroTestClient, initialBoardMessages := getTestBoardClient()
+	redisClient, _ := redismock.NewClientMock()
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, internals.board, internals.loginChecker)
+	handler := NewBoardHandler(r, boardClient, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/messages/new", nil)
@@ -355,10 +372,10 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "added:5", rr.Body.String())
-	messagesCount, err := internals.board.MessagesCount()
+	messagesCount, err := boardClient.MessagesCount()
 	require.NoError(t, err)
-	assert.Equal(t, len(internals.initialBoardMessages)+1, messagesCount)
-	assert.Equal(t, len(internals.initialBoardMessages)+1, len(internals.aeroTestClient.AeroBinMaps))
+	assert.Equal(t, len(initialBoardMessages)+1, messagesCount)
+	assert.Equal(t, len(initialBoardMessages)+1, len(aeroTestClient.AeroBinMaps))
 
 	// add new message with empty author
 	req, err = http.NewRequest("POST", "/messages/new", nil)
@@ -370,10 +387,10 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "added:6", rr.Body.String())
-	messagesCount, err = internals.board.MessagesCount()
+	messagesCount, err = boardClient.MessagesCount()
 	require.NoError(t, err)
-	assert.Equal(t, len(internals.initialBoardMessages)+2, messagesCount)
-	assert.Equal(t, len(internals.initialBoardMessages)+2, len(internals.aeroTestClient.AeroBinMaps))
+	assert.Equal(t, len(initialBoardMessages)+2, messagesCount)
+	assert.Equal(t, len(initialBoardMessages)+2, len(aeroTestClient.AeroBinMaps))
 
 	// check messages created
 	req, err = http.NewRequest("GET", "/messages/all", nil)
@@ -384,14 +401,14 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var boardMessages []*BoardMessage
+	var boardMessages []*Message
 	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
 	require.NoError(t, err)
 	require.NotNil(t, boardMessages)
-	require.Equal(t, len(internals.initialBoardMessages)+2, len(boardMessages))
+	require.Equal(t, len(initialBoardMessages)+2, len(boardMessages))
 
 	// check messages are there and came after the previously last one
-	lastMsgTime := time.Unix(internals.lastInitialMessage.Timestamp, 0)
+	lastMsgTime := time.Unix(initialBoardMessages[len(initialBoardMessages)-1].Timestamp, 0)
 	var firstFound, secondFound bool
 	for i := range boardMessages {
 		msgTime := time.Unix(boardMessages[i].Timestamp, 0)

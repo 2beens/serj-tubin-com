@@ -1,4 +1,4 @@
-package internal
+package misc
 
 import (
 	"net/http"
@@ -12,7 +12,7 @@ import (
 
 func TestNewMiscHandler(t *testing.T) {
 	mainRouter := mux.NewRouter()
-	handler := NewMiscHandler(mainRouter, nil, nil, "dummy", &auth.Service{}, &auth.Admin{})
+	handler := NewHandler(mainRouter, nil, nil, "dummy", &auth.Service{}, &auth.Admin{})
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
 

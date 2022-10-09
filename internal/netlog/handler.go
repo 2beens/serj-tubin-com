@@ -1,4 +1,4 @@
-package internal
+package netlog
 
 import (
 	"encoding/json"
@@ -10,26 +10,26 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
-	"github.com/2beens/serjtubincom/internal/netlog"
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-type NetlogHandler struct {
+type Handler struct {
 	browserRequestsSecret string
-	netlogApi             netlog.Api
+	netlogApi             Api
 	loginChecker          *auth.LoginChecker
 	instr                 *instrumentation.Instrumentation
 }
 
-func NewNetlogHandler(
+func NewHandler(
 	router *mux.Router,
-	netlogApi netlog.Api,
+	netlogApi Api,
 	instrumentation *instrumentation.Instrumentation,
 	browserRequestsSecret string,
 	loginChecker *auth.LoginChecker,
-) *NetlogHandler {
-	handler := &NetlogHandler{
+) *Handler {
+	handler := &Handler{
 		netlogApi:             netlogApi,
 		instr:                 instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
@@ -47,7 +47,7 @@ func NewNetlogHandler(
 	return handler
 }
 
-func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -91,7 +91,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	visits, err := handler.netlogApi.GetVisitsPage(keywords, field, source, page, size)
+	visits, err := handler.netlogApi.GetVisitsPage(r.Context(), keywords, field, source, page, size)
 	if err != nil {
 		log.Errorf("get visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -100,7 +100,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 
 	if len(visits) == 0 {
 		resJson := fmt.Sprintf(`{"visits": %s, "total": 0}`, "[]")
-		WriteResponseBytes(w, "application/json", []byte(resJson))
+		pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
 		return
 	}
 
@@ -111,7 +111,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	allVisitsCount, err := handler.netlogApi.Count(keywords, field, source)
+	allVisitsCount, err := handler.netlogApi.Count(r.Context(), keywords, field, source)
 	if err != nil {
 		log.Errorf("get netlog visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -119,10 +119,10 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 	}
 
 	resJson := fmt.Sprintf(`{"visits": %s, "total": %d}`, visitsJson, allVisitsCount)
-	WriteResponseBytes(w, "application/json", []byte(resJson))
+	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
-func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -153,13 +153,13 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	visit := &netlog.Visit{
+	visit := &Visit{
 		Title:     title,
 		URL:       url,
 		Source:    source,
 		Timestamp: time.Unix(timestamp/1000, 0),
 	}
-	if err := handler.netlogApi.AddVisit(visit); err != nil {
+	if err := handler.netlogApi.AddVisit(r.Context(), visit); err != nil {
 		log.Printf("failed to add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		return
@@ -168,10 +168,10 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 	handler.instr.CounterNetlogVisits.Inc()
 
 	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
-	WriteResponse(w, "", "added")
+	pkg.WriteResponse(w, "", "added")
 }
 
-func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -193,7 +193,7 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 
 	log.Printf("getting last %d netlog visits ... ", limit)
 
-	visits, err := handler.netlogApi.GetVisits([]string{}, "url", "all", limit)
+	visits, err := handler.netlogApi.GetVisits(r.Context(), []string{}, "url", "all", limit)
 	if err != nil {
 		log.Errorf("get all visits error: %s", err)
 		http.Error(w, "failed to get all visits", http.StatusInternalServerError)
@@ -201,7 +201,7 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 	}
 
 	if len(visits) == 0 {
-		WriteResponseBytes(w, "application/json", []byte("[]"))
+		pkg.WriteResponseBytes(w, "application/json", []byte("[]"))
 		return
 	}
 
@@ -212,10 +212,10 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", visitsJson)
+	pkg.WriteResponseBytes(w, "application/json", visitsJson)
 }
 
-func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Handler {
+func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {
@@ -231,10 +231,10 @@ func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Hand
 			// requests coming from browser extension
 			if strings.HasPrefix(r.URL.Path, "/netlog/new") {
 				if handler.browserRequestsSecret != authToken {
-					reqIp, _ := ReadUserIP(r)
+					reqIp, _ := pkg.ReadUserIP(r)
 					log.Warnf("unauthorized /netlog/new request detected from %s, authToken: %s", reqIp, authToken)
 					// fool the "attacker" by a fake positive response
-					WriteResponse(w, "", "added")
+					pkg.WriteResponse(w, "", "added")
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -247,7 +247,7 @@ func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Hand
 				return
 			}
 
-			isLogged, err := handler.loginChecker.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(r.Context(), authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

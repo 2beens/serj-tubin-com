@@ -1,6 +1,9 @@
 package notes_box
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 type TestApi struct {
 	notes map[int]*Note
@@ -12,20 +15,20 @@ func NewTestApi() *TestApi {
 	}
 }
 
-func (api *TestApi) Add(note *Note) (*Note, error) {
+func (api *TestApi) Add(_ context.Context, note *Note) (*Note, error) {
 	api.notes[note.Id] = note
 	return note, nil
 }
 
-func (api *TestApi) Update(note *Note) error {
-	if _, err := api.Get(note.Id); err != nil {
+func (api *TestApi) Update(ctx context.Context, note *Note) error {
+	if _, err := api.Get(ctx, note.Id); err != nil {
 		return err
 	}
 	api.notes[note.Id] = note
 	return nil
 }
 
-func (api *TestApi) Get(id int) (*Note, error) {
+func (api *TestApi) Get(_ context.Context, id int) (*Note, error) {
 	note, ok := api.notes[id]
 	if !ok {
 		return nil, errors.New("not found")
@@ -33,7 +36,7 @@ func (api *TestApi) Get(id int) (*Note, error) {
 	return note, nil
 }
 
-func (api *TestApi) Delete(id int) (bool, error) {
+func (api *TestApi) Delete(_ context.Context, id int) (bool, error) {
 	note, ok := api.notes[id]
 	if !ok {
 		return false, errors.New("not found")
@@ -42,7 +45,7 @@ func (api *TestApi) Delete(id int) (bool, error) {
 	return true, nil
 }
 
-func (api *TestApi) List() ([]Note, error) {
+func (api *TestApi) List(context.Context) ([]Note, error) {
 	var notes []Note
 	for _, n := range api.notes {
 		notes = append(notes, *n)

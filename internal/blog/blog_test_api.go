@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"context"
 	"errors"
 	"sort"
 	"sync"
@@ -23,11 +24,7 @@ func (api *TestApi) PostsCount() int {
 	return len(api.Posts)
 }
 
-func (api *TestApi) CloseDB() {
-	// NOP
-}
-
-func (api *TestApi) AddBlog(blog *Blog) error {
+func (api *TestApi) AddBlog(_ context.Context, blog *Blog) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
@@ -43,14 +40,14 @@ func (api *TestApi) AddBlog(blog *Blog) error {
 	return nil
 }
 
-func (api *TestApi) UpdateBlog(blog *Blog) error {
+func (api *TestApi) UpdateBlog(_ context.Context, blog *Blog) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 	api.Posts[blog.Id] = blog
 	return nil
 }
 
-func (api *TestApi) DeleteBlog(id int) (bool, error) {
+func (api *TestApi) DeleteBlog(_ context.Context, id int) (bool, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
@@ -64,7 +61,7 @@ func (api *TestApi) DeleteBlog(id int) (bool, error) {
 	return true, nil
 }
 
-func (api *TestApi) All() ([]*Blog, error) {
+func (api *TestApi) All(_ context.Context) ([]*Blog, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 	var blogs []*Blog
@@ -74,18 +71,18 @@ func (api *TestApi) All() ([]*Blog, error) {
 	return blogs, nil
 }
 
-func (api *TestApi) BlogsCount() (int, error) {
+func (api *TestApi) BlogsCount(_ context.Context) (int, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 	return len(api.Posts), nil
 }
 
-func (api *TestApi) GetBlogsPage(page, size int) ([]*Blog, error) {
+func (api *TestApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
 	if len(api.Posts) <= size {
-		return api.All()
+		return api.All(ctx)
 	}
 
 	var allPosts []*Blog

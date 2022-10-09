@@ -3,7 +3,6 @@ package netlog
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ import (
 
 func Test_trySendMetrics(t *testing.T) {
 	instr, reg := instrumentation.NewTestInstrumentationAndRegistry()
-	dir, err := ioutil.TempDir("", "serj-server-unix")
+	dir, err := os.MkdirTemp("", "serj-server-unix")
 	if err != nil {
 		t.Fatal(err)
 	}
