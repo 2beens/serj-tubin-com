@@ -3,7 +3,6 @@ package netlog
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"testing"
@@ -19,7 +18,7 @@ import (
 
 func TestVisitsBackupUnixSocketListenerSetup(t *testing.T) {
 	instr, reg := instrumentation.NewTestInstrumentationAndRegistry()
-	dir, err := ioutil.TempDir("", "serj-server-unix")
+	dir, err := os.MkdirTemp("", "serj-server-unix")
 	if err != nil {
 		t.Fatal(err)
 	}

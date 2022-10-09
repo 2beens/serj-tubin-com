@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
@@ -56,7 +55,7 @@ func main() {
 	}
 
 	// lazar.dusan.veliki@gmail.com // stara sifra
-	credentialsFileBytes, err := ioutil.ReadFile(*credentialsFile)
+	credentialsFileBytes, err := os.ReadFile(*credentialsFile)
 	if err != nil {
 		log.Fatalf("unable to read client secret file: %v", err)
 	}

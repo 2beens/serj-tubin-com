@@ -20,8 +20,8 @@ func (api *TestApi) Add(_ context.Context, note *Note) (*Note, error) {
 	return note, nil
 }
 
-func (api *TestApi) Update(_ context.Context, note *Note) error {
-	if _, err := api.Get(nil, note.Id); err != nil {
+func (api *TestApi) Update(ctx context.Context, note *Note) error {
+	if _, err := api.Get(ctx, note.Id); err != nil {
 		return err
 	}
 	api.notes[note.Id] = note
