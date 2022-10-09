@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/notes_box"
@@ -68,7 +70,7 @@ func (h *NotesBoxHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
 	h.instr.CounterNotes.Inc()
 
 	log.Printf("new note added: [%s] [%s]: %d", addedNote.Title, addedNote.CreatedAt, addedNote.Id)
-	WriteResponse(w, "", fmt.Sprintf("added:%d", addedNote.Id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", addedNote.Id))
 }
 
 func (h *NotesBoxHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +117,7 @@ func (h *NotesBoxHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("note updated: [%s] [%s]: %d", note.Title, note.CreatedAt, note.Id)
-	WriteResponse(w, "", fmt.Sprintf("updated:%d", note.Id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", note.Id))
 }
 
 func (h *NotesBoxHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
@@ -140,9 +142,9 @@ func (h *NotesBoxHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if deleted {
-		WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
+		pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
 	} else {
-		WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
+		pkg.WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
 	}
 }
 
@@ -166,7 +168,7 @@ func (h *NotesBoxHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resJson := fmt.Sprintf(`{"notes": %s, "total": %d}`, notesJson, len(notes))
-	WriteResponseBytes(w, "application/json", []byte(resJson))
+	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
 func (handler *NotesBoxHandler) authMiddleware() func(next http.Handler) http.Handler {

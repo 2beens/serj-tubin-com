@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,7 +106,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 
 		if r.Method == http.MethodGet && r.URL.Path == "/v2/info" &&
 			r.URL.RawQuery == "apikey=dummy-api-key&ip=127.0.0.2" {
-			WriteResponse(w, "application/json", ipBaseTestResponse)
+			pkg.WriteResponse(w, "application/json", ipBaseTestResponse)
 			return
 		}
 
@@ -157,7 +159,7 @@ func TestGeoIp_ReadUserIP(t *testing.T) {
 	// X-Real-Ip
 	ip := "127.0.0.10"
 	req.Header.Add("X-Real-Ip", ip)
-	userIp, err := ReadUserIP(req)
+	userIp, err := pkg.ReadUserIP(req)
 	require.NoError(t, err)
 	assert.Equal(t, ip, userIp)
 
@@ -165,13 +167,13 @@ func TestGeoIp_ReadUserIP(t *testing.T) {
 	req, err = http.NewRequest("-", "-", nil)
 	require.NoError(t, err)
 	req.Header.Set("X-Forwarded-For", ip)
-	userIp, err = ReadUserIP(req)
+	userIp, err = pkg.ReadUserIP(req)
 	require.NoError(t, err)
 	assert.Equal(t, ip, userIp)
 
 	// headers empty
 	req, err = http.NewRequest("-", "-", nil)
 	require.NoError(t, err)
-	_, err = ReadUserIP(req)
+	_, err = pkg.ReadUserIP(req)
 	require.EqualError(t, err, "ip addr  is invalid")
 }

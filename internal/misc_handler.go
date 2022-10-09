@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -48,7 +49,7 @@ func NewMiscHandler(
 }
 
 func (handler *MiscHandler) handleRoot(w http.ResponseWriter, r *http.Request) {
-	WriteResponse(w, "", "I'm OK, thanks ;)")
+	pkg.WriteResponse(w, "", "I'm OK, thanks ;)")
 }
 
 func (handler *MiscHandler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +63,7 @@ func (handler *MiscHandler) handleGetRandomQuote(w http.ResponseWriter, r *http.
 		return
 	}
 
-	WriteResponseBytes(w, "", qBytes)
+	pkg.WriteResponseBytes(w, "", qBytes)
 }
 
 func (handler *MiscHandler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
@@ -76,16 +77,16 @@ func (handler *MiscHandler) handleWhereAmI(w http.ResponseWriter, r *http.Reques
 	}
 
 	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.Data.Location.City.Name, geoIpInfo.Data.Location.Country.Name)
-	WriteResponse(w, "application/json", geoResp)
+	pkg.WriteResponse(w, "application/json", geoResp)
 }
 
 func (handler *MiscHandler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
-	ip, err := ReadUserIP(r)
+	ip, err := pkg.ReadUserIP(r)
 	if err != nil {
 		log.Errorf("failed to get user IP address: %s", err)
 		http.Error(w, "failed to get IP", http.StatusInternalServerError)
 	}
-	WriteResponse(w, "", ip)
+	pkg.WriteResponse(w, "", ip)
 }
 
 func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +109,7 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !CheckPasswordHash(password, handler.admin.PasswordHash) {
+	if !pkg.CheckPasswordHash(password, handler.admin.PasswordHash) {
 		log.Tracef("[password] failed login attempt for user: %s", username)
 		log.Println(handler.admin)
 		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
@@ -132,7 +133,7 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	// token should probably not be logged, but whatta hell
 	log.Tracef("new login, token: %s", token)
 
-	WriteResponse(w, "", fmt.Sprintf(`{"token": "%s"}`, token))
+	pkg.WriteResponse(w, "", fmt.Sprintf(`{"token": "%s"}`, token))
 }
 
 func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -161,9 +162,9 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 
 	log.Printf("logout for [%s] success", authToken)
 
-	WriteResponse(w, "", "logged-out")
+	pkg.WriteResponse(w, "", "logged-out")
 }
 
 func (handler *MiscHandler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
-	WriteResponse(w, "", handler.versionInfo)
+	pkg.WriteResponse(w, "", handler.versionInfo)
 }

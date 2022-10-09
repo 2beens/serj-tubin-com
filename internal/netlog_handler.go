@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/netlog"
@@ -100,7 +102,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 
 	if len(visits) == 0 {
 		resJson := fmt.Sprintf(`{"visits": %s, "total": 0}`, "[]")
-		WriteResponseBytes(w, "application/json", []byte(resJson))
+		pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
 		return
 	}
 
@@ -119,7 +121,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 	}
 
 	resJson := fmt.Sprintf(`{"visits": %s, "total": %d}`, visitsJson, allVisitsCount)
-	WriteResponseBytes(w, "application/json", []byte(resJson))
+	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
 func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +170,7 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 	handler.instr.CounterNetlogVisits.Inc()
 
 	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
-	WriteResponse(w, "", "added")
+	pkg.WriteResponse(w, "", "added")
 }
 
 func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +203,7 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 	}
 
 	if len(visits) == 0 {
-		WriteResponseBytes(w, "application/json", []byte("[]"))
+		pkg.WriteResponseBytes(w, "application/json", []byte("[]"))
 		return
 	}
 
@@ -212,7 +214,7 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", visitsJson)
+	pkg.WriteResponseBytes(w, "application/json", visitsJson)
 }
 
 func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Handler {
@@ -231,10 +233,10 @@ func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Hand
 			// requests coming from browser extension
 			if strings.HasPrefix(r.URL.Path, "/netlog/new") {
 				if handler.browserRequestsSecret != authToken {
-					reqIp, _ := ReadUserIP(r)
+					reqIp, _ := pkg.ReadUserIP(r)
 					log.Warnf("unauthorized /netlog/new request detected from %s, authToken: %s", reqIp, authToken)
 					// fool the "attacker" by a fake positive response
-					WriteResponse(w, "", "added")
+					pkg.WriteResponse(w, "", "added")
 					return
 				}
 				next.ServeHTTP(w, r)

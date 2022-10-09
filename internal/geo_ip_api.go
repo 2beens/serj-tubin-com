@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 )
@@ -53,7 +55,7 @@ func NewGeoIp(
 }
 
 func (gi *GeoIp) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*GeoIpInfo, error) {
-	userIp, err := ReadUserIP(r)
+	userIp, err := pkg.ReadUserIP(r)
 	if err != nil {
 		return nil, fmt.Errorf("error getting user ip: %s", err.Error())
 	}
