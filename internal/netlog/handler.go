@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/2beens/serjtubincom/pkg"
-
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )

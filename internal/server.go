@@ -283,6 +283,7 @@ func (s *Server) GracefulShutdown() {
 	}
 
 	s.boardClient.Close()
+	s.netlogVisitsApi.CloseDB()
 
 	if s.blogApi != nil {
 		s.blogApi.CloseDB()
