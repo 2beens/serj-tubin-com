@@ -92,7 +92,7 @@ func NewServer(
 		log.Fatalf("failed to create blog api: %s", err)
 	}
 
-	netlogVisitsApi, err := netlog.NewNetlogPsqlApi(config.PostgresHost, config.PostgresPort, config.PostgresDBName)
+	netlogVisitsApi, err := netlog.NewNetlogPsqlApi(ctx, config.PostgresHost, config.PostgresPort, config.PostgresDBName)
 	if err != nil {
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
@@ -282,9 +282,12 @@ func (s *Server) GracefulShutdown() {
 		}
 	}
 
-	s.boardClient.Close()
-	s.netlogVisitsApi.CloseDB()
-
+	if s.boardClient != nil {
+		s.boardClient.Close()
+	}
+	if s.netlogVisitsApi != nil {
+		s.netlogVisitsApi.CloseDB()
+	}
 	if s.blogApi != nil {
 		s.blogApi.CloseDB()
 	}

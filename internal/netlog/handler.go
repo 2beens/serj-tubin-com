@@ -91,7 +91,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	visits, err := handler.netlogApi.GetVisitsPage(keywords, field, source, page, size)
+	visits, err := handler.netlogApi.GetVisitsPage(r.Context(), keywords, field, source, page, size)
 	if err != nil {
 		log.Errorf("get visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -111,7 +111,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allVisitsCount, err := handler.netlogApi.Count(keywords, field, source)
+	allVisitsCount, err := handler.netlogApi.Count(r.Context(), keywords, field, source)
 	if err != nil {
 		log.Errorf("get netlog visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -159,7 +159,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		Source:    source,
 		Timestamp: time.Unix(timestamp/1000, 0),
 	}
-	if err := handler.netlogApi.AddVisit(visit); err != nil {
+	if err := handler.netlogApi.AddVisit(r.Context(), visit); err != nil {
 		log.Printf("failed to add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		return
@@ -193,7 +193,7 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("getting last %d netlog visits ... ", limit)
 
-	visits, err := handler.netlogApi.GetVisits([]string{}, "url", "all", limit)
+	visits, err := handler.netlogApi.GetVisits(r.Context(), []string{}, "url", "all", limit)
 	if err != nil {
 		log.Errorf("get all visits error: %s", err)
 		http.Error(w, "failed to get all visits", http.StatusInternalServerError)

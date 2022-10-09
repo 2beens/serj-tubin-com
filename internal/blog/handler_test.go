@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -94,7 +95,7 @@ func getTestBlogApiAndLoginChecker(t *testing.T, redisClient *redis.Client) (*Te
 
 	blogApi := NewBlogTestApi()
 	for i := 0; i < 5; i++ {
-		require.NoError(t, blogApi.AddBlog(&Blog{
+		require.NoError(t, blogApi.AddBlog(context.Background(), &Blog{
 			Id:        i,
 			Title:     fmt.Sprintf("blog%dtitle", i),
 			CreatedAt: now.Add(time.Minute * time.Duration(i)),
