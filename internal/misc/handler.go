@@ -1,4 +1,4 @@
-package internal
+package misc
 
 import (
 	"encoding/json"
@@ -6,15 +6,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/geoip"
-
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-type MiscHandler struct {
+type Handler struct {
 	geoIp         *geoip.Api
 	quotesManager *QuotesManager
 	versionInfo   string
@@ -22,15 +21,15 @@ type MiscHandler struct {
 	admin         *auth.Admin
 }
 
-func NewMiscHandler(
+func NewHandler(
 	mainRouter *mux.Router,
 	geoIp *geoip.Api,
 	quotesManager *QuotesManager,
 	versionInfo string,
 	authService *auth.Service,
 	admin *auth.Admin,
-) *MiscHandler {
-	handler := &MiscHandler{
+) *Handler {
+	handler := &Handler{
 		geoIp:         geoIp,
 		quotesManager: quotesManager,
 		versionInfo:   versionInfo,
@@ -50,11 +49,11 @@ func NewMiscHandler(
 	return handler
 }
 
-func (handler *MiscHandler) handleRoot(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleRoot(w http.ResponseWriter, r *http.Request) {
 	pkg.WriteResponse(w, "", "I'm OK, thanks ;)")
 }
 
-func (handler *MiscHandler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := handler.quotesManager.RandomQuote()
@@ -68,7 +67,7 @@ func (handler *MiscHandler) handleGetRandomQuote(w http.ResponseWriter, r *http.
 	pkg.WriteResponseBytes(w, "", qBytes)
 }
 
-func (handler *MiscHandler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r.Context(), r)
@@ -82,7 +81,7 @@ func (handler *MiscHandler) handleWhereAmI(w http.ResponseWriter, r *http.Reques
 	pkg.WriteResponse(w, "application/json", geoResp)
 }
 
-func (handler *MiscHandler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
 	ip, err := pkg.ReadUserIP(r)
 	if err != nil {
 		log.Errorf("failed to get user IP address: %s", err)
@@ -91,7 +90,7 @@ func (handler *MiscHandler) handleGetMyIp(w http.ResponseWriter, r *http.Request
 	pkg.WriteResponse(w, "", ip)
 }
 
-func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("login failed, parse form error: %s", err)
@@ -138,7 +137,7 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 	pkg.WriteResponse(w, "", fmt.Sprintf(`{"token": "%s"}`, token))
 }
 
-func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.WriteHeader(http.StatusOK)
@@ -167,6 +166,6 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 	pkg.WriteResponse(w, "", "logged-out")
 }
 
-func (handler *MiscHandler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
 	pkg.WriteResponse(w, "", handler.versionInfo)
 }

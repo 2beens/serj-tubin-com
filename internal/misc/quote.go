@@ -1,4 +1,4 @@
-package internal
+package misc
 
 type Quote struct {
 	Text   string `json:"text"`

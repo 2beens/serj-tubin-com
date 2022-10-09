@@ -9,19 +9,19 @@ import (
 	"os"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/geoip"
-
-	"github.com/2beens/serjtubincom/internal/weather"
-
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/board"
 	"github.com/2beens/serjtubincom/internal/config"
+	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/2beens/serjtubincom/internal/middleware"
+	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/2beens/serjtubincom/internal/notes_box"
+	"github.com/2beens/serjtubincom/internal/weather"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -39,7 +39,7 @@ type Server struct {
 	config          *config.Config
 	blogApi         *blog.PsqlApi
 	geoIp           *geoip.Api
-	quotesManager   *QuotesManager
+	quotesManager   *misc.QuotesManager
 	boardClient     *board.Client
 	netlogVisitsApi *netlog.PsqlApi
 	notesBoxApi     *notes_box.PsqlApi
@@ -165,7 +165,7 @@ func NewServer(
 		instr: instr,
 	}
 
-	s.quotesManager, err = NewQuoteManager("./assets/quotes.csv")
+	s.quotesManager, err = misc.NewQuoteManager("./assets/quotes.csv")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create quote manager: %s", err)
 	}
@@ -197,7 +197,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("weather handler is nil")
 	}
 
-	if NewMiscHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {
+	if misc.NewHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {
 		panic("misc handler is nil")
 	}
 
