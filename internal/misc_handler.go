@@ -123,7 +123,7 @@ func (handler *MiscHandler) handleLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	token, err := handler.authService.Login(time.Now())
+	token, err := handler.authService.Login(r.Context(), time.Now())
 	if err != nil {
 		log.Errorf("login failed, generate token error: %s", err)
 		http.Error(w, "generate token error", http.StatusInternalServerError)
@@ -149,7 +149,7 @@ func (handler *MiscHandler) handleLogout(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	loggedOut, err := handler.authService.Logout(authToken)
+	loggedOut, err := handler.authService.Logout(r.Context(), authToken)
 	if err != nil {
 		log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 		http.Error(w, "no can do", http.StatusUnauthorized)

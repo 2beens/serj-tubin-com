@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -27,7 +28,7 @@ func TestAuthService_NewAuthService(t *testing.T) {
 	sessionKey := sessionKeyPrefix + testToken
 	mock.ExpectSet(sessionKey, now.Unix(), 0).SetVal(fmt.Sprintf("%d", now.Unix()))
 	mock.ExpectSAdd(tokensSetKey, testToken).SetVal(1)
-	token, err := authService.Login(now)
+	token, err := authService.Login(context.Background(), now)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 }

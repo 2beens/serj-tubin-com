@@ -132,7 +132,7 @@ func NewServer(
 
 	go func() {
 		for range time.Tick(time.Hour * 8) {
-			authService.ScanAndClean()
+			authService.ScanAndClean(ctx)
 		}
 	}()
 
