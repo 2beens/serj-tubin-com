@@ -7,10 +7,72 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/cache"
-	"github.com/2beens/serjtubincom/internal/testinternals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func getTestBoardClient() (*Client, *cache.BoardTestCache, *aerospike.BoardAeroTestClient, map[int]*Message) {
+	now := time.Now()
+	initialBoardMessages := map[int]*Message{
+		0: {
+			ID:        0,
+			Author:    "serj",
+			Timestamp: now.Add(-time.Hour).Unix(),
+			Message:   "test message blabla",
+		},
+		1: {
+			ID:        1,
+			Author:    "serj",
+			Timestamp: now.Unix(),
+			Message:   "test message gragra",
+		},
+		2: {
+			ID:        2,
+			Author:    "ana",
+			Timestamp: now.Add(-2 * time.Hour).Unix(),
+			Message:   "test message aaaaa",
+		},
+		3: {
+			ID:        3,
+			Author:    "drago",
+			Timestamp: now.Add(-5 * 24 * time.Hour).Unix(),
+			Message:   "drago's test message aaaaa sve",
+		},
+		4: {
+			ID:        4,
+			Author:    "rodjak nenad",
+			Timestamp: now.Add(-2 * time.Minute).Unix(),
+			Message:   "ja se mislim sta'e bilo",
+		},
+	}
+
+	aeroClient := aerospike.NewBoardAeroTestClient()
+	boardCache := cache.NewBoardTestCache()
+	boardClient, err := NewClient(aeroClient, boardCache)
+	if err != nil {
+		panic(err)
+	}
+
+	if _, err := boardClient.NewMessage(*initialBoardMessages[0]); err != nil {
+		panic(err)
+	}
+	if _, err := boardClient.NewMessage(*initialBoardMessages[1]); err != nil {
+		panic(err)
+	}
+	if _, err := boardClient.NewMessage(*initialBoardMessages[2]); err != nil {
+		panic(err)
+	}
+	if _, err := boardClient.NewMessage(*initialBoardMessages[3]); err != nil {
+		panic(err)
+	}
+	if _, err := boardClient.NewMessage(*initialBoardMessages[4]); err != nil {
+		panic(err)
+	}
+
+	boardCache.ClearFunctionCallsLog()
+
+	return boardClient, boardCache, aeroClient, initialBoardMessages
+}
 
 func TestNewBoard(t *testing.T) {
 	board, err := NewClient(nil, cache.NewBoardTestCache())
@@ -24,62 +86,61 @@ func TestNewBoard(t *testing.T) {
 }
 
 func TestBoard_AllMessagesCache(t *testing.T) {
-	internals := testinternals.NewTestingInternals()
-	board := internals.BoardClient
+	boardClient, boardCache, _, initialBoardMessages := getTestBoardClient()
 
 	// cache empty at the beginning
-	require.Equal(t, 0, internals.BoardCache.ElementsCount())
+	require.Equal(t, 0, boardCache.ElementsCount())
 
-	messages, err := board.AllMessagesCache(true)
+	messages, err := boardClient.AllMessagesCache(true)
 	require.NoError(t, err)
-	assert.Len(t, messages, len(internals.InitialBoardMessages))
+	assert.Len(t, messages, len(initialBoardMessages))
 
 	// 1 cache entry - all messages (in that entry are all 3 messages)
-	require.Equal(t, 1, internals.BoardCache.ElementsCount())
-	messagesFromCacheRaw, found := internals.BoardCache.Get(AllMessagesCacheKey)
+	require.Equal(t, 1, boardCache.ElementsCount())
+	messagesFromCacheRaw, found := boardCache.Get(AllMessagesCacheKey)
 	require.True(t, found)
 	require.NotNil(t, messagesFromCacheRaw)
 	messagesFromCache, ok := messagesFromCacheRaw.([]*Message)
 	require.True(t, ok)
-	require.Len(t, messagesFromCache, len(internals.InitialBoardMessages))
+	require.Len(t, messagesFromCache, len(initialBoardMessages))
 
-	funcCallsLog := internals.BoardCache.FunctionCallsLog
+	funcCallsLog := boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 3)
 	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[0])
 	assert.Equal(t, cache.FuncSet, funcCallsLog[1])
 	assert.Equal(t, cache.FuncGetHit, funcCallsLog[2])
 
-	internals.BoardCache.ClearFunctionCallsLog()
+	boardCache.ClearFunctionCallsLog()
 
 	// called again - should get it from cache right away
-	messages, err = board.AllMessagesCache(true)
+	messages, err = boardClient.AllMessagesCache(true)
 	require.NoError(t, err)
-	assert.Len(t, messages, len(internals.InitialBoardMessages))
+	assert.Len(t, messages, len(initialBoardMessages))
 
-	require.Equal(t, 1, internals.BoardCache.ElementsCount())
-	messagesFromCacheRaw, found = internals.BoardCache.Get(AllMessagesCacheKey)
+	require.Equal(t, 1, boardCache.ElementsCount())
+	messagesFromCacheRaw, found = boardCache.Get(AllMessagesCacheKey)
 	require.True(t, found)
 	require.NotNil(t, messagesFromCacheRaw)
 	messagesFromCache, ok = messagesFromCacheRaw.([]*Message)
 	require.True(t, ok)
-	assert.Len(t, messagesFromCache, len(internals.InitialBoardMessages))
+	assert.Len(t, messagesFromCache, len(initialBoardMessages))
 
-	funcCallsLog = internals.BoardCache.FunctionCallsLog
+	funcCallsLog = boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 2)
 	assert.Equal(t, cache.FuncGetHit, funcCallsLog[0])
 	assert.Equal(t, cache.FuncGetHit, funcCallsLog[1])
 }
 
 func TestBoard_AllMessages(t *testing.T) {
-	internals := testinternals.NewTestingInternals()
+	boardClient, _, _, initialBoardMessages := getTestBoardClient()
 
-	messages, err := internals.BoardClient.AllMessages(false)
+	messages, err := boardClient.AllMessages(false)
 	require.NoError(t, err)
-	assert.Len(t, messages, len(internals.InitialBoardMessages))
+	assert.Len(t, messages, len(initialBoardMessages))
 
-	messages, err = internals.BoardClient.AllMessages(true)
+	messages, err = boardClient.AllMessages(true)
 	require.NoError(t, err)
-	assert.Len(t, messages, len(internals.InitialBoardMessages))
+	assert.Len(t, messages, len(initialBoardMessages))
 	// sorted by timestamp
 	assert.Equal(t, 3, messages[0].ID)
 	assert.Equal(t, 2, messages[1].ID)
@@ -89,51 +150,50 @@ func TestBoard_AllMessages(t *testing.T) {
 }
 
 func TestBoard_DeleteMessage(t *testing.T) {
-	internals := testinternals.NewTestingInternals()
-	board := internals.BoardClient
+	boardClient, _, _, initialBoardMessages := getTestBoardClient()
 
 	// non existent message
-	removed, err := board.DeleteMessage("100")
+	removed, err := boardClient.DeleteMessage("100")
 	require.NoError(t, err)
 	assert.False(t, removed)
 
 	// existent message
-	messagesCount, err := board.MessagesCount()
+	messagesCount, err := boardClient.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, len(internals.InitialBoardMessages), messagesCount)
+	require.Equal(t, len(initialBoardMessages), messagesCount)
 
-	removed, err = board.DeleteMessage("1")
+	removed, err = boardClient.DeleteMessage("1")
 	require.NoError(t, err)
 	assert.True(t, removed)
 
-	messagesCount, err = board.MessagesCount()
+	messagesCount, err = boardClient.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, len(internals.InitialBoardMessages)-1, messagesCount)
+	require.Equal(t, len(initialBoardMessages)-1, messagesCount)
 }
 
 func TestBoard_SetAllMessagesCacheFromAero(t *testing.T) {
-	internals := testinternals.NewTestingInternals()
+	boardClient, boardCache, _, initialBoardMessages := getTestBoardClient()
 
 	// cache empty
-	require.Equal(t, 0, internals.BoardCache.ElementsCount())
+	require.Equal(t, 0, boardCache.ElementsCount())
 
-	assert.NoError(t, internals.BoardClient.SetAllMessagesCacheFromAero())
+	assert.NoError(t, boardClient.SetAllMessagesCacheFromAero())
 
 	// cache filled
-	require.Equal(t, 1, internals.BoardCache.ElementsCount())
-	allMessagesFromCache, found := internals.BoardCache.Get(AllMessagesCacheKey)
+	require.Equal(t, 1, boardCache.ElementsCount())
+	allMessagesFromCache, found := boardCache.Get(AllMessagesCacheKey)
 	require.True(t, found)
 	require.NotNil(t, allMessagesFromCache)
 	allMessages, ok := allMessagesFromCache.([]*Message)
 	require.True(t, ok)
-	assert.Len(t, allMessages, len(internals.InitialBoardMessages))
+	assert.Len(t, allMessages, len(initialBoardMessages))
 }
 
 func TestBoard_CacheBoardMessages(t *testing.T) {
-	internals := testinternals.NewTestingInternals()
+	boardClient, boardCache, _, _ := getTestBoardClient()
 
 	// cache empty
-	require.Equal(t, 0, internals.BoardCache.ElementsCount())
+	require.Equal(t, 0, boardCache.ElementsCount())
 
 	messages := []*Message{
 		{
@@ -150,12 +210,12 @@ func TestBoard_CacheBoardMessages(t *testing.T) {
 		},
 	}
 
-	internals.BoardClient.CacheBoardMessages("messages", messages)
+	boardClient.CacheBoardMessages("messages", messages)
 
 	// cache filled
-	require.Equal(t, 1, internals.BoardCache.ElementsCount())
+	require.Equal(t, 1, boardCache.ElementsCount())
 
-	allMessagesFromCache, found := internals.BoardCache.Get("messages")
+	allMessagesFromCache, found := boardCache.Get("messages")
 	require.True(t, found)
 	require.NotNil(t, allMessagesFromCache)
 	allMessages, ok := allMessagesFromCache.([]*Message)
@@ -164,12 +224,12 @@ func TestBoard_CacheBoardMessages(t *testing.T) {
 }
 
 func TestBoard_InvalidateCaches(t *testing.T) {
-	internals := testinternals.NewTestingInternals()
+	boardClient, boardCache, _, _ := getTestBoardClient()
 
 	// cache empty
-	require.Equal(t, 0, internals.BoardCache.ElementsCount())
+	require.Equal(t, 0, boardCache.ElementsCount())
 
-	internals.BoardClient.CacheBoardMessages("messages", []*Message{
+	boardClient.CacheBoardMessages("messages", []*Message{
 		{
 			ID:        0,
 			Author:    "a0",
@@ -179,69 +239,68 @@ func TestBoard_InvalidateCaches(t *testing.T) {
 	})
 
 	// cache filled
-	require.Equal(t, 1, internals.BoardCache.ElementsCount())
+	require.Equal(t, 1, boardCache.ElementsCount())
 
-	internals.BoardClient.InvalidateCaches()
+	boardClient.InvalidateCaches()
 	// cache empty
-	require.Equal(t, 0, internals.BoardCache.ElementsCount())
+	require.Equal(t, 0, boardCache.ElementsCount())
 }
 
 func TestBoard_StoreMessage(t *testing.T) {
-	internals := testinternals.NewTestingInternals()
-	board := internals.BoardClient
+	boardClient, _, aeroTestClient, initialBoardMessages := getTestBoardClient()
 
-	messagesCount, err := board.MessagesCount()
+	messagesCount, err := boardClient.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, len(internals.InitialBoardMessages), messagesCount)
+	require.Equal(t, len(initialBoardMessages), messagesCount)
 
 	now := time.Now()
 	m1 := Message{
-		ID:        len(internals.InitialBoardMessages),
+		ID:        len(initialBoardMessages),
 		Author:    "ana",
 		Timestamp: now.Unix(),
 		Message:   "lixo",
 	}
-	newId1, err := board.NewMessage(m1)
+	newId1, err := boardClient.NewMessage(m1)
 	require.NoError(t, err)
 	assert.Equal(t, m1.ID, newId1)
 
 	m2 := Message{
-		ID:        len(internals.InitialBoardMessages) + 1,
+		ID:        len(initialBoardMessages) + 1,
 		Author:    "serj",
 		Timestamp: now.Add(-time.Hour).Unix(),
 		Message:   "a message",
 	}
-	newId2, err := board.NewMessage(m2)
+	newId2, err := boardClient.NewMessage(m2)
 	require.NoError(t, err)
 	assert.Equal(t, m2.ID, newId2)
 
-	messagesCount, err = board.MessagesCount()
+	messagesCount, err = boardClient.MessagesCount()
 	require.NoError(t, err)
-	require.Equal(t, len(internals.InitialBoardMessages)+2, messagesCount)
+	require.Equal(t, len(initialBoardMessages)+2, messagesCount)
 
-	allMessages, err := board.AllMessages(true)
+	allMessages, err := boardClient.AllMessages(true)
 	require.NoError(t, err)
-	assert.Len(t, allMessages, len(internals.InitialBoardMessages)+2)
+	assert.Len(t, allMessages, len(initialBoardMessages)+2)
 
-	m1binMap := internals.AeroTestClient.AeroBinMaps[strconv.Itoa(m1.ID)]
+	m1binMap := aeroTestClient.AeroBinMaps[strconv.Itoa(m1.ID)]
 	require.NotNil(t, m1binMap)
 	assert.Equal(t, m1.Message, m1binMap["message"])
-	m2binMap := internals.AeroTestClient.AeroBinMaps[strconv.Itoa(m2.ID)]
+	m2binMap := aeroTestClient.AeroBinMaps[strconv.Itoa(m2.ID)]
 	require.NotNil(t, m2binMap)
 	assert.Equal(t, m2.Message, m2binMap["message"])
 }
 
 func TestBoard_GetMessagesWithRange(t *testing.T) {
-	internals := testinternals.NewTestingInternals()
+	boardClient, boardCache, _, _ := getTestBoardClient()
 
 	// cache empty at the beginning
-	require.Equal(t, 0, internals.BoardCache.ElementsCount())
+	require.Equal(t, 0, boardCache.ElementsCount())
 
-	messages, err := internals.BoardClient.GetMessagesWithRange(1, 3)
+	messages, err := boardClient.GetMessagesWithRange(1, 3)
 	require.NoError(t, err)
 
 	// cache empty after - GetMessagesWithRange does not cache atm
-	require.Equal(t, 0, internals.BoardCache.ElementsCount())
+	require.Equal(t, 0, boardCache.ElementsCount())
 	require.Len(t, messages, 3)
 
 	// order not guaranteed
@@ -264,13 +323,12 @@ func TestBoard_GetMessagesWithRange(t *testing.T) {
 }
 
 func TestBoard_GetMessagesPage(t *testing.T) {
-	internals := testinternals.NewTestingInternals()
-	board := internals.BoardClient
+	boardClient, boardCache, _, _ := getTestBoardClient()
 
 	// cache empty at the beginning
-	require.Equal(t, 0, internals.BoardCache.ElementsCount())
+	require.Equal(t, 0, boardCache.ElementsCount())
 
-	messages, err := board.GetMessagesPage(2, 2)
+	messages, err := boardClient.GetMessagesPage(2, 2)
 	require.NoError(t, err)
 	require.Len(t, messages, 2)
 
@@ -288,23 +346,23 @@ func TestBoard_GetMessagesPage(t *testing.T) {
 	assert.True(t, found2)
 
 	// cache calls check
-	funcCallsLog := internals.BoardCache.FunctionCallsLog
+	funcCallsLog := boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 2)
 	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[0])
 	assert.Equal(t, cache.FuncSet, funcCallsLog[1])
 
 	// size greater than total - get all messages
-	messages, err = board.GetMessagesPage(2, 12)
+	messages, err = boardClient.GetMessagesPage(2, 12)
 	require.NoError(t, err)
 	require.Len(t, messages, 5)
 
 	// page greater than total pages - get last page
-	messages, err = board.GetMessagesPage(10, 2)
+	messages, err = boardClient.GetMessagesPage(10, 2)
 	require.NoError(t, err)
 	require.Len(t, messages, 2)
 
 	// first case again
-	messages, err = board.GetMessagesPage(2, 2)
+	messages, err = boardClient.GetMessagesPage(2, 2)
 	require.NoError(t, err)
 	require.Len(t, messages, 2)
 
@@ -322,7 +380,7 @@ func TestBoard_GetMessagesPage(t *testing.T) {
 	assert.True(t, found2)
 
 	// cache calls check
-	funcCallsLog = internals.BoardCache.FunctionCallsLog
+	funcCallsLog = boardCache.FunctionCallsLog
 	require.Len(t, funcCallsLog, 7)
 	assert.Equal(t, cache.FuncGetMiss, funcCallsLog[0])
 	assert.Equal(t, cache.FuncSet, funcCallsLog[1])
