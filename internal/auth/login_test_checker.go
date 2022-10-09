@@ -1,5 +1,7 @@
 package auth
 
+import "context"
+
 type LoginTestChecker struct {
 	LoggedSessions map[string]bool
 }
@@ -10,7 +12,7 @@ func NewLoginTestChecker() *LoginTestChecker {
 	}
 }
 
-func (c *LoginTestChecker) IsLogged(token string) (bool, error) {
+func (c *LoginTestChecker) IsLogged(_ context.Context, token string) (bool, error) {
 	if logged, ok := c.LoggedSessions[token]; !ok {
 		return false, nil
 	} else {

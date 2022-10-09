@@ -16,13 +16,13 @@ import (
 
 type Handler struct {
 	blogApi      Api
-	loginChecker *auth.LoginChecker
+	loginChecker auth.Checker
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
 	blogApi Api,
-	loginChecker *auth.LoginChecker,
+	loginChecker auth.Checker,
 ) *Handler {
 	handler := &Handler{
 		blogApi:      blogApi,
@@ -258,7 +258,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 				return
 			}
 
-			isLogged, err := handler.loginChecker.IsLogged(authToken)
+			isLogged, err := handler.loginChecker.IsLogged(r.Context(), authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)

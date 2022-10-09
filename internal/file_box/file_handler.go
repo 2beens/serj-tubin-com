@@ -416,7 +416,7 @@ func (handler *FileHandler) isLogged(r *http.Request) (bool, error) {
 		return false, fmt.Errorf("[missing token] unauthorized => %s", r.URL.Path)
 	}
 
-	isLogged, err := handler.loginChecker.IsLogged(authToken)
+	isLogged, err := handler.loginChecker.IsLogged(r.Context(), authToken)
 	if err != nil {
 		return false, fmt.Errorf("[failed login check] => %s: %s", r.URL.Path, err)
 	}

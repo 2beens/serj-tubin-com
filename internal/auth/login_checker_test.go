@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -17,13 +18,15 @@ func TestAuthService_IsLogged(t *testing.T) {
 	loginChecker := NewLoginChecker(time.Hour, db)
 	require.NotNil(t, loginChecker)
 
+	ctx := context.Background()
+
 	mock.ExpectGet(sessionKeyPrefix + "invalid token").SetErr(redis.Nil)
-	isLogged, err := loginChecker.IsLogged("invalid token")
+	isLogged, err := loginChecker.IsLogged(ctx, "invalid token")
 	require.Equal(t, "redis: nil", err.Error())
 	assert.False(t, isLogged)
 
 	mock.ExpectGet(sessionKeyPrefix + "invalid token").SetErr(redis.Nil)
-	isLogged, err = loginChecker.IsLogged("invalid token")
+	isLogged, err = loginChecker.IsLogged(ctx, "invalid token")
 	require.Equal(t, "redis: nil", err.Error())
 	assert.False(t, isLogged) // idempotent
 
@@ -32,11 +35,11 @@ func TestAuthService_IsLogged(t *testing.T) {
 	sessionKey := sessionKeyPrefix + testToken
 
 	mock.ExpectGet(sessionKey).SetVal(fmt.Sprintf("%d", now.Unix()))
-	isLogged, err = loginChecker.IsLogged(testToken)
+	isLogged, err = loginChecker.IsLogged(ctx, testToken)
 	require.NoError(t, err)
 	assert.True(t, isLogged)
 	mock.ExpectGet(sessionKey).SetVal(fmt.Sprintf("%d", now.Unix()))
-	isLogged, err = loginChecker.IsLogged(testToken)
+	isLogged, err = loginChecker.IsLogged(ctx, testToken)
 	require.NoError(t, err)
 	assert.True(t, isLogged) // idempotent
 }
