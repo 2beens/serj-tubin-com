@@ -92,7 +92,7 @@ func main() {
 	server.Serve(ctx, cfg.Host, cfg.Port)
 
 	receivedSig := <-chOsInterrupt
-	log.Warnf("signal [%s] received ...", receivedSig)
+	log.Warnf("signal [%s] received, killing everything ...", receivedSig)
 	cancel()
 
 	// go to sleep 🥱

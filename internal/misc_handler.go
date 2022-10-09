@@ -68,7 +68,7 @@ func (handler *MiscHandler) handleGetRandomQuote(w http.ResponseWriter, r *http.
 func (handler *MiscHandler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r)
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r.Context(), r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)

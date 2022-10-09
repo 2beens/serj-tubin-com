@@ -52,7 +52,7 @@ func NewGeoIp(
 	}
 }
 
-func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
+func (gi *GeoIp) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*GeoIpInfo, error) {
 	userIp, err := ReadUserIP(r)
 	if err != nil {
 		return nil, fmt.Errorf("error getting user ip: %s", err.Error())
@@ -74,7 +74,7 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 
 	// try to get geo ip info from redis
 	userIpKey := fmt.Sprintf("ip-info::%s", userIp)
-	cmd := gi.redisClient.Get(context.Background(), userIpKey)
+	cmd := gi.redisClient.Get(ctx, userIpKey)
 	if err := cmd.Err(); err != nil {
 		log.Errorf("failed to find ip info from redis for [%s]: %s", userIpKey, err)
 	}
@@ -116,7 +116,7 @@ func (gi *GeoIp) GetRequestGeoInfo(r *http.Request) (*GeoIpInfo, error) {
 	}
 
 	// cache response in redis
-	cmdSet := gi.redisClient.Set(context.Background(), userIpKey, respBytes, 0)
+	cmdSet := gi.redisClient.Set(ctx, userIpKey, respBytes, 0)
 	if err := cmdSet.Err(); err != nil {
 		log.Errorf("failed to cache ip info in redis for %s: %s", userIp, err)
 	} else {

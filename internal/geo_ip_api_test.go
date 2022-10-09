@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -123,7 +124,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 
 	// will return geoIpInfo - development Berlin
 	req.Header.Add("X-Real-Ip", "127.0.0.1:1234")
-	geoIpInfo, err := geoIp.GetRequestGeoInfo(req)
+	geoIpInfo, err := geoIp.GetRequestGeoInfo(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, geoIpInfo)
 	assert.Equal(t, &devGeoIpInfo, geoIpInfo)
@@ -131,7 +132,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 	// non-dev IP
 	ipAddr := "127.0.0.2"
 	req.Header.Set("X-Real-Ip", ipAddr)
-	geoIpInfo, err = geoIp.GetRequestGeoInfo(req)
+	geoIpInfo, err = geoIp.GetRequestGeoInfo(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, geoIpInfo)
 
