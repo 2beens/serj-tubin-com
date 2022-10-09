@@ -198,7 +198,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("misc handler is nil")
 	}
 
-	if NewNetlogHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginChecker) == nil {
+	if netlog.NewHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginChecker) == nil {
 		panic("netlog visits handler is nil")
 	}
 

@@ -1,4 +1,4 @@
-package internal
+package netlog
 
 import (
 	"encoding/json"
@@ -12,26 +12,25 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
-	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-type NetlogHandler struct {
+type Handler struct {
 	browserRequestsSecret string
-	netlogApi             netlog.Api
+	netlogApi             Api
 	loginChecker          *auth.LoginChecker
 	instr                 *instrumentation.Instrumentation
 }
 
-func NewNetlogHandler(
+func NewHandler(
 	router *mux.Router,
-	netlogApi netlog.Api,
+	netlogApi Api,
 	instrumentation *instrumentation.Instrumentation,
 	browserRequestsSecret string,
 	loginChecker *auth.LoginChecker,
-) *NetlogHandler {
-	handler := &NetlogHandler{
+) *Handler {
+	handler := &Handler{
 		netlogApi:             netlogApi,
 		instr:                 instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
@@ -49,7 +48,7 @@ func NewNetlogHandler(
 	return handler
 }
 
-func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -124,7 +123,7 @@ func (handler *NetlogHandler) handleGetPage(w http.ResponseWriter, r *http.Reque
 	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
-func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -155,7 +154,7 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	visit := &netlog.Visit{
+	visit := &Visit{
 		Title:     title,
 		URL:       url,
 		Source:    source,
@@ -173,7 +172,7 @@ func (handler *NetlogHandler) handleNewVisit(w http.ResponseWriter, r *http.Requ
 	pkg.WriteResponse(w, "", "added")
 }
 
-func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -217,7 +216,7 @@ func (handler *NetlogHandler) handleGetAll(w http.ResponseWriter, r *http.Reques
 	pkg.WriteResponseBytes(w, "application/json", visitsJson)
 }
 
-func (handler *NetlogHandler) authMiddleware() func(next http.Handler) http.Handler {
+func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {
