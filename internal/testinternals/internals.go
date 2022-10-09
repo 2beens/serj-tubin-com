@@ -1,4 +1,4 @@
-package internal
+package testinternals
 
 import (
 	"context"
@@ -9,35 +9,31 @@ import (
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
+	"github.com/2beens/serjtubincom/internal/board"
 	"github.com/2beens/serjtubincom/internal/cache"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
 )
 
-const (
-	blogPostsCount = 5
-)
+type Internals struct {
+	AeroTestClient       *aerospike.BoardAeroTestClient
+	BoardClient          *board.Client
+	BoardCache           *cache.BoardTestCache
+	InitialBoardMessages map[int]*board.Message
+	LastInitialMessage   *board.Message
 
-type testingInternals struct {
-	// board
-	aeroTestClient       *aerospike.BoardAeroTestClient
-	board                *Board
-	boardCache           *cache.BoardTestCache
-	initialBoardMessages map[int]*BoardMessage
-	lastInitialMessage   *BoardMessage
-
-	blogApi      *blog.TestApi
-	authService  *auth.Service
-	loginChecker *auth.LoginChecker
+	BlogApi      *blog.TestApi
+	AuthService  *auth.Service
+	LoginChecker *auth.LoginChecker
 
 	// redis
-	redisClient *redis.Client
-	redisMock   redismock.ClientMock
+	RedisClient *redis.Client
+	RedisMock   redismock.ClientMock
 }
 
-func newTestingInternals() *testingInternals {
+func NewTestingInternals() *Internals {
 	now := time.Now()
-	initialBoardMessages := map[int]*BoardMessage{
+	initialBoardMessages := map[int]*board.Message{
 		0: {
 			ID:        0,
 			Author:    "serj",
@@ -73,24 +69,24 @@ func newTestingInternals() *testingInternals {
 	aeroClient := aerospike.NewBoardAeroTestClient()
 	boardCache := cache.NewBoardTestCache()
 
-	board, err := NewBoard(aeroClient, boardCache)
+	boardClient, err := board.NewClient(aeroClient, boardCache)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if _, err := board.NewMessage(*initialBoardMessages[0]); err != nil {
+	if _, err := boardClient.NewMessage(*initialBoardMessages[0]); err != nil {
 		panic(err)
 	}
-	if _, err := board.NewMessage(*initialBoardMessages[1]); err != nil {
+	if _, err := boardClient.NewMessage(*initialBoardMessages[1]); err != nil {
 		panic(err)
 	}
-	if _, err := board.NewMessage(*initialBoardMessages[2]); err != nil {
+	if _, err := boardClient.NewMessage(*initialBoardMessages[2]); err != nil {
 		panic(err)
 	}
-	if _, err := board.NewMessage(*initialBoardMessages[3]); err != nil {
+	if _, err := boardClient.NewMessage(*initialBoardMessages[3]); err != nil {
 		panic(err)
 	}
-	if _, err := board.NewMessage(*initialBoardMessages[4]); err != nil {
+	if _, err := boardClient.NewMessage(*initialBoardMessages[4]); err != nil {
 		panic(err)
 	}
 
@@ -106,7 +102,7 @@ func newTestingInternals() *testingInternals {
 
 	// blog stuff
 	blogApi := blog.NewBlogTestApi()
-	for i := 0; i < blogPostsCount; i++ {
+	for i := 0; i < 5; i++ {
 		if err = blogApi.AddBlog(context.Background(), &blog.Blog{
 			Id:        i,
 			Title:     fmt.Sprintf("blog%dtitle", i),
@@ -121,16 +117,16 @@ func newTestingInternals() *testingInternals {
 	authService := auth.NewAuthService(time.Hour, redisClient)
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
-	return &testingInternals{
-		aeroTestClient:       aeroClient,
-		board:                board,
-		boardCache:           boardCache,
-		initialBoardMessages: initialBoardMessages,
-		lastInitialMessage:   initialBoardMessages[1],
-		blogApi:              blogApi,
-		authService:          authService,
-		loginChecker:         loginChecker,
-		redisClient:          redisClient,
-		redisMock:            redisMock,
+	return &Internals{
+		AeroTestClient:       aeroClient,
+		BoardClient:          boardClient,
+		BoardCache:           boardCache,
+		InitialBoardMessages: initialBoardMessages,
+		LastInitialMessage:   initialBoardMessages[1],
+		BlogApi:              blogApi,
+		AuthService:          authService,
+		LoginChecker:         loginChecker,
+		RedisClient:          redisClient,
+		RedisMock:            redisMock,
 	}
 }

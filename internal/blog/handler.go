@@ -1,4 +1,4 @@
-package internal
+package blog
 
 import (
 	"encoding/json"
@@ -9,22 +9,22 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/blog"
+	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
-type BlogHandler struct {
-	blogApi      blog.Api
+type Handler struct {
+	blogApi      Api
 	loginChecker *auth.LoginChecker
 }
 
 func NewBlogHandler(
 	blogRouter *mux.Router,
-	blogApi blog.Api,
+	blogApi Api,
 	loginChecker *auth.LoginChecker,
-) *BlogHandler {
-	handler := &BlogHandler{
+) *Handler {
+	handler := &Handler{
 		blogApi:      blogApi,
 		loginChecker: loginChecker,
 	}
@@ -40,7 +40,7 @@ func NewBlogHandler(
 	return handler
 }
 
-func (handler *BlogHandler) handleNewBlog(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleNewBlog(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("add new blog failed, parse form error: %s", err)
@@ -60,7 +60,7 @@ func (handler *BlogHandler) handleNewBlog(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	newBlog := &blog.Blog{
+	newBlog := &Blog{
 		Title:     title,
 		CreatedAt: time.Now(),
 		Content:   content,
@@ -75,10 +75,10 @@ func (handler *BlogHandler) handleNewBlog(w http.ResponseWriter, r *http.Request
 	log.Tracef("new blog %d: [%s] added", newBlog.Id, newBlog.Title)
 
 	// TODO: refactor and unify responses
-	WriteResponse(w, "", fmt.Sprintf("added:%d", newBlog.Id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", newBlog.Id))
 }
 
-func (handler *BlogHandler) handleUpdateBlog(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleUpdateBlog(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("update blog failed, parse form error: %s", err)
@@ -109,7 +109,7 @@ func (handler *BlogHandler) handleUpdateBlog(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	blog := &blog.Blog{
+	blog := &Blog{
 		Id:        id,
 		Title:     title,
 		CreatedAt: time.Now(),
@@ -122,10 +122,10 @@ func (handler *BlogHandler) handleUpdateBlog(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	WriteResponse(w, "", fmt.Sprintf("updated:%d", blog.Id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", blog.Id))
 }
 
-func (handler *BlogHandler) handleDeleteBlog(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleDeleteBlog(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	idStr := vars["id"]
@@ -147,14 +147,15 @@ func (handler *BlogHandler) handleDeleteBlog(w http.ResponseWriter, r *http.Requ
 	}
 
 	if deleted {
-		WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
+		pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
 	} else {
-		WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
+		pkg.WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
 	}
 }
 
-func (handler *BlogHandler) handleAll(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleAll(w http.ResponseWriter, r *http.Request) {
 	allBlogs, err := handler.blogApi.All(r.Context())
+
 	if err != nil {
 		log.Errorf("get all blogs error: %s", err)
 		http.Error(w, "get all blogs error", http.StatusInternalServerError)
@@ -168,10 +169,10 @@ func (handler *BlogHandler) handleAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteResponseBytes(w, "application/json", allBlogsJson)
+	pkg.WriteResponseBytes(w, "application/json", allBlogsJson)
 }
 
-func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	pageStr := vars["page"]
@@ -210,7 +211,7 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 	w.Header().Add("Content-Type", "application/json")
 
 	if len(blogPosts) == 0 {
-		blogPosts = []*blog.Blog{}
+		blogPosts = []*Blog{}
 	}
 
 	blogPostsJson, err := json.Marshal(blogPosts)
@@ -229,10 +230,10 @@ func (handler *BlogHandler) handleGetPage(w http.ResponseWriter, r *http.Request
 
 	resJson := fmt.Sprintf(`{"posts": %s, "total": %d}`, blogPostsJson, totalBlogsCount)
 
-	WriteResponseBytes(w, "application/json", []byte(resJson))
+	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
 }
 
-func (handler *BlogHandler) authMiddleware() func(next http.Handler) http.Handler {
+func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {

@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	board "github.com/2beens/serjtubincom/internal/board"
+
 	"github.com/2beens/serjtubincom/internal/aerospike"
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
@@ -37,7 +39,7 @@ type Server struct {
 	blogApi         *blog.PsqlApi
 	geoIp           *GeoIp
 	quotesManager   *QuotesManager
-	board           *Board
+	boardClient     *board.Client
 	netlogVisitsApi *netlog.PsqlApi
 	notesBoxApi     *notes_box.PsqlApi
 
@@ -77,7 +79,7 @@ func NewServer(
 		return nil, fmt.Errorf("failed to create board cache: %w", err)
 	}
 
-	board, err := NewBoard(boardAeroClient, boardCache)
+	boardClient, err := board.NewClient(boardAeroClient, boardCache)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
@@ -148,7 +150,7 @@ func NewServer(
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
 		geoIp:                 NewGeoIp("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient, rdb),
-		board:                 board,
+		boardClient:           boardClient,
 		netlogVisitsApi:       netlogVisitsApi,
 		notesBoxApi:           notesBoxApi,
 		versionInfo:           versionInfo,
@@ -180,11 +182,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	notesRouter := r.PathPrefix("/notes").Subrouter()
 
 	// TODO: refactor this - return handlers, but define routes here, similar to notes handler
-	if NewBlogHandler(blogRouter, s.blogApi, s.loginChecker) == nil {
+	if blog.NewBlogHandler(blogRouter, s.blogApi, s.loginChecker) == nil {
 		return nil, errors.New("blog handler is nil")
 	}
 
-	if NewBoardHandler(boardRouter, s.board, s.loginChecker) == nil {
+	if board.NewBoardHandler(boardRouter, s.boardClient, s.loginChecker) == nil {
 		return nil, errors.New("board handler is nil")
 	}
 
@@ -282,7 +284,7 @@ func (s *Server) GracefulShutdown() {
 		}
 	}
 
-	s.board.Close()
+	s.boardClient.Close()
 
 	if s.blogApi != nil {
 		s.blogApi.CloseDB()

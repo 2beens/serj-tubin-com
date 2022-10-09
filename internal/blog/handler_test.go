@@ -1,4 +1,4 @@
-package internal
+package blog
 
 import (
 	"encoding/json"
@@ -10,7 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/blog"
+	"github.com/go-redis/redismock/v8"
+
+	"github.com/go-redis/redis/v8"
+
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -84,11 +88,31 @@ func TestNewBlogHandler(t *testing.T) {
 	}
 }
 
+func getTestBlogApiAndLoginChecker(t *testing.T, redisClient *redis.Client) (*TestApi, *auth.LoginChecker) {
+	t.Helper()
+	now := time.Now()
+
+	blogApi := NewBlogTestApi()
+	for i := 0; i < 5; i++ {
+		require.NoError(t, blogApi.AddBlog(&Blog{
+			Id:        i,
+			Title:     fmt.Sprintf("blog%dtitle", i),
+			CreatedAt: now.Add(time.Minute * time.Duration(i)),
+			Content:   fmt.Sprintf("blog %d content", i),
+		}))
+	}
+
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
+
+	return blogApi, loginChecker
+}
+
 func TestBlogHandler_handleAll(t *testing.T) {
-	internals := newTestingInternals()
+	redisClient, _ := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/blog/all", nil)
@@ -99,13 +123,13 @@ func TestBlogHandler_handleAll(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	var blogPosts []*blog.Blog
+	var blogPosts []*Blog
 	err = json.Unmarshal(rr.Body.Bytes(), &blogPosts)
 	require.NoError(t, err)
 	require.NotNil(t, blogPosts)
 
 	// check all posts received
-	require.Len(t, blogPosts, internals.blogApi.PostsCount())
+	require.Len(t, blogPosts, blogApi.PostsCount())
 	for i := range blogPosts {
 		assert.True(t, blogPosts[i].Id >= 0)
 		assert.NotEmpty(t, blogPosts[i].Title)
@@ -115,10 +139,11 @@ func TestBlogHandler_handleAll(t *testing.T) {
 }
 
 func TestBlogHandler_handleGetPage(t *testing.T) {
-	internals := newTestingInternals()
+	redisClient, _ := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/blog/page/2/size/2", nil)
@@ -135,25 +160,26 @@ func TestBlogHandler_handleGetPage(t *testing.T) {
 }
 
 func TestBlogHandler_handleDelete(t *testing.T) {
-	internals := newTestingInternals()
+	redisClient, redisMock := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("DELETE", "/blog/delete/3", nil)
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	currentPostsCount := internals.blogApi.PostsCount()
+	currentPostsCount := blogApi.PostsCount()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	require.Equal(t, "no can do\n", rr.Body.String())
-	assert.Equal(t, currentPostsCount, internals.blogApi.PostsCount())
+	assert.Equal(t, currentPostsCount, blogApi.PostsCount())
 
 	// check that blog was not deleted
-	assert.NotNil(t, internals.blogApi.Posts[3])
+	assert.NotNil(t, blogApi.Posts[3])
 
 	// now logged in
 	req, err = http.NewRequest("DELETE", "/blog/delete/3", nil)
@@ -161,20 +187,21 @@ func TestBlogHandler_handleDelete(t *testing.T) {
 	rr = httptest.NewRecorder()
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "deleted:3", rr.Body.String())
-	assert.Equal(t, currentPostsCount-1, internals.blogApi.PostsCount())
-	assert.Nil(t, internals.blogApi.Posts[3])
+	assert.Equal(t, currentPostsCount-1, blogApi.PostsCount())
+	assert.Nil(t, blogApi.Posts[3])
 }
 
 func TestBlogHandler_handleNewBlog_notLoggedIn(t *testing.T) {
-	internals := newTestingInternals()
+	redisClient, _ := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
@@ -184,19 +211,20 @@ func TestBlogHandler_handleNewBlog_notLoggedIn(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 	rr := httptest.NewRecorder()
 
-	currentPostsCount := internals.blogApi.PostsCount()
+	currentPostsCount := blogApi.PostsCount()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	require.Equal(t, "no can do\n", rr.Body.String())
-	assert.Equal(t, currentPostsCount, internals.blogApi.PostsCount())
+	assert.Equal(t, currentPostsCount, blogApi.PostsCount())
 }
 
 func TestBlogHandler_handleUpdateBlog_notLoggedIn(t *testing.T) {
-	internals := newTestingInternals()
+	redisClient, _ := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
@@ -207,22 +235,23 @@ func TestBlogHandler_handleUpdateBlog_notLoggedIn(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 	rr := httptest.NewRecorder()
 
-	currentPostsCount := internals.blogApi.PostsCount()
+	currentPostsCount := blogApi.PostsCount()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	require.Equal(t, "no can do\n", rr.Body.String())
-	assert.Equal(t, currentPostsCount, internals.blogApi.PostsCount())
+	assert.Equal(t, currentPostsCount, blogApi.PostsCount())
 
 	// check that blog was not updated
-	assert.Equal(t, "blog4title", internals.blogApi.Posts[4].Title)
+	assert.Equal(t, "blog4title", blogApi.Posts[4].Title)
 }
 
 func TestBlogHandler_handleNewBlog_wrongToken(t *testing.T) {
-	internals := newTestingInternals()
+	redisClient, redisMock := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
@@ -233,23 +262,24 @@ func TestBlogHandler_handleNewBlog_wrongToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "mywrongsecret")
-	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	rr := httptest.NewRecorder()
 
-	currentPostsCount := internals.blogApi.PostsCount()
+	currentPostsCount := blogApi.PostsCount()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	require.Equal(t, "no can do\n", rr.Body.String())
-	assert.Equal(t, currentPostsCount, internals.blogApi.PostsCount())
+	assert.Equal(t, currentPostsCount, blogApi.PostsCount())
 }
 
 func TestBlogHandler_handleUpdateBlog_wrongToken(t *testing.T) {
-	internals := newTestingInternals()
+	redisClient, redisMock := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
@@ -261,26 +291,27 @@ func TestBlogHandler_handleUpdateBlog_wrongToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "wrongsecret")
-	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	rr := httptest.NewRecorder()
 
-	currentPostsCount := internals.blogApi.PostsCount()
+	currentPostsCount := blogApi.PostsCount()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 	require.Equal(t, "no can do\n", rr.Body.String())
-	assert.Equal(t, currentPostsCount, internals.blogApi.PostsCount())
+	assert.Equal(t, currentPostsCount, blogApi.PostsCount())
 
 	// check that blog was not updated
-	assert.Equal(t, "blog4title", internals.blogApi.Posts[4].Title)
+	assert.Equal(t, "blog4title", blogApi.Posts[4].Title)
 }
 
 func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
-	internals := newTestingInternals()
+	redisClient, redisMock := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
@@ -291,18 +322,18 @@ func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	rr := httptest.NewRecorder()
 
-	currentPostsCount := internals.blogApi.PostsCount()
+	currentPostsCount := blogApi.PostsCount()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "added:5", rr.Body.String())
-	assert.Equal(t, currentPostsCount+1, internals.blogApi.PostsCount())
+	assert.Equal(t, currentPostsCount+1, blogApi.PostsCount())
 
-	addedPost, ok := internals.blogApi.Posts[5]
+	addedPost, ok := blogApi.Posts[5]
 	require.True(t, ok)
 	require.NotNil(t, addedPost)
 	assert.Equal(t, "Nonsense", addedPost.Title)
@@ -311,10 +342,11 @@ func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 }
 
 func TestBlogHandler_handleUpdateBlog_correctToken(t *testing.T) {
-	internals := newTestingInternals()
+	redisClient, redisMock := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), internals.blogApi, internals.loginChecker)
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
@@ -326,18 +358,18 @@ func TestBlogHandler_handleUpdateBlog_correctToken(t *testing.T) {
 	req.PostForm.Add("content", "This content makes no sense")
 
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
-	internals.redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
 	rr := httptest.NewRecorder()
 
-	currentPostsCount := internals.blogApi.PostsCount()
+	currentPostsCount := blogApi.PostsCount()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	require.Equal(t, "updated:4", rr.Body.String())
-	assert.Equal(t, currentPostsCount, internals.blogApi.PostsCount())
+	assert.Equal(t, currentPostsCount, blogApi.PostsCount())
 
-	addedPost, ok := internals.blogApi.Posts[4]
+	addedPost, ok := blogApi.Posts[4]
 	require.True(t, ok)
 	require.NotNil(t, addedPost)
 	assert.Equal(t, "Nonsense", addedPost.Title)

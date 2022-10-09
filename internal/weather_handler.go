@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -42,6 +44,26 @@ func NewWeatherHandler(weatherRouter *mux.Router, geoIp *GeoIp, openWeatherAPIUr
 	weatherRouter.HandleFunc("/5days", handler.handle5Days).Methods("GET")
 
 	return handler, nil
+}
+
+func LoadCitiesData(cityListDataPath string) ([]WeatherCity, error) {
+	citiesJsonFile, err := os.Open(cityListDataPath)
+	if err != nil {
+		return []WeatherCity{}, err
+	}
+
+	citiesJsonFileData, err := io.ReadAll(citiesJsonFile)
+	if err != nil {
+		return []WeatherCity{}, err
+	}
+
+	var cities []WeatherCity
+	err = json.Unmarshal(citiesJsonFileData, &cities)
+	if err != nil {
+		return []WeatherCity{}, err
+	}
+
+	return cities, nil
 }
 
 func (handler *WeatherHandler) handleCurrent(w http.ResponseWriter, r *http.Request) {

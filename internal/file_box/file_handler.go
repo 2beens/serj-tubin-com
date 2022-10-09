@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
@@ -198,7 +197,7 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("updated:%d", id)))
+	pkg.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("updated:%d", id)))
 }
 
 func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
@@ -263,7 +262,7 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", deletedCount)))
+	pkg.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", deletedCount)))
 }
 
 func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {
@@ -287,7 +286,7 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	internal.WriteResponseBytes(w, "application/json", rootInfoJson)
+	pkg.WriteResponseBytes(w, "application/json", rootInfoJson)
 }
 
 func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Request) {
@@ -329,7 +328,7 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	} else {
 		log.Printf("child folder [%d][%s] for folder [%d] created", f.Id, f.Name, parentId)
-		internal.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("created:%d", f.Id)))
+		pkg.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("created:%d", f.Id)))
 	}
 }
 
@@ -408,7 +407,7 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 		log.Tracef("new file added %d: [%s] added", newFileId, fileHeader.Filename)
 	}
 
-	internal.WriteResponse(w, "", fmt.Sprintf("added:%s", strings.Join(addedFileIds, ",")))
+	pkg.WriteResponse(w, "", fmt.Sprintf("added:%s", strings.Join(addedFileIds, ",")))
 }
 
 func (handler *FileHandler) isLogged(r *http.Request) (bool, error) {
