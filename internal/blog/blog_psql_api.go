@@ -93,7 +93,7 @@ func (api *PsqlApi) UpdateBlog(ctx context.Context, blog *Blog) error {
 }
 
 func (api *PsqlApi) BlogClapped(ctx context.Context, id int) error {
-	tag, err := api.db.Exec(ctx, `UPDATE blog SET claps += 1 WHERE id = $1`, id)
+	tag, err := api.db.Exec(ctx, `UPDATE blog SET claps = claps + 1 WHERE id = $1`, id)
 	if err != nil {
 		return err
 	}
