@@ -3,7 +3,8 @@ CREATE TABLE public.blog
     id SERIAL PRIMARY KEY,
     title VARCHAR NOT NULL,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    content TEXT NOT NULL
+    content TEXT NOT NULL,
+    claps INTEGER NOT NULL DEFAULT 0
 );
 
 ALTER TABLE public.blog OWNER TO postgres;

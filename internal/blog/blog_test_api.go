@@ -47,6 +47,19 @@ func (api *TestApi) UpdateBlog(_ context.Context, blog *Blog) error {
 	return nil
 }
 
+func (api *TestApi) BlogClapped(_ context.Context, id int) error {
+	api.mutex.Lock()
+	defer api.mutex.Unlock()
+
+	if b, found := api.Posts[id]; !found {
+		return ErrBlogNotExists
+	} else {
+		b.Claps++
+	}
+
+	return nil
+}
+
 func (api *TestApi) DeleteBlog(_ context.Context, id int) (bool, error) {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()

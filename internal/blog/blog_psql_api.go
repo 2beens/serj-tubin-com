@@ -35,18 +35,18 @@ func NewBlogPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlAp
 	return blogApi, nil
 }
 
-func (b *PsqlApi) CloseDB() {
-	if b.db != nil {
-		b.db.Close()
+func (api *PsqlApi) CloseDB() {
+	if api.db != nil {
+		api.db.Close()
 	}
 }
 
-func (b *PsqlApi) AddBlog(ctx context.Context, blog *Blog) error {
+func (api *PsqlApi) AddBlog(ctx context.Context, blog *Blog) error {
 	if blog.Content == "" || blog.Title == "" {
 		return errors.New("blog title or content empty")
 	}
 
-	rows, err := b.db.Query(
+	rows, err := api.db.Query(
 		ctx,
 		`INSERT INTO blog (title, created_at, content) VALUES ($1, $2, $3) RETURNING id;`,
 		blog.Title, blog.CreatedAt, blog.Content,
@@ -71,14 +71,14 @@ func (b *PsqlApi) AddBlog(ctx context.Context, blog *Blog) error {
 	return errors.New("unexpected error, failed to insert blog")
 }
 
-func (b *PsqlApi) UpdateBlog(ctx context.Context, blog *Blog) error {
+func (api *PsqlApi) UpdateBlog(ctx context.Context, blog *Blog) error {
 	if blog.Content == "" || blog.Title == "" {
-		return errors.New("blog title or content empty")
+		return ErrBlogTitleOrContentEmpty
 	}
 
-	tag, err := b.db.Exec(
+	tag, err := api.db.Exec(
 		ctx,
-		`UPDATE blog SET title = $1, content = $2 WHERE id = $3;`,
+		`UPDATE blog SET title = $1, content = $2 WHERE id = $3`,
 		blog.Title, blog.Content, blog.Id,
 	)
 	if err != nil {
@@ -92,8 +92,18 @@ func (b *PsqlApi) UpdateBlog(ctx context.Context, blog *Blog) error {
 	return nil
 }
 
-func (b *PsqlApi) DeleteBlog(ctx context.Context, id int) (bool, error) {
-	tag, err := b.db.Exec(
+func (api *PsqlApi) BlogClapped(ctx context.Context, id int) error {
+	tag, err := api.db.Exec(ctx, `UPDATE blog SET claps += 1 WHERE id = $1`, id)
+	if err != nil {
+		return err
+	} else if tag.RowsAffected() == 0 {
+		log.Tracef("blog %d not updated", id)
+	}
+	return nil
+}
+
+func (api *PsqlApi) DeleteBlog(ctx context.Context, id int) (bool, error) {
+	tag, err := api.db.Exec(
 		ctx,
 		`DELETE FROM blog WHERE id = $1`,
 		id,
@@ -107,8 +117,8 @@ func (b *PsqlApi) DeleteBlog(ctx context.Context, id int) (bool, error) {
 	return true, nil
 }
 
-func (b *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
-	rows, err := b.db.Query(
+func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
+	rows, err := api.db.Query(
 		ctx,
 		`SELECT * FROM blog ORDER BY id DESC;`,
 	)
@@ -141,8 +151,8 @@ func (b *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
 	return blogs, nil
 }
 
-func (b *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
-	rows, err := b.db.Query(
+func (api *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
+	rows, err := api.db.Query(
 		ctx,
 		`SELECT COUNT(*) FROM blog;`,
 	)
@@ -165,16 +175,16 @@ func (b *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
 	return -1, errors.New("unexpected error, failed to get blogs count")
 }
 
-func (b *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error) {
+func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error) {
 	limit := size
 	offset := (page - 1) * size
-	blogsCount, err := b.BlogsCount(ctx)
+	blogsCount, err := api.BlogsCount(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if blogsCount <= limit {
-		return b.All(ctx)
+		return api.All(ctx)
 	}
 
 	if blogsCount-offset < limit {
@@ -183,7 +193,7 @@ func (b *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, er
 
 	log.Tracef("getting blogs, blogs count %d, limit %d, offset %d", blogsCount, limit, offset)
 
-	rows, err := b.db.Query(
+	rows, err := api.db.Query(
 		ctx,
 		`
 			SELECT * FROM blog

@@ -1,7 +1,13 @@
 package blog
 
 import (
+	"errors"
 	"time"
+)
+
+var (
+	ErrBlogNotExists           = errors.New("blog does not exist")
+	ErrBlogTitleOrContentEmpty = errors.New("blog title or content empty")
 )
 
 type Blog struct {
@@ -9,6 +15,7 @@ type Blog struct {
 	Title     string    `json:"title"`
 	CreatedAt time.Time `json:"created_at"`
 	Content   string    `json:"content"`
+	Claps     int       `json:"claps"` // basically blog likes
 
 	// TODO: maybe also add public comments?
 }
