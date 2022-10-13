@@ -48,8 +48,8 @@ func (api *PsqlApi) AddBlog(ctx context.Context, blog *Blog) error {
 
 	rows, err := api.db.Query(
 		ctx,
-		`INSERT INTO blog (title, created_at, content) VALUES ($1, $2, $3) RETURNING id;`,
-		blog.Title, blog.CreatedAt, blog.Content,
+		`INSERT INTO blog (title, created_at, content, claps) VALUES ($1, $2, $3, $4) RETURNING id;`,
+		blog.Title, blog.CreatedAt, blog.Content, blog.Claps,
 	)
 	if err != nil {
 		return err
@@ -78,8 +78,8 @@ func (api *PsqlApi) UpdateBlog(ctx context.Context, blog *Blog) error {
 
 	tag, err := api.db.Exec(
 		ctx,
-		`UPDATE blog SET title = $1, content = $2 WHERE id = $3`,
-		blog.Title, blog.Content, blog.Id,
+		`UPDATE blog SET title = $1, content = $2, claps = $3, WHERE id = $4`,
+		blog.Title, blog.Content, blog.Claps, blog.Id,
 	)
 	if err != nil {
 		return err
@@ -96,18 +96,15 @@ func (api *PsqlApi) BlogClapped(ctx context.Context, id int) error {
 	tag, err := api.db.Exec(ctx, `UPDATE blog SET claps += 1 WHERE id = $1`, id)
 	if err != nil {
 		return err
-	} else if tag.RowsAffected() == 0 {
+	}
+	if tag.RowsAffected() == 0 {
 		log.Tracef("blog %d not updated", id)
 	}
 	return nil
 }
 
 func (api *PsqlApi) DeleteBlog(ctx context.Context, id int) (bool, error) {
-	tag, err := api.db.Exec(
-		ctx,
-		`DELETE FROM blog WHERE id = $1`,
-		id,
-	)
+	tag, err := api.db.Exec(ctx, `DELETE FROM blog WHERE id = $1`, id)
 	if err != nil {
 		return false, err
 	}
@@ -137,7 +134,8 @@ func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
 		var title string
 		var createdAt time.Time
 		var content string
-		if err := rows.Scan(&id, &title, &createdAt, &content); err != nil {
+		var claps int
+		if err := rows.Scan(&id, &title, &createdAt, &content, &claps); err != nil {
 			return nil, err
 		}
 		blogs = append(blogs, &Blog{
@@ -145,6 +143,7 @@ func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
 			Title:     title,
 			CreatedAt: createdAt,
 			Content:   content,
+			Claps:     claps,
 		})
 	}
 
@@ -152,10 +151,7 @@ func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
 }
 
 func (api *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
-	rows, err := api.db.Query(
-		ctx,
-		`SELECT COUNT(*) FROM blog;`,
-	)
+	rows, err := api.db.Query(ctx, `SELECT COUNT(*) FROM blog`)
 	if err != nil {
 		return -1, err
 	}
@@ -219,7 +215,8 @@ func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, 
 		var title string
 		var createdAt time.Time
 		var content string
-		if err := rows.Scan(&id, &title, &createdAt, &content); err != nil {
+		var claps int
+		if err := rows.Scan(&id, &title, &createdAt, &content, &claps); err != nil {
 			return nil, err
 		}
 		blogs = append(blogs, &Blog{
@@ -227,6 +224,7 @@ func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, 
 			Title:     title,
 			CreatedAt: createdAt,
 			Content:   content,
+			Claps:     claps,
 		})
 	}
 
