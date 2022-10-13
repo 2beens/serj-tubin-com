@@ -31,6 +31,7 @@ func NewBlogHandler(
 
 	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
 	blogRouter.HandleFunc("/update", handler.handleUpdateBlog).Methods("POST", "OPTIONS").Name("update-blog")
+	blogRouter.HandleFunc("/clap", handler.handleBlogClapped).Methods("PATCH", "OPTIONS").Name("blog-clapped")
 	blogRouter.HandleFunc("/delete/{id}", handler.handleDeleteBlog).Methods("DELETE", "OPTIONS").Name("delete-blog")
 	blogRouter.HandleFunc("/all", handler.handleAll).Methods("GET").Name("all-blogs")
 	blogRouter.HandleFunc("/page/{page}/size/{size}", handler.handleGetPage).Methods("GET").Name("blogs-page")
@@ -79,8 +80,7 @@ func (handler *Handler) handleNewBlog(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleUpdateBlog(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil {
+	if err := r.ParseForm(); err != nil {
 		log.Errorf("update blog failed, parse form error: %s", err)
 		http.Error(w, "parse form error", http.StatusInternalServerError)
 		return
@@ -123,6 +123,33 @@ func (handler *Handler) handleUpdateBlog(w http.ResponseWriter, r *http.Request)
 	}
 
 	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", blog.Id))
+}
+
+func (handler *Handler) handleBlogClapped(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		log.Errorf("update blog failed, parse form error: %s", err)
+		http.Error(w, "parse form error", http.StatusInternalServerError)
+		return
+	}
+
+	idStr := r.Form.Get("id")
+	if idStr == "" {
+		http.Error(w, "error, id empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "error, id NaN", http.StatusBadRequest)
+		return
+	}
+
+	if err := handler.blogApi.BlogClapped(r.Context(), id); err != nil {
+		log.Errorf("update blog failed: %s", err)
+		http.Error(w, "update blog failed", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", id))
 }
 
 func (handler *Handler) handleDeleteBlog(w http.ResponseWriter, r *http.Request) {

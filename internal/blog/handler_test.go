@@ -377,3 +377,46 @@ func TestBlogHandler_handleUpdateBlog_correctToken(t *testing.T) {
 	assert.Equal(t, "This content makes no sense", addedPost.Content)
 	assert.False(t, addedPost.CreatedAt.IsZero())
 }
+
+func TestBlogHandler_handleBlogClapped_correctToken(t *testing.T) {
+	redisClient, redisMock := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
+
+	r := mux.NewRouter()
+	handler := NewBlogHandler(r.PathPrefix("/blog").Subrouter(), blogApi, loginChecker)
+	require.NotNil(t, handler)
+
+	req, err := http.NewRequest("PATCH", "/blog/clap", nil)
+	require.NoError(t, err)
+
+	blog0 := blogApi.Posts[0]
+	assert.Equal(t, 0, blog0.Claps)
+
+	req.PostForm = url.Values{}
+	req.PostForm.Add("id", fmt.Sprintf("%d", blog0.Id))
+	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
+	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	rr := httptest.NewRecorder()
+
+	currentPostsCount := blogApi.PostsCount()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, fmt.Sprintf("updated:%d", blog0.Id), rr.Body.String())
+	assert.Equal(t, 1, blogApi.Posts[blog0.Id].Claps)
+	assert.Equal(t, currentPostsCount, blogApi.PostsCount())
+
+	req, err = http.NewRequest("PATCH", "/blog/clap", nil)
+	require.NoError(t, err)
+	req.PostForm = url.Values{}
+	req.PostForm.Add("id", fmt.Sprintf("%d", blog0.Id))
+	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
+	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+	rr = httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, fmt.Sprintf("updated:%d", blog0.Id), rr.Body.String())
+	assert.Equal(t, 2, blogApi.Posts[blog0.Id].Claps)
+	assert.Equal(t, currentPostsCount, blogApi.PostsCount())
+}
