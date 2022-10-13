@@ -273,7 +273,8 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 			// TODO: find a better way to mark routes auth-free
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/blog/page/"),
-				r.URL.Path == "/blog/all":
+				r.URL.Path == "/blog/all",
+				r.URL.Path == "/blog/clap":
 				next.ServeHTTP(w, r)
 				return
 			}
