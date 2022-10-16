@@ -40,10 +40,11 @@ func (api *TestApi) AddBlog(_ context.Context, blog *Blog) error {
 	return nil
 }
 
-func (api *TestApi) UpdateBlog(_ context.Context, blog *Blog) error {
+func (api *TestApi) UpdateBlog(_ context.Context, id int, title, content string) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
-	api.Posts[blog.Id] = blog
+	api.Posts[id].Title = title
+	api.Posts[id].Content = content
 	return nil
 }
 

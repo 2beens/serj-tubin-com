@@ -71,22 +71,24 @@ func (api *PsqlApi) AddBlog(ctx context.Context, blog *Blog) error {
 	return errors.New("unexpected error, failed to insert blog")
 }
 
-func (api *PsqlApi) UpdateBlog(ctx context.Context, blog *Blog) error {
-	if blog.Content == "" || blog.Title == "" {
+// UpdateBlog will update the content and title of the blog
+// createdAt and claps are not updated
+func (api *PsqlApi) UpdateBlog(ctx context.Context, id int, title, content string) error {
+	if content == "" || title == "" {
 		return ErrBlogTitleOrContentEmpty
 	}
 
 	tag, err := api.db.Exec(
 		ctx,
-		`UPDATE blog SET title = $1, content = $2, claps = $3, WHERE id = $4`,
-		blog.Title, blog.Content, blog.Claps, blog.Id,
+		`UPDATE blog SET title = $1, content = $2 WHERE id = $3`,
+		title, content, id,
 	)
 	if err != nil {
 		return err
 	}
 
 	if tag.RowsAffected() == 0 {
-		log.Tracef("blog %d not updated", blog.Id)
+		log.Tracef("blog %d not updated", id)
 	}
 
 	return nil

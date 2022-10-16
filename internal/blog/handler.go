@@ -109,20 +109,13 @@ func (handler *Handler) handleUpdateBlog(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	blog := &Blog{
-		Id:        id,
-		Title:     title,
-		CreatedAt: time.Now(),
-		Content:   content,
-	}
-
-	if err := handler.blogApi.UpdateBlog(r.Context(), blog); err != nil {
+	if err := handler.blogApi.UpdateBlog(r.Context(), id, title, content); err != nil {
 		log.Errorf("update blog failed: %s", err)
 		http.Error(w, "update blog failed", http.StatusInternalServerError)
 		return
 	}
 
-	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", blog.Id))
+	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", id))
 }
 
 func (handler *Handler) handleBlogClapped(w http.ResponseWriter, r *http.Request) {
