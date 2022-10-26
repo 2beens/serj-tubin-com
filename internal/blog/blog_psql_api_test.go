@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	gofakeit "github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,18 +46,71 @@ func TestPsqlApi_AddBlog(t *testing.T) {
 	blogsCount, err := psqlApi.BlogsCount(ctx)
 	require.NoError(t, err)
 
-	err = psqlApi.AddBlog(ctx, &Blog{
+	now := time.Now().Add(-time.Minute)
+
+	b1 := &Blog{
 		Title:   "b1",
 		Content: "content1",
-	})
+	}
+	err = psqlApi.AddBlog(ctx, b1)
 	require.NoError(t, err)
-	err = psqlApi.AddBlog(ctx, &Blog{
+
+	b2 := &Blog{
 		Title:   "b2",
 		Content: "content2",
-	})
+	}
+	err = psqlApi.AddBlog(ctx, b2)
 	require.NoError(t, err)
+
+	assert.NotEqual(t, b1.Id, b2.Id)
+	assert.True(t, now.Before(b1.CreatedAt), "%v should be before %v", now, b1.CreatedAt)
+	assert.True(t, now.Before(b2.CreatedAt), "%v should be before %v", now, b2.CreatedAt)
 
 	blogsCountAfter, err := psqlApi.BlogsCount(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 2+blogsCount, blogsCountAfter)
+}
+
+func TestPsqlApi_UpdateBlog(t *testing.T) {
+	ctx := context.Background()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	host := os.Getenv("POSTGRES_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+	t.Logf("using postres host: %s", host)
+
+	psqlApi, err := NewBlogPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
+	require.NoError(t, err)
+
+	clapsCount := 10
+	blog := &Blog{
+		Title:   gofakeit.Name(),
+		Content: gofakeit.Address().Address,
+		Claps:   clapsCount,
+	}
+	err = psqlApi.AddBlog(ctx, blog)
+	require.NoError(t, err)
+
+	require.NoError(t, psqlApi.UpdateBlog(ctx, blog.Id, "newtitle", "newcontent"))
+
+	updatedBlog, err := psqlApi.GetBlog(ctx, blog.Id)
+	require.NoError(t, err)
+	require.NotNil(t, updatedBlog)
+	assert.Equal(t, "newcontent", updatedBlog.Content)
+	assert.Equal(t, "newtitle", updatedBlog.Title)
+	assert.Equal(t, clapsCount, updatedBlog.Claps)
+
+	require.NoError(t, psqlApi.BlogClapped(ctx, blog.Id))
+	require.NoError(t, psqlApi.BlogClapped(ctx, blog.Id))
+	require.NoError(t, psqlApi.BlogClapped(ctx, blog.Id))
+
+	updatedBlog, err = psqlApi.GetBlog(ctx, blog.Id)
+	require.NoError(t, err)
+	require.NotNil(t, updatedBlog)
+	assert.Equal(t, "newcontent", updatedBlog.Content)
+	assert.Equal(t, "newtitle", updatedBlog.Title)
+	assert.Equal(t, clapsCount+3, updatedBlog.Claps)
 }

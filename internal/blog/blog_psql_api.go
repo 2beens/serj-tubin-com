@@ -15,6 +15,8 @@ import (
 
 var _ Api = (*PsqlApi)(nil)
 
+var ErrBlogNotFound = errors.New("blog not found")
+
 type PsqlApi struct {
 	db *pgxpool.Pool
 }
@@ -44,6 +46,10 @@ func (api *PsqlApi) CloseDB() {
 func (api *PsqlApi) AddBlog(ctx context.Context, blog *Blog) error {
 	if blog.Content == "" || blog.Title == "" {
 		return errors.New("blog title or content empty")
+	}
+
+	if blog.CreatedAt.IsZero() {
+		blog.CreatedAt = time.Now()
 	}
 
 	rows, err := api.db.Query(
@@ -231,4 +237,45 @@ func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, 
 	}
 
 	return blogs, nil
+}
+
+func (api *PsqlApi) GetBlog(ctx context.Context, id int) (*Blog, error) {
+	log.Tracef("getting blog %d", id)
+
+	rows, err := api.db.Query(
+		ctx,
+		`
+			SELECT * FROM blog
+			WHERE id = $1;
+		`,
+		id,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if !rows.Next() {
+		return nil, ErrBlogNotFound
+	}
+
+	var blogId int
+	var title string
+	var createdAt time.Time
+	var content string
+	var claps int
+	if err := rows.Scan(&blogId, &title, &createdAt, &content, &claps); err != nil {
+		return nil, err
+	}
+	return &Blog{
+		Id:        blogId,
+		Title:     title,
+		CreatedAt: createdAt,
+		Content:   content,
+		Claps:     claps,
+	}, nil
 }
