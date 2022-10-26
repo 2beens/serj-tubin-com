@@ -17,7 +17,9 @@ jobs:
     services:
       # Label used to access the service container
       postgres:
-        image: postgres
+        image: postgres:latest
+        ports:
+          - "5432:5432"
         env:
           POSTGRES_DB: serj_blogs
           POSTGRES_USER: postgres
