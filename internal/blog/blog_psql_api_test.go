@@ -4,6 +4,7 @@ package blog
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -15,9 +16,13 @@ func TestNewBlogPsqlApi(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	host, port, dbName := "localhost", "5432", "serj_blogs"
+	host := os.Getenv("POSTGRES_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+	t.Logf("using postres host: %s", host)
 
-	psqlApi, err := NewBlogPsqlApi(ctx, host, port, dbName)
+	psqlApi, err := NewBlogPsqlApi(ctx, host, "5432", "serj_blogs")
 	require.NoError(t, err)
 	require.NotNil(t, psqlApi)
 	assert.NotNil(t, psqlApi.db)
