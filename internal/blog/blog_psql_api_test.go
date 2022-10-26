@@ -29,7 +29,7 @@ func TestNewBlogPsqlApi(t *testing.T) {
 	assert.NotNil(t, psqlApi.db)
 }
 
-func TestPsqlApi_AddBlog(t *testing.T) {
+func TestPsqlApi_AddBlog_DeleteBlog(t *testing.T) {
 	ctx := context.Background()
 	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
@@ -54,24 +54,38 @@ func TestPsqlApi_AddBlog(t *testing.T) {
 	}
 	err = psqlApi.AddBlog(ctx, b1)
 	require.NoError(t, err)
-
 	b2 := &Blog{
 		Title:   "b2",
 		Content: "content2",
 	}
 	err = psqlApi.AddBlog(ctx, b2)
 	require.NoError(t, err)
+	b3 := &Blog{
+		Title:   "b3",
+		Content: "content3",
+	}
+	err = psqlApi.AddBlog(ctx, b3)
+	require.NoError(t, err)
 
 	assert.NotEqual(t, b1.Id, b2.Id)
+	assert.NotEqual(t, b1.Id, b3.Id)
+	assert.NotEqual(t, b2.Id, b3.Id)
 	assert.True(t, now.Before(b1.CreatedAt), "%v should be before %v", now, b1.CreatedAt)
 	assert.True(t, now.Before(b2.CreatedAt), "%v should be before %v", now, b2.CreatedAt)
+	assert.True(t, now.Before(b2.CreatedAt), "%v should be before %v", now, b3.CreatedAt)
 
 	blogsCountAfter, err := psqlApi.BlogsCount(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, 2+blogsCount, blogsCountAfter)
+	assert.Equal(t, 3+blogsCount, blogsCountAfter)
+
+	// now delete b2
+	assert.ErrorIs(t, psqlApi.DeleteBlog(ctx, 25342523), ErrBlogNotFound)
+	require.NoError(t, psqlApi.DeleteBlog(ctx, b2.Id))
+	_, err = psqlApi.GetBlog(ctx, b2.Id)
+	assert.ErrorIs(t, err, ErrBlogNotFound)
 }
 
-func TestPsqlApi_UpdateBlog(t *testing.T) {
+func TestPsqlApi_UpdateBlog_BlogClapped(t *testing.T) {
 	ctx := context.Background()
 	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
@@ -103,6 +117,8 @@ func TestPsqlApi_UpdateBlog(t *testing.T) {
 	assert.Equal(t, "newtitle", updatedBlog.Title)
 	assert.Equal(t, clapsCount, updatedBlog.Claps)
 
+	// assert claps
+	assert.ErrorIs(t, psqlApi.BlogClapped(ctx, 25342523), ErrBlogNotFound)
 	require.NoError(t, psqlApi.BlogClapped(ctx, blog.Id))
 	require.NoError(t, psqlApi.BlogClapped(ctx, blog.Id))
 	require.NoError(t, psqlApi.BlogClapped(ctx, blog.Id))

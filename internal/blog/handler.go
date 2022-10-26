@@ -159,18 +159,13 @@ func (handler *Handler) handleDeleteBlog(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	deleted, err := handler.blogApi.DeleteBlog(r.Context(), id)
-	if err != nil {
+	if err := handler.blogApi.DeleteBlog(r.Context(), id); err != nil {
 		log.Printf("failed to delete blog %d: %s", id, err)
 		http.Error(w, "error, blog not deleted, internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	if deleted {
-		pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
-	} else {
-		pkg.WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
-	}
+	pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
 }
 
 func (handler *Handler) handleAll(w http.ResponseWriter, r *http.Request) {

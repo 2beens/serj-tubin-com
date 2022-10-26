@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	ErrBlogNotExists           = errors.New("blog does not exist")
+	ErrBlogNotFound            = errors.New("blog not found")
 	ErrBlogTitleOrContentEmpty = errors.New("blog title or content empty")
 )
 

@@ -53,7 +53,7 @@ func (api *TestApi) BlogClapped(_ context.Context, id int) error {
 	defer api.mutex.Unlock()
 
 	if b, found := api.Posts[id]; !found {
-		return ErrBlogNotExists
+		return ErrBlogNotFound
 	} else {
 		b.Claps++
 	}
@@ -61,18 +61,18 @@ func (api *TestApi) BlogClapped(_ context.Context, id int) error {
 	return nil
 }
 
-func (api *TestApi) DeleteBlog(_ context.Context, id int) (bool, error) {
+func (api *TestApi) DeleteBlog(_ context.Context, id int) error {
 	api.mutex.Lock()
 	defer api.mutex.Unlock()
 
 	_, ok := api.Posts[id]
 	if !ok {
-		return false, nil
+		return ErrBlogNotFound
 	}
 
 	delete(api.Posts, id)
 
-	return true, nil
+	return nil
 }
 
 func (api *TestApi) All(_ context.Context) ([]*Blog, error) {
