@@ -24,6 +24,8 @@ run-fs: run-file-service
 
 test:
 	go test -race ./...
+test-all:
+    go test -race ./... -tags=all_tests
 
 deploy:
 	./scripts/redeploy.sh
