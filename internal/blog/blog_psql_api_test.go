@@ -146,3 +146,31 @@ func TestPsqlApi_All(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, len(allBlogs) >= addedCount)
 }
+
+func TestPsqlApi_GetBlogsPage(t *testing.T) {
+	ctx := context.Background()
+	psqlApi, err := getPsqlApi(t)
+	require.NoError(t, err)
+
+	addedCount := 5
+	for i := 1; i <= addedCount; i++ {
+		b := &Blog{
+			Title:   fmt.Sprintf("b %d", i),
+			Content: fmt.Sprintf("content %d", i),
+		}
+		err = psqlApi.AddBlog(ctx, b)
+		require.NoError(t, err)
+	}
+
+	blogs, err := psqlApi.GetBlogsPage(ctx, 2, 2)
+	require.NoError(t, err)
+	assert.Len(t, blogs, 2)
+
+	blogs, err = psqlApi.GetBlogsPage(ctx, 1, 1)
+	require.NoError(t, err)
+	assert.Len(t, blogs, 1)
+
+	blogs, err = psqlApi.GetBlogsPage(ctx, 1, addedCount)
+	require.NoError(t, err)
+	assert.Len(t, blogs, addedCount)
+}
