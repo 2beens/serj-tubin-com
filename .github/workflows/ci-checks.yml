@@ -19,8 +19,6 @@ jobs:
       # Label used to access the service container
       postgres:
         image: postgres:latest
-        ports:
-          - "5432:5432"
         env:
           POSTGRES_DB: serj_blogs
           POSTGRES_USER: postgres
@@ -33,16 +31,6 @@ jobs:
             --health-timeout 5s
             --health-retries 5
     steps:
-      - name: Install PostgreSQL client
-        run: |
-          apt-get update
-          apt-get install --yes postgresql-client
-      # queries database with postgres client
-      - name: Query database
-        run: psql -h postgres -d serj_blogs -U postgres -c 'SELECT 1;'
-        env:
-          PGPASSWORD: admin
-
       - uses: actions/checkout@v3 # checks-out the repository under $GITHUB_WORKSPACE
         with:
           fetch-depth: 1
