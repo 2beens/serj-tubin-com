@@ -13,8 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewBlogPsqlApi(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+func getPsqlApi(t *testing.T) (*PsqlApi, error) {
+	t.Helper()
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	host := os.Getenv("POSTGRES_HOST")
@@ -23,7 +25,11 @@ func TestNewBlogPsqlApi(t *testing.T) {
 	}
 	t.Logf("using postres host: %s", host)
 
-	psqlApi, err := NewBlogPsqlApi(ctx, host, "5432", "serj_blogs")
+	return NewBlogPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
+}
+
+func TestNewBlogPsqlApi(t *testing.T) {
+	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
 	require.NotNil(t, psqlApi)
 	assert.NotNil(t, psqlApi.db)
@@ -31,16 +37,7 @@ func TestNewBlogPsqlApi(t *testing.T) {
 
 func TestPsqlApi_AddBlog_DeleteBlog(t *testing.T) {
 	ctx := context.Background()
-	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	host := os.Getenv("POSTGRES_HOST")
-	if host == "" {
-		host = "localhost"
-	}
-	t.Logf("using postres host: %s", host)
-
-	psqlApi, err := NewBlogPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
+	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
 
 	blogsCount, err := psqlApi.BlogsCount(ctx)
@@ -87,16 +84,7 @@ func TestPsqlApi_AddBlog_DeleteBlog(t *testing.T) {
 
 func TestPsqlApi_UpdateBlog_BlogClapped(t *testing.T) {
 	ctx := context.Background()
-	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	host := os.Getenv("POSTGRES_HOST")
-	if host == "" {
-		host = "localhost"
-	}
-	t.Logf("using postres host: %s", host)
-
-	psqlApi, err := NewBlogPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
+	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
 
 	clapsCount := 10
