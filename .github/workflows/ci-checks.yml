@@ -32,7 +32,7 @@ jobs:
             --health-timeout 5s
             --health-retries 5
     steps:
-      - uses: actions/checkout@v2 # checks-out the repository under $GITHUB_WORKSPACE
+      - uses: actions/checkout@v3 # checks-out the repository under $GITHUB_WORKSPACE
         with:
           fetch-depth: 1
           go-version: '1.19.0'
