@@ -20,6 +20,10 @@ github.com/aerospike/aerospike-client-go/utils/buffer
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
+# github.com/brianvoe/gofakeit/v6 v6.19.0
+## explicit; go 1.17
+github.com/brianvoe/gofakeit/v6
+github.com/brianvoe/gofakeit/v6/data
 # github.com/cespare/xxhash v1.1.0
 ## explicit
 github.com/cespare/xxhash

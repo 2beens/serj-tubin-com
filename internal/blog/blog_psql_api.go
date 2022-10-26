@@ -46,6 +46,10 @@ func (api *PsqlApi) AddBlog(ctx context.Context, blog *Blog) error {
 		return errors.New("blog title or content empty")
 	}
 
+	if blog.CreatedAt.IsZero() {
+		blog.CreatedAt = time.Now()
+	}
+
 	rows, err := api.db.Query(
 		ctx,
 		`INSERT INTO blog (title, created_at, content, claps) VALUES ($1, $2, $3, $4) RETURNING id;`,
@@ -100,20 +104,20 @@ func (api *PsqlApi) BlogClapped(ctx context.Context, id int) error {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		log.Tracef("blog %d not updated", id)
+		return ErrBlogNotFound
 	}
 	return nil
 }
 
-func (api *PsqlApi) DeleteBlog(ctx context.Context, id int) (bool, error) {
+func (api *PsqlApi) DeleteBlog(ctx context.Context, id int) error {
 	tag, err := api.db.Exec(ctx, `DELETE FROM blog WHERE id = $1`, id)
 	if err != nil {
-		return false, err
+		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return false, nil
+		return ErrBlogNotFound
 	}
-	return true, nil
+	return nil
 }
 
 func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
@@ -231,4 +235,45 @@ func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, 
 	}
 
 	return blogs, nil
+}
+
+func (api *PsqlApi) GetBlog(ctx context.Context, id int) (*Blog, error) {
+	log.Tracef("getting blog %d", id)
+
+	rows, err := api.db.Query(
+		ctx,
+		`
+			SELECT * FROM blog
+			WHERE id = $1;
+		`,
+		id,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if !rows.Next() {
+		return nil, ErrBlogNotFound
+	}
+
+	var blogId int
+	var title string
+	var createdAt time.Time
+	var content string
+	var claps int
+	if err := rows.Scan(&blogId, &title, &createdAt, &content, &claps); err != nil {
+		return nil, err
+	}
+	return &Blog{
+		Id:        blogId,
+		Title:     title,
+		CreatedAt: createdAt,
+		Content:   content,
+		Claps:     claps,
+	}, nil
 }

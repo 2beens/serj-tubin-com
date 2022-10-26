@@ -1,12 +1,16 @@
+.PHONY: info
 info:
 	echo "This is supposed to be a small set of tools for my backend service."
 
+.PHONY: db-setup
 db-setup:
 	sudo ./scripts/db_setup.sh
 
+.PHONY: clean
 clean:
 	rm -rf ./bin
 
+.PHONY: build build-fs build-netlog-backup build-all
 build:
 	go build -o bin/service cmd/service/main.go
 build-fs:
@@ -15,6 +19,7 @@ build-netlog-backup:
 	go build -o bin/netlog-backup cmd/netlog_gd_backup/main.go
 build-all: build build-fs build-netlog-backup
 
+.PHONY: run-service run-file-service run run-fs
 run-service:
 	go run cmd/service/main.go
 run-file-service:
@@ -22,14 +27,19 @@ run-file-service:
 run: run-service
 run-fs: run-file-service
 
+.PHONY: test test-all
 test:
 	go test -race ./...
+test-all:
+	go test -race ./... -tags=all_tests
 
+.PHONY: deploy deploy-c
 deploy:
 	./scripts/redeploy.sh
 deploy-c:
 	./scripts/redeploy.sh --current-commit
 
+.PHONY: deploy-file-service deploy-file-service-c deploy-fsc deploy-fs
 deploy-file-service:
 	./scripts/redeploy-file-box-service.sh
 deploy-file-service-c:
@@ -37,6 +47,7 @@ deploy-file-service-c:
 deploy-fsc: deploy-file-service-c
 deploy-fs: deploy-file-service
 
+.PHONY: compile
 compile:
 	echo "Compiling for various OS and Platform"
 	go build -o bin/service cmd/service/main.go

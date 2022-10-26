@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/aerospike/aerospike-client-go v3.0.0+incompatible
+	github.com/brianvoe/gofakeit/v6 v6.19.0
 	github.com/coocood/freecache v1.1.0
 	github.com/dgraph-io/ristretto v0.0.3
 	github.com/go-redis/redis/v8 v8.11.4
