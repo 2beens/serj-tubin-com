@@ -4,6 +4,7 @@ package blog
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -117,4 +118,31 @@ func TestPsqlApi_UpdateBlog_BlogClapped(t *testing.T) {
 	assert.Equal(t, "newcontent", updatedBlog.Content)
 	assert.Equal(t, "newtitle", updatedBlog.Title)
 	assert.Equal(t, clapsCount+3, updatedBlog.Claps)
+}
+
+func TestPsqlApi_All(t *testing.T) {
+	ctx := context.Background()
+	psqlApi, err := getPsqlApi(t)
+	require.NoError(t, err)
+
+	blogsCount, err := psqlApi.BlogsCount(ctx)
+	require.NoError(t, err)
+
+	addedCount := 5
+	for i := 1; i <= addedCount; i++ {
+		b := &Blog{
+			Title:   fmt.Sprintf("b %d", i),
+			Content: fmt.Sprintf("content %d", i),
+		}
+		err = psqlApi.AddBlog(ctx, b)
+		require.NoError(t, err)
+	}
+
+	blogsCountAfter, err := psqlApi.BlogsCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, addedCount+blogsCount, blogsCountAfter)
+
+	allBlogs, err := psqlApi.All(ctx)
+	require.NoError(t, err)
+	assert.True(t, len(allBlogs) >= addedCount)
 }
