@@ -28,6 +28,14 @@ func getPsqlApi(t *testing.T) (*PsqlApi, error) {
 	return NewNetlogPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
 }
 
+func deleteAllVisits(ctx context.Context, psqlApi *PsqlApi) (int64, error) {
+	tag, err := psqlApi.db.Exec(ctx, `DELETE FROM netlog.visit`)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
 func TestUtil_getQueryLikeCondition(t *testing.T) {
 	// no keywords
 	queryLike := getQueryWhereCondition("url", "chrome", []string{})
@@ -112,4 +120,37 @@ func TestPsqlApi_AddVisit(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 3, countAfter-count)
+}
+
+func TestPsqlApi_GetAllVisits(t *testing.T) {
+	ctx := context.Background()
+	psqlApi, err := getPsqlApi(t)
+	require.NoError(t, err)
+
+	_, err = deleteAllVisits(ctx, psqlApi)
+	require.NoError(t, err)
+
+	allVisits, err := psqlApi.GetAllVisits(ctx, nil)
+	require.NoError(t, err)
+	assert.Empty(t, allVisits)
+
+	now := time.Now()
+	addedCount := 10
+	for i := 1; i <= 10; i++ {
+		psqlApi.AddVisit(ctx, &Visit{
+			Title:     gofakeit.Name(),
+			Source:    "pc",
+			URL:       gofakeit.URL(),
+			Timestamp: now.Add(time.Duration(i) * time.Minute),
+		})
+	}
+
+	allVisits, err = psqlApi.GetAllVisits(ctx, &now)
+	require.NoError(t, err)
+	assert.Len(t, allVisits, addedCount)
+
+	after5mins := now.Add(5 * time.Minute)
+	after5minutesVisits, err := psqlApi.GetAllVisits(ctx, &after5mins)
+	require.NoError(t, err)
+	assert.Len(t, after5minutesVisits, 6)
 }
