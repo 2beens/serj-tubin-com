@@ -2,6 +2,7 @@ main
 *.log
 
 .idea/
+.fleet/
 test_root/
 .vscode/
 test_root/
