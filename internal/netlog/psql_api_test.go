@@ -255,3 +255,84 @@ func TestPsqlApi_GetVisits_and_Count(t *testing.T) {
 	assert.True(t, strings.HasPrefix(visits[0].Title, "title four"))
 	assert.True(t, strings.HasPrefix(visits[1].Title, "title four"))
 }
+
+func TestPsqlApi_GetVisitsPage(t *testing.T) {
+	ctx := context.Background()
+	psqlApi, err := getPsqlApi(t)
+	require.NoError(t, err)
+
+	_, err = deleteAllVisits(ctx, psqlApi)
+	require.NoError(t, err)
+
+	now := time.Now()
+	v1 := &Visit{
+		Title:     "title one",
+		Source:    "pc",
+		URL:       "https://www.one.com/",
+		Timestamp: now,
+	}
+	v2 := &Visit{
+		Title:     "title two",
+		Source:    "safari",
+		URL:       "https://www.two.com/",
+		Timestamp: now.Add(-1 * time.Minute),
+	}
+	v3 := &Visit{
+		Title:     "title three",
+		Source:    "chrome",
+		URL:       "https://www.three.com/",
+		Timestamp: now.Add(-2 * time.Minute),
+	}
+	v4 := &Visit{
+		Title:     "title four",
+		Source:    "chrome",
+		URL:       "https://www.four.com/",
+		Timestamp: now.Add(-3 * time.Minute),
+	}
+	v4b := &Visit{
+		Title:     "title four b",
+		Source:    "chrome",
+		URL:       "https://www.four.com/beta",
+		Timestamp: now.Add(-4 * time.Minute),
+	}
+
+	require.NoError(t, psqlApi.AddVisit(ctx, v1))
+	require.NoError(t, psqlApi.AddVisit(ctx, v2))
+	require.NoError(t, psqlApi.AddVisit(ctx, v3))
+	require.NoError(t, psqlApi.AddVisit(ctx, v4))
+	require.NoError(t, psqlApi.AddVisit(ctx, v4b))
+
+	allVisits, err := psqlApi.CountAll(ctx)
+	require.NoError(t, err)
+	require.Equal(t, allVisits, 5)
+
+	gottenVisits, err := psqlApi.GetVisitsPage(ctx, []string{"www"}, "url", "all", 3, 2)
+	require.NoError(t, err)
+	assert.Len(t, gottenVisits, 2)
+	assert.Equal(t, v4b.Id, gottenVisits[1].Id)
+	assert.Equal(t, v4.Id, gottenVisits[0].Id)
+	gottenVisits, err = psqlApi.GetVisitsPage(ctx, []string{"www"}, "url", "all", 2, 2)
+	require.NoError(t, err)
+	assert.Len(t, gottenVisits, 2)
+	assert.Equal(t, v4.Id, gottenVisits[1].Id)
+	assert.Equal(t, v3.Id, gottenVisits[0].Id)
+	gottenVisits, err = psqlApi.GetVisitsPage(ctx, []string{"www"}, "url", "all", 1, 2)
+	require.NoError(t, err)
+	assert.Len(t, gottenVisits, 2)
+	assert.Equal(t, v2.Id, gottenVisits[1].Id)
+	assert.Equal(t, v1.Id, gottenVisits[0].Id)
+	gottenVisits, err = psqlApi.GetVisitsPage(ctx, []string{"www"}, "url", "all", 0, 2)
+	require.NoError(t, err)
+	assert.Len(t, gottenVisits, 0)
+	gottenVisits, err = psqlApi.GetVisitsPage(ctx, []string{"www"}, "url", "all", 1, 20)
+	require.NoError(t, err)
+	assert.Len(t, gottenVisits, 5)
+	gottenVisits, err = psqlApi.GetVisitsPage(ctx, []string{"title"}, "title", "all", 1, 20)
+	require.NoError(t, err)
+	assert.Len(t, gottenVisits, 5)
+	gottenVisits, err = psqlApi.GetVisitsPage(ctx, []string{"www"}, "url", "chrome", 1, 2)
+	require.NoError(t, err)
+	assert.Len(t, gottenVisits, 2)
+	assert.Equal(t, v4.Id, gottenVisits[1].Id)
+	assert.Equal(t, v3.Id, gottenVisits[0].Id)
+}
