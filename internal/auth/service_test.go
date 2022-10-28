@@ -22,11 +22,19 @@ func getRedisClient(t *testing.T) *redis.Client {
 	if redisHost == "" {
 		redisHost = "localhost"
 	}
-	t.Logf("using redis host: %s", redisHost)
+	t.Logf("using redis host: [%s]", redisHost)
+
+	redisPass := os.Getenv("REDIS_PASS")
+	if redisPass == "" {
+		redisPass = "todo"
+	} else if redisPass == "<remove>" {
+		redisPass = ""
+	}
+	t.Logf("using redis pass: [%s]", redisPass)
 
 	return redis.NewClient(&redis.Options{
 		Addr:     net.JoinHostPort(redisHost, "6379"),
-		Password: "todo",
+		Password: redisPass,
 		DB:       0, // use default DB
 	})
 }
