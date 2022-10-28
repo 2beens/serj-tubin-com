@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"net"
@@ -9,11 +10,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/board/aerospike"
-
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/board"
+	"github.com/2beens/serjtubincom/internal/board/aerospike"
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/instrumentation"
@@ -163,7 +163,13 @@ func NewServer(
 		instr: instr,
 	}
 
-	s.quotesManager, err = misc.NewQuoteManager("./assets/quotes.csv")
+	quotesCsvFile, err := os.Open(config.QuotesCsvPath)
+	if err != nil {
+		return nil, fmt.Errorf("open quotes file: %w", err)
+	}
+	defer quotesCsvFile.Close()
+
+	s.quotesManager, err = misc.NewQuoteManager(csv.NewReader(quotesCsvFile))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create quote manager: %s", err)
 	}

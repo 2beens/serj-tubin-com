@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"os"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -16,23 +15,16 @@ type QuotesManager struct {
 	GenresQuotes  map[string][]*Quote
 }
 
-func NewQuoteManager(quotesPath string) (*QuotesManager, error) {
-	quotesCsv, err := os.Open(quotesPath)
-	if err != nil {
-		return nil, err
-	}
-	defer quotesCsv.Close()
-
+func NewQuoteManager(quotesCsvReader *csv.Reader) (*QuotesManager, error) {
 	qm := &QuotesManager{}
 	qm.AuthorsQuotes = make(map[string][]*Quote)
 	qm.GenresQuotes = make(map[string][]*Quote)
 
 	log.Println("reading quotes CSV ...")
 
-	quotesReader := csv.NewReader(quotesCsv)
-	quotesReader.Comma = ';'
+	quotesCsvReader.Comma = ';'
 	for {
-		record, err := quotesReader.Read()
+		record, err := quotesCsvReader.Read()
 		if err == io.EOF {
 			break
 		}
