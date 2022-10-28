@@ -9,6 +9,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type Quote struct {
+	Text   string `json:"text"`
+	Author string `json:"author"`
+	Genre  string `json:"genre"`
+}
+
 type QuotesManager struct {
 	Quotes        []*Quote
 	AuthorsQuotes map[string][]*Quote
@@ -41,7 +47,11 @@ func NewQuoteManager(quotesCsvReader *csv.Reader) (*QuotesManager, error) {
 		author := record[1]
 		genre := record[2]
 
-		quote := NewQuote(quoteText, author, genre)
+		quote := &Quote{
+			Text:   quoteText,
+			Author: author,
+			Genre:  genre,
+		}
 		qm.Quotes = append(qm.Quotes, quote)
 
 		qm.AuthorsQuotes[author] = append(qm.AuthorsQuotes[author], quote)
