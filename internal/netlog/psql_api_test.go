@@ -38,6 +38,53 @@ func deleteAllVisits(ctx context.Context, psqlApi *PsqlApi) (int64, error) {
 	return tag.RowsAffected(), nil
 }
 
+func cleanupAndAddTestVisits(ctx context.Context, t *testing.T, psqlApi *PsqlApi) []*Visit {
+	t.Helper()
+
+	_, err := deleteAllVisits(ctx, psqlApi)
+	require.NoError(t, err)
+
+	now := time.Now()
+	v1 := &Visit{
+		Title:     "title one",
+		Source:    "pc",
+		URL:       "https://www.one.com/",
+		Timestamp: now,
+	}
+	v2 := &Visit{
+		Title:     "title two",
+		Source:    "safari",
+		URL:       "https://www.two.com/",
+		Timestamp: now.Add(-1 * time.Minute),
+	}
+	v3 := &Visit{
+		Title:     "title three",
+		Source:    "chrome",
+		URL:       "https://www.three.com/",
+		Timestamp: now.Add(-2 * time.Minute),
+	}
+	v4 := &Visit{
+		Title:     "title four",
+		Source:    "chrome",
+		URL:       "https://www.four.com/",
+		Timestamp: now.Add(-3 * time.Minute),
+	}
+	v4b := &Visit{
+		Title:     "title four b",
+		Source:    "chrome",
+		URL:       "https://www.four.com/beta",
+		Timestamp: now.Add(-4 * time.Minute),
+	}
+
+	require.NoError(t, psqlApi.AddVisit(ctx, v1))
+	require.NoError(t, psqlApi.AddVisit(ctx, v2))
+	require.NoError(t, psqlApi.AddVisit(ctx, v3))
+	require.NoError(t, psqlApi.AddVisit(ctx, v4))
+	require.NoError(t, psqlApi.AddVisit(ctx, v4b))
+
+	return []*Visit{v1, v2, v3, v4, v4b}
+}
+
 func TestUtil_getQueryLikeCondition(t *testing.T) {
 	// no keywords
 	queryLike := getQueryWhereCondition("url", "chrome", []string{})
@@ -162,46 +209,7 @@ func TestPsqlApi_GetVisits_and_Count(t *testing.T) {
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
 
-	_, err = deleteAllVisits(ctx, psqlApi)
-	require.NoError(t, err)
-
-	now := time.Now()
-	v1 := &Visit{
-		Title:     "title one",
-		Source:    "pc",
-		URL:       "https://www.one.com/",
-		Timestamp: now,
-	}
-	v2 := &Visit{
-		Title:     "title two",
-		Source:    "safari",
-		URL:       "https://www.two.com/",
-		Timestamp: now.Add(-1 * time.Minute),
-	}
-	v3 := &Visit{
-		Title:     "title three",
-		Source:    "chrome",
-		URL:       "https://www.three.com/",
-		Timestamp: now.Add(-2 * time.Minute),
-	}
-	v4 := &Visit{
-		Title:     "title four",
-		Source:    "chrome",
-		URL:       "https://www.four.com/",
-		Timestamp: now.Add(-3 * time.Minute),
-	}
-	v4b := &Visit{
-		Title:     "title four b",
-		Source:    "chrome",
-		URL:       "https://www.four.com/beta",
-		Timestamp: now.Add(-4 * time.Minute),
-	}
-
-	require.NoError(t, psqlApi.AddVisit(ctx, v1))
-	require.NoError(t, psqlApi.AddVisit(ctx, v2))
-	require.NoError(t, psqlApi.AddVisit(ctx, v3))
-	require.NoError(t, psqlApi.AddVisit(ctx, v4))
-	require.NoError(t, psqlApi.AddVisit(ctx, v4b))
+	_ = cleanupAndAddTestVisits(ctx, t, psqlApi)
 
 	allVisits, err := psqlApi.CountAll(ctx)
 	require.NoError(t, err)
@@ -261,46 +269,8 @@ func TestPsqlApi_GetVisitsPage(t *testing.T) {
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
 
-	_, err = deleteAllVisits(ctx, psqlApi)
-	require.NoError(t, err)
-
-	now := time.Now()
-	v1 := &Visit{
-		Title:     "title one",
-		Source:    "pc",
-		URL:       "https://www.one.com/",
-		Timestamp: now,
-	}
-	v2 := &Visit{
-		Title:     "title two",
-		Source:    "safari",
-		URL:       "https://www.two.com/",
-		Timestamp: now.Add(-1 * time.Minute),
-	}
-	v3 := &Visit{
-		Title:     "title three",
-		Source:    "chrome",
-		URL:       "https://www.three.com/",
-		Timestamp: now.Add(-2 * time.Minute),
-	}
-	v4 := &Visit{
-		Title:     "title four",
-		Source:    "chrome",
-		URL:       "https://www.four.com/",
-		Timestamp: now.Add(-3 * time.Minute),
-	}
-	v4b := &Visit{
-		Title:     "title four b",
-		Source:    "chrome",
-		URL:       "https://www.four.com/beta",
-		Timestamp: now.Add(-4 * time.Minute),
-	}
-
-	require.NoError(t, psqlApi.AddVisit(ctx, v1))
-	require.NoError(t, psqlApi.AddVisit(ctx, v2))
-	require.NoError(t, psqlApi.AddVisit(ctx, v3))
-	require.NoError(t, psqlApi.AddVisit(ctx, v4))
-	require.NoError(t, psqlApi.AddVisit(ctx, v4b))
+	addedVisits := cleanupAndAddTestVisits(ctx, t, psqlApi)
+	v1, v2, v3, v4, v4b := addedVisits[0], addedVisits[1], addedVisits[2], addedVisits[3], addedVisits[4]
 
 	allVisits, err := psqlApi.CountAll(ctx)
 	require.NoError(t, err)
