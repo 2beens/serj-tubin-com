@@ -137,22 +137,38 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 	}
 }
 
-// func TestAuthService_Login_Logout(t *testing.T) {
-// 	authService := NewAuthService(time.Hour, nil)
-// 	require.NotNil(t, authService)
+func TestAuthService_Login_Logout(t *testing.T) {
+	ctx := context.Background()
+	rdb := getRedisClient(t)
 
-// 	token1, err := authService.Login(time.Now())
-// 	require.NoError(t, err)
-// 	require.NotEmpty(t, token1)
-// 	assert.True(t, authService.IsLogged(token1))
-// 	token2, err := authService.Login(time.Now())
-// 	require.NoError(t, err)
-// 	require.NotEmpty(t, token2)
-// 	assert.True(t, authService.IsLogged(token2))
+	authService := NewAuthService(time.Hour, rdb)
+	require.NotNil(t, authService)
+	loginChecker := NewLoginChecker(time.Hour, rdb)
+	require.NotNil(t, loginChecker)
 
-// 	assert.NotEqual(t, token1, token2)
+	token1, err := authService.Login(ctx, time.Now())
+	require.NoError(t, err)
+	require.NotEmpty(t, token1)
+	isLogged1, err := loginChecker.IsLogged(ctx, token1)
+	require.NoError(t, err)
+	assert.True(t, isLogged1)
 
-// 	assert.False(t, authService.Logout("invalid token"))
-// 	assert.True(t, authService.Logout(token1))
-// 	assert.True(t, authService.Logout(token2))
-// }
+	token2, err := authService.Login(ctx, time.Now())
+	require.NoError(t, err)
+	require.NotEmpty(t, token2)
+	isLogged2, err := loginChecker.IsLogged(ctx, token1)
+	require.NoError(t, err)
+	assert.True(t, isLogged2)
+
+	assert.NotEqual(t, token1, token2)
+
+	loggedOut, err := authService.Logout(ctx, "invalid token")
+	require.ErrorIs(t, err, ErrLoginSessionNotFound)
+	assert.False(t, loggedOut)
+	loggedOut, err = authService.Logout(ctx, token1)
+	require.NoError(t, err, fmt.Sprintf("received err [%T]: %+v", err, err))
+	assert.True(t, loggedOut)
+	loggedOut, err = authService.Logout(ctx, token2)
+	require.NoError(t, err, fmt.Sprintf("received err [%T]: %+v", err, err))
+	assert.True(t, loggedOut)
+}

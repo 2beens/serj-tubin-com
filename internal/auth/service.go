@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -9,6 +11,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 )
+
+var ErrLoginSessionNotFound = errors.New("login session not found")
 
 const (
 	DefaultTTL       = 24 * 7 * time.Hour
@@ -69,24 +73,27 @@ func (as *Service) Logout(ctx context.Context, token string) (bool, error) {
 	sessionKey := sessionKeyPrefix + token
 	cmd := as.redisClient.Get(ctx, sessionKey)
 	if err := cmd.Err(); err != nil {
-		return false, err
+		if err.Error() == "redis: nil" {
+			return false, ErrLoginSessionNotFound
+		}
+		return false, fmt.Errorf("get session from redis: %w", err)
 	}
 
 	createdAtUnixStr := cmd.Val()
 	createdAtUnix, err := strconv.ParseInt(createdAtUnixStr, 10, 64)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("parse created at: %w", err)
 	}
 
 	cmdSet := as.redisClient.Set(ctx, sessionKey, 0, 0)
 	if err := cmdSet.Err(); err != nil {
-		return false, err
+		return false, fmt.Errorf("redis set session 0 0: %w", err)
 	}
 
 	// remove token from the list of sessions
 	cmdSRem := as.redisClient.SRem(ctx, tokensSetKey, token)
 	if err := cmdSRem.Err(); err != nil {
-		return false, err
+		return false, fmt.Errorf("redis remove token from set: %w", err)
 	}
 
 	return createdAtUnix > 0, nil
