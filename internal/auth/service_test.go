@@ -15,8 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getRedisClient(t *testing.T) *redis.Client {
+func getRedisClientAndCtx(t *testing.T) (context.Context, *redis.Client) {
 	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	go func() {
+		<-ctx.Done()
+		cancel()
+	}()
 
 	redisHost := os.Getenv("REDIS_HOST")
 	if redisHost == "" {
@@ -32,11 +38,17 @@ func getRedisClient(t *testing.T) *redis.Client {
 	}
 	t.Logf("using redis pass: [%s]", redisPass)
 
-	return redis.NewClient(&redis.Options{
+	rdb := redis.NewClient(&redis.Options{
 		Addr:     net.JoinHostPort(redisHost, "6379"),
 		Password: redisPass,
 		DB:       0, // use default DB
 	})
+
+	pingRes, err := rdb.Ping(ctx).Result()
+	require.NoError(t, err)
+	t.Logf("redis ping res: %s", pingRes)
+
+	return ctx, rdb
 }
 
 func TestAuthService_NewAuthService(t *testing.T) {
@@ -83,19 +95,7 @@ func TestAuthService_ScanAndClean(t *testing.T) {
 
 // integration kinda test (uses real redis connection)
 func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
-	go func() {
-		select {
-		case <-ctx.Done():
-			t.Fatalf("context cancelled: %v\n", ctx.Err())
-			cancel()
-		}
-	}()
-
-	rdb := getRedisClient(t)
-	pingRes, err := rdb.Ping(ctx).Result()
-	require.NoError(t, err)
-	t.Logf("redis ping res: %s", pingRes)
+	ctx, rdb := getRedisClientAndCtx(t)
 
 	authService := NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
@@ -157,19 +157,7 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 }
 
 func TestAuthService_Login_Logout(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
-	go func() {
-		select {
-		case <-ctx.Done():
-			t.Fatalf("context cancelled: %v\n", ctx.Err())
-			cancel()
-		}
-	}()
-
-	rdb := getRedisClient(t)
-	pingRes, err := rdb.Ping(ctx).Result()
-	require.NoError(t, err)
-	t.Logf("redis ping res: %s", pingRes)
+	ctx, rdb := getRedisClientAndCtx(t)
 
 	authService := NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
