@@ -3,13 +3,33 @@ package auth
 import (
 	"context"
 	"fmt"
+	"net"
+	"os"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func getRedisClient(t *testing.T) *redis.Client {
+	t.Helper()
+
+	redisHost := os.Getenv("REDIS_HOST")
+	if redisHost == "" {
+		redisHost = "localhost"
+	}
+	t.Logf("using redis host: %s", redisHost)
+
+	return redis.NewClient(&redis.Options{
+		Addr:     net.JoinHostPort(redisHost, "6379"),
+		Password: "todo",
+		DB:       0, // use default DB
+	})
+}
 
 func TestAuthService_NewAuthService(t *testing.T) {
 	db, mock := redismock.NewClientMock()
@@ -53,53 +73,69 @@ func TestAuthService_ScanAndClean(t *testing.T) {
 	mock.ExpectSRem(tokensSetKey, t2)
 }
 
-// func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
-// 	authService := NewAuthService(time.Hour, nil)
-// 	require.NotNil(t, authService)
+// integration kinda test (uses real redis connection)
+func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
+	ctx := context.Background()
+	rdb := getRedisClient(t)
 
-// 	loginsCount := 10
+	authService := NewAuthService(time.Hour, rdb)
+	require.NotNil(t, authService)
+	loginChecker := NewLoginChecker(time.Hour, rdb)
+	require.NotNil(t, loginChecker)
 
-// 	var wg sync.WaitGroup
-// 	wg.Add(loginsCount)
+	loginsCount := 10
 
-// 	newTokensChan := make(chan string)
-// 	addedTokens := map[string]struct{}{}
-// 	for i := 0; i < loginsCount; i++ {
-// 		// simluate many logins comming at once
-// 		go func() {
-// 			newToken, err := authService.Login(time.Now())
-// 			require.NoError(t, err)
-// 			newTokensChan <- newToken
-// 			wg.Done()
-// 		}()
-// 	}
+	var wg sync.WaitGroup
+	wg.Add(loginsCount)
 
-// 	go func() {
-// 		wg.Wait()
-// 		close(newTokensChan)
-// 	}()
+	newTokensChan := make(chan string)
+	for i := 0; i < loginsCount; i++ {
+		// simluate many logins comming at once
+		go func() {
+			newToken, err := authService.Login(ctx, time.Now())
+			require.NoError(t, err)
+			newTokensChan <- newToken
+			wg.Done()
+		}()
+	}
 
-// 	for t := range newTokensChan {
-// 		addedTokens[t] = struct{}{}
-// 	}
+	go func() {
+		wg.Wait()
+		close(newTokensChan)
+	}()
 
-// 	// assert we have created all different logins/tokens
-// 	assert.Len(t, addedTokens, loginsCount)
+	addedTokens := map[string]struct{}{}
+	for t := range newTokensChan {
+		addedTokens[t] = struct{}{}
+	}
 
-// 	wg.Add(loginsCount)
-// 	for token := range addedTokens {
-// 		// simluate many logouts requested at once
-// 		go func(token string) {
-// 			loggedOut, err := authService.Logout(token)
-// 			assert.NoError(t, err)
-// 			assert.True(t, loggedOut)
-// 			wg.Done()
-// 		}(token)
-// 	}
-// 	wg.Wait()
+	// assert we have created all different logins/tokens
+	assert.Len(t, addedTokens, loginsCount)
+	for token := range addedTokens {
+		isLogged, err := loginChecker.IsLogged(ctx, token)
+		require.NoError(t, err)
+		assert.True(t, isLogged)
+	}
 
-// 	assert.Empty(t, authService.sessions) // all sessions logged out
-// }
+	wg.Add(loginsCount)
+	for token := range addedTokens {
+		// simluate many logouts requested at once
+		go func(token string) {
+			loggedOut, err := authService.Logout(ctx, token)
+			assert.NoError(t, err)
+			assert.True(t, loggedOut)
+			wg.Done()
+		}(token)
+	}
+	wg.Wait()
+
+	// assert all sessions logged out
+	for token := range addedTokens {
+		isLogged, err := loginChecker.IsLogged(ctx, token)
+		require.NoError(t, err)
+		assert.False(t, isLogged)
+	}
+}
 
 // func TestAuthService_Login_Logout(t *testing.T) {
 // 	authService := NewAuthService(time.Hour, nil)

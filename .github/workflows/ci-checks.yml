@@ -30,6 +30,15 @@ jobs:
             --health-interval 10s
             --health-timeout 5s
             --health-retries 5
+      redis:
+        image: redis:latest
+        command: >
+          --requirepass secret
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v3 # checks-out the repository under $GITHUB_WORKSPACE
         with:
@@ -49,3 +58,4 @@ jobs:
         env:
           # The hostname used to communicate with the PostgreSQL service container
           POSTGRES_HOST: postgres
+          REDIS_HOST: redis

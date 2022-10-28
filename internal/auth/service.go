@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/2beens/serjtubincom/pkg"
@@ -28,8 +27,7 @@ type LoginSession struct {
 }
 
 type Service struct {
-	mutex       sync.Mutex    // TODO: now with redis maybe not needed
-	redisClient *redis.Client // TODO: add one more cachine layer above redis
+	redisClient *redis.Client
 	ttl         time.Duration
 	// ability to inject random string generator func for tokens (for unit and dev testing)
 	RandStringFunc func(s int) (string, error)
@@ -47,9 +45,6 @@ func NewAuthService(
 }
 
 func (as *Service) Login(ctx context.Context, createdAt time.Time) (string, error) {
-	as.mutex.Lock()
-	defer as.mutex.Unlock()
-
 	token, err := as.RandStringFunc(35)
 	if err != nil {
 		return "", err
@@ -71,9 +66,6 @@ func (as *Service) Login(ctx context.Context, createdAt time.Time) (string, erro
 }
 
 func (as *Service) Logout(ctx context.Context, token string) (bool, error) {
-	as.mutex.Lock()
-	defer as.mutex.Unlock()
-
 	sessionKey := sessionKeyPrefix + token
 	cmd := as.redisClient.Get(ctx, sessionKey)
 	if err := cmd.Err(); err != nil {
@@ -102,9 +94,6 @@ func (as *Service) Logout(ctx context.Context, token string) (bool, error) {
 
 // ScanAndClean will run through all sessions, check the TTL, and clean them if old
 func (as *Service) ScanAndClean(ctx context.Context) {
-	as.mutex.Lock()
-	defer as.mutex.Unlock()
-
 	cmd := as.redisClient.SMembers(ctx, tokensSetKey)
 	if err := cmd.Err(); err != nil {
 		log.Errorf("!!! auth service, scan and clean, get sessions: %s", err)
