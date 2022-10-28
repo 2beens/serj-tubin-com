@@ -4,7 +4,9 @@ package netlog
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -153,4 +155,103 @@ func TestPsqlApi_GetAllVisits(t *testing.T) {
 	after5minutesVisits, err := psqlApi.GetAllVisits(ctx, &after5mins)
 	require.NoError(t, err)
 	assert.Len(t, after5minutesVisits, 6)
+}
+
+func TestPsqlApi_GetVisits_and_Count(t *testing.T) {
+	ctx := context.Background()
+	psqlApi, err := getPsqlApi(t)
+	require.NoError(t, err)
+
+	_, err = deleteAllVisits(ctx, psqlApi)
+	require.NoError(t, err)
+
+	now := time.Now()
+	v1 := &Visit{
+		Title:     "title one",
+		Source:    "pc",
+		URL:       "https://www.one.com/",
+		Timestamp: now,
+	}
+	v2 := &Visit{
+		Title:     "title two",
+		Source:    "safari",
+		URL:       "https://www.two.com/",
+		Timestamp: now.Add(-1 * time.Minute),
+	}
+	v3 := &Visit{
+		Title:     "title three",
+		Source:    "chrome",
+		URL:       "https://www.three.com/",
+		Timestamp: now.Add(-2 * time.Minute),
+	}
+	v4 := &Visit{
+		Title:     "title four",
+		Source:    "chrome",
+		URL:       "https://www.four.com/",
+		Timestamp: now.Add(-3 * time.Minute),
+	}
+	v4b := &Visit{
+		Title:     "title four b",
+		Source:    "chrome",
+		URL:       "https://www.four.com/beta",
+		Timestamp: now.Add(-4 * time.Minute),
+	}
+
+	require.NoError(t, psqlApi.AddVisit(ctx, v1))
+	require.NoError(t, psqlApi.AddVisit(ctx, v2))
+	require.NoError(t, psqlApi.AddVisit(ctx, v3))
+	require.NoError(t, psqlApi.AddVisit(ctx, v4))
+	require.NoError(t, psqlApi.AddVisit(ctx, v4b))
+
+	allVisits, err := psqlApi.CountAll(ctx)
+	require.NoError(t, err)
+	require.Equal(t, allVisits, 5)
+
+	testCases := []struct {
+		keywords            []string
+		field               string
+		source              string
+		limit               int
+		expectedVisitsCount int
+	}{
+		{keywords: nil, field: "url", source: "all", limit: 10, expectedVisitsCount: 5},
+		{keywords: nil, field: "url", source: "all", limit: 2, expectedVisitsCount: 2},
+		{keywords: nil, field: "title", source: "all", limit: 10, expectedVisitsCount: 5},
+		{keywords: nil, field: "title", source: "all", limit: 2, expectedVisitsCount: 2},
+
+		{keywords: []string{"title"}, field: "title", source: "chrome", limit: 10, expectedVisitsCount: 3},
+		{keywords: []string{"title"}, field: "title", source: "safari", limit: 10, expectedVisitsCount: 1},
+		{keywords: []string{"title"}, field: "title", source: "pc", limit: 10, expectedVisitsCount: 1},
+		{keywords: []string{"title"}, field: "title", source: "unknown", limit: 10, expectedVisitsCount: 0},
+		{keywords: []string{"title"}, field: "url", source: "unknown", limit: 10, expectedVisitsCount: 0},
+		{keywords: []string{"some other title"}, field: "title", source: "chrome", limit: 10, expectedVisitsCount: 0},
+
+		{keywords: []string{"three"}, field: "url", source: "chrome", limit: 10, expectedVisitsCount: 1},
+		{keywords: []string{"four"}, field: "url", source: "chrome", limit: 10, expectedVisitsCount: 2},
+		{keywords: []string{"www"}, field: "url", source: "chrome", limit: 10, expectedVisitsCount: 3},
+		{keywords: []string{"four", "www"}, field: "url", source: "chrome", limit: 10, expectedVisitsCount: 2},
+		{keywords: []string{"four", "www", "beta"}, field: "url", source: "chrome", limit: 10, expectedVisitsCount: 1},
+		{keywords: []string{"one"}, field: "url", source: "pc", limit: 10, expectedVisitsCount: 1},
+		{keywords: []string{"four"}, field: "url", source: "pc", limit: 10, expectedVisitsCount: 0},
+	}
+
+	for _, tc := range testCases {
+		gottenVisits, err := psqlApi.GetVisits(ctx, tc.keywords, tc.field, tc.source, tc.limit)
+		require.NoError(t, err)
+		assert.Len(t, gottenVisits, tc.expectedVisitsCount, fmt.Sprintf("retrieved visits invalid for test case: %v", tc))
+
+		gottenCount, err := psqlApi.Count(ctx, tc.keywords, tc.field, tc.source)
+		require.NoError(t, err)
+		if tc.source != "all" {
+			assert.Equal(t, tc.expectedVisitsCount, gottenCount, fmt.Sprintf("count invalid for test case: %+v", tc))
+		} else {
+			assert.Equal(t, 5, gottenCount, fmt.Sprintf("count invalid for test case: %+v", tc))
+		}
+	}
+
+	visits, err := psqlApi.GetVisits(ctx, []string{"four"}, "url", "chrome", 10)
+	require.NoError(t, err)
+	require.Len(t, visits, 2)
+	assert.True(t, strings.HasPrefix(visits[0].Title, "title four"))
+	assert.True(t, strings.HasPrefix(visits[1].Title, "title four"))
 }
