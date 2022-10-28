@@ -75,8 +75,19 @@ func TestAuthService_ScanAndClean(t *testing.T) {
 
 // integration kinda test (uses real redis connection)
 func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	go func() {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("context cancelled: %v\n", ctx.Err())
+			cancel()
+		}
+	}()
+
 	rdb := getRedisClient(t)
+	pingRes, err := rdb.Ping(ctx).Result()
+	require.NoError(t, err)
+	t.Logf("redis ping res: %s", pingRes)
 
 	authService := NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
@@ -138,8 +149,19 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 }
 
 func TestAuthService_Login_Logout(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	go func() {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("context cancelled: %v\n", ctx.Err())
+			cancel()
+		}
+	}()
+
 	rdb := getRedisClient(t)
+	pingRes, err := rdb.Ping(ctx).Result()
+	require.NoError(t, err)
+	t.Logf("redis ping res: %s", pingRes)
 
 	authService := NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
