@@ -6,11 +6,12 @@ jobs:
     name: linter checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Run linter
-        uses: golangci/golangci-lint-action@v3
+      - uses: actions/setup-go@v3
         with:
-          version: v1.47.0
+          go-version: 1.19
+      - uses: actions/checkout@v3
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v3.3.0
   tests:
     name: tests
     runs-on: ubuntu-latest
@@ -30,6 +31,13 @@ jobs:
             --health-interval 10s
             --health-timeout 5s
             --health-retries 5
+      redis:
+        image: redis:latest
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v3 # checks-out the repository under $GITHUB_WORKSPACE
         with:
@@ -49,3 +57,5 @@ jobs:
         env:
           # The hostname used to communicate with the PostgreSQL service container
           POSTGRES_HOST: postgres
+          REDIS_HOST: redis
+          REDIS_PASS: <remove>

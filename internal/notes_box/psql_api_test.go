@@ -1,8 +1,10 @@
+//go:build integration_test || all_tests
+
 package notes_box
 
 import (
 	"context"
-	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -10,22 +12,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func deleteAll(ctx context.Context, psqlApi *PsqlApi) (int64, error) {
+	tag, err := psqlApi.db.Exec(ctx, `DELETE FROM note`)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+func getPsqlApi(t *testing.T) (*PsqlApi, error) {
+	t.Helper()
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	host := os.Getenv("POSTGRES_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+	t.Logf("using postres host: %s", host)
+
+	return NewPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
+}
+
 func TestPsqlApi_BasicCRUD(t *testing.T) {
-	// FIXME: first add PostgreSQL to GitHub Actions and set it, then enable this test
-	t.SkipNow()
-	// FIXME:
-
-	ctx := context.Background()
-
-	api, err := NewPsqlApi(ctx, "localhost", "5432", "testing")
+	api, err := getPsqlApi(t)
 	require.NoError(t, err)
 	require.NotNil(t, api)
-
 	defer api.CloseDB()
+
+	ctx := context.Background()
+	deleted, err := deleteAll(ctx, api)
+	require.NoError(t, err)
+	t.Logf("test setup, deleted notes: %d", deleted)
 
 	notes, err := api.List(ctx)
 	require.NoError(t, err)
-	originalLen := len(notes)
+	require.Empty(t, notes)
 
 	now := time.Now()
 	note1 := &Note{
@@ -42,20 +65,9 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 	addedNote1, err := api.Add(ctx, note1)
 	require.NoError(t, err)
 	require.NotNil(t, addedNote1)
-	// i must do this awkwardnes because of the linter complaining about not checking err
-	defer func() {
-		if _, err := api.Delete(ctx, addedNote1.Id); err != nil {
-			fmt.Println(err)
-		}
-	}()
 	addedNote2, err := api.Add(ctx, note2)
 	require.NoError(t, err)
 	require.NotNil(t, addedNote2)
-	defer func() {
-		if _, err := api.Delete(ctx, addedNote2.Id); err != nil {
-			fmt.Println(err)
-		}
-	}()
 
 	assert.Equal(t, note1.Content, addedNote1.Content)
 	assert.Equal(t, note1.Title, addedNote1.Title)
@@ -65,7 +77,7 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 	notes, err = api.List(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, notes)
-	assert.Len(t, notes, originalLen+2)
+	assert.Len(t, notes, 2)
 
 	retrievedNote1, err := api.Get(ctx, addedNote1.Id)
 	require.NoError(t, err)
@@ -83,12 +95,83 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 	assert.Equal(t, note3.Content, addedNote3.Content)
 	assert.Equal(t, note3.Title, addedNote3.Title)
 
-	removed, err := api.Delete(ctx, note3.Id)
-	require.NoError(t, err)
-	assert.True(t, removed)
+	require.NoError(t, api.Delete(ctx, note3.Id))
 
 	retrievedNote3, err := api.Get(ctx, addedNote3.Id)
 	assert.Error(t, err)
 	assert.Nil(t, retrievedNote3)
-	assert.Contains(t, err.Error(), "failed to get note")
+	assert.Contains(t, err.Error(), "note not found")
+
+	nonExisting, err := api.Get(ctx, 12341234)
+	assert.ErrorIs(t, err, ErrNoteNotFound)
+	assert.Nil(t, nonExisting)
+
+	require.NoError(t, api.Delete(ctx, note1.Id))
+	require.NoError(t, api.Delete(ctx, note2.Id))
+	assert.ErrorIs(t, api.Delete(ctx, 12341234), ErrNoteNotFound)
+
+	notes, err = api.List(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, notes)
+}
+
+func TestPsqlApi_Update(t *testing.T) {
+	api, err := getPsqlApi(t)
+	require.NoError(t, err)
+	require.NotNil(t, api)
+	defer api.CloseDB()
+
+	ctx := context.Background()
+	deleted, err := deleteAll(ctx, api)
+	require.NoError(t, err)
+	t.Logf("test setup, deleted notes: %d", deleted)
+
+	now := time.Now()
+	note1 := &Note{
+		Title:     "title1",
+		CreatedAt: now,
+		Content:   "content1",
+	}
+	note2 := &Note{
+		Title:     "title2",
+		CreatedAt: now,
+		Content:   "content2",
+	}
+
+	addedNote1, err := api.Add(ctx, note1)
+	require.NoError(t, err)
+	require.NotNil(t, addedNote1)
+	addedNote2, err := api.Add(ctx, note2)
+	require.NoError(t, err)
+	require.NotNil(t, addedNote2)
+
+	addedNote1.Content = "new-content"
+	require.NoError(t, api.Update(ctx, addedNote1))
+	retrievedNote1, err := api.Get(ctx, addedNote1.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "new-content", retrievedNote1.Content)
+	assert.Equal(t, note1.Title, retrievedNote1.Title)
+
+	addedNote1.Title = "new-title"
+	require.NoError(t, api.Update(ctx, addedNote1))
+	retrievedNote1, err = api.Get(ctx, addedNote1.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "new-content", retrievedNote1.Content)
+	assert.Equal(t, "new-title", retrievedNote1.Title)
+
+	addedNote1.Title = "new-title-2"
+	addedNote1.Content = "new-content-2"
+	require.NoError(t, api.Update(ctx, addedNote1))
+	retrievedNote1, err = api.Get(ctx, addedNote1.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "new-content-2", retrievedNote1.Content)
+	assert.Equal(t, "new-title-2", retrievedNote1.Title)
+
+	retrievedNote2, err := api.Get(ctx, addedNote2.Id)
+	require.NoError(t, err)
+	assert.Equal(t, note2.Content, retrievedNote2.Content)
+	assert.Equal(t, note2.Title, retrievedNote2.Title)
+
+	addedNote1.Content = ""
+	require.Equal(t, "note content empty", api.Update(ctx, addedNote1).Error())
 }

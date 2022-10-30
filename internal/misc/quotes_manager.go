@@ -5,10 +5,15 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"os"
 
 	log "github.com/sirupsen/logrus"
 )
+
+type Quote struct {
+	Text   string `json:"text"`
+	Author string `json:"author"`
+	Genre  string `json:"genre"`
+}
 
 type QuotesManager struct {
 	Quotes        []*Quote
@@ -16,23 +21,16 @@ type QuotesManager struct {
 	GenresQuotes  map[string][]*Quote
 }
 
-func NewQuoteManager(quotesPath string) (*QuotesManager, error) {
-	quotesCsv, err := os.Open(quotesPath)
-	if err != nil {
-		return nil, err
-	}
-	defer quotesCsv.Close()
-
+func NewQuoteManager(quotesCsvReader *csv.Reader) (*QuotesManager, error) {
 	qm := &QuotesManager{}
 	qm.AuthorsQuotes = make(map[string][]*Quote)
 	qm.GenresQuotes = make(map[string][]*Quote)
 
 	log.Println("reading quotes CSV ...")
 
-	quotesReader := csv.NewReader(quotesCsv)
-	quotesReader.Comma = ';'
+	quotesCsvReader.Comma = ';'
 	for {
-		record, err := quotesReader.Read()
+		record, err := quotesCsvReader.Read()
 		if err == io.EOF {
 			break
 		}
@@ -49,7 +47,11 @@ func NewQuoteManager(quotesPath string) (*QuotesManager, error) {
 		author := record[1]
 		genre := record[2]
 
-		quote := NewQuote(quoteText, author, genre)
+		quote := &Quote{
+			Text:   quoteText,
+			Author: author,
+			Genre:  genre,
+		}
 		qm.Quotes = append(qm.Quotes, quote)
 
 		qm.AuthorsQuotes[author] = append(qm.AuthorsQuotes[author], quote)

@@ -11,11 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redismock/v8"
-
-	"github.com/go-redis/redis/v8"
-
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redismock/v8"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -133,18 +133,13 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleted, err := handler.api.Delete(r.Context(), id)
-	if err != nil {
+	if err := handler.api.Delete(r.Context(), id); err != nil {
 		log.Printf("failed to delete note %d: %s", id, err)
 		http.Error(w, "error, note not deleted, internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	if deleted {
-		pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
-	} else {
-		pkg.WriteResponse(w, "", fmt.Sprintf("not-deleted:%d", id))
-	}
+	pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
 }
 
 func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {

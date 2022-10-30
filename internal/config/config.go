@@ -33,6 +33,8 @@ type Config struct {
 	// Redis
 	RedisHost string `toml:"redis_host"`
 	RedisPort string `toml:"redis_port"`
+	// Quotes
+	QuotesCsvPath string `toml:"quotes_csv_path"`
 }
 
 type Toml struct {

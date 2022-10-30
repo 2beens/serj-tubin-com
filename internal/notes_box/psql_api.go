@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-
 	log "github.com/sirupsen/logrus"
 )
+
+var ErrNoteNotFound = errors.New("note not found")
 
 type PsqlApi struct {
 	// TODO: check if DB pool connection should be shared with other components
@@ -56,22 +57,24 @@ func (api *PsqlApi) Add(ctx context.Context, note *Note) (*Note, error) {
 		return nil, err
 	}
 
-	if rows.Next() {
-		var id int
-		if err := rows.Scan(&id); err == nil {
-			note.Id = id
-			return note, nil
-		}
+	if !rows.Next() {
+		return nil, errors.New("unexpected error [no rows next]")
 	}
 
-	return nil, errors.New("unexpected error, failed to insert note")
+	var id int
+	if err := rows.Scan(&id); err != nil {
+		return nil, fmt.Errorf("rows scan: %w", err)
+	}
+
+	note.Id = id
+	return note, nil
 }
 
-func (api *PsqlApi) Get(ctx context.Context, id int) (*Note, error) {
+func (api *PsqlApi) Get(ctx context.Context, noteId int) (*Note, error) {
 	rows, err := api.db.Query(
 		ctx,
 		`SELECT * FROM note WHERE id = $1;`,
-		id,
+		noteId,
 	)
 	if err != nil {
 		return nil, err
@@ -82,23 +85,23 @@ func (api *PsqlApi) Get(ctx context.Context, id int) (*Note, error) {
 		return nil, err
 	}
 
-	if rows.Next() {
-		var id int
-		var title string
-		var createdAt time.Time
-		var content string
-		if err := rows.Scan(&id, &title, &createdAt, &content); err != nil {
-			return nil, err
-		}
-		return &Note{
-			Id:        id,
-			Title:     title,
-			CreatedAt: createdAt,
-			Content:   content,
-		}, nil
+	if !rows.Next() {
+		return nil, ErrNoteNotFound
 	}
 
-	return nil, errors.New("unexpected error, failed to get note")
+	var id int
+	var title string
+	var createdAt time.Time
+	var content string
+	if err := rows.Scan(&id, &title, &createdAt, &content); err != nil {
+		return nil, err
+	}
+	return &Note{
+		Id:        id,
+		Title:     title,
+		CreatedAt: createdAt,
+		Content:   content,
+	}, nil
 }
 
 func (api *PsqlApi) Update(ctx context.Context, note *Note) error {
@@ -116,25 +119,25 @@ func (api *PsqlApi) Update(ctx context.Context, note *Note) error {
 	}
 
 	if tag.RowsAffected() == 0 {
-		log.Tracef("note %d not updated", note.Id)
+		return ErrNoteNotFound
 	}
 
 	return nil
 }
 
-func (api *PsqlApi) Delete(ctx context.Context, id int) (bool, error) {
+func (api *PsqlApi) Delete(ctx context.Context, id int) error {
 	tag, err := api.db.Exec(
 		ctx,
 		`DELETE FROM note WHERE id = $1`,
 		id,
 	)
 	if err != nil {
-		return false, err
+		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return false, nil
+		return ErrNoteNotFound
 	}
-	return true, nil
+	return nil
 }
 
 func (api *PsqlApi) List(ctx context.Context) ([]Note, error) {
