@@ -36,13 +36,13 @@ func (api *TestApi) Get(_ context.Context, id int) (*Note, error) {
 	return note, nil
 }
 
-func (api *TestApi) Delete(_ context.Context, id int) (bool, error) {
+func (api *TestApi) Delete(_ context.Context, id int) error {
 	note, ok := api.notes[id]
 	if !ok {
-		return false, errors.New("not found")
+		return ErrNoteNotFound
 	}
 	delete(api.notes, note.Id)
-	return true, nil
+	return nil
 }
 
 func (api *TestApi) List(context.Context) ([]Note, error) {
