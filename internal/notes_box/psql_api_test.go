@@ -1,3 +1,5 @@
+//go:build integration_test || all_tests
+
 package notes_box
 
 import (
@@ -41,6 +43,7 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 
 	ctx := context.Background()
 	deleted, err := deleteAll(ctx, api)
+	require.NoError(t, err)
 	t.Logf("test setup, deleted notes: %d", deleted)
 
 	notes, err := api.List(ctx)
@@ -99,10 +102,76 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 	assert.Nil(t, retrievedNote3)
 	assert.Contains(t, err.Error(), "note not found")
 
+	nonExisting, err := api.Get(ctx, 12341234)
+	assert.ErrorIs(t, err, ErrNoteNotFound)
+	assert.Nil(t, nonExisting)
+
 	require.NoError(t, api.Delete(ctx, note1.Id))
 	require.NoError(t, api.Delete(ctx, note2.Id))
+	assert.ErrorIs(t, api.Delete(ctx, 12341234), ErrNoteNotFound)
 
 	notes, err = api.List(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, notes)
+}
+
+func TestPsqlApi_Update(t *testing.T) {
+	api, err := getPsqlApi(t)
+	require.NoError(t, err)
+	require.NotNil(t, api)
+	defer api.CloseDB()
+
+	ctx := context.Background()
+	deleted, err := deleteAll(ctx, api)
+	require.NoError(t, err)
+	t.Logf("test setup, deleted notes: %d", deleted)
+
+	now := time.Now()
+	note1 := &Note{
+		Title:     "title1",
+		CreatedAt: now,
+		Content:   "content1",
+	}
+	note2 := &Note{
+		Title:     "title2",
+		CreatedAt: now,
+		Content:   "content2",
+	}
+
+	addedNote1, err := api.Add(ctx, note1)
+	require.NoError(t, err)
+	require.NotNil(t, addedNote1)
+	addedNote2, err := api.Add(ctx, note2)
+	require.NoError(t, err)
+	require.NotNil(t, addedNote2)
+
+	addedNote1.Content = "new-content"
+	require.NoError(t, api.Update(ctx, addedNote1))
+	retrievedNote1, err := api.Get(ctx, addedNote1.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "new-content", retrievedNote1.Content)
+	assert.Equal(t, note1.Title, retrievedNote1.Title)
+
+	addedNote1.Title = "new-title"
+	require.NoError(t, api.Update(ctx, addedNote1))
+	retrievedNote1, err = api.Get(ctx, addedNote1.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "new-content", retrievedNote1.Content)
+	assert.Equal(t, "new-title", retrievedNote1.Title)
+
+	addedNote1.Title = "new-title-2"
+	addedNote1.Content = "new-content-2"
+	require.NoError(t, api.Update(ctx, addedNote1))
+	retrievedNote1, err = api.Get(ctx, addedNote1.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "new-content-2", retrievedNote1.Content)
+	assert.Equal(t, "new-title-2", retrievedNote1.Title)
+
+	retrievedNote2, err := api.Get(ctx, addedNote2.Id)
+	require.NoError(t, err)
+	assert.Equal(t, note2.Content, retrievedNote2.Content)
+	assert.Equal(t, note2.Title, retrievedNote2.Title)
+
+	addedNote1.Content = ""
+	require.Equal(t, "note content empty", api.Update(ctx, addedNote1).Error())
 }
