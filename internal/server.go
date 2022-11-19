@@ -26,7 +26,14 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	log "github.com/sirupsen/logrus"
+	// NOTE: this import is super important as applies the Honeycomb
+	// configuration to the launcher
+	_ "github.com/honeycombio/honeycomb-opentelemetry-go"
+	"github.com/honeycombio/opentelemetry-go-contrib/launcher"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Server struct {
@@ -236,10 +243,19 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 		log.Fatalf("failed to setup router: %s", err)
 	}
 
+	// use honeycomb distro to setup OpenTelemetry SDK
+	otelShutdown, err := launcher.ConfigureOpenTelemetry(
+		launcher.WithLogLevel("debug"),
+	)
+	if err != nil {
+		log.Fatalf("error setting up OTel SDK - %e", err)
+	}
+	defer otelShutdown()
+
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 
 	s.httpServer = &http.Server{
-		Handler:      router,
+		Handler:      otelhttp.NewHandler(router, "mainrouter"),
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,

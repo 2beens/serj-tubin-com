@@ -24,3 +24,10 @@ Hosted and available at: https://www.serj-tubin.com/
 * I use Vue to make the frontend part
     * source @ https://github.com/2beens/serj-tubin-vue
 * ❗️ Disclaimer: some parts of the system are deliberately unoptimized or complicated for testing ☑️ / learning 👨🏼‍🏫 / trial 🛠 purposes
+
+# TODO: Observability
+- use otel to collect and send metrics and tracing data
+  - https://github.com/open-telemetry/opentelemetry-go/blob/main/example/otel-collector/README.md
+- for metrics use Prometheus
+- for tracing use free Honeycomb plan
+  - https://ui.honeycomb.io/serj-tubin-com/environments/test/send-data#

@@ -69,6 +69,14 @@ func main() {
 		log.Errorf("redis password not set. use SERJ_REDIS_PASS")
 	}
 
+	if otelServiceName := os.Getenv("OTEL_SERVICE_NAME"); otelServiceName == "" {
+		log.Warnln("OTEL_SERVICE_NAME env var not set")
+	}
+
+	if honeycombApiKey := os.Getenv("HONEYCOMB_API_KEY"); honeycombApiKey == "" {
+		log.Warnln("HONEYCOMB_API_KEY env var not set")
+	}
+
 	chOsInterrupt := make(chan os.Signal, 1)
 	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
 
