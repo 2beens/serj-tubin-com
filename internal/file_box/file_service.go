@@ -12,12 +12,19 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+
+	// NOTE: this import is super important as applies the Honeycomb
+	// configuration to the launcher
+	_ "github.com/honeycombio/honeycomb-opentelemetry-go"
+	"github.com/honeycombio/opentelemetry-go-contrib/launcher"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type FileService struct {
 	api          *DiskApi
 	loginChecker *auth.LoginChecker
 	httpServer   *http.Server
+	otelShutdown func()
 }
 
 func NewFileService(
@@ -48,9 +55,17 @@ func NewFileService(
 		log.Printf("redis ping: %s", rdbStatus.Val())
 	}
 
+	// use honeycomb distro to setup OpenTelemetry SDK
+	otelShutdown, err := launcher.ConfigureOpenTelemetry()
+	if err != nil {
+		log.Errorf("file service OTel SDK setup: %s", err)
+	}
+	log.Trace("file service otel sdk set up")
+
 	return &FileService{
 		api:          api,
 		loginChecker: auth.NewLoginChecker(auth.DefaultTTL, rdb),
+		otelShutdown: otelShutdown,
 	}, nil
 }
 
@@ -83,7 +98,7 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 	fs.httpServer = &http.Server{
-		Handler:      r,
+		Handler:      otelhttp.NewHandler(r, "file-service"),
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
@@ -94,6 +109,8 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 }
 
 func (fs *FileService) GracefulShutdown() {
+	fs.otelShutdown()
+
 	if fs.httpServer != nil {
 		maxWaitDuration := time.Second * 10
 		ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
@@ -102,5 +119,6 @@ func (fs *FileService) GracefulShutdown() {
 			log.Error(" >>> failed to gracefully shutdown http server")
 		}
 	}
+
 	log.Warnln("server shut down")
 }

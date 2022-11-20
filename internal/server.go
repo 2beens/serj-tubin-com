@@ -256,7 +256,7 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 
 	s.httpServer = &http.Server{
-		Handler:      otelhttp.NewHandler(router, "mainrouter"),
+		Handler:      otelhttp.NewHandler(router, "main-backend"),
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
