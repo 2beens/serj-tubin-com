@@ -26,13 +26,12 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	log "github.com/sirupsen/logrus"
+
 	// NOTE: this import is super important as applies the Honeycomb
 	// configuration to the launcher
 	_ "github.com/honeycombio/honeycomb-opentelemetry-go"
 	"github.com/honeycombio/opentelemetry-go-contrib/launcher"
-
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -60,7 +59,8 @@ type Server struct {
 	admin        *auth.Admin
 
 	// metrics
-	instr *instrumentation.Instrumentation
+	instr        *instrumentation.Instrumentation
+	otelShutdown func()
 }
 
 func NewServer(
@@ -148,6 +148,15 @@ func NewServer(
 		PasswordHash: adminPasswordHash,
 	}
 
+	// use honeycomb distro to setup OpenTelemetry SDK
+	otelShutdown, err := launcher.ConfigureOpenTelemetry(
+		launcher.WithLogLevel("debug"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("OTel SDK setup: %w", err)
+	}
+	log.Trace("otel sdk set up")
+
 	s := &Server{
 		config:                config,
 		blogApi:               blogApi,
@@ -167,7 +176,8 @@ func NewServer(
 		admin:        admin,
 
 		//metrics
-		instr: instr,
+		instr:        instr,
+		otelShutdown: otelShutdown,
 	}
 
 	quotesCsvFile, err := os.Open(config.QuotesCsvPath)
@@ -243,15 +253,6 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 		log.Fatalf("failed to setup router: %s", err)
 	}
 
-	// use honeycomb distro to setup OpenTelemetry SDK
-	otelShutdown, err := launcher.ConfigureOpenTelemetry(
-		launcher.WithLogLevel("debug"),
-	)
-	if err != nil {
-		log.Fatalf("error setting up OTel SDK - %e", err)
-	}
-	defer otelShutdown()
-
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 
 	s.httpServer = &http.Server{
@@ -299,6 +300,9 @@ func (s *Server) GracefulShutdown() {
 	// TODO: probably not needed to be set explicitly
 	s.instr.GaugeLifeSignal.Set(0)
 
+	s.otelShutdown()
+	log.Trace("otel shut down ...")
+
 	if s.redisClient != nil {
 		if err := s.redisClient.Close(); err != nil {
 			log.Errorf("failed to close redis client conn: %s", err)
@@ -307,12 +311,15 @@ func (s *Server) GracefulShutdown() {
 
 	if s.boardAeroClient != nil {
 		s.boardAeroClient.Close()
+		log.Trace("board aero client closed")
 	}
 	if s.netlogVisitsApi != nil {
 		s.netlogVisitsApi.CloseDB()
+		log.Trace("netlog visits api closed")
 	}
 	if s.blogApi != nil {
 		s.blogApi.CloseDB()
+		log.Trace("blog api closed")
 	}
 
 	log.Debugln("removing netlog backup unix socket ...")
