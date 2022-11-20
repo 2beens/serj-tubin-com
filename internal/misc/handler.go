@@ -11,6 +11,9 @@ import (
 	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Handler struct {
@@ -68,6 +71,7 @@ func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Requ
 }
 
 func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
+	span := trace.SpanFromContext(r.Context())
 	w.Header().Set("Content-Type", "application/json")
 
 	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r.Context(), r)
@@ -76,6 +80,9 @@ func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
 		return
 	}
+
+	span.SetAttributes(attribute.String("user.city", geoIpInfo.Data.Location.City.Name))
+	span.SetAttributes(attribute.String("user.city", geoIpInfo.Data.Location.Country.Name))
 
 	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.Data.Location.City.Name, geoIpInfo.Data.Location.Country.Name)
 	pkg.WriteResponse(w, "application/json", geoResp)
