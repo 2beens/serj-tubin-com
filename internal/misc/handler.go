@@ -11,9 +11,9 @@ import (
 	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type Handler struct {
@@ -71,10 +71,13 @@ func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Requ
 }
 
 func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
-	span := trace.SpanFromContext(r.Context())
+	tracer := otel.Tracer("main-backend")
+	ctx, span := tracer.Start(r.Context(), "miscHandler.whereAmI")
+	defer span.End()
+
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r.Context(), r)
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, r)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
@@ -89,11 +92,18 @@ func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
+	tracer := otel.Tracer("main-backend")
+	_, span := tracer.Start(r.Context(), "miscHandler.getMyIp")
+	defer span.End()
+
 	ip, err := pkg.ReadUserIP(r)
 	if err != nil {
+		span.SetStatus(codes.Error, fmt.Sprintf("failed to get user IP address: %s", err))
 		log.Errorf("failed to get user IP address: %s", err)
 		http.Error(w, "failed to get IP", http.StatusInternalServerError)
 	}
+
+	span.SetStatus(codes.Ok, fmt.Sprintf("user IP address: %s", ip))
 	pkg.WriteResponse(w, "", ip)
 }
 

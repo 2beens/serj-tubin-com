@@ -83,7 +83,7 @@ func (handler *Handler) handleCurrent(w http.ResponseWriter, r *http.Request) {
 
 	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City.Name, locationInfo.Country.Alpha2)
 	if err != nil {
-		log.Errorf("error getting current weather city from geo ip info for city [%s] and country code [%s]: %s", err, locationInfo.City.Name, locationInfo.Country.Alpha2)
+		log.Errorf("error getting current weather city from geo ip info for city [%s] and country code [%s]: %s", locationInfo.City.Name, locationInfo.Country.Alpha2, err)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}

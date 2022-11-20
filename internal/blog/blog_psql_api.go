@@ -8,6 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // manual caching of blog posts not needed (at least for this use case):
@@ -121,6 +123,10 @@ func (api *PsqlApi) DeleteBlog(ctx context.Context, id int) error {
 }
 
 func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
+	tracer := otel.Tracer("main-backend")
+	ctx, span := tracer.Start(ctx, "blogApi.All")
+	defer span.End()
+
 	rows, err := api.db.Query(
 		ctx,
 		`SELECT * FROM blog ORDER BY id DESC;`,
@@ -157,6 +163,10 @@ func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
 }
 
 func (api *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
+	tracer := otel.Tracer("main-backend")
+	ctx, span := tracer.Start(ctx, "blogApi.BlogsCount")
+	defer span.End()
+
 	rows, err := api.db.Query(ctx, `SELECT COUNT(*) FROM blog`)
 	if err != nil {
 		return -1, err
@@ -178,6 +188,12 @@ func (api *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
 }
 
 func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error) {
+	tracer := otel.Tracer("main-backend")
+	ctx, span := tracer.Start(ctx, "blogApi.GetBlogsPage")
+	span.SetAttributes(attribute.Int("page", page))
+	span.SetAttributes(attribute.Int("size", size))
+	defer span.End()
+
 	limit := size
 	offset := (page - 1) * size
 	blogsCount, err := api.BlogsCount(ctx)
@@ -239,6 +255,10 @@ func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, 
 
 func (api *PsqlApi) GetBlog(ctx context.Context, id int) (*Blog, error) {
 	log.Tracef("getting blog %d", id)
+	tracer := otel.Tracer("main-backend")
+	ctx, span := tracer.Start(ctx, "blogApi.GetBlog")
+	span.SetAttributes(attribute.Int("id", id))
+	defer span.End()
 
 	rows, err := api.db.Query(
 		ctx,

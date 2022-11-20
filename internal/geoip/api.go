@@ -13,9 +13,9 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type Api struct {
@@ -58,7 +58,10 @@ func NewApi(
 }
 
 func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo, error) {
-	span := trace.SpanFromContext(ctx)
+	tracer := otel.Tracer("main-backend")
+	ctx, span := tracer.Start(ctx, "geoIp.GetRequestGeoInfo")
+	defer span.End()
+
 	userIp, err := pkg.ReadUserIP(r)
 	if err != nil {
 		span.SetStatus(codes.Error, fmt.Sprintf("get user ip: %s", err))
