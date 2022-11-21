@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/instrumentation"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
@@ -33,7 +32,6 @@ type GoogleDriveBackupService struct {
 	service                  *drive.Service
 	backupsFolderId          string
 	lazarDusanPermission     *drive.Permission
-	instr                    *instrumentation.Instrumentation
 	netlogUnixSocketAddrDir  string
 	netlogUnixSocketFileName string
 }
@@ -85,7 +83,6 @@ func NewGoogleDriveBackupService(
 	s := &GoogleDriveBackupService{
 		psqlApi:                  psqlApi,
 		service:                  driveService,
-		instr:                    instrumentation.NewInstrumentation("backend", "netlog_backups"),
 		netlogUnixSocketAddrDir:  netlogUnixSocketAddrDir,
 		netlogUnixSocketFileName: netlogUnixSocketFileName,
 	}

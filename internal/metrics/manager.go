@@ -1,14 +1,11 @@
-package instrumentation
+package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// http://prometheus.serj-tubin.com/
-// http://grafana.serj-tubin.com/
-
-type Instrumentation struct {
+type Manager struct {
 	// counters
 	CounterRequests           *prometheus.CounterVec
 	CounterNetlogVisits       prometheus.Counter
@@ -25,20 +22,16 @@ type Instrumentation struct {
 	HistNetlogBackupDuration prometheus.Histogram
 }
 
-func NewInstrumentation(namespace, subsystem string) *Instrumentation {
-	return NewInstrumentationWithRegisterer(namespace, subsystem, prometheus.DefaultRegisterer)
+func NewTestManager() *Manager {
+	return NewManager("backend", "test_server", prometheus.NewRegistry())
 }
 
-func NewTestInstrumentation() *Instrumentation {
-	return NewInstrumentationWithRegisterer("backend", "test_server", prometheus.NewRegistry())
-}
-
-func NewTestInstrumentationAndRegistry() (*Instrumentation, *prometheus.Registry) {
+func NewTestManagerAndRegistry() (*Manager, *prometheus.Registry) {
 	reg := prometheus.NewRegistry()
-	return NewInstrumentationWithRegisterer("backend", "test_server", reg), reg
+	return NewManager("backend", "test_server", reg), reg
 }
 
-func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheus.Registerer) *Instrumentation {
+func NewManager(namespace, subsystem string, reg prometheus.Registerer) *Manager {
 	factory := promauto.With(reg)
 
 	counterRequests := factory.NewCounterVec(prometheus.CounterOpts{
@@ -114,7 +107,7 @@ func NewInstrumentationWithRegisterer(namespace, subsystem string, reg prometheu
 		},
 	)
 
-	return &Instrumentation{
+	return &Manager{
 		CounterRequests:           counterRequests,
 		CounterNetlogVisits:       counterNetlogVisits,
 		CounterNotes:              counterNotes,

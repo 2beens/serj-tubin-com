@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func RequestMetrics(instr *instrumentation.Instrumentation) func(next http.Handler) http.Handler {
+func RequestMetrics(instr *metrics.Manager) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
 			defer func(begin time.Time) {

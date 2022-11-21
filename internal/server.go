@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
@@ -16,7 +17,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/board/aerospike"
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/geoip"
-	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/metrics"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/netlog"
@@ -25,6 +26,8 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 
@@ -59,8 +62,9 @@ type Server struct {
 	admin        *auth.Admin
 
 	// metrics
-	instr        *instrumentation.Instrumentation
-	otelShutdown func()
+	metricsManager *metrics.Manager
+	promRegistry   *prometheus.Registry
+	otelShutdown   func()
 }
 
 func NewServer(
@@ -109,8 +113,18 @@ func NewServer(
 		log.Fatalf("failed to create notes visits api: %s", err)
 	}
 
-	instr := instrumentation.NewInstrumentation("backend", "server1")
-	instr.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
+	promRegistry := prometheus.NewRegistry()
+	// Add Go module build info.
+	promRegistry.MustRegister(collectors.NewBuildInfoCollector())
+	promRegistry.MustRegister(collectors.NewGoCollector(
+		collectors.WithGoCollectorRuntimeMetrics(
+			collectors.GoRuntimeMetricsRule{
+				Matcher: regexp.MustCompile("/.*"),
+			},
+		),
+	))
+	metricsManager := metrics.NewManager("backend", "server1", promRegistry)
+	metricsManager.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     net.JoinHostPort(config.RedisHost, config.RedisPort),
@@ -176,8 +190,9 @@ func NewServer(
 		admin:        admin,
 
 		//metrics
-		instr:        instr,
-		otelShutdown: otelShutdown,
+		metricsManager: metricsManager,
+		promRegistry:   promRegistry,
+		otelShutdown:   otelShutdown,
 	}
 
 	quotesCsvFile, err := os.Open(config.QuotesCsvPath)
@@ -222,11 +237,11 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("misc handler is nil")
 	}
 
-	if netlog.NewHandler(netlogRouter, s.netlogVisitsApi, s.instr, s.browserRequestsSecret, s.loginChecker) == nil {
+	if netlog.NewHandler(netlogRouter, s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker) == nil {
 		panic("netlog visits handler is nil")
 	}
 
-	notesHandler := notes_box.NewHandler(s.notesBoxApi, s.loginChecker, s.instr)
+	notesHandler := notes_box.NewHandler(s.notesBoxApi, s.loginChecker, s.metricsManager)
 	notesRouter.HandleFunc("", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
 	notesRouter.HandleFunc("", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
 	notesRouter.HandleFunc("", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
@@ -238,8 +253,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		http.NotFound(w, r)
 	}).Methods("GET", "POST", "PUT", "OPTIONS").Name("unknown")
 
-	r.Use(middleware.PanicRecovery(s.instr))
-	r.Use(middleware.RequestMetrics(s.instr))
+	r.Use(middleware.PanicRecovery(s.metricsManager))
+	r.Use(middleware.RequestMetrics(s.metricsManager))
 	r.Use(middleware.LogRequest())
 	r.Use(middleware.Cors())
 	r.Use(middleware.DrainAndCloseRequest())
@@ -271,11 +286,17 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
 	log.Printf(" > metrics listening on: [%s]", metricsAddr)
 	go func() {
-		http.Handle("/metrics", promhttp.Handler())
+		// Expose the registered metrics via HTTP.
+		http.Handle("/metrics", promhttp.HandlerFor(
+			s.promRegistry,
+			promhttp.HandlerOpts{
+				Registry: s.promRegistry,
+			},
+		))
 		log.Println(http.ListenAndServe(metricsAddr, nil))
 	}()
 
-	s.instr.GaugeLifeSignal.Set(1)
+	s.metricsManager.GaugeLifeSignal.Set(1)
 
 	// netlog backup unix socket
 	s.setNetlogBackupUnixSocket(ctx)
@@ -287,7 +308,7 @@ func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
 		return
 	}
 
-	if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, s.config.NetlogUnixSocketAddrDir, s.config.NetlogUnixSocketFileName, s.instr); err != nil {
+	if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, s.config.NetlogUnixSocketAddrDir, s.config.NetlogUnixSocketFileName, s.metricsManager); err != nil {
 		log.Errorf("failed to create netlog backup unix socket: %s", err)
 	} else {
 		log.Debugf("netlog backup unix socket: %s", addr)
@@ -298,7 +319,7 @@ func (s *Server) GracefulShutdown() {
 	log.Debug("graceful shutdown initiated ...")
 
 	// TODO: probably not needed to be set explicitly
-	s.instr.GaugeLifeSignal.Set(0)
+	s.metricsManager.GaugeLifeSignal.Set(0)
 
 	s.otelShutdown()
 	log.Trace("otel shut down ...")
@@ -339,8 +360,8 @@ func (s *Server) GracefulShutdown() {
 func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
 	switch state {
 	case http.StateNew:
-		s.instr.GaugeRequests.Add(1)
+		s.metricsManager.GaugeRequests.Add(1)
 	case http.StateClosed:
-		s.instr.GaugeRequests.Add(-1)
+		s.metricsManager.GaugeRequests.Add(-1)
 	}
 }

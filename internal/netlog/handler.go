@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/metrics"
 	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -19,19 +19,19 @@ type Handler struct {
 	browserRequestsSecret string
 	netlogApi             Api
 	loginChecker          *auth.LoginChecker
-	instr                 *instrumentation.Instrumentation
+	metrics               *metrics.Manager
 }
 
 func NewHandler(
 	router *mux.Router,
 	netlogApi Api,
-	instrumentation *instrumentation.Instrumentation,
+	instrumentation *metrics.Manager,
 	browserRequestsSecret string,
 	loginChecker *auth.LoginChecker,
 ) *Handler {
 	handler := &Handler{
 		netlogApi:             netlogApi,
-		instr:                 instrumentation,
+		metrics:               instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
 		loginChecker:          loginChecker,
 	}
@@ -165,7 +165,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handler.instr.CounterNetlogVisits.Inc()
+	handler.metrics.CounterNetlogVisits.Inc()
 
 	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
 	pkg.WriteResponse(w, "", "added")
