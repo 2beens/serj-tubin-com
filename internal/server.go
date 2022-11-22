@@ -17,11 +17,11 @@ import (
 	"github.com/2beens/serjtubincom/internal/board/aerospike"
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/geoip"
-	"github.com/2beens/serjtubincom/internal/metrics"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/2beens/serjtubincom/internal/notes_box"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/internal/weather"
 
 	"github.com/go-redis/redis/v8"

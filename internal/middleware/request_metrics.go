@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/metrics"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

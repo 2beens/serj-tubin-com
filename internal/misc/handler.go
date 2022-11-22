@@ -8,10 +8,11 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/geoip"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -57,6 +58,9 @@ func (handler *Handler) handleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.quote")
+	defer span.End()
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := handler.quotesManager.RandomQuote()
@@ -71,8 +75,7 @@ func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Requ
 }
 
 func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
-	tracer := otel.Tracer("main-backend")
-	ctx, span := tracer.Start(r.Context(), "miscHandler.whereAmI")
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.whereAmI")
 	defer span.End()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -92,8 +95,7 @@ func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
-	tracer := otel.Tracer("main-backend")
-	_, span := tracer.Start(r.Context(), "miscHandler.getMyIp")
+	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.getMyIp")
 	defer span.End()
 
 	ip, err := pkg.ReadUserIP(r)
@@ -108,6 +110,9 @@ func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.login")
+	defer span.End()
+
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("login failed, parse form error: %s", err)
@@ -155,6 +160,9 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.logout")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.WriteHeader(http.StatusOK)

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"github.com/2beens/serjtubincom/internal/metrics"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 )
 
 func PanicRecovery(instr *metrics.Manager) func(next http.Handler) http.Handler {

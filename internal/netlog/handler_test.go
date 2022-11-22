@@ -11,8 +11,9 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/metrics"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/go-redis/redismock/v8"
+
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"

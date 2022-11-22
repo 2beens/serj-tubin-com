@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/metrics"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	promcl "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"

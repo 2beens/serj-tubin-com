@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -123,8 +124,7 @@ func (api *PsqlApi) DeleteBlog(ctx context.Context, id int) error {
 }
 
 func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
-	tracer := otel.Tracer("main-backend")
-	ctx, span := tracer.Start(ctx, "blogApi.All")
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.All")
 	defer span.End()
 
 	rows, err := api.db.Query(
@@ -163,8 +163,7 @@ func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
 }
 
 func (api *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
-	tracer := otel.Tracer("main-backend")
-	ctx, span := tracer.Start(ctx, "blogApi.BlogsCount")
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.BlogsCount")
 	defer span.End()
 
 	rows, err := api.db.Query(ctx, `SELECT COUNT(*) FROM blog`)
@@ -188,8 +187,7 @@ func (api *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
 }
 
 func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error) {
-	tracer := otel.Tracer("main-backend")
-	ctx, span := tracer.Start(ctx, "blogApi.GetBlogsPage")
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.GetBlogsPage")
 	span.SetAttributes(attribute.Int("page", page))
 	span.SetAttributes(attribute.Int("size", size))
 	defer span.End()
@@ -255,8 +253,8 @@ func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, 
 
 func (api *PsqlApi) GetBlog(ctx context.Context, id int) (*Blog, error) {
 	log.Tracef("getting blog %d", id)
-	tracer := otel.Tracer("main-backend")
-	ctx, span := tracer.Start(ctx, "blogApi.GetBlog")
+
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.GetBlog")
 	span.SetAttributes(attribute.Int("id", id))
 	defer span.End()
 

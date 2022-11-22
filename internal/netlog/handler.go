@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/metrics"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )

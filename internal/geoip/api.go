@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -58,8 +58,7 @@ func NewApi(
 }
 
 func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo, error) {
-	tracer := otel.Tracer("main-backend")
-	ctx, span := tracer.Start(ctx, "geoIp.GetRequestGeoInfo")
+	ctx, span := tracing.GlobalTracer.Start(ctx, "geoIp.GetRequestGeoInfo")
 	defer span.End()
 
 	userIp, err := pkg.ReadUserIP(r)
