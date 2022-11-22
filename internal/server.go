@@ -35,7 +35,7 @@ import (
 	// configuration to the launcher
 	_ "github.com/honeycombio/honeycomb-opentelemetry-go"
 	"github.com/honeycombio/opentelemetry-go-contrib/launcher"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 type Server struct {
@@ -212,6 +212,9 @@ func NewServer(
 func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
 
+	// TODO: it should do some degree of auto tracing, but it does not
+	r.Use(otelmux.Middleware("main-router"))
+
 	blogRouter := r.PathPrefix("/blog").Subrouter()
 	weatherRouter := r.PathPrefix("/weather").Subrouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
@@ -271,7 +274,7 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 
 	s.httpServer = &http.Server{
-		Handler:      otelhttp.NewHandler(router, "main-backend"),
+		Handler:      router,
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,

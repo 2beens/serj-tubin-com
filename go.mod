@@ -10,7 +10,7 @@ require (
 	github.com/dgraph-io/ristretto v0.0.3
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/go-redis/redismock/v8 v8.0.6
-	github.com/gorilla/mux v1.7.4
+	github.com/gorilla/mux v1.8.0
 	github.com/honeycombio/honeycomb-opentelemetry-go v0.3.0
 	github.com/honeycombio/opentelemetry-go-contrib/launcher v0.0.0-20221031150637-a3c60ed98d54
 	github.com/jackc/pgx/v4 v4.9.2
@@ -18,6 +18,7 @@ require (
 	github.com/prometheus/client_model v0.3.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.8.0
+	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.36.4
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.36.4
 	go.opentelemetry.io/otel v1.11.1
 	go.uber.org/multierr v1.8.0
