@@ -60,14 +60,6 @@ func main() {
 		log.Fatalf("unable to read client secret file: %v", err)
 	}
 
-	if *destroy {
-		if err := netlog.DestroyAllFiles(credentialsFileBytes); err != nil {
-			log.Fatalf("destroy failed: %s", err)
-		}
-		log.Println("destroy done!")
-		return
-	}
-
 	chOsInterrupt := make(chan os.Signal, 1)
 	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -77,6 +69,14 @@ func main() {
 		log.Warnf("signal [%s] received, canceling context ...", receivedSig)
 		cancel()
 	}()
+
+	if *destroy {
+		if err := netlog.DestroyAllFiles(ctx, credentialsFileBytes); err != nil {
+			log.Fatalf("destroy failed: %s", err)
+		}
+		log.Println("destroy done!")
+		return
+	}
 
 	s, err := netlog.NewGoogleDriveBackupService(
 		ctx,

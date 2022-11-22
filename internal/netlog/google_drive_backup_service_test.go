@@ -38,7 +38,7 @@ func Test_trySendMetrics(t *testing.T) {
 	visitsCount := 100
 
 	// MAIN TESTED FUNCTION
-	trySendMetrics(beginTimestamp, visitsCount, dir, socket)
+	trySendMetrics(context.Background(), beginTimestamp, visitsCount, dir, socket)
 
 	// stop unix listener
 	cancel()
