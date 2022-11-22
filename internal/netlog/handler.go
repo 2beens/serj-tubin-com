@@ -10,6 +10,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/gorilla/mux"
@@ -49,6 +50,9 @@ func NewHandler(
 }
 
 func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.getPage")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -92,7 +96,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	visits, err := handler.netlogApi.GetVisitsPage(r.Context(), keywords, field, source, page, size)
+	visits, err := handler.netlogApi.GetVisitsPage(ctx, keywords, field, source, page, size)
 	if err != nil {
 		log.Errorf("get visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -112,7 +116,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allVisitsCount, err := handler.netlogApi.Count(r.Context(), keywords, field, source)
+	allVisitsCount, err := handler.netlogApi.Count(ctx, keywords, field, source)
 	if err != nil {
 		log.Errorf("get netlog visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -124,6 +128,9 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.new")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -160,7 +167,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		Source:    source,
 		Timestamp: time.Unix(timestamp/1000, 0),
 	}
-	if err := handler.netlogApi.AddVisit(r.Context(), visit); err != nil {
+	if err := handler.netlogApi.AddVisit(ctx, visit); err != nil {
 		log.Printf("failed to add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		return
@@ -173,6 +180,9 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.getPage")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -194,7 +204,7 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("getting last %d netlog visits ... ", limit)
 
-	visits, err := handler.netlogApi.GetVisits(r.Context(), []string{}, "url", "all", limit)
+	visits, err := handler.netlogApi.GetVisits(ctx, []string{}, "url", "all", limit)
 	if err != nil {
 		log.Errorf("get all visits error: %s", err)
 		http.Error(w, "failed to get all visits", http.StatusInternalServerError)

@@ -7,9 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var _ Api = (*PsqlApi)(nil)
@@ -39,6 +42,9 @@ func (api *PsqlApi) CloseDB() {
 }
 
 func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) error {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.add")
+	defer span.End()
+
 	if visit.URL == "" || visit.Timestamp.IsZero() {
 		return errors.New("visit url or timestamp empty")
 	}
@@ -69,6 +75,14 @@ func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) error {
 }
 
 func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) ([]*Visit, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.all")
+	if fromTimestamp != nil {
+		span.SetAttributes(attribute.String("from-time", fromTimestamp.String()))
+	} else {
+		span.SetAttributes(attribute.String("from-time", "nil"))
+	}
+	defer span.End()
+
 	var rows pgx.Rows
 	var err error
 	if fromTimestamp != nil {
@@ -118,10 +132,18 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 		})
 	}
 
+	span.SetAttributes(attribute.Int("found-visits", len(visits)))
+
 	return visits, nil
 }
 
 func (api *PsqlApi) GetVisits(ctx context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.getVisits")
+	span.SetAttributes(attribute.String("source", source))
+	span.SetAttributes(attribute.String("field", field))
+	span.SetAttributes(attribute.Int("limit", limit))
+	defer span.End()
+
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT
@@ -172,6 +194,11 @@ func (api *PsqlApi) CountAll(ctx context.Context) (int, error) {
 }
 
 func (api *PsqlApi) Count(ctx context.Context, keywords []string, field string, source string) (int, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.count")
+	span.SetAttributes(attribute.String("source", source))
+	span.SetAttributes(attribute.String("field", field))
+	defer span.End()
+
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT COUNT(*)
@@ -204,6 +231,13 @@ func (api *PsqlApi) Count(ctx context.Context, keywords []string, field string, 
 }
 
 func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.getVisitsPage")
+	span.SetAttributes(attribute.String("source", source))
+	span.SetAttributes(attribute.String("field", field))
+	span.SetAttributes(attribute.Int("page", page))
+	span.SetAttributes(attribute.Int("size", size))
+	defer span.End()
+
 	limit := size
 	offset := (page - 1) * size
 	allVisitsCount, err := api.CountAll(ctx)

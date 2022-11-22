@@ -318,7 +318,7 @@ func (s *GoogleDriveBackupService) DoBackup(ctx context.Context, baseTime time.T
 }
 
 func (s *GoogleDriveBackupService) createRootBackupsFolder(ctx context.Context) (folderId string, createdPermission *drive.Permission, err error) {
-	ctx, span := tracing.GlobalNetlogBackupTracer.Start(ctx, "netlogService.createRootBackupsFolder")
+	_, span := tracing.GlobalNetlogBackupTracer.Start(ctx, "netlogService.createRootBackupsFolder")
 	defer span.End()
 
 	backupsFolderMeta := &drive.File{
@@ -374,7 +374,7 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(ctx context.Context, 
 }
 
 func (s *GoogleDriveBackupService) backupVisits(ctx context.Context, visits []*Visit, baseFileName string, previousFileCounter int) error {
-	ctx, span := tracing.GlobalNetlogBackupTracer.Start(ctx, "netlogService.backupVisits")
+	_, span := tracing.GlobalNetlogBackupTracer.Start(ctx, "netlogService.backupVisits")
 	defer span.End()
 
 	chunks := len(visits) / visitsFileChunkSize
@@ -449,7 +449,7 @@ func (s *GoogleDriveBackupService) backupVisits(ctx context.Context, visits []*V
 }
 
 func (s *GoogleDriveBackupService) getNetlogBackupFiles(ctx context.Context, netlogBackupFolderId string) ([]*drive.File, error) {
-	ctx, span := tracing.GlobalNetlogBackupTracer.Start(ctx, "netlogService.getNetlogBackupFiles")
+	_, span := tracing.GlobalNetlogBackupTracer.Start(ctx, "netlogService.getNetlogBackupFiles")
 	defer span.End()
 
 	var files []*drive.File
@@ -492,7 +492,7 @@ func trySendMetrics(
 	netlogUnixSocketAddrDir string,
 	netlogUnixSocketFileName string,
 ) {
-	ctx, span := tracing.GlobalNetlogBackupTracer.Start(ctx, "netlogService.trySendMetrics")
+	_, span := tracing.GlobalNetlogBackupTracer.Start(ctx, "netlogService.trySendMetrics")
 	defer span.End()
 
 	log.Println("sending metrics ...")
