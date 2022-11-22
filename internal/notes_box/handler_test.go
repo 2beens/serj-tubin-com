@@ -40,7 +40,7 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 
 	metrics := metrics.NewTestManager()
-    handler := NewHandler(api, loginChecker, metrics)
+	handler := NewHandler(api, loginChecker, metrics)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "", nil)

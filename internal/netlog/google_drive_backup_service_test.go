@@ -15,7 +15,7 @@ import (
 )
 
 func Test_trySendMetrics(t *testing.T) {
-    metrics, reg := metrics.NewTestManagerAndRegistry()
+	metrics, reg := metrics.NewTestManagerAndRegistry()
 	dir, err := os.MkdirTemp("", "serj-server-unix")
 	if err != nil {
 		t.Fatal(err)

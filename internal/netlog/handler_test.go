@@ -250,7 +250,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 	// visits len is unchanged
 	assert.Len(t, netlogApi.Visits, 2)
 
-    assert.Equal(t, float64(0), testutil.ToFloat64(metrics.CounterNetlogVisits))
+	assert.Equal(t, float64(0), testutil.ToFloat64(metrics.CounterNetlogVisits))
 }
 
 func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
@@ -316,7 +316,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 	assert.Equal(t, req.PostForm.Get("url"), addedVisit.URL)
 	assert.Equal(t, time.Unix(int64(jsTimestamp)/1000, 0), addedVisit.Timestamp)
 
-    assert.Equal(t, float64(1), testutil.ToFloat64(metrics.CounterNetlogVisits))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metrics.CounterNetlogVisits))
 }
 
 func TestNetlogHandler_handleGetPage(t *testing.T) {
@@ -416,5 +416,5 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	assert.Equal(t, "test:url:6", resp.Visits[1].URL)
 	assert.Equal(t, "test:url:7", resp.Visits[2].URL)
 
-    assert.Equal(t, float64(0), testutil.ToFloat64(metrics.CounterNetlogVisits))
+	assert.Equal(t, float64(0), testutil.ToFloat64(metrics.CounterNetlogVisits))
 }
