@@ -9,8 +9,8 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -23,15 +23,20 @@ type PsqlApi struct {
 
 func NewNetlogPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
-	dbPool, err := pgxpool.Connect(ctx, connString)
+	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		return nil, fmt.Errorf("netlog api unable to connect to database: %w", err)
+		return nil, fmt.Errorf("parse netlog db config: %w", err)
+	}
+
+	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create connection pool: %w", err)
 	}
 
 	log.Debugf("netlog api connected to: %s", connString)
 
 	return &PsqlApi{
-		db: dbPool,
+		db: db,
 	}, nil
 }
 
@@ -43,6 +48,7 @@ func (api *PsqlApi) CloseDB() {
 
 func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) error {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.add")
+	span.SetAttributes(attribute.String("source", visit.Source))
 	defer span.End()
 
 	if visit.URL == "" || visit.Timestamp.IsZero() {

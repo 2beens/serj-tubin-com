@@ -8,7 +8,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -24,15 +24,20 @@ type PsqlApi struct {
 
 func NewBlogPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
-	dbPool, err := pgxpool.Connect(ctx, connString)
+	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
+		return nil, fmt.Errorf("parse netlog db config: %w", err)
+	}
+
+	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create connection pool: %w", err)
 	}
 
 	log.Debugf("blog api connected to: %s", connString)
 
 	blogApi := &PsqlApi{
-		db: dbPool,
+		db: db,
 	}
 
 	return blogApi, nil
