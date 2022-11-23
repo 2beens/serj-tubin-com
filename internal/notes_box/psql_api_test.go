@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +34,11 @@ func getPsqlApi(t *testing.T) (*PsqlApi, error) {
 	}
 	t.Logf("using postres host: %s", host)
 
-	return NewPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
+	return NewPsqlApi(
+		timeoutCtx,
+		host, "5432", "serj_blogs",
+		tracing.NewPgxOtelTracer(false, nil),
+	)
 }
 
 func TestPsqlApi_BasicCRUD(t *testing.T) {

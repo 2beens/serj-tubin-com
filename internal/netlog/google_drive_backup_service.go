@@ -80,7 +80,11 @@ func NewGoogleDriveBackupService(
 		backupsFolderId = rbf.Id
 	}
 
-	psqlApi, err := NewNetlogPsqlApi(ctx, dbHost, dbPort, dbName)
+	psqlApi, err := NewNetlogPsqlApi(
+		ctx,
+		dbHost, dbPort, dbName,
+		tracing.NewPgxOtelTracer(true, tracing.GlobalNetlogBackupTracer),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PSQL api client: %w", err)
 	}

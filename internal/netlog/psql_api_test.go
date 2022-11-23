@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +29,11 @@ func getPsqlApi(t *testing.T) (*PsqlApi, error) {
 	}
 	t.Logf("using postres host: %s", host)
 
-	return NewNetlogPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
+	return NewNetlogPsqlApi(
+		timeoutCtx,
+		host, "5432", "serj_blogs",
+		tracing.NewPgxOtelTracer(false, nil),
+	)
 }
 
 func deleteAllVisits(ctx context.Context, psqlApi *PsqlApi) (int64, error) {

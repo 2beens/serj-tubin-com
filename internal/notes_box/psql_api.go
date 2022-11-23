@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,12 +20,18 @@ type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlApi, error) {
+func NewPsqlApi(
+	ctx context.Context,
+	dbHost, dbPort, dbName string,
+	tracer *tracing.PgxOtelTracer,
+) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
 	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return nil, fmt.Errorf("parse netlog db config: %w", err)
 	}
+
+	poolConfig.ConnConfig.Tracer = tracer
 
 	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {

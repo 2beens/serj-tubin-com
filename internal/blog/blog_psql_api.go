@@ -22,12 +22,18 @@ type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewBlogPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlApi, error) {
+func NewBlogPsqlApi(
+	ctx context.Context,
+	dbHost, dbPort, dbName string,
+	tracer *tracing.PgxOtelTracer,
+) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
 	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return nil, fmt.Errorf("parse netlog db config: %w", err)
 	}
+
+	poolConfig.ConnConfig.Tracer = tracer
 
 	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
