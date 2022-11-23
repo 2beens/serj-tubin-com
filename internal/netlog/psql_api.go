@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 var _ Api = (*PsqlApi)(nil)
@@ -52,12 +53,21 @@ func (api *PsqlApi) CloseDB() {
 	}
 }
 
-func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) error {
+func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.add")
 	span.SetAttributes(attribute.String("source", visit.Source))
 	defer span.End()
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, "add visit failed")
+			span.RecordError(err)
+		} else {
+			span.SetStatus(codes.Ok, "visit added")
+		}
+	}()
 
 	if visit.URL == "" || visit.Timestamp.IsZero() {
+		span.SetStatus(codes.Error, "visit url or timestamp empty")
 		return errors.New("visit url or timestamp empty")
 	}
 
