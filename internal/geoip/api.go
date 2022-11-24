@@ -103,12 +103,12 @@ func (gi *Api) GetRequestGeoInfo(ctx context.Context, userIp string) (*IpInfo, e
 	ipBaseUrl := fmt.Sprintf("%s/v2/info?apikey=%s&ip=%s", gi.ipBaseEndpoint, gi.ipBaseAPIKey, userIp)
 	log.Debugf("calling geo ip info: %s", ipBaseUrl)
 
-	req, err := http.NewRequest("GET", ipBaseUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", ipBaseUrl, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := gi.httpClient.Do(req.WithContext(ctx))
+	resp, err := gi.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error getting freegeoip response: %s", err.Error())
 	}
