@@ -8,6 +8,7 @@ require (
 	github.com/brianvoe/gofakeit/v6 v6.19.0
 	github.com/coocood/freecache v1.1.0
 	github.com/dgraph-io/ristretto v0.0.3
+	github.com/exaring/otelpgx v0.3.1
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/go-redis/redismock/v8 v8.0.6
 	github.com/gorilla/mux v1.8.0
@@ -22,7 +23,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.36.4
 	go.opentelemetry.io/otel v1.11.1
 	go.uber.org/multierr v1.8.0
-	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
+	golang.org/x/crypto v0.1.0
 	google.golang.org/api v0.100.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )

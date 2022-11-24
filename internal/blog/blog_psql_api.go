@@ -8,6 +8,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
@@ -25,7 +26,7 @@ type PsqlApi struct {
 func NewBlogPsqlApi(
 	ctx context.Context,
 	dbHost, dbPort, dbName string,
-	tracer *tracing.PgxOtelTracer,
+	tracingEnabled bool,
 ) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
 	poolConfig, err := pgxpool.ParseConfig(connString)
@@ -33,7 +34,10 @@ func NewBlogPsqlApi(
 		return nil, fmt.Errorf("parse netlog db config: %w", err)
 	}
 
-	poolConfig.ConnConfig.Tracer = tracer
+	// TODO: disable tracing via NoopTracer...
+	if tracingEnabled {
+		poolConfig.ConnConfig.Tracer = otelpgx.NewTracer()
+	}
 
 	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {

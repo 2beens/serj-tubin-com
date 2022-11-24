@@ -22,7 +22,6 @@ import (
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/2beens/serjtubincom/internal/notes_box"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/internal/weather"
 
 	"github.com/go-redis/redis/v8"
@@ -102,7 +101,7 @@ func NewServer(
 	blogApi, err := blog.NewBlogPsqlApi(
 		ctx,
 		config.PostgresHost, config.PostgresPort, config.PostgresDBName,
-		tracing.NewPgxOtelTracer(true, tracing.GlobalTracer),
+		true,
 	)
 	if err != nil {
 		log.Fatalf("failed to create blog api: %s", err)
@@ -111,7 +110,7 @@ func NewServer(
 	netlogVisitsApi, err := netlog.NewNetlogPsqlApi(
 		ctx,
 		config.PostgresHost, config.PostgresPort, config.PostgresDBName,
-		tracing.NewPgxOtelTracer(true, tracing.GlobalTracer),
+		true,
 	)
 	if err != nil {
 		log.Fatalf("failed to create netlog visits api: %s", err)
@@ -120,7 +119,7 @@ func NewServer(
 	notesBoxApi, err := notes_box.NewPsqlApi(
 		ctx,
 		config.PostgresHost, config.PostgresPort, config.PostgresDBName,
-		tracing.NewPgxOtelTracer(true, tracing.GlobalTracer),
+		true,
 	)
 	if err != nil {
 		log.Fatalf("failed to create notes visits api: %s", err)
