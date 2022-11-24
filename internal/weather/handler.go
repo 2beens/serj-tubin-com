@@ -11,6 +11,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -88,7 +89,14 @@ func (handler *Handler) handleCurrent(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, r)
+	userIp, err := pkg.ReadUserIP(r)
+	if err != nil {
+		span.SetStatus(codes.Error, fmt.Sprintf("get user ip: %s", err))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIp)
 	if err != nil {
 		span.SetStatus(codes.Error, fmt.Sprintf("error getting geo ip info: %s", err))
 		log.Errorf("error getting geo ip info: %s", err)
@@ -140,7 +148,14 @@ func (handler *Handler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, r)
+	userIp, err := pkg.ReadUserIP(r)
+	if err != nil {
+		span.SetStatus(codes.Error, fmt.Sprintf("get user ip: %s", err))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIp)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		log.Errorf("error getting geo ip info: %s", err)
@@ -201,7 +216,14 @@ func (handler *Handler) handle5Days(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, r)
+	userIp, err := pkg.ReadUserIP(r)
+	if err != nil {
+		span.SetStatus(codes.Error, fmt.Sprintf("get user ip: %s", err))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIp)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		log.Errorf("error getting geo ip info: %s", err)

@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
-	"github.com/2beens/serjtubincom/pkg"
-
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
@@ -57,15 +55,10 @@ func NewApi(
 	}
 }
 
-func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo, error) {
+func (gi *Api) GetRequestGeoInfo(ctx context.Context, userIp string) (*IpInfo, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "geoIp.getRequestGeoInfo")
 	defer span.End()
 
-	userIp, err := pkg.ReadUserIP(r)
-	if err != nil {
-		span.SetStatus(codes.Error, fmt.Sprintf("get user ip: %s", err))
-		return nil, fmt.Errorf("get user ip: %w", err)
-	}
 	span.SetAttributes(attribute.String("user.ip", userIp))
 
 	// used for development
@@ -89,6 +82,7 @@ func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo,
 		log.Errorf("failed to find ip info from redis for [%s]: %s", userIpKey, err)
 	}
 
+	var err error
 	geoIpResponse := &IpInfo{}
 	if geoIpInfoBytes := cmd.Val(); geoIpInfoBytes != "" {
 		span.SetAttributes(attribute.Bool("user.ip.from-cache", true))

@@ -121,27 +121,22 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 	geoIp := NewApi(testServer.URL, "dummy-api-key", testServer.Client(), db)
 	require.NotNil(t, geoIp)
 
-	req, err := http.NewRequest("GET", "/messages/count", nil)
-	require.NoError(t, err)
-
+	ctx := context.Background()
 	// will return geoIpInfo - development Berlin
-	req.Header.Add("X-Real-Ip", "127.0.0.1:1234")
-	geoIpInfo, err := geoIp.GetRequestGeoInfo(context.Background(), req)
+	geoIpInfo, err := geoIp.GetRequestGeoInfo(ctx, "localhost")
 	require.NoError(t, err)
 	require.NotNil(t, geoIpInfo)
 	assert.Equal(t, &devGeoIpInfo, geoIpInfo)
 
 	// non-dev IP
-	ipAddr := "127.0.0.2"
-	req.Header.Set("X-Real-Ip", ipAddr)
-	geoIpInfo, err = geoIp.GetRequestGeoInfo(context.Background(), req)
+	geoIpInfo, err = geoIp.GetRequestGeoInfo(ctx, "127.0.0.2")
 	require.NoError(t, err)
 	require.NotNil(t, geoIpInfo)
 
 	assert.Equal(t, "Sydney", geoIpInfo.Data.Location.City.Name)
 	assert.Equal(t, "Australia", geoIpInfo.Data.Location.Country.Name)
 	assert.Equal(t, "2000", geoIpInfo.Data.Location.Zip)
-	assert.Equal(t, ipAddr, geoIpInfo.Data.IP)
+	assert.Equal(t, "127.0.0.2", geoIpInfo.Data.IP)
 
 	// TODO: test the case when getting the value from redis cache
 }

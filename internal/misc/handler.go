@@ -80,7 +80,14 @@ func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, r)
+	userIp, err := pkg.ReadUserIP(r)
+	if err != nil {
+		span.SetStatus(codes.Error, fmt.Sprintf("get user ip: %s", err))
+		http.Error(w, "geo ip info error", http.StatusInternalServerError)
+		return
+	}
+
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIp)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
