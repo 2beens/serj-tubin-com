@@ -32,11 +32,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 
-	// NOTE: this import is super important as applies the Honeycomb
-	// configuration to the launcher
+	// NOTE: this import is super important as applies the Honeycomb configuration to the launcher
 	_ "github.com/honeycombio/honeycomb-opentelemetry-go"
 	"github.com/honeycombio/opentelemetry-go-contrib/launcher"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Server struct {
@@ -184,13 +184,17 @@ func NewServer(
 	}
 	log.Trace("otel sdk set up")
 
+	tracedHttpClient := &http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
 	s := &Server{
 		config:                config,
 		blogApi:               blogApi,
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
-		geoIp:                 geoip.NewApi("https://api.ipbase.com", ipBaseAPIKey, http.DefaultClient, rdb),
+		geoIp:                 geoip.NewApi("https://api.ipbase.com", ipBaseAPIKey, tracedHttpClient, rdb),
 		boardAeroClient:       boardAeroClient,
 		boardClient:           boardClient,
 		netlogVisitsApi:       netlogVisitsApi,
@@ -226,6 +230,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
 
 	// TODO: it should do some degree of auto tracing, but it does not
+	// update: actually, seems like adds some tracing info
 	r.Use(otelmux.Middleware("main-router"))
 
 	blogRouter := r.PathPrefix("/blog").Subrouter()

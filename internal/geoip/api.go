@@ -58,7 +58,7 @@ func NewApi(
 }
 
 func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo, error) {
-	ctx, span := tracing.GlobalTracer.Start(ctx, "geoIp.GetRequestGeoInfo")
+	ctx, span := tracing.GlobalTracer.Start(ctx, "geoIp.getRequestGeoInfo")
 	defer span.End()
 
 	userIp, err := pkg.ReadUserIP(r)
