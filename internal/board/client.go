@@ -1,6 +1,7 @@
 package board
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 
 	boardAero "github.com/2beens/serjtubincom/internal/board/aerospike"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,7 +24,7 @@ type Client struct {
 	mutex      sync.RWMutex
 }
 
-func NewClient(aeroClient boardAero.AeroClient, cache Cache) (*Client, error) {
+func NewClient(ctx context.Context, aeroClient boardAero.AeroClient, cache Cache) (*Client, error) {
 	if aeroClient == nil {
 		return nil, boardAero.ErrAeroClientNil
 	}
@@ -50,7 +52,7 @@ func NewClient(aeroClient boardAero.AeroClient, cache Cache) (*Client, error) {
 		log.Errorf("failed to get all messages count: %s", err)
 	} else if messagesCount > 0 {
 		go func() {
-			if err := b.SetAllMessagesCacheFromAero(); err != nil {
+			if err := b.SetAllMessagesCacheFromAero(ctx); err != nil {
 				log.Errorf("failed to set all messages cache from aero cache: %s", err)
 			}
 		}()
@@ -59,11 +61,11 @@ func NewClient(aeroClient boardAero.AeroClient, cache Cache) (*Client, error) {
 	return b, nil
 }
 
-func (c *Client) SetAllMessagesCacheFromAero() error {
+func (c *Client) SetAllMessagesCacheFromAero(ctx context.Context) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	allMessages, err := c.AllMessages(true)
+	allMessages, err := c.AllMessages(ctx, true)
 	if err != nil {
 		return err
 	}
@@ -127,9 +129,12 @@ func (c *Client) DeleteMessage(messageId string) (bool, error) {
 	return c.aeroClient.Delete(messageId)
 }
 
-func (c *Client) GetMessagesPage(page, size int) ([]*Message, error) {
+func (c *Client) GetMessagesPage(ctx context.Context, page, size int) ([]*Message, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	ctx, span := tracing.GlobalTracer.Start(ctx, "boardClient.getMessagesPage")
+	defer span.End()
 
 	log.Tracef("getting messages page %d, size %d", page, size)
 
@@ -139,7 +144,7 @@ func (c *Client) GetMessagesPage(page, size int) ([]*Message, error) {
 	}
 
 	if size >= totalMessagesCount {
-		return c.AllMessagesCache(false)
+		return c.AllMessagesCache(ctx, false)
 	}
 
 	cacheKey := c.MessagesPageCacheKey(page, size)
@@ -200,7 +205,10 @@ func (c *Client) GetMessagesWithRange(from, to int64) ([]*Message, error) {
 	return messages, nil
 }
 
-func (c *Client) AllMessagesCache(sortByTimestamp bool) ([]*Message, error) {
+func (c *Client) AllMessagesCache(ctx context.Context, sortByTimestamp bool) ([]*Message, error) {
+	_, span := tracing.GlobalTracer.Start(ctx, "boardClient.allMessagesCache")
+	defer span.End()
+
 	if allMessagesCached, found := c.cache.Get(AllMessagesCacheKey); found {
 		if allMessages, ok := allMessagesCached.([]*Message); ok {
 			log.Tracef("all %d messages found in cache", len(allMessages))
@@ -210,7 +218,7 @@ func (c *Client) AllMessagesCache(sortByTimestamp bool) ([]*Message, error) {
 	}
 
 	log.Errorf("failed to get all messages cache, will get them from aerospike")
-	allMessages, err := c.AllMessages(sortByTimestamp)
+	allMessages, err := c.AllMessages(ctx, sortByTimestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +228,10 @@ func (c *Client) AllMessagesCache(sortByTimestamp bool) ([]*Message, error) {
 	return allMessages, nil
 }
 
-func (c *Client) AllMessages(sortByTimestamp bool) ([]*Message, error) {
+func (c *Client) AllMessages(ctx context.Context, sortByTimestamp bool) ([]*Message, error) {
+	_, span := tracing.GlobalTracer.Start(ctx, "boardClient.allMessages")
+	defer span.End()
+
 	log.Tracef("getting all messages from Aerospike")
 
 	messagesBins, err := c.aeroClient.ScanAll()

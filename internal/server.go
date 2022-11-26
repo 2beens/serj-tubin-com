@@ -88,7 +88,7 @@ func NewServer(
 		return nil, fmt.Errorf("failed to create board cache: %w", err)
 	}
 
-	boardClient, err := board.NewClient(boardAeroClient, boardCache)
+	boardClient, err := board.NewClient(ctx, boardAeroClient, boardCache)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
