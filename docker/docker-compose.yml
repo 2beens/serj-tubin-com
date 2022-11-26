@@ -25,6 +25,8 @@ services:
       SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: $$2a$$14$$gPDY7P8qGduPi.OKoPKzM.N/MTyZpP.q2tmbprdHH.1jyw7fK3KfW
       SERJ_BROWSER_REQ_SECRET: todo
       SERJ_REDIS_PASS: todo
+      OTEL_SERVICE_NAME: serj-tubin-com-docker-dev
+      HONEYCOMB_API_KEY: ""
 
   fileservice:
     image: golang:latest
@@ -43,6 +45,8 @@ services:
     working_dir: /go/src/serj-tubin-com-file-service
     environment:
       SERJ_REDIS_PASS: todo
+      OTEL_SERVICE_NAME: serj-tubin-com-docker-dev
+      HONEYCOMB_API_KEY: ""
 
   # https://hub.docker.com/_/postgres
   postgres:
@@ -71,9 +75,9 @@ services:
     command: redis-server --appendonly yes --requirepass todo
     container_name: st-redis
     volumes:
-     - ./docker-data-redis:/data
+      - ./docker-data-redis:/data
     ports:
-     - 6379:6379
+      - 6379:6379
 
   adminer:
     image: adminer
