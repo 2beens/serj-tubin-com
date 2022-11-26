@@ -1,2 +1,2 @@
 #!/bin/bash
-docker-compose -p serjservice logs goservice --follow
+docker-compose -p serjservice logs mainservice --follow

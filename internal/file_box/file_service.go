@@ -109,12 +109,16 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 }
 
 func (fs *FileService) GracefulShutdown() {
+	log.Debugln("otel shutting down ...")
 	fs.otelShutdown()
+	log.Debugln("otel shut down")
 
 	if fs.httpServer != nil {
 		maxWaitDuration := time.Second * 10
 		ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
 		defer timeoutCancel()
+
+		log.Debugln("shutting down server ...")
 		if err := fs.httpServer.Shutdown(ctx); err != nil {
 			log.Error(" >>> failed to gracefully shutdown http server")
 		}

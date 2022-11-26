@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"regexp"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
@@ -22,12 +21,12 @@ import (
 	"github.com/2beens/serjtubincom/internal/netlog"
 	"github.com/2beens/serjtubincom/internal/notes_box"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+	metricsmiddleware "github.com/2beens/serjtubincom/internal/telemetry/metrics/middleware"
 	"github.com/2beens/serjtubincom/internal/weather"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 
@@ -125,16 +124,7 @@ func NewServer(
 		log.Fatalf("failed to create notes visits api: %s", err)
 	}
 
-	promRegistry := prometheus.NewRegistry()
-	// Add Go module build info.
-	promRegistry.MustRegister(collectors.NewBuildInfoCollector())
-	promRegistry.MustRegister(collectors.NewGoCollector(
-		collectors.WithGoCollectorRuntimeMetrics(
-			collectors.GoRuntimeMetricsRule{
-				Matcher: regexp.MustCompile("/.*"),
-			},
-		),
-	))
+	promRegistry := metrics.SetupPrometheus()
 	metricsManager := metrics.NewManager("backend", "server1", promRegistry)
 	metricsManager.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
@@ -307,12 +297,14 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	log.Printf(" > metrics listening on: [%s]", metricsAddr)
 	go func() {
 		// Expose the registered metrics via HTTP.
-		http.Handle("/metrics", promhttp.HandlerFor(
-			s.promRegistry,
-			promhttp.HandlerOpts{
-				Registry: s.promRegistry,
-			},
-		))
+		http.Handle(
+			"/metrics",
+			metricsmiddleware.
+				New(s.promRegistry, nil).
+				WrapHandler("/metrics", promhttp.HandlerFor(
+					s.promRegistry,
+					promhttp.HandlerOpts{}),
+				))
 		log.Println(http.ListenAndServe(metricsAddr, nil))
 	}()
 

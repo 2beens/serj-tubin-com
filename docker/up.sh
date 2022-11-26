@@ -1,2 +1,3 @@
 #!/bin/bash
-docker-compose -p serjservice up
+docker-compose -p serjservice up --build
+

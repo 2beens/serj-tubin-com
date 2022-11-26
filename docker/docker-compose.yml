@@ -1,7 +1,12 @@
 version: "3.7"
 
+# so far used only in prometheus-grafana stack
+networks:
+  front-tier:
+  back-tier:
+
 services:
-  goservice:
+  mainservice:
     image: golang:latest
     depends_on:
       - postgres
@@ -15,9 +20,12 @@ services:
         go run cmd/aerospike_tools/aero_setup/main.go -env dockerdev
         go run cmd/aerospike_tools/aero_msg_id_counter_set/main.go -env dockerdev
         go build -o bin/service cmd/service/main.go
-        ./bin/service -env dockerdev
+        exec ./bin/service -env dockerdev
     ports:
       - "9000:9000"
+      - "2112:2112"
+    networks:
+      - back-tier
     working_dir: /go/src/serj-tubin-com
     environment:
       OPEN_WEATHER_API_KEY: todo
@@ -39,9 +47,11 @@ services:
     command:
       - |
         go build -o bin/file-service cmd/file_service/main.go
-        ./bin/file-service -host='0.0.0.0' -rhost='st-redis' -rootpath='/file-service-data' -log-to-stdout=true -log-file-path='/file-service-data/logs'
+        exec ./bin/file-service -host='0.0.0.0' -rhost='st-redis' -rootpath='/file-service-data' -log-to-stdout=true -log-file-path='/file-service-data/logs'
     ports:
       - "1987:1987"
+    networks:
+      - back-tier
     working_dir: /go/src/serj-tubin-com-file-service
     environment:
       SERJ_REDIS_PASS: todo
@@ -56,6 +66,8 @@ services:
       - ../sql:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
+    networks:
+      - back-tier
     environment:
       POSTGRES_DB: serj_blogs
       POSTGRES_USER: postgres
@@ -67,6 +79,8 @@ services:
     image: aerospike:ce-5.6.0.5
     volumes:
       - ./docker-data-aerospike:/opt/aerospike/data
+    networks:
+      - back-tier
     environment:
       NAMESPACE: serj-tubin-com
 
@@ -78,6 +92,8 @@ services:
       - ./docker-data-redis:/data
     ports:
       - 6379:6379
+    networks:
+      - back-tier
 
   adminer:
     image: adminer
@@ -85,4 +101,86 @@ services:
       - postgres
     restart: always
     ports:
-      - 8081:8080
+      - 8088:8080
+    networks:
+      - back-tier
+      - front-tier
+
+  ############ PROMETHEUS GRAFANA ##################################
+  ##################################################################
+
+  prometheus:
+    image: prom/prometheus:v2.36.2
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - ./docker-data-prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    links:
+      - cadvisor:cadvisor
+      - alertmanager:alertmanager
+      # - pushgateway:pushgateway
+    depends_on:
+      - cadvisor
+      # - pushgateway
+    networks:
+      - back-tier
+    restart: always
+#    deploy:
+#      placement:
+#        constraints:
+#          - node.hostname == ${HOSTNAME}
+
+  grafana:
+    image: grafana/grafana
+    user: "472"
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./docker-data-grafana:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./grafana/config.monitoring
+    networks:
+      - back-tier
+      - front-tier
+    restart: always
+
+  alertmanager:
+    image: prom/alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/:/etc/alertmanager/
+    networks:
+      - back-tier
+    restart: always
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+  #    deploy:
+  #      placement:
+  #        constraints:
+  #          - node.hostname == ${HOSTNAME}
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.46.0
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8087:8080"
+    networks:
+      - back-tier
+    restart: always
+    deploy:
+      mode: global
