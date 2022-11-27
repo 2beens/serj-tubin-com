@@ -33,6 +33,7 @@ func NewFileService(
 	redisHost string,
 	redisPort int,
 	redisPassword string,
+	honeycombTracingEnabled bool,
 ) (*FileService, error) {
 	api, err := NewDiskApi(rootPath)
 	if err != nil {
@@ -56,11 +57,17 @@ func NewFileService(
 	}
 
 	// use honeycomb distro to setup OpenTelemetry SDK
-	otelShutdown, err := launcher.ConfigureOpenTelemetry()
-	if err != nil {
-		log.Errorf("file service OTel SDK setup: %s", err)
+	var otelShutdown func()
+	if honeycombTracingEnabled {
+		if otelShutdown, err = launcher.ConfigureOpenTelemetry(
+			launcher.WithLogLevel("info"), // info log is default anyway
+		); err != nil {
+			log.Errorf("file service OTel SDK setup: %s", err)
+		}
+		log.Trace("file service otel sdk set up")
+	} else {
+		otelShutdown = func() { /*noop*/ }
 	}
-	log.Trace("file service otel sdk set up")
 
 	return &FileService{
 		api:          api,

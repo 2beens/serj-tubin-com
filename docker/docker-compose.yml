@@ -34,6 +34,7 @@ services:
       SERJ_BROWSER_REQ_SECRET: todo
       SERJ_REDIS_PASS: todo
       OTEL_SERVICE_NAME: serj-tubin-com-docker-dev
+      HONEYCOMB_ENABLED: "false"
       HONEYCOMB_API_KEY: ""
 
   fileservice:
@@ -56,6 +57,7 @@ services:
     environment:
       SERJ_REDIS_PASS: todo
       OTEL_SERVICE_NAME: serj-tubin-com-docker-dev
+      HONEYCOMB_ENABLED: "false"
       HONEYCOMB_API_KEY: ""
 
   # https://hub.docker.com/_/postgres

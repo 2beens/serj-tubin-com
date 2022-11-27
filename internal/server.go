@@ -76,6 +76,7 @@ func NewServer(
 	adminUsername string,
 	adminPasswordHash string,
 	redisPassword string,
+	honeycombTracingEnabled bool,
 ) (*Server, error) {
 	boardAeroClient, err := aerospike.NewBoardAeroClient(config.AeroHost, config.AeroPort, config.AeroNamespace, config.AeroMessagesSet)
 	if err != nil {
@@ -165,13 +166,17 @@ func NewServer(
 	}
 
 	// use honeycomb distro to setup OpenTelemetry SDK
-	otelShutdown, err := launcher.ConfigureOpenTelemetry(
-		launcher.WithLogLevel("info"), // info log is default anyway
-	)
-	if err != nil {
-		return nil, fmt.Errorf("OTel SDK setup: %w", err)
+	var otelShutdown func()
+	if honeycombTracingEnabled {
+		if otelShutdown, err = launcher.ConfigureOpenTelemetry(
+			launcher.WithLogLevel("info"), // info log is default anyway
+		); err != nil {
+			return nil, fmt.Errorf("OTel SDK setup: %w", err)
+		}
+		log.Trace("otel sdk set up")
+	} else {
+		otelShutdown = func() { /*noop*/ }
 	}
-	log.Trace("otel sdk set up")
 
 	tracedHttpClient := &http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
