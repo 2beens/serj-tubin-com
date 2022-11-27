@@ -1,0 +1,17 @@
+version: "3.7"
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.36.2
+    restart: always
+    volumes:
+      - ./prometheus-for-misc-server/:/etc/prometheus/
+      - /home/serj/docker-data-prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle' # allow restart on the fly with curl -X POST http://localhost:9000/-/reload
+    ports:
+      - "9090:9090"
