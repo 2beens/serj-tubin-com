@@ -1,8 +1,13 @@
 version: "3.7"
 
+networks:
+  prometheus-network:
+
 services:
   prometheus:
     image: prom/prometheus:v2.40.3
+    networks:
+      prometheus-network:
     restart: always
     volumes:
       - ./prometheus-for-misc-server/:/etc/prometheus/
@@ -19,11 +24,13 @@ services:
 
   alertmanager:
     image: prom/alertmanager
+    networks:
+      prometheus-network:
+    restart: always
     ports:
       - "9093:9093"
     volumes:
       - ./prometheus-for-misc-server/alertmanager/:/etc/alertmanager/
-    restart: always
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
