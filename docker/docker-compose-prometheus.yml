@@ -1,0 +1,55 @@
+version: "3.7"
+
+# note 27 nov 22:
+# small log:
+# - removed old prometheus running on misc
+# - added all docker related files to run prometheus in docker on misc server
+# - old metrics are still left (~3GB) at: /var/lib/prometheus/metrics2
+# - old systemd prometheus is down (but not removed)
+#   - sudo systemctl status prometheus.service
+#   - /lib/systemd/system/prometheus.service
+# - grafana is also running on misc (directly)
+#   - systemctl list-units --type=service | grep grafana
+#   - was updated to v9.2 today on misc server
+# TODOs:
+#   - migrate or remove old prometheus data (/var/lib/prometheus/metrics2)
+#     - new data is at (~/docker-data-prometheus) used by docker container
+#   - remove old systemd related prometheus data
+#
+# TODO:
+# - alertmanager has been added, but not configured
+
+networks:
+  prometheus-network:
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.40.3
+    networks:
+      prometheus-network:
+    restart: always
+    volumes:
+      - ./prometheus-for-misc-server/:/etc/prometheus/
+      - /home/serj/docker-data-prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle' # allow restart on the fly with curl -X POST http://localhost:9000/-/reload
+      - '--storage.tsdb.retention.time=2y' # https://prometheus.io/docs/prometheus/latest/storage/#operational-aspects
+    ports:
+      - "9090:9090"
+
+  alertmanager:
+    image: prom/alertmanager
+    networks:
+      prometheus-network:
+    restart: always
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./prometheus-for-misc-server/alertmanager/:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'

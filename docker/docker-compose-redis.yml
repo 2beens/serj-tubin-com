@@ -4,9 +4,14 @@ version: "3.7"
 # remote connect:
 #   - redis-cli -h host -p port -a password
 
+networks:
+  redis-network:
+
 services:
   redis:
     image: redis
+    networks:
+      redis-network:
     command: redis-server --appendonly yes --requirepass ${SERJ_REDIS_PASS}
     container_name: st-redis
     volumes:
