@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   prometheus:
-    image: prom/prometheus:v2.36.2
+    image: prom/prometheus:v2.40.3
     restart: always
     volumes:
       - ./prometheus-for-misc-server/:/etc/prometheus/
