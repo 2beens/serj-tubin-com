@@ -15,6 +15,7 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type Handler struct {
@@ -229,9 +230,13 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.auth")
+			defer span.End()
+
 			if r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
+				span.SetStatus(codes.Ok, "options-ok")
 				return
 			}
 
@@ -246,6 +251,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 					log.Warnf("unauthorized /netlog/new request detected from %s, authToken: %s", reqIp, authToken)
 					// fool the "attacker" by a fake positive response
 					pkg.WriteResponse(w, "", "added")
+					span.SetStatus(codes.Error, "decoy-sent")
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -255,21 +261,26 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 			if authToken == "" {
 				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
+				span.SetStatus(codes.Error, "missing-auth-token")
 				return
 			}
 
-			isLogged, err := handler.loginChecker.IsLogged(r.Context(), authToken)
+			isLogged, err := handler.loginChecker.IsLogged(ctx, authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)
+				span.SetStatus(codes.Error, "check-logged-err")
+				span.RecordError(err)
 				return
 			}
 			if !isLogged {
 				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
+				span.SetStatus(codes.Error, "not-logged")
 				return
 			}
 
+			span.SetStatus(codes.Ok, "ok")
 			next.ServeHTTP(w, r)
 		})
 	}

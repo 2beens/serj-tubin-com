@@ -44,6 +44,8 @@ func HoneycombSetup(honeycombTracingEnabled bool) (func(), error) {
 	return shutdownFunc, err
 }
 
+// GetDefaultTraceResource TODO: this func still not used anywhere
+// will be used if I decide to setup otel tracing manually, instead of via honeycomb
 func GetDefaultTraceResource(
 	ctx context.Context,
 	serviceName, serviceVersion string,
