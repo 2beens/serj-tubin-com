@@ -125,7 +125,7 @@ func NewServer(
 	}
 
 	promRegistry := metrics.SetupPrometheus()
-	metricsManager := metrics.NewManager("backend", "server1", promRegistry)
+	metricsManager := metrics.NewManager("backend", "main", promRegistry)
 	metricsManager.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
 	rdb := redis.NewClient(&redis.Options{
@@ -166,7 +166,7 @@ func NewServer(
 
 	// use honeycomb distro to setup OpenTelemetry SDK
 	otelShutdown, err := launcher.ConfigureOpenTelemetry(
-		launcher.WithLogLevel("debug"),
+		launcher.WithLogLevel("info"), // info log is default anyway
 	)
 	if err != nil {
 		return nil, fmt.Errorf("OTel SDK setup: %w", err)

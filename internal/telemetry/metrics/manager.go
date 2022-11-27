@@ -17,7 +17,7 @@ type Manager struct {
 	GaugeRequests   prometheus.Gauge
 	GaugeLifeSignal prometheus.Gauge
 
-	// historgrams
+	// histograms
 	HistRequestDuration      prometheus.Histogram
 	HistNetlogBackupDuration prometheus.Histogram
 }

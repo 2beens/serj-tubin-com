@@ -76,7 +76,7 @@ services:
 
   # https://hub.docker.com/_/aerospike
   aerospike:
-    image: aerospike:ce-5.6.0.5
+    image: aerospike:5.2.0.7
     volumes:
       - ./docker-data-aerospike:/opt/aerospike/data
     networks:
@@ -108,6 +108,7 @@ services:
 
   ############ PROMETHEUS GRAFANA ##################################
   ##################################################################
+  # influenced by: https://github.com/vegasbrianc/prometheus/blob/master/README.md
 
   prometheus:
     image: prom/prometheus:v2.36.2
