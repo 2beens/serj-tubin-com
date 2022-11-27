@@ -85,10 +85,12 @@ func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 	weatherApi := NewApi(testServer.URL, openWeatherTestKey, citiesData, testServer.Client())
 	require.NotNil(t, weatherApi)
 
+	ctx := context.Background()
+
 	// with cache miss
-	weather, err := weatherApi.GetWeatherCurrent(context.Background(), londonCityId, "London")
-	require.NotNil(t, weather)
+	weather, err := weatherApi.GetWeatherCurrent(ctx, londonCityId, "London")
 	require.NoError(t, err)
+	require.NotNil(t, weather)
 	assert.Equal(t, "London", weather.Name)
 	assert.Equal(t, londonCityId, weather.ID)
 
@@ -99,7 +101,7 @@ func TestWeatherApi_GetWeatherCurrent(t *testing.T) {
 	assert.Equal(t, "09d", weather.WeatherDescriptions[0].Icon)
 
 	// with cache hit
-	weather, err = weatherApi.GetWeatherCurrent(context.Background(), londonCityId, "London")
+	weather, err = weatherApi.GetWeatherCurrent(ctx, londonCityId, "London")
 	require.NotNil(t, weather)
 	require.NoError(t, err)
 	assert.Equal(t, "London", weather.Name)

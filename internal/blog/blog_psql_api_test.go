@@ -26,7 +26,11 @@ func getPsqlApi(t *testing.T) (*PsqlApi, error) {
 	}
 	t.Logf("using postres host: %s", host)
 
-	return NewBlogPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
+	return NewBlogPsqlApi(
+		timeoutCtx,
+		host, "5432", "serj_blogs",
+		false,
+	)
 }
 
 func TestNewBlogPsqlApi(t *testing.T) {

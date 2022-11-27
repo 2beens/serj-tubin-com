@@ -15,7 +15,7 @@ netlog_unix_socket_addr_dir  = "/var/tmp/serj-service"
 netlog_unix_socket_file_name = "netlog-backup.sock"
 # PROMETHEUS METRICS
 prometheus_metrics_port = "2112"
-prometheus_metrics_host = "localhost"
+prometheus_metrics_host = "0.0.0.0"
 # POSGRES
 postgres_port = "5432"
 postgres_host = "postgres"

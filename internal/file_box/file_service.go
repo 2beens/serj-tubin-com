@@ -9,15 +9,18 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/middleware"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type FileService struct {
 	api          *DiskApi
 	loginChecker *auth.LoginChecker
 	httpServer   *http.Server
+	otelShutdown func()
 }
 
 func NewFileService(
@@ -26,6 +29,7 @@ func NewFileService(
 	redisHost string,
 	redisPort int,
 	redisPassword string,
+	honeycombTracingEnabled bool,
 ) (*FileService, error) {
 	api, err := NewDiskApi(rootPath)
 	if err != nil {
@@ -48,9 +52,16 @@ func NewFileService(
 		log.Printf("redis ping: %s", rdbStatus.Val())
 	}
 
+	// use honeycomb distro to setup OpenTelemetry SDK
+	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled)
+	if err != nil {
+		return nil, err
+	}
+
 	return &FileService{
 		api:          api,
 		loginChecker: auth.NewLoginChecker(auth.DefaultTTL, rdb),
+		otelShutdown: otelShutdown,
 	}, nil
 }
 
@@ -83,7 +94,7 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 	fs.httpServer = &http.Server{
-		Handler:      r,
+		Handler:      otelhttp.NewHandler(r, "file-service"),
 		Addr:         ipAndPort,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
@@ -94,13 +105,20 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 }
 
 func (fs *FileService) GracefulShutdown() {
+	log.Debugln("otel shutting down ...")
+	fs.otelShutdown()
+	log.Debugln("otel shut down")
+
 	if fs.httpServer != nil {
 		maxWaitDuration := time.Second * 10
 		ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
 		defer timeoutCancel()
+
+		log.Debugln("shutting down server ...")
 		if err := fs.httpServer.Shutdown(ctx); err != nil {
 			log.Error(" >>> failed to gracefully shutdown http server")
 		}
 	}
+
 	log.Warnln("server shut down")
 }

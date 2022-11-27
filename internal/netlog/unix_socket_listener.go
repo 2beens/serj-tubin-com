@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/pkg"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,7 +22,7 @@ import (
 func VisitsBackupUnixSocketListenerSetup(
 	ctx context.Context,
 	socketAddrDir, socketFileName string,
-	instr *instrumentation.Instrumentation,
+	instr *metrics.Manager,
 ) (net.Addr, error) {
 	socket := filepath.Join(socketAddrDir, socketFileName)
 	listener, err := net.Listen("unix", socket)
@@ -88,7 +89,7 @@ func VisitsBackupUnixSocketListenerSetup(
 	return listener.Addr(), nil
 }
 
-func sendNetlogBackupDurationInfo(durationInfoMsg string, instr *instrumentation.Instrumentation) {
+func sendNetlogBackupDurationInfo(durationInfoMsg string, metrics *metrics.Manager) {
 	durationInfoParts := strings.Split(durationInfoMsg, "::")
 	if len(durationInfoParts) != 2 {
 		log.Errorf("netlog backup conn, invalid duration info received: %s", durationInfoMsg)
@@ -101,10 +102,10 @@ func sendNetlogBackupDurationInfo(durationInfoMsg string, instr *instrumentation
 		return
 	}
 
-	instr.HistNetlogBackupDuration.Observe(durationInSec)
+	metrics.HistNetlogBackupDuration.Observe(durationInSec)
 }
 
-func sendNetlogBackupVisitsCount(visitsCountInfoMsg string, instr *instrumentation.Instrumentation) {
+func sendNetlogBackupVisitsCount(visitsCountInfoMsg string, metrics *metrics.Manager) {
 	visitsCountInfoParts := strings.Split(visitsCountInfoMsg, "::")
 	if len(visitsCountInfoParts) != 2 {
 		log.Errorf("netlog backup conn, invalid visits info received: %s", visitsCountInfoMsg)
@@ -117,5 +118,5 @@ func sendNetlogBackupVisitsCount(visitsCountInfoMsg string, instr *instrumentati
 		return
 	}
 
-	instr.CounterVisitsBackups.Add(float64(visitsCount))
+	metrics.CounterVisitsBackups.Add(float64(visitsCount))
 }

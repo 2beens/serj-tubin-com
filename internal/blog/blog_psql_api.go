@@ -6,8 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
+	"github.com/exaring/otelpgx"
+	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // manual caching of blog posts not needed (at least for this use case):
@@ -19,17 +23,31 @@ type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewBlogPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlApi, error) {
+func NewBlogPsqlApi(
+	ctx context.Context,
+	dbHost, dbPort, dbName string,
+	tracingEnabled bool,
+) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
-	dbPool, err := pgxpool.Connect(ctx, connString)
+	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %v\n", err)
+		return nil, fmt.Errorf("parse netlog db config: %w", err)
+	}
+
+	// TODO: disable tracing via NoopTracer...
+	if tracingEnabled {
+		poolConfig.ConnConfig.Tracer = otelpgx.NewTracer()
+	}
+
+	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create connection pool: %w", err)
 	}
 
 	log.Debugf("blog api connected to: %s", connString)
 
 	blogApi := &PsqlApi{
-		db: dbPool,
+		db: db,
 	}
 
 	return blogApi, nil
@@ -121,6 +139,9 @@ func (api *PsqlApi) DeleteBlog(ctx context.Context, id int) error {
 }
 
 func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.All")
+	defer span.End()
+
 	rows, err := api.db.Query(
 		ctx,
 		`SELECT * FROM blog ORDER BY id DESC;`,
@@ -157,6 +178,9 @@ func (api *PsqlApi) All(ctx context.Context) ([]*Blog, error) {
 }
 
 func (api *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.BlogsCount")
+	defer span.End()
+
 	rows, err := api.db.Query(ctx, `SELECT COUNT(*) FROM blog`)
 	if err != nil {
 		return -1, err
@@ -178,6 +202,11 @@ func (api *PsqlApi) BlogsCount(ctx context.Context) (int, error) {
 }
 
 func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.GetBlogsPage")
+	span.SetAttributes(attribute.Int("page", page))
+	span.SetAttributes(attribute.Int("size", size))
+	defer span.End()
+
 	limit := size
 	offset := (page - 1) * size
 	blogsCount, err := api.BlogsCount(ctx)
@@ -239,6 +268,10 @@ func (api *PsqlApi) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, 
 
 func (api *PsqlApi) GetBlog(ctx context.Context, id int) (*Blog, error) {
 	log.Tracef("getting blog %d", id)
+
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.GetBlog")
+	span.SetAttributes(attribute.Int("id", id))
+	defer span.End()
 
 	rows, err := api.db.Query(
 		ctx,

@@ -45,13 +45,26 @@ func main() {
 		redisPassword = ""
 	}
 
+	if otelServiceName := os.Getenv("OTEL_SERVICE_NAME"); otelServiceName == "" {
+		log.Warnln("OTEL_SERVICE_NAME env var not set")
+	}
+
+	honeycombEnabled := os.Getenv("HONEYCOMB_ENABLED") == "true"
+	if honeycombEnabled {
+		if honeycombApiKey := os.Getenv("HONEYCOMB_API_KEY"); honeycombApiKey == "" {
+			log.Warnln("HONEYCOMB_API_KEY env var not set")
+		}
+	} else {
+		log.Debugln("honeycomb tracing disabled")
+	}
+
 	logging.Setup(*logFilePath, *logToStdout, *logLevel)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	chOsInterrupt := make(chan os.Signal, 1)
 	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
 
-	fileService, err := file_box.NewFileService(ctx, *rootPath, *redisHost, *redisPort, redisPassword)
+	fileService, err := file_box.NewFileService(ctx, *rootPath, *redisHost, *redisPort, redisPassword, honeycombEnabled)
 	if err != nil {
 		log.Fatalf("failed to create file service: %s", err)
 	}

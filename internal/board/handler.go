@@ -8,13 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
-	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/gorilla/mux"
-
-	// TODO: maybe try logging from uber
-	// https://github.com/uber-go/zap
 	log "github.com/sirupsen/logrus"
 )
 
@@ -48,6 +46,7 @@ func NewBoardHandler(
 
 func (handler *Handler) handleGetMessagesPage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	ctx := r.Context()
 
 	// TODO: return JSON responses for errors too (or better, check accept-content header)
 	// in all handlers!
@@ -78,7 +77,7 @@ func (handler *Handler) handleGetMessagesPage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	boardMessages, err := handler.boardClient.GetMessagesPage(page, size)
+	boardMessages, err := handler.boardClient.GetMessagesPage(ctx, page, size)
 	if err != nil {
 		log.Errorf("get messages error: %s", err)
 		http.Error(w, "failed to get messages", http.StatusInternalServerError)
@@ -221,6 +220,9 @@ func (handler *Handler) handleMessagesCount(w http.ResponseWriter, r *http.Reque
 }
 
 func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "boardHandler.all")
+	defer span.End()
+
 	vars := mux.Vars(r)
 	var limit int
 	limitStr := vars["limit"]
@@ -237,7 +239,7 @@ func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Requ
 		log.Print("getting all board messages ... ")
 	}
 
-	allBoardMessages, err := handler.boardClient.AllMessagesCache(true)
+	allBoardMessages, err := handler.boardClient.AllMessagesCache(ctx, true)
 	if err != nil {
 		log.Errorf("get all messages error: %s", err)
 		http.Error(w, "failed to get all messages", http.StatusBadRequest)

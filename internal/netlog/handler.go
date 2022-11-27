@@ -9,29 +9,32 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type Handler struct {
 	browserRequestsSecret string
 	netlogApi             Api
 	loginChecker          *auth.LoginChecker
-	instr                 *instrumentation.Instrumentation
+	metrics               *metrics.Manager
 }
 
 func NewHandler(
 	router *mux.Router,
 	netlogApi Api,
-	instrumentation *instrumentation.Instrumentation,
+	instrumentation *metrics.Manager,
 	browserRequestsSecret string,
 	loginChecker *auth.LoginChecker,
 ) *Handler {
 	handler := &Handler{
 		netlogApi:             netlogApi,
-		instr:                 instrumentation,
+		metrics:               instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
 		loginChecker:          loginChecker,
 	}
@@ -48,6 +51,9 @@ func NewHandler(
 }
 
 func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.getPage")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -91,7 +97,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	visits, err := handler.netlogApi.GetVisitsPage(r.Context(), keywords, field, source, page, size)
+	visits, err := handler.netlogApi.GetVisitsPage(ctx, keywords, field, source, page, size)
 	if err != nil {
 		log.Errorf("get visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -111,7 +117,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allVisitsCount, err := handler.netlogApi.Count(r.Context(), keywords, field, source)
+	allVisitsCount, err := handler.netlogApi.Count(ctx, keywords, field, source)
 	if err != nil {
 		log.Errorf("get netlog visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -123,6 +129,9 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.new")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -159,19 +168,22 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		Source:    source,
 		Timestamp: time.Unix(timestamp/1000, 0),
 	}
-	if err := handler.netlogApi.AddVisit(r.Context(), visit); err != nil {
+	if err := handler.netlogApi.AddVisit(ctx, visit); err != nil {
 		log.Printf("failed to add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		return
 	}
 
-	handler.instr.CounterNetlogVisits.Inc()
+	handler.metrics.CounterNetlogVisits.Inc()
 
 	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
 	pkg.WriteResponse(w, "", "added")
 }
 
 func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.getPage")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -193,7 +205,7 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("getting last %d netlog visits ... ", limit)
 
-	visits, err := handler.netlogApi.GetVisits(r.Context(), []string{}, "url", "all", limit)
+	visits, err := handler.netlogApi.GetVisits(ctx, []string{}, "url", "all", limit)
 	if err != nil {
 		log.Errorf("get all visits error: %s", err)
 		http.Error(w, "failed to get all visits", http.StatusInternalServerError)
@@ -218,9 +230,13 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.auth")
+			defer span.End()
+
 			if r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
+				span.SetStatus(codes.Ok, "options-ok")
 				return
 			}
 
@@ -235,6 +251,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 					log.Warnf("unauthorized /netlog/new request detected from %s, authToken: %s", reqIp, authToken)
 					// fool the "attacker" by a fake positive response
 					pkg.WriteResponse(w, "", "added")
+					span.SetStatus(codes.Error, "decoy-sent")
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -244,21 +261,26 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 			if authToken == "" {
 				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
+				span.SetStatus(codes.Error, "missing-auth-token")
 				return
 			}
 
-			isLogged, err := handler.loginChecker.IsLogged(r.Context(), authToken)
+			isLogged, err := handler.loginChecker.IsLogged(ctx, authToken)
 			if err != nil {
 				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)
+				span.SetStatus(codes.Error, "check-logged-err")
+				span.RecordError(err)
 				return
 			}
 			if !isLogged {
 				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
+				span.SetStatus(codes.Error, "not-logged")
 				return
 			}
 
+			span.SetStatus(codes.Ok, "ok")
 			next.ServeHTTP(w, r)
 		})
 	}

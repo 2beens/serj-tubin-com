@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	promcl "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestVisitsBackupUnixSocketListenerSetup(t *testing.T) {
-	instr, reg := instrumentation.NewTestInstrumentationAndRegistry()
+	metrics, reg := metrics.NewTestManagerAndRegistry()
 	dir, err := os.MkdirTemp("", "serj-server-unix")
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +32,7 @@ func TestVisitsBackupUnixSocketListenerSetup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	socket := fmt.Sprintf("%d.sock", os.Getpid())
 
-	addr, err := VisitsBackupUnixSocketListenerSetup(ctx, dir, socket, instr)
+	addr, err := VisitsBackupUnixSocketListenerSetup(ctx, dir, socket, metrics)
 	require.NoError(t, err)
 
 	/////////////////
@@ -56,12 +57,12 @@ func TestVisitsBackupUnixSocketListenerSetup(t *testing.T) {
 	cancel()
 
 	// https://pkg.go.dev/github.com/prometheus/client_golang/prometheus/testutil
-	counterVisitsBackups := testutil.CollectAndCount(instr.CounterVisitsBackups, "backend_test_server_netlog_visits_backed_up")
+	counterVisitsBackups := testutil.CollectAndCount(metrics.CounterVisitsBackups, "backend_test_server_netlog_visits_backed_up")
 	histNetlogBackupDuration, err := testutil.GatherAndCount(reg, "backend_test_server_netlog_backup_duration_seconds")
 	require.NoError(t, err)
 	assert.Equal(t, 1, counterVisitsBackups)
 	assert.Equal(t, 1, histNetlogBackupDuration)
-	assert.Equal(t, float64(visitsCount), testutil.ToFloat64(instr.CounterVisitsBackups))
+	assert.Equal(t, float64(visitsCount), testutil.ToFloat64(metrics.CounterVisitsBackups))
 
 	require.NotNil(t, reg)
 	gathered, err := reg.Gather()

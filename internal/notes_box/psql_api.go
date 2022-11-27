@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/exaring/otelpgx"
+	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,17 +19,31 @@ type PsqlApi struct {
 	db *pgxpool.Pool
 }
 
-func NewPsqlApi(ctx context.Context, dbHost, dbPort, dbName string) (*PsqlApi, error) {
+func NewPsqlApi(
+	ctx context.Context,
+	dbHost, dbPort, dbName string,
+	tracingEnabled bool,
+) (*PsqlApi, error) {
 	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
-	dbPool, err := pgxpool.Connect(ctx, connString)
+	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		return nil, fmt.Errorf("notes api unable to connect to database: %w", err)
+		return nil, fmt.Errorf("parse netlog db config: %w", err)
+	}
+
+	// TODO: disable tracing via NoopTracer...
+	if tracingEnabled {
+		poolConfig.ConnConfig.Tracer = otelpgx.NewTracer()
+	}
+
+	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create connection pool: %w", err)
 	}
 
 	log.Debugf("notes api connected to: %s", connString)
 
 	return &PsqlApi{
-		db: dbPool,
+		db: db,
 	}, nil
 }
 

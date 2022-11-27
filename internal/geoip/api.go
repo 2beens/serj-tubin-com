@@ -9,10 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/2beens/serjtubincom/pkg"
-
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type Api struct {
@@ -54,11 +55,11 @@ func NewApi(
 	}
 }
 
-func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo, error) {
-	userIp, err := pkg.ReadUserIP(r)
-	if err != nil {
-		return nil, fmt.Errorf("error getting user ip: %s", err.Error())
-	}
+func (gi *Api) GetRequestGeoInfo(ctx context.Context, userIp string) (*IpInfo, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "geoIp.getRequestGeoInfo")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("user.ip", userIp))
 
 	// used for development
 	if userIp == "localhost" {
@@ -81,8 +82,10 @@ func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo,
 		log.Errorf("failed to find ip info from redis for [%s]: %s", userIpKey, err)
 	}
 
+	var err error
 	geoIpResponse := &IpInfo{}
 	if geoIpInfoBytes := cmd.Val(); geoIpInfoBytes != "" {
+		span.SetAttributes(attribute.Bool("user.ip.from-cache", true))
 		log.Tracef("found geo ip info for [%s] in redis cache", userIp)
 		if err = json.Unmarshal([]byte(geoIpInfoBytes), geoIpResponse); err == nil {
 			return geoIpResponse, nil
@@ -91,6 +94,7 @@ func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo,
 		log.Errorf("failed to unmarshal cached ip info from redis for %s: %s", userIp, err)
 		// continue, and try getting it from IP Base API
 	} else {
+		span.SetAttributes(attribute.Bool("user.ip.from-cache", false))
 		log.Debugf("ip info value from redis not found for [%s]", userIp)
 	}
 
@@ -99,12 +103,12 @@ func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo,
 	ipBaseUrl := fmt.Sprintf("%s/v2/info?apikey=%s&ip=%s", gi.ipBaseEndpoint, gi.ipBaseAPIKey, userIp)
 	log.Debugf("calling geo ip info: %s", ipBaseUrl)
 
-	req, err := http.NewRequest("GET", ipBaseUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", ipBaseUrl, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := gi.httpClient.Do(req.WithContext(ctx))
+	resp, err := gi.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error getting freegeoip response: %s", err.Error())
 	}
@@ -119,7 +123,8 @@ func (gi *Api) GetRequestGeoInfo(ctx context.Context, r *http.Request) (*IpInfo,
 
 	err = json.Unmarshal(respBytes, geoIpResponse)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal geo ip response bytes: %s", err)
+		span.SetStatus(codes.Error, fmt.Sprintf("unmarshal geo ip resp: %s", err))
+		return nil, fmt.Errorf("unmarshal geo ip response bytes: %w", err)
 	}
 
 	// cache response in redis

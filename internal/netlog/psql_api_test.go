@@ -27,7 +27,11 @@ func getPsqlApi(t *testing.T) (*PsqlApi, error) {
 	}
 	t.Logf("using postres host: %s", host)
 
-	return NewNetlogPsqlApi(timeoutCtx, host, "5432", "serj_blogs")
+	return NewNetlogPsqlApi(
+		timeoutCtx,
+		host, "5432", "serj_blogs",
+		false,
+	)
 }
 
 func deleteAllVisits(ctx context.Context, psqlApi *PsqlApi) (int64, error) {

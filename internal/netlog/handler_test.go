@@ -11,8 +11,9 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/go-redis/redismock/v8"
+
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -23,8 +24,8 @@ func TestNewNetlogHandler(t *testing.T) {
 	r := mux.NewRouter()
 	router := r.PathPrefix("/netlog").Subrouter()
 	netlogApi := NewTestApi()
-	instr := instrumentation.NewTestInstrumentation()
-	handler := NewHandler(router, netlogApi, instr, "", nil)
+	metrics := metrics.NewTestManager()
+	handler := NewHandler(router, netlogApi, metrics, "", nil)
 	require.NotNil(t, handler)
 	require.NotNil(t, router)
 
@@ -91,8 +92,8 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 	netlogApi := NewTestApi()
 
 	r := mux.NewRouter()
-	instr := instrumentation.NewTestInstrumentation()
-	handler := NewHandler(r, netlogApi, instr, browserReqSecret, loginChecker)
+	metrics := metrics.NewTestManager()
+	handler := NewHandler(r, netlogApi, metrics, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 
@@ -122,8 +123,8 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	instr := instrumentation.NewTestInstrumentation()
-	handler := NewHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
+	metrics := metrics.NewTestManager()
+	handler := NewHandler(netlogRouter, netlogApi, metrics, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -171,8 +172,8 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	instr := instrumentation.NewTestInstrumentation()
-	handler := NewHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
+	metrics := metrics.NewTestManager()
+	handler := NewHandler(netlogRouter, netlogApi, metrics, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -222,8 +223,8 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	instr := instrumentation.NewTestInstrumentation()
-	handler := NewHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
+	metrics := metrics.NewTestManager()
+	handler := NewHandler(netlogRouter, netlogApi, metrics, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -250,7 +251,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 	// visits len is unchanged
 	assert.Len(t, netlogApi.Visits, 2)
 
-	assert.Equal(t, float64(0), testutil.ToFloat64(instr.CounterNetlogVisits))
+	assert.Equal(t, float64(0), testutil.ToFloat64(metrics.CounterNetlogVisits))
 }
 
 func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
@@ -282,8 +283,8 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	instr := instrumentation.NewTestInstrumentation()
-	handler := NewHandler(netlogRouter, netlogApi, instr, browserReqSecret, loginChecker)
+	metrics := metrics.NewTestManager()
+	handler := NewHandler(netlogRouter, netlogApi, metrics, browserReqSecret, loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -316,7 +317,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 	assert.Equal(t, req.PostForm.Get("url"), addedVisit.URL)
 	assert.Equal(t, time.Unix(int64(jsTimestamp)/1000, 0), addedVisit.Timestamp)
 
-	assert.Equal(t, float64(1), testutil.ToFloat64(instr.CounterNetlogVisits))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metrics.CounterNetlogVisits))
 }
 
 func TestNetlogHandler_handleGetPage(t *testing.T) {
@@ -379,8 +380,8 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	instr := instrumentation.NewTestInstrumentation()
-	handler := NewHandler(netlogRouter, netlogApi, instr, "browserReqSecret", loginChecker)
+	metrics := metrics.NewTestManager()
+	handler := NewHandler(netlogRouter, netlogApi, metrics, "browserReqSecret", loginChecker)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 	require.NotNil(t, netlogRouter)
@@ -416,5 +417,5 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	assert.Equal(t, "test:url:6", resp.Visits[1].URL)
 	assert.Equal(t, "test:url:7", resp.Visits[2].URL)
 
-	assert.Equal(t, float64(0), testutil.ToFloat64(instr.CounterNetlogVisits))
+	assert.Equal(t, float64(0), testutil.ToFloat64(metrics.CounterNetlogVisits))
 }

@@ -5,15 +5,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/2beens/serjtubincom/internal/instrumentation"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_panicRecoveryMiddleware_nonPanic(t *testing.T) {
-	instr := instrumentation.NewTestInstrumentation()
+	metrics := metrics.NewTestManager()
 
-	handler := PanicRecovery(instr)
+	handler := PanicRecovery(metrics)
 	next := &panicRecTestHandler{}
 	handlerFunc := handler(next)
 
@@ -23,13 +23,13 @@ func Test_panicRecoveryMiddleware_nonPanic(t *testing.T) {
 
 	assert.True(t, next.called)
 	// panic did not happen
-	assert.Equal(t, float64(0), testutil.ToFloat64(instr.CounterHandleRequestPanic))
+	assert.Equal(t, float64(0), testutil.ToFloat64(metrics.CounterHandleRequestPanic))
 }
 
 func Test_panicRecoveryMiddleware_panic(t *testing.T) {
-	instr := instrumentation.NewTestInstrumentation()
+	metrics := metrics.NewTestManager()
 
-	handler := PanicRecovery(instr)
+	handler := PanicRecovery(metrics)
 	next := &panicRecTestHandler{panic: true}
 	handlerFunc := handler(next)
 
@@ -39,7 +39,7 @@ func Test_panicRecoveryMiddleware_panic(t *testing.T) {
 
 	assert.True(t, next.called)
 	// panic DID happen
-	assert.Equal(t, float64(1), testutil.ToFloat64(instr.CounterHandleRequestPanic))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metrics.CounterHandleRequestPanic))
 }
 
 type panicRecTestHandler struct {

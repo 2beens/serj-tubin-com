@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/coocood/freecache"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/codes"
 )
 
 // example API call
@@ -58,8 +61,21 @@ func NewApi(openWeatherApiUrl, openWeatherApiKey string, citiesData []City, http
 	return weatherApi
 }
 
-func (w *Api) GetWeatherCurrent(ctx context.Context, cityID int, cityName string) (*ApiResponse, error) {
-	weatherApiResponse := &ApiResponse{}
+func (w *Api) GetWeatherCurrent(ctx context.Context, cityID int, cityName string) (weatherApiResponse *ApiResponse, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "weatherApi.getWeatherCurrent")
+	defer span.End()
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		} else {
+			span.SetStatus(codes.Ok, fmt.Sprintf("found current weeather info for: %s", cityName))
+		}
+	}()
+
+	// must initialize it, otherwise json.Unmarshal(...) below fails
+	// https://stackoverflow.com/questions/20478577/why-does-json-unmarshal-work-with-reference-but-not-pointer
+	weatherApiResponse = &ApiResponse{}
 
 	cacheKey := fmt.Sprintf("current::%d", cityID)
 	if currentCityWeatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
@@ -76,12 +92,12 @@ func (w *Api) GetWeatherCurrent(ctx context.Context, cityID int, cityName string
 	weatherApiUrl := fmt.Sprintf("%s/weather?id=%d&appid=%s", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api info: %s", weatherApiUrl)
 
-	req, err := http.NewRequest("GET", weatherApiUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", weatherApiUrl, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := w.httpClient.Do(req.WithContext(ctx))
+	resp, err := w.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}
@@ -92,8 +108,7 @@ func (w *Api) GetWeatherCurrent(ctx context.Context, cityID int, cityName string
 		return nil, fmt.Errorf("failed to read weather api response bytes: %s", err)
 	}
 
-	err = json.Unmarshal(respBytes, weatherApiResponse)
-	if err != nil {
+	if err := json.Unmarshal(respBytes, weatherApiResponse); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal weather api response bytes: %s", err)
 	}
 
@@ -108,9 +123,19 @@ func (w *Api) GetWeatherCurrent(ctx context.Context, cityID int, cityName string
 }
 
 // Get5DaysWeatherForecast returns something like sunny, cloudy, etc
-func (w *Api) Get5DaysWeatherForecast(ctx context.Context, cityID int, cityName, cityCountry string) ([]Info, error) {
-	weatherApiResponse := &Api5DaysResponse{}
+func (w *Api) Get5DaysWeatherForecast(ctx context.Context, cityID int, cityName, cityCountry string) (forecast []Info, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "weatherApi.get5DaysWeatherForecast")
+	defer span.End()
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		} else {
+			span.SetStatus(codes.Ok, fmt.Sprintf("found 5 days weather info for: %s", cityName))
+		}
+	}()
 
+	weatherApiResponse := &Api5DaysResponse{}
 	cacheKey := fmt.Sprintf("5days::%d", cityID)
 	if weatherBytes, err := w.cache.Get([]byte(cacheKey)); err == nil {
 		log.Tracef("found 5 days weather info for %s in cache", cityName)
@@ -129,12 +154,12 @@ func (w *Api) Get5DaysWeatherForecast(ctx context.Context, cityID int, cityName,
 	weatherApiUrl := fmt.Sprintf("%s/forecast?id=%d&appid=%s&units=metric", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
 	log.Debugf("calling weather api city info: %s", weatherApiUrl)
 
-	req, err := http.NewRequest("GET", weatherApiUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", weatherApiUrl, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := w.httpClient.Do(req.WithContext(ctx))
+	resp, err := w.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
 	}

@@ -1,6 +1,7 @@
 package board
 
 import (
+	"context"
 	"strconv"
 	"testing"
 	"time"
@@ -46,9 +47,10 @@ func getTestBoardClient() (*Client, *BoardTestCache, *boardAero.BoardAeroTestCli
 		},
 	}
 
+	ctx := context.Background()
 	aeroClient := boardAero.NewBoardAeroTestClient()
 	boardCache := NewBoardTestCache()
-	boardClient, err := NewClient(aeroClient, boardCache)
+	boardClient, err := NewClient(ctx, aeroClient, boardCache)
 	if err != nil {
 		panic(err)
 	}
@@ -84,12 +86,12 @@ func getTestBoardClient() (*Client, *BoardTestCache, *boardAero.BoardAeroTestCli
 }
 
 func TestNewBoard(t *testing.T) {
-	board, err := NewClient(nil, NewBoardTestCache())
+	board, err := NewClient(context.Background(), nil, NewBoardTestCache())
 	assert.Equal(t, boardAero.ErrAeroClientNil, err)
 	assert.Nil(t, board)
 
 	aeroTestClient := boardAero.NewBoardAeroTestClient()
-	board, err = NewClient(aeroTestClient, NewBoardTestCache())
+	board, err = NewClient(context.Background(), aeroTestClient, NewBoardTestCache())
 	require.NoError(t, err)
 	require.NotNil(t, board)
 }
@@ -100,7 +102,8 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 	// cache empty at the beginning
 	require.Equal(t, 0, boardCache.ElementsCount())
 
-	messages, err := boardClient.AllMessagesCache(true)
+	ctx := context.Background()
+	messages, err := boardClient.AllMessagesCache(ctx, true)
 	require.NoError(t, err)
 	assert.Len(t, messages, len(initialBoardMessages))
 
@@ -122,7 +125,7 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 	boardCache.ClearFunctionCallsLog()
 
 	// called again - should get it from cache right away
-	messages, err = boardClient.AllMessagesCache(true)
+	messages, err = boardClient.AllMessagesCache(ctx, true)
 	require.NoError(t, err)
 	assert.Len(t, messages, len(initialBoardMessages))
 
@@ -143,11 +146,12 @@ func TestBoard_AllMessagesCache(t *testing.T) {
 func TestBoard_AllMessages(t *testing.T) {
 	boardClient, _, _, initialBoardMessages := getTestBoardClient()
 
-	messages, err := boardClient.AllMessages(false)
+	ctx := context.Background()
+	messages, err := boardClient.AllMessages(ctx, false)
 	require.NoError(t, err)
 	assert.Len(t, messages, len(initialBoardMessages))
 
-	messages, err = boardClient.AllMessages(true)
+	messages, err = boardClient.AllMessages(ctx, true)
 	require.NoError(t, err)
 	assert.Len(t, messages, len(initialBoardMessages))
 	// sorted by timestamp
@@ -186,7 +190,8 @@ func TestBoard_SetAllMessagesCacheFromAero(t *testing.T) {
 	// cache empty
 	require.Equal(t, 0, boardCache.ElementsCount())
 
-	assert.NoError(t, boardClient.SetAllMessagesCacheFromAero())
+	ctx := context.Background()
+	assert.NoError(t, boardClient.SetAllMessagesCacheFromAero(ctx))
 
 	// cache filled
 	require.Equal(t, 1, boardCache.ElementsCount())
@@ -256,6 +261,7 @@ func TestBoard_InvalidateCaches(t *testing.T) {
 }
 
 func TestBoard_StoreMessage(t *testing.T) {
+	ctx := context.Background()
 	boardClient, _, aeroTestClient, initialBoardMessages := getTestBoardClient()
 
 	messagesCount, err := boardClient.MessagesCount()
@@ -287,7 +293,7 @@ func TestBoard_StoreMessage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, len(initialBoardMessages)+2, messagesCount)
 
-	allMessages, err := boardClient.AllMessages(true)
+	allMessages, err := boardClient.AllMessages(ctx, true)
 	require.NoError(t, err)
 	assert.Len(t, allMessages, len(initialBoardMessages)+2)
 
@@ -332,12 +338,13 @@ func TestBoard_GetMessagesWithRange(t *testing.T) {
 }
 
 func TestBoard_GetMessagesPage(t *testing.T) {
+	ctx := context.Background()
 	boardClient, boardCache, _, _ := getTestBoardClient()
 
 	// cache empty at the beginning
 	require.Equal(t, 0, boardCache.ElementsCount())
 
-	messages, err := boardClient.GetMessagesPage(2, 2)
+	messages, err := boardClient.GetMessagesPage(ctx, 2, 2)
 	require.NoError(t, err)
 	require.Len(t, messages, 2)
 
@@ -361,17 +368,17 @@ func TestBoard_GetMessagesPage(t *testing.T) {
 	assert.Equal(t, FuncSet, funcCallsLog[1])
 
 	// size greater than total - get all messages
-	messages, err = boardClient.GetMessagesPage(2, 12)
+	messages, err = boardClient.GetMessagesPage(ctx, 2, 12)
 	require.NoError(t, err)
 	require.Len(t, messages, 5)
 
 	// page greater than total pages - get last page
-	messages, err = boardClient.GetMessagesPage(10, 2)
+	messages, err = boardClient.GetMessagesPage(ctx, 10, 2)
 	require.NoError(t, err)
 	require.Len(t, messages, 2)
 
 	// first case again
-	messages, err = boardClient.GetMessagesPage(2, 2)
+	messages, err = boardClient.GetMessagesPage(ctx, 2, 2)
 	require.NoError(t, err)
 	require.Len(t, messages, 2)
 

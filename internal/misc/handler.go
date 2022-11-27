@@ -8,9 +8,13 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/geoip"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type Handler struct {
@@ -54,6 +58,9 @@ func (handler *Handler) handleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.quote")
+	defer span.End()
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := handler.quotesManager.RandomQuote()
@@ -68,29 +75,51 @@ func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Requ
 }
 
 func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.whereAmI")
+	defer span.End()
+
 	w.Header().Set("Content-Type", "application/json")
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(r.Context(), r)
+	userIp, err := pkg.ReadUserIP(r)
+	if err != nil {
+		span.SetStatus(codes.Error, fmt.Sprintf("get user ip: %s", err))
+		http.Error(w, "geo ip info error", http.StatusInternalServerError)
+		return
+	}
+
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIp)
 	if err != nil {
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
 		return
 	}
 
+	span.SetAttributes(attribute.String("user.city", geoIpInfo.Data.Location.City.Name))
+	span.SetAttributes(attribute.String("user.city", geoIpInfo.Data.Location.Country.Name))
+
 	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.Data.Location.City.Name, geoIpInfo.Data.Location.Country.Name)
 	pkg.WriteResponse(w, "application/json", geoResp)
 }
 
 func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.getMyIp")
+	defer span.End()
+
 	ip, err := pkg.ReadUserIP(r)
 	if err != nil {
+		span.SetStatus(codes.Error, fmt.Sprintf("failed to get user IP address: %s", err))
 		log.Errorf("failed to get user IP address: %s", err)
 		http.Error(w, "failed to get IP", http.StatusInternalServerError)
 	}
+
+	span.SetStatus(codes.Ok, fmt.Sprintf("user IP address: %s", ip))
 	pkg.WriteResponse(w, "", ip)
 }
 
 func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.login")
+	defer span.End()
+
 	err := r.ParseForm()
 	if err != nil {
 		log.Errorf("login failed, parse form error: %s", err)
@@ -138,6 +167,9 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.logout")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.WriteHeader(http.StatusOK)

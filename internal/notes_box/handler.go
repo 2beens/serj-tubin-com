@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/pkg"
 
-	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/instrumentation"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,18 +18,18 @@ import (
 type Handler struct {
 	api          Api
 	loginChecker *auth.LoginChecker
-	instr        *instrumentation.Instrumentation
+	metrics      *metrics.Manager
 }
 
 func NewHandler(
 	api Api,
 	loginChecker *auth.LoginChecker,
-	instrumentation *instrumentation.Instrumentation,
+	metrics *metrics.Manager,
 ) *Handler {
 	return &Handler{
 		api:          api,
 		loginChecker: loginChecker,
-		instr:        instrumentation,
+		metrics:      metrics,
 	}
 }
 
@@ -66,7 +66,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handler.instr.CounterNotes.Inc()
+	handler.metrics.CounterNotes.Inc()
 
 	log.Printf("new note added: [%s] [%s]: %d", addedNote.Title, addedNote.CreatedAt, addedNote.Id)
 	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", addedNote.Id))
