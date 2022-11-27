@@ -1,5 +1,24 @@
 version: "3.7"
 
+# note 27 nov 22:
+# small log:
+# - removed old prometheus running on misc
+# - added all docker related files to run prometheus in docker on misc server
+# - old metrics are still left (~3GB) at: /var/lib/prometheus/metrics2
+# - old systemd prometheus is down (but not removed)
+#   - sudo systemctl status prometheus.service
+#   - /lib/systemd/system/prometheus.service
+# - grafana is also running on misc (directly)
+#   - systemctl list-units --type=service | grep grafana
+#   - was updated to v9.2 today on misc server
+# TODOs:
+#   - migrate or remove old prometheus data (/var/lib/prometheus/metrics2)
+#     - new data is at (~/docker-data-prometheus) used by docker container
+#   - remove old systemd related prometheus data
+#
+# TODO:
+# - alertmanager has been added, but not configured
+
 networks:
   prometheus-network:
 
