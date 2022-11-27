@@ -13,5 +13,17 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle' # allow restart on the fly with curl -X POST http://localhost:9000/-/reload
+      - '--storage.tsdb.retention.time=2y' # https://prometheus.io/docs/prometheus/latest/storage/#operational-aspects
     ports:
       - "9090:9090"
+
+  alertmanager:
+    image: prom/alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./prometheus-for-misc-server/alertmanager/:/etc/alertmanager/
+    restart: always
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
