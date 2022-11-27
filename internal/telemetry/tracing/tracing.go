@@ -19,10 +19,30 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
+
+	// NOTE: this import is super important as applies the Honeycomb configuration to the launcher
+	_ "github.com/honeycombio/honeycomb-opentelemetry-go"
+	"github.com/honeycombio/opentelemetry-go-contrib/launcher"
 )
 
 var GlobalTracer = otel.Tracer("main-backend")
 var GlobalNetlogBackupTracer = otel.Tracer("gdrive-netlog-backup")
+
+// HoneycombSetup uses honeycomb distro to setup OpenTelemetry SDK
+func HoneycombSetup(honeycombTracingEnabled bool) (func(), error) {
+	if !honeycombTracingEnabled {
+		return func() { /*noop*/ }, nil
+	}
+
+	shutdownFunc, err := launcher.ConfigureOpenTelemetry(
+		launcher.WithLogLevel("info"), // info log is default anyway
+	)
+	if err != nil {
+		return nil, fmt.Errorf("honecomb, configure open telemetry: %w", err)
+	}
+
+	return shutdownFunc, err
+}
 
 func GetDefaultTraceResource(
 	ctx context.Context,

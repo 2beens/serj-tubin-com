@@ -9,14 +9,10 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/middleware"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-
-	// NOTE: this import is super important as applies the Honeycomb
-	// configuration to the launcher
-	_ "github.com/honeycombio/honeycomb-opentelemetry-go"
-	"github.com/honeycombio/opentelemetry-go-contrib/launcher"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -57,16 +53,9 @@ func NewFileService(
 	}
 
 	// use honeycomb distro to setup OpenTelemetry SDK
-	var otelShutdown func()
-	if honeycombTracingEnabled {
-		if otelShutdown, err = launcher.ConfigureOpenTelemetry(
-			launcher.WithLogLevel("info"), // info log is default anyway
-		); err != nil {
-			log.Errorf("file service OTel SDK setup: %s", err)
-		}
-		log.Trace("file service otel sdk set up")
-	} else {
-		otelShutdown = func() { /*noop*/ }
+	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled)
+	if err != nil {
+		return nil, err
 	}
 
 	return &FileService{
