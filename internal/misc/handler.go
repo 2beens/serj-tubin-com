@@ -80,22 +80,25 @@ func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	userIp, err := pkg.ReadUserIP(r)
+	userIP, err := pkg.ReadUserIP(r)
 	if err != nil {
 		span.SetStatus(codes.Error, fmt.Sprintf("get user ip: %s", err))
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
 		return
 	}
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIp)
+	span.SetAttributes(attribute.String("user.ip", userIP))
+
+	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIP)
 	if err != nil {
+		span.SetStatus(codes.Error, fmt.Sprintf("get request geo info: %s", err))
 		log.Errorf("error getting geo ip info: %s", err)
 		http.Error(w, "geo ip info error", http.StatusInternalServerError)
 		return
 	}
 
 	span.SetAttributes(attribute.String("user.city", geoIpInfo.Data.Location.City.Name))
-	span.SetAttributes(attribute.String("user.city", geoIpInfo.Data.Location.Country.Name))
+	span.SetAttributes(attribute.String("user.country", geoIpInfo.Data.Location.Country.Name))
 
 	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.Data.Location.City.Name, geoIpInfo.Data.Location.Country.Name)
 	pkg.WriteResponse(w, "application/json", geoResp)
@@ -112,6 +115,7 @@ func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to get IP", http.StatusInternalServerError)
 	}
 
+	span.SetAttributes(attribute.String("user.ip", ip))
 	span.SetStatus(codes.Ok, fmt.Sprintf("user IP address: %s", ip))
 	pkg.WriteResponse(w, "", ip)
 }
