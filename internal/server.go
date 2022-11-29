@@ -25,6 +25,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/internal/weather"
 
+	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
@@ -32,6 +33,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type Server struct {
@@ -131,6 +133,11 @@ func NewServer(
 		Password: redisPassword,
 		DB:       0, // use default DB
 	})
+
+	// tracing support for redis client
+	rdb.AddHook(redisotel.NewTracingHook(
+		redisotel.WithAttributes(attribute.String("component", "main-backend"))),
+	)
 
 	rdbStatus := rdb.Ping(context.Background())
 	if err := rdbStatus.Err(); err != nil {
