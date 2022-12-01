@@ -69,3 +69,13 @@ apr-2021 - DB replication and high availability:
  - the frontend is deployed to sshssr
  - will need to setup the A record to hit the file service endpoing on misc server ✅
  - will need to setup HTTPS on that endpoint ✅
+
+- 1st of December 22, CloudFlare trial (and ultimately today, removal of it) 🙈
+ - I tried to put all the services behind Cloudflare proxy, and it went super nice, except:
+    - my backend would not receive the real client ip in the request, but rather the cloudflare servers, which proxied the request
+        - there is a way to add True-Client-IP header by cloudflare, but only paid (enterprise +) plans
+            - https://support.cloudflare.com/hc/en-us/articles/206776727-Understanding-the-True-Client-IP-Header
+            - https://developers.cloudflare.com/rules/transform/managed-transforms/reference/
+        - overcomplicates the setup of my little hobby sandbox
+    - that said, today I returned nameserver entries in my Ionos Domain settings, from Cloudflare ones to Ionos
+        and turned off DNS proxying in CloudFlare (will probably remove the account there too)
