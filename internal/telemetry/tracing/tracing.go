@@ -9,6 +9,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 
+	"github.com/go-redis/redis/extra/redisotel/v8"
+	"github.com/go-redis/redis/v8"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/contrib/propagators/ot"
 	"go.opentelemetry.io/otel"
@@ -29,9 +31,19 @@ var GlobalTracer = otel.Tracer("main-backend")
 var GlobalNetlogBackupTracer = otel.Tracer("gdrive-netlog-backup")
 
 // HoneycombSetup uses honeycomb distro to setup OpenTelemetry SDK
-func HoneycombSetup(honeycombTracingEnabled bool) (func(), error) {
+func HoneycombSetup(honeycombTracingEnabled bool, component string, redisClient *redis.Client) (func(), error) {
 	if !honeycombTracingEnabled {
 		return func() { /*noop*/ }, nil
+	}
+
+	if redisClient != nil {
+		// tracing support for redis client
+		redisClient.AddHook(
+			redisotel.NewTracingHook(
+				redisotel.WithAttributes(attribute.String("component", component)),
+				redisotel.WithTracerProvider(otel.GetTracerProvider()),
+			),
+		)
 	}
 
 	shutdownFunc, err := launcher.ConfigureOpenTelemetry(

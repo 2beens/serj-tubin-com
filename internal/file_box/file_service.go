@@ -10,12 +10,10 @@ import (
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
-	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 type FileService struct {
@@ -47,11 +45,6 @@ func NewFileService(
 		DB:       0, // use default DB
 	})
 
-	// tracing support for redis client
-	rdb.AddHook(redisotel.NewTracingHook(
-		redisotel.WithAttributes(attribute.String("component", "main-backend"))),
-	)
-
 	rdbStatus := rdb.Ping(ctx)
 	if err := rdbStatus.Err(); err != nil {
 		log.Errorf("--> failed to ping redis: %s", err)
@@ -60,7 +53,7 @@ func NewFileService(
 	}
 
 	// use honeycomb distro to setup OpenTelemetry SDK
-	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled)
+	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled, "file-service", rdb)
 	if err != nil {
 		return nil, err
 	}
