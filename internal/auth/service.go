@@ -51,7 +51,7 @@ func NewAuthService(
 	}
 }
 
-func (as *Service) Login(ctx context.Context, createdAt time.Time) (string, error) {
+func (as *Service) Login(ctx context.Context) (string, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "authService.login")
 	defer span.End()
 
@@ -61,7 +61,7 @@ func (as *Service) Login(ctx context.Context, createdAt time.Time) (string, erro
 	}
 
 	sessionKey := sessionKeyPrefix + token
-	cmdSet := as.redisClient.Set(ctx, sessionKey, createdAt.Unix(), 0)
+	cmdSet := as.redisClient.Set(ctx, sessionKey, token, 0)
 	if err := cmdSet.Err(); err != nil {
 		return "", err
 	}

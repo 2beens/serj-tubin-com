@@ -26,6 +26,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/weather"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -238,7 +239,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("weather handler is nil")
 	}
 
-	if misc.NewHandler(r, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {
+	reqRateLimiter := redis_rate.NewLimiter(s.redisClient)
+	if misc.NewHandler(r, reqRateLimiter, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {
 		panic("misc handler is nil")
 	}
 
