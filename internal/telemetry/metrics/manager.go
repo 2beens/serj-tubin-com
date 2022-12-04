@@ -18,8 +18,9 @@ type Manager struct {
 	GaugeLifeSignal prometheus.Gauge
 
 	// histograms
-	HistRequestDuration      prometheus.Histogram
-	HistNetlogBackupDuration prometheus.Histogram
+	HistRequestDuration         prometheus.Histogram
+	HistNetlogBackupDuration    prometheus.Histogram
+	HistogramNewRequestDuration *prometheus.HistogramVec
 }
 
 func NewTestManager() *Manager {
@@ -107,15 +108,23 @@ func NewManager(namespace, subsystem string, reg prometheus.Registerer) *Manager
 		},
 	)
 
+	histogramNewRequestDuration := factory.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "namespace",
+		Name:      "request_duration_seconds_new",
+		Help:      "Histogram of response time for handler in seconds",
+		Buckets:   []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+	}, []string{"route", "method", "status_code"})
+
 	return &Manager{
-		CounterRequests:           counterRequests,
-		CounterNetlogVisits:       counterNetlogVisits,
-		CounterNotes:              counterNotes,
-		CounterHandleRequestPanic: counterHandleRequestPanic,
-		CounterVisitsBackups:      counterVisitsBackups,
-		GaugeRequests:             gaugeRequests,
-		GaugeLifeSignal:           gaugeLifeSignal,
-		HistRequestDuration:       histReqDuration,
-		HistNetlogBackupDuration:  histNetlogBackupDuration,
+		CounterRequests:             counterRequests,
+		CounterNetlogVisits:         counterNetlogVisits,
+		CounterNotes:                counterNotes,
+		CounterHandleRequestPanic:   counterHandleRequestPanic,
+		CounterVisitsBackups:        counterVisitsBackups,
+		GaugeRequests:               gaugeRequests,
+		GaugeLifeSignal:             gaugeLifeSignal,
+		HistRequestDuration:         histReqDuration,
+		HistNetlogBackupDuration:    histNetlogBackupDuration,
+		HistogramNewRequestDuration: histogramNewRequestDuration,
 	}
 }

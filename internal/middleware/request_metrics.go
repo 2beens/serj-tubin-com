@@ -12,14 +12,21 @@ import (
 func RequestMetrics(instr *metrics.Manager) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
+			statusCode := http.StatusOK
 			defer func(begin time.Time) {
 				instr.HistRequestDuration.Observe(time.Since(begin).Seconds())
+				instr.HistogramNewRequestDuration.WithLabelValues(
+					req.URL.Path,
+					req.Method,
+					strconv.Itoa(statusCode),
+				).Observe(time.Since(begin).Seconds())
 			}(time.Now())
 
-			resp := &responseWriter{respWriter, http.StatusOK}
+			resp := &responseWriter{respWriter, statusCode}
 
 			// handler call
 			next.ServeHTTP(resp, req)
+			statusCode = resp.statusCode
 
 			instr.CounterRequests.With(
 				prometheus.Labels{
