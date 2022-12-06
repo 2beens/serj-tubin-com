@@ -21,7 +21,7 @@
     * update: I am thinking to replace it for something else
 * I tried to use Elasticsearch Stack for logging and monitoring on a different server, but it was kinda hungry for memory, and exceeded the needs of this humble project (will try something else lighter)
 * Used CloudFlare to put everything behind it, but only paid plans allowed passing of real client ip in the proxied requests
-* ~~https://freegeoip.app~~ since 2022, https://ipbase.com
+* ~~https://freegeoip.app~~ since 2022, ~~https://ipbase.com~~, dec 22: https://ipinfo.io
     * used for geo IP data
 * http://api.openweathermap.org
     * used for weather data

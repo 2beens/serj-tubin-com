@@ -96,7 +96,7 @@ func (handler *Handler) handleCurrent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIp)
+	locationInfo, err := handler.geoIp.GetIPGeoInfo(ctx, userIp)
 	if err != nil {
 		span.SetStatus(codes.Error, fmt.Sprintf("error getting geo ip info: %s", err))
 		log.Errorf("error getting geo ip info: %s", err)
@@ -104,17 +104,16 @@ func (handler *Handler) handleCurrent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	locationInfo := geoIpInfo.Data.Location
-	log.Debugf("weather-handler: handle current for city [%s] and country code [%s]", locationInfo.City.Name, locationInfo.Country.Name)
-	span.SetAttributes(attribute.String("city", locationInfo.City.Name))
-	span.SetAttributes(attribute.String("country", locationInfo.Country.Name))
+	log.Debugf("weather-handler: handle current for city [%s] and country code [%s]", locationInfo.City, locationInfo.Country)
+	span.SetAttributes(attribute.String("city", locationInfo.City))
+	span.SetAttributes(attribute.String("country", locationInfo.Country))
 
-	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City.Name, locationInfo.Country.Alpha2)
+	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City, locationInfo.Country)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		log.Errorf(
 			"get current weather city from geo ip info for city [%s] and country code [%s]: %s",
-			locationInfo.City.Name, locationInfo.Country.Alpha2, err,
+			locationInfo.City, locationInfo.Country, err,
 		)
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
@@ -155,7 +154,7 @@ func (handler *Handler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIp)
+	locationInfo, err := handler.geoIp.GetIPGeoInfo(ctx, userIp)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		log.Errorf("error getting geo ip info: %s", err)
@@ -163,12 +162,11 @@ func (handler *Handler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	locationInfo := geoIpInfo.Data.Location
-	log.Debugf("weather-handler: handle tomorrow weather for city [%s] and country code [%s]", locationInfo.City.Name, locationInfo.Country.Name)
-	span.SetAttributes(attribute.String("city", locationInfo.City.Name))
-	span.SetAttributes(attribute.String("country", locationInfo.Country.Name))
+	log.Debugf("weather-handler: handle tomorrow weather for city [%s] and country code [%s]", locationInfo.City, locationInfo.Country)
+	span.SetAttributes(attribute.String("city", locationInfo.City))
+	span.SetAttributes(attribute.String("country", locationInfo.Country))
 
-	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City.Name, locationInfo.Country.Alpha2)
+	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City, locationInfo.Country)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		log.Errorf("handle weather tomorrow: error getting weather city from geo ip info: %s", err)
@@ -223,7 +221,7 @@ func (handler *Handler) handle5Days(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIp)
+	locationInfo, err := handler.geoIp.GetIPGeoInfo(ctx, userIp)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		log.Errorf("error getting geo ip info: %s", err)
@@ -231,12 +229,11 @@ func (handler *Handler) handle5Days(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	locationInfo := geoIpInfo.Data.Location
-	log.Debugf("weather-handler: handle 5 days weather for city [%s] and country code [%s]", locationInfo.City.Name, locationInfo.Country.Name)
-	span.SetAttributes(attribute.String("city", locationInfo.City.Name))
-	span.SetAttributes(attribute.String("country", locationInfo.Country.Name))
+	log.Debugf("weather-handler: handle 5 days weather for city [%s] and country code [%s]", locationInfo.City, locationInfo.Country)
+	span.SetAttributes(attribute.String("city", locationInfo.City))
+	span.SetAttributes(attribute.String("country", locationInfo.Country))
 
-	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City.Name, locationInfo.Country.Alpha2)
+	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City, locationInfo.Country)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		log.Errorf("handle weather 5 days: error getting weather city from geo ip info: %s", err)

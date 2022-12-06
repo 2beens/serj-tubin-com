@@ -30,6 +30,9 @@ func ReadUserIP(r *http.Request) (string, error) {
 		ipAddr = r.Header.Get("X-Forwarded-For")
 	}
 	if ipAddr == "" {
+		ipAddr = r.Header.Get("Real-Client-IP")
+	}
+	if ipAddr == "" {
 		ipAddr = r.RemoteAddr
 	}
 
