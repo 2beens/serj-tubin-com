@@ -40,9 +40,10 @@ func main() {
 		log.Errorf("open weather API key not set, use OPEN_WEATHER_API_KEY env var to set it")
 	}
 
-	ipBaseAPIKey := os.Getenv("IP_BASE_API_KEY")
-	if ipBaseAPIKey == "" {
-		log.Errorf("ip base API key not set, use IP_BASE_API_KEY env var to set it")
+	// IP_INFO_API_KEY
+	ipInfoAPIKey := os.Getenv("IP_INFO_API_KEY")
+	if ipInfoAPIKey == "" {
+		log.Errorf("ip info API key not set, use IP_INFO_API_KEY env var to set it")
 	}
 
 	versionInfo, err := tryGetLastCommitHash()
@@ -91,7 +92,7 @@ func main() {
 		ctx,
 		cfg,
 		openWeatherApiKey,
-		ipBaseAPIKey,
+		ipInfoAPIKey,
 		browserRequestsSecret,
 		versionInfo,
 		adminUsername,

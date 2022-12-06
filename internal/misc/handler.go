@@ -89,7 +89,7 @@ func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 
 	span.SetAttributes(attribute.String("user.ip", userIP))
 
-	geoIpInfo, err := handler.geoIp.GetRequestGeoInfo(ctx, userIP)
+	ipInfo, err := handler.geoIp.GetIPGeoInfo(ctx, userIP)
 	if err != nil {
 		span.SetStatus(codes.Error, fmt.Sprintf("get request geo info: %s", err))
 		log.Errorf("error getting geo ip info: %s", err)
@@ -97,10 +97,10 @@ func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	span.SetAttributes(attribute.String("user.city", geoIpInfo.Data.Location.City.Name))
-	span.SetAttributes(attribute.String("user.country", geoIpInfo.Data.Location.Country.Name))
+	span.SetAttributes(attribute.String("user.city", ipInfo.City))
+	span.SetAttributes(attribute.String("user.country", ipInfo.Country))
 
-	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, geoIpInfo.Data.Location.City.Name, geoIpInfo.Data.Location.Country.Name)
+	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, ipInfo.City, ipInfo.Country)
 	pkg.WriteResponse(w, "application/json", geoResp)
 }
 
