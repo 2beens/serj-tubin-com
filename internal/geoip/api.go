@@ -20,14 +20,12 @@ type Api struct {
 }
 
 var (
-	localIP      = "127.0.0.1"
 	devGeoIpInfo = &ipinfo.Core{
-		City:        "Berlin",
-		Region:      "Berlin",
-		Country:     "Germany",
-		CountryName: "Germany",
-		IsEU:        true,
-		Postal:      "12099",
+		City:    "Berlin",
+		Region:  "Berlin",
+		Country: "DE",
+		IsEU:    true,
+		Postal:  "12099",
 	}
 )
 

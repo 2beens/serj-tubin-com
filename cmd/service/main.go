@@ -40,7 +40,6 @@ func main() {
 		log.Errorf("open weather API key not set, use OPEN_WEATHER_API_KEY env var to set it")
 	}
 
-	// IP_INFO_API_KEY
 	ipInfoAPIKey := os.Getenv("IP_INFO_API_KEY")
 	if ipInfoAPIKey == "" {
 		log.Errorf("ip info API key not set, use IP_INFO_API_KEY env var to set it")
