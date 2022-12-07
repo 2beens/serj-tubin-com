@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-redis/redismock/v8"
-
 	"github.com/2beens/serjtubincom/internal/auth"
+	testingpkg "github.com/2beens/serjtubincom/pkg/testing"
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -124,8 +124,10 @@ func TestNewMiscHandler(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	db, rdbMock := redismock.NewClientMock()
-	authService := auth.NewAuthService(time.Hour, db)
+	os.Setenv("REDIS_PASS", "<remove>")
+	_, rdb := testingpkg.GetRedisClientAndCtx(t)
+
+	authService := auth.NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
 	testToken := "test_token"
 	randStringFunc := func(s int) (string, error) {
@@ -158,9 +160,6 @@ func TestLogin(t *testing.T) {
 	req.PostForm = url.Values{}
 	req.PostForm.Add("username", username)
 	req.PostForm.Add("password", password)
-
-	rdbMock.ExpectSet("serj-service-session||test_token", testToken, 0).SetVal(testToken)
-	rdbMock.ExpectSAdd("serj-service-sessions", testToken).SetVal(1)
 
 	mainRouter.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
