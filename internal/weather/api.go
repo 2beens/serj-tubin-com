@@ -86,7 +86,7 @@ func (w *Api) GetWeatherCurrent(ctx context.Context, cityID int, cityName string
 			log.Errorf("failed to unmarshal current weather from cache for city %s: %s", cityName, err)
 		}
 	} else {
-		log.Debugf("cached current weather for city %s not found: %s", cityName, err)
+		log.Debugf("get current weather for city %s from cache: %s; will get the data from open weather api", cityName, err)
 	}
 
 	weatherApiUrl := fmt.Sprintf("%s/weather?id=%d&appid=%s", w.openWeatherApiUrl, cityID, w.openWeatherApiKey)
@@ -203,8 +203,8 @@ func (w *Api) GetWeatherCity(city, countryCode string) (*City, error) {
 	country := strings.ToLower(countryCode)
 	for i := range *citiesList {
 		c := (*citiesList)[i]
-		log.Debugf("weather-api: get weather city for: %s, checking %s == %s", cityName, c.Country, country)
 		if strings.ToLower(c.Country) == country {
+			log.Debugf("weather-api: found weather city: %s / %s", c.Name, c.Country)
 			return &c, nil
 		}
 	}

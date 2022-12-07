@@ -96,17 +96,17 @@ func TestNewMiscHandler(t *testing.T) {
 		},
 		"login": {
 			name:   "login",
-			path:   "/login",
+			path:   "/a/login",
 			method: "POST",
 		},
 		"logout": {
 			name:   "logout",
-			path:   "/logout",
+			path:   "/a/logout",
 			method: "GET",
 		},
 		"logout-otions": {
 			name:   "logout",
-			path:   "/logout",
+			path:   "/a/logout",
 			method: "OPTIONS",
 		},
 	} {

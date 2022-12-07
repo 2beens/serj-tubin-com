@@ -68,7 +68,7 @@ func TestAuthService_NewAuthService(t *testing.T) {
 	sessionKey := sessionKeyPrefix + testToken
 	mock.ExpectSet(sessionKey, now.Unix(), 0).SetVal(fmt.Sprintf("%d", now.Unix()))
 	mock.ExpectSAdd(tokensSetKey, testToken).SetVal(1)
-	token, err := authService.Login(context.Background())
+	token, err := authService.Login(context.Background(), now)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 }
@@ -111,7 +111,7 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 	for i := 0; i < loginsCount; i++ {
 		// simluate many logins comming at once
 		go func() {
-			newToken, err := authService.Login(ctx)
+			newToken, err := authService.Login(ctx, time.Now())
 			require.NoError(t, err)
 			newTokensChan <- newToken
 			wg.Done()
@@ -158,20 +158,21 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 
 func TestAuthService_Login_Logout(t *testing.T) {
 	ctx, rdb := getRedisClientAndCtx(t)
+	now := time.Now()
 
 	authService := NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
 	loginChecker := NewLoginChecker(time.Hour, rdb)
 	require.NotNil(t, loginChecker)
 
-	token1, err := authService.Login(ctx)
+	token1, err := authService.Login(ctx, now)
 	require.NoError(t, err)
 	require.NotEmpty(t, token1)
 	isLogged1, err := loginChecker.IsLogged(ctx, token1)
 	require.NoError(t, err)
 	assert.True(t, isLogged1)
 
-	token2, err := authService.Login(ctx)
+	token2, err := authService.Login(ctx, now)
 	require.NoError(t, err)
 	require.NotEmpty(t, token2)
 	isLogged2, err := loginChecker.IsLogged(ctx, token1)

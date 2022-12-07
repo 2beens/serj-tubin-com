@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/geoip"
@@ -167,7 +168,7 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := handler.authService.Login(r.Context())
+	token, err := handler.authService.Login(r.Context(), time.Now())
 	if err != nil {
 		log.Errorf("login failed, generate token error: %s", err)
 		http.Error(w, "generate token error", http.StatusInternalServerError)
