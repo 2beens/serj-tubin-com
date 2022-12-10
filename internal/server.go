@@ -179,7 +179,7 @@ func NewServer(
 		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
 		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
-		geoIp:                 geoip.NewApi(ipInfoAPIKey, tracedHttpClient, rdb),
+		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, ipInfoAPIKey, tracedHttpClient, rdb),
 		boardAeroClient:       boardAeroClient,
 		boardClient:           boardClient,
 		netlogVisitsApi:       netlogVisitsApi,
