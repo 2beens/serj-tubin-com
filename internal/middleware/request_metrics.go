@@ -14,8 +14,7 @@ func RequestMetrics(instr *metrics.Manager) func(next http.Handler) http.Handler
 		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
 			statusCode := http.StatusOK
 			defer func(begin time.Time) {
-				instr.HistRequestDuration.Observe(time.Since(begin).Seconds())
-				instr.HistogramNewRequestDuration.WithLabelValues(
+				instr.HistogramRequestDuration.WithLabelValues(
 					req.URL.Path,
 					req.Method,
 					strconv.Itoa(statusCode),

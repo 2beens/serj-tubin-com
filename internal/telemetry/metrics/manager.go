@@ -18,9 +18,8 @@ type Manager struct {
 	GaugeLifeSignal prometheus.Gauge
 
 	// histograms
-	HistRequestDuration         prometheus.Histogram
-	HistNetlogBackupDuration    prometheus.Histogram
-	HistogramNewRequestDuration *prometheus.HistogramVec
+	HistNetlogBackupDuration prometheus.Histogram
+	HistogramRequestDuration *prometheus.HistogramVec
 }
 
 func NewTestManager() *Manager {
@@ -81,19 +80,6 @@ func NewManager(namespace, subsystem string, reg prometheus.Registerer) *Manager
 		ConstLabels: nil,
 	})
 
-	histReqDuration := factory.NewHistogram(
-		prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			Buckets: []float64{
-				0.0000001, 0.0000002, 0.0000003, 0.0000004, 0.0000005,
-				0.000001, 0.0000025, 0.000005, 0.0000075, 0.00001,
-				0.0001, 0.001, 0.01, 0.1, 1, 10, 60,
-			},
-			Name: "request_duration_seconds",
-			Help: "Total duration of requests in seconds",
-		},
-	)
 	histNetlogBackupDuration := factory.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: namespace,
@@ -108,23 +94,22 @@ func NewManager(namespace, subsystem string, reg prometheus.Registerer) *Manager
 		},
 	)
 
-	histogramNewRequestDuration := factory.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: "namespace",
-		Name:      "request_duration_seconds_new",
-		Help:      "Histogram of response time for handler in seconds",
+	histogramRequestDuration := factory.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: namespace,
+		Name:      "request_duration_seconds",
+		Help:      "Histogram of response time for requests in seconds",
 		Buckets:   []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 	}, []string{"route", "method", "status_code"})
 
 	return &Manager{
-		CounterRequests:             counterRequests,
-		CounterNetlogVisits:         counterNetlogVisits,
-		CounterNotes:                counterNotes,
-		CounterHandleRequestPanic:   counterHandleRequestPanic,
-		CounterVisitsBackups:        counterVisitsBackups,
-		GaugeRequests:               gaugeRequests,
-		GaugeLifeSignal:             gaugeLifeSignal,
-		HistRequestDuration:         histReqDuration,
-		HistNetlogBackupDuration:    histNetlogBackupDuration,
-		HistogramNewRequestDuration: histogramNewRequestDuration,
+		CounterRequests:           counterRequests,
+		CounterNetlogVisits:       counterNetlogVisits,
+		CounterNotes:              counterNotes,
+		CounterHandleRequestPanic: counterHandleRequestPanic,
+		CounterVisitsBackups:      counterVisitsBackups,
+		GaugeRequests:             gaugeRequests,
+		GaugeLifeSignal:           gaugeLifeSignal,
+		HistNetlogBackupDuration:  histNetlogBackupDuration,
+		HistogramRequestDuration:  histogramRequestDuration,
 	}
 }
