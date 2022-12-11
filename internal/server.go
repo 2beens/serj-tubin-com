@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
@@ -141,27 +142,11 @@ func NewServer(
 	}
 
 	authService := auth.NewAuthService(auth.DefaultTTL, rdb)
-	// if config.IsDev {
-	// 	authService.RandStringFunc = func(s int) (string, error) {
-	// 		return "test-token", nil
-	// 	}
-	// 	if t, err := authService.Login(time.Now()); err != nil || t != "test-token" {
-	// 		panic("test auth service failed to initialize")
-	// 	}
-	// }
-
-	loginChecker := auth.NewLoginChecker(auth.DefaultTTL, rdb)
-
 	go func() {
 		for range time.Tick(time.Hour * 8) {
 			authService.ScanAndClean(ctx)
 		}
 	}()
-
-	admin := &auth.Admin{
-		Username:     adminUsername,
-		PasswordHash: adminPasswordHash,
-	}
 
 	// use honeycomb distro to setup OpenTelemetry SDK
 	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled, "main-backend", rdb)
@@ -188,10 +173,13 @@ func NewServer(
 
 		redisClient:  rdb,
 		authService:  authService,
-		loginChecker: loginChecker,
-		admin:        admin,
+		loginChecker: auth.NewLoginChecker(auth.DefaultTTL, rdb),
+		admin: &auth.Admin{
+			Username:     adminUsername,
+			PasswordHash: adminPasswordHash,
+		},
 
-		//metrics
+		// telemetry
 		metricsManager: metricsManager,
 		promRegistry:   promRegistry,
 		otelShutdown:   otelShutdown,
@@ -275,8 +263,7 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 		log.Fatalf("failed to setup router: %s", err)
 	}
 
-	ipAndPort := fmt.Sprintf("%s:%d", host, port)
-
+	ipAndPort := net.JoinHostPort(host, strconv.Itoa(port))
 	s.httpServer = &http.Server{
 		Handler:      router,
 		Addr:         ipAndPort,
@@ -290,9 +277,10 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 		log.Fatal(s.httpServer.ListenAndServe())
 	}()
 
-	metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
-	log.Printf(" > metrics listening on: [%s]", metricsAddr)
 	go func() {
+		metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
+		log.Printf(" > metrics listening on: [%s]", metricsAddr)
+
 		// Expose the registered metrics via HTTP.
 		http.Handle(
 			"/metrics",
