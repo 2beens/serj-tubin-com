@@ -6,9 +6,12 @@ Type=simple
 Restart=always
 RestartSec=10
 User=serj
-Environment="SERJ_REDIS_PASS=pass here"
+Environment="SERJ_REDIS_PASS=<value_here>"
+Environment="OTEL_SERVICE_NAME=serj-tubin-com-file-service"
+Environment="HONEYCOMB_ENABLED=true"
+Environment="HONEYCOMB_API_KEY=<value_here>"
 WorkingDirectory=/home/serj/serj-tubin-com
-ExecStart=/home/serj/serj-tubin-com/bin/file-box -rootpath PATH_GOES_HERE -log-to-stdout=false -log-file-path=LOG_PATH_HERE
+ExecStart=/home/serj/serj-tubin-com/bin/file-box -rootpath /mnt/HC_Volume_11386991/serj-tubin-file-box -log-to-stdout=false -log-file-path /mnt/HC_Volume_11386991/serj-tubin-file-box/service.log
 
 [Install]
 WantedBy=multi-user.target
