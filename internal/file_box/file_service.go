@@ -53,7 +53,7 @@ func NewFileService(
 	}
 
 	// use honeycomb distro to setup OpenTelemetry SDK
-	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled)
+	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled, "file-service", rdb)
 	if err != nil {
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/geoip"
+	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
@@ -27,6 +28,7 @@ type Handler struct {
 
 func NewHandler(
 	mainRouter *mux.Router,
+	rateLimiter middleware.RequestRateLimiter,
 	geoIp *geoip.Api,
 	quotesManager *QuotesManager,
 	versionInfo string,
@@ -47,8 +49,17 @@ func NewHandler(
 	mainRouter.HandleFunc("/myip", handler.handleGetMyIp).Methods("GET").Name("myip")
 	mainRouter.HandleFunc("/version", handler.handleGetVersionInfo).Methods("GET").Name("version")
 
-	mainRouter.HandleFunc("/login", handler.handleLogin).Methods("POST").Name("login")
-	mainRouter.HandleFunc("/logout", handler.handleLogout).Methods("GET", "OPTIONS").Name("logout")
+	loginSubrouter := mainRouter.PathPrefix("/a").Subrouter()
+	loginSubrouter.
+		HandleFunc("/login", handler.handleLogin).
+		Methods("POST").Name("login")
+	loginSubrouter.
+		HandleFunc("/logout", handler.handleLogout).
+		Methods("GET", "OPTIONS").Name("logout")
+
+	// rate limit the /login and /logout endpoints to prevent abuse
+	loginSubrouter.Use(middleware.RateLimit(rateLimiter, "login", 30))
+	loginSubrouter.Use(middleware.Cors())
 
 	return handler
 }

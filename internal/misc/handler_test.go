@@ -1,18 +1,56 @@
 package misc
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	testingpkg "github.com/2beens/serjtubincom/pkg/testing"
+	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+type testReqeustRateLimiter struct {
+	// key to limit map
+	Limits map[string]int
+}
+
+func (l *testReqeustRateLimiter) Allow(_ context.Context, key string, limit redis_rate.Limit) (*redis_rate.Result, error) {
+	res := &redis_rate.Result{
+		Limit: redis_rate.Limit{
+			Rate:   0,
+			Burst:  0,
+			Period: 0,
+		},
+		Allowed:    0,
+		Remaining:  0,
+		RetryAfter: 0,
+		ResetAfter: 0,
+	}
+
+	foundLimit, ok := l.Limits[key]
+	if !ok || foundLimit == 0 {
+		return res, nil
+	}
+
+	res.Allowed = l.Limits[key]
+	l.Limits[key]--
+
+	return res, nil
+}
+
 func TestNewMiscHandler(t *testing.T) {
 	mainRouter := mux.NewRouter()
-	handler := NewHandler(mainRouter, nil, nil, "dummy", &auth.Service{}, &auth.Admin{})
+	handler := NewHandler(mainRouter, nil, nil, nil, "dummy", &auth.Service{}, &auth.Admin{})
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
 
@@ -58,17 +96,17 @@ func TestNewMiscHandler(t *testing.T) {
 		},
 		"login": {
 			name:   "login",
-			path:   "/login",
+			path:   "/a/login",
 			method: "POST",
 		},
 		"logout": {
 			name:   "logout",
-			path:   "/logout",
+			path:   "/a/logout",
 			method: "GET",
 		},
 		"logout-otions": {
 			name:   "logout",
-			path:   "/logout",
+			path:   "/a/logout",
 			method: "OPTIONS",
 		},
 	} {
@@ -83,6 +121,55 @@ func TestNewMiscHandler(t *testing.T) {
 			assert.True(t, isMatch, caseName)
 		})
 	}
+}
+
+func TestLogin(t *testing.T) {
+	os.Setenv("REDIS_PASS", "<remove>")
+	_, rdb := testingpkg.GetRedisClientAndCtx(t)
+
+	authService := auth.NewAuthService(time.Hour, rdb)
+	require.NotNil(t, authService)
+	testToken := "test_token"
+	randStringFunc := func(s int) (string, error) {
+		return testToken, nil
+	}
+	authService.RandStringFunc = randStringFunc
+
+	username := "testuser"
+	password := "testpass"
+	passwordHash := "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
+
+	mainRouter := mux.NewRouter()
+	reqRateLimiter := &testReqeustRateLimiter{
+		Limits: map[string]int{},
+	}
+	handler := NewHandler(
+		mainRouter, reqRateLimiter, nil, nil,
+		"dummy", authService, &auth.Admin{
+			Username:     username,
+			PasswordHash: passwordHash,
+		},
+	)
+	require.NotNil(t, handler)
+	require.NotNil(t, mainRouter)
+
+	reqRateLimiter.Limits["login"] = 1
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/a/login", nil)
+	req.PostForm = url.Values{}
+	req.PostForm.Add("username", username)
+	req.PostForm.Add("password", password)
+
+	mainRouter.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, fmt.Sprintf(`{"token": "%s"}`, testToken), rr.Body.String())
+
+	// next time fails
+	rr = httptest.NewRecorder()
+	mainRouter.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusTooEarly, rr.Code)
+	assert.True(t, strings.HasPrefix(rr.Body.String(), "retry after"))
 }
 
 // TODO: other tests
