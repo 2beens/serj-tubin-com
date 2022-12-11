@@ -199,7 +199,7 @@ func (api *Api) do(
 	req *http.Request,
 	v interface{},
 ) (_ *http.Response, err error) {
-	ctx, span := tracing.GlobalTracer.Start(ctx, "geoIp.do")
+	_, span := tracing.GlobalTracer.Start(ctx, "geoIp.do")
 	defer func() {
 		if err != nil {
 			span.SetStatus(codes.Error, err.Error())
@@ -224,9 +224,12 @@ func (api *Api) do(
 
 	if v != nil {
 		if w, ok := v.(io.Writer); ok {
-			io.Copy(w, resp.Body)
+			if _, err := io.Copy(w, resp.Body); err != nil {
+				return resp, err
+			}
 		} else {
-			if err := json.NewDecoder(resp.Body).Decode(v); err == io.EOF {
+			err = json.NewDecoder(resp.Body).Decode(v)
+			if err == io.EOF {
 				// ignore EOF errors caused by empty response body
 				err = nil
 			}
@@ -246,7 +249,9 @@ func (api *Api) checkResponse(r *http.Response) error {
 	errorResponse := &ipinfo.ErrorResponse{Response: r}
 	data, err := io.ReadAll(r.Body)
 	if err == nil && data != nil {
-		json.Unmarshal(data, errorResponse)
+		if err := json.Unmarshal(data, errorResponse); err != nil {
+			return fmt.Errorf("unmarshal err resp: %w", err)
+		}
 	}
 	return errorResponse
 }
