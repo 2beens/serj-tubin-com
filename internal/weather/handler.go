@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/geoip"
@@ -15,7 +13,6 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -29,31 +26,14 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
-// TODO: refactor this old handler;
-//	- loading cities data from a file should not be done here
-//  - weather api should be injected (and also unit tests added)
-//	- add related changes to the previous one
-
-func NewHandler(weatherRouter *mux.Router, geoIp *geoip.Api, openWeatherAPIUrl, openWeatherApiKey string) (*Handler, error) {
-	citiesData, err := LoadCitiesData("./assets/city.list.json")
-	if err != nil {
-		log.Errorf("failed to load weather cities data: %s", err)
-		return nil, fmt.Errorf("failed to load weather cities data: %s", err)
-	}
-
-	// TODO: again - refactor this, like described above
-	tracedHttpClient := &http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
+func NewHandler(
+	weatherRouter *mux.Router,
+	geoIp *geoip.Api,
+	weatherApi *Api,
+) (*Handler, error) {
 	handler := &Handler{
-		geoIp: geoIp,
-		weatherApi: NewApi(
-			openWeatherAPIUrl,
-			openWeatherApiKey,
-			citiesData,
-			tracedHttpClient,
-		),
+		geoIp:      geoIp,
+		weatherApi: weatherApi,
 	}
 
 	weatherRouter.HandleFunc("/current", handler.handleCurrent).Methods("GET")
@@ -61,26 +41,6 @@ func NewHandler(weatherRouter *mux.Router, geoIp *geoip.Api, openWeatherAPIUrl, 
 	weatherRouter.HandleFunc("/5days", handler.handle5Days).Methods("GET")
 
 	return handler, nil
-}
-
-func LoadCitiesData(cityListDataPath string) ([]City, error) {
-	citiesJsonFile, err := os.Open(cityListDataPath)
-	if err != nil {
-		return []City{}, err
-	}
-
-	citiesJsonFileData, err := io.ReadAll(citiesJsonFile)
-	if err != nil {
-		return []City{}, err
-	}
-
-	var cities []City
-	err = json.Unmarshal(citiesJsonFileData, &cities)
-	if err != nil {
-		return []City{}, err
-	}
-
-	return cities, nil
 }
 
 func (handler *Handler) handleCurrent(w http.ResponseWriter, r *http.Request) {

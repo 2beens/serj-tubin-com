@@ -1,6 +1,11 @@
 package weather
 
-import "time"
+import (
+	"encoding/json"
+	"io"
+	"os"
+	"time"
+)
 
 type Description struct {
 	ID          int    `json:"id"`
@@ -101,4 +106,24 @@ type City struct {
 type InfoShort struct {
 	Timestamp           int           `json:"timestamp"`
 	WeatherDescriptions []Description `json:"descriptions"`
+}
+
+func LoadCitiesData() ([]City, error) {
+	citiesJsonFile, err := os.Open("./data/city.list.json")
+	if err != nil {
+		return []City{}, err
+	}
+	defer citiesJsonFile.Close()
+
+	citiesJsonFileData, err := io.ReadAll(citiesJsonFile)
+	if err != nil {
+		return []City{}, err
+	}
+
+	var cities []City
+	if err = json.Unmarshal(citiesJsonFileData, &cities); err != nil {
+		return []City{}, err
+	}
+
+	return cities, nil
 }

@@ -42,6 +42,7 @@ type Server struct {
 	config          *config.Config
 	blogApi         *blog.PsqlApi
 	geoIp           *geoip.Api
+	weatherApi      *weather.Api
 	quotesManager   *misc.QuotesManager
 	boardAeroClient *aerospike.BoardAeroClient
 	boardClient     *board.Client
@@ -50,9 +51,7 @@ type Server struct {
 
 	browserRequestsSecret string // used in netlog, when posting new visit
 
-	openWeatherAPIUrl string
-	openWeatherApiKey string
-	versionInfo       string
+	versionInfo string
 
 	redisClient  *redis.Client
 	loginChecker *auth.LoginChecker
@@ -158,18 +157,28 @@ func NewServer(
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
+	weatherCitiesData, err := weather.LoadCitiesData()
+	if err != nil {
+		log.Errorf("failed to load weather cities data: %s", err)
+		return nil, fmt.Errorf("failed to load weather cities data: %s", err)
+	}
+
 	s := &Server{
 		config:                config,
 		blogApi:               blogApi,
-		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
-		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
 		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, ipInfoAPIKey, tracedHttpClient, rdb),
-		boardAeroClient:       boardAeroClient,
-		boardClient:           boardClient,
-		netlogVisitsApi:       netlogVisitsApi,
-		notesBoxApi:           notesBoxApi,
-		versionInfo:           versionInfo,
+		weatherApi: weather.NewApi(
+			"http://api.openweathermap.org/data/2.5",
+			openWeatherApiKey,
+			weatherCitiesData,
+			tracedHttpClient,
+		),
+		boardAeroClient: boardAeroClient,
+		boardClient:     boardClient,
+		netlogVisitsApi: netlogVisitsApi,
+		notesBoxApi:     notesBoxApi,
+		versionInfo:     versionInfo,
 
 		redisClient:  rdb,
 		authService:  authService,
@@ -201,9 +210,6 @@ func NewServer(
 
 func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
-
-	// TODO: it should do some degree of auto tracing, but it does not
-	// update: actually, seems like adds some tracing info
 	r.Use(otelmux.Middleware("main-router"))
 
 	blogRouter := r.PathPrefix("/blog").Subrouter()
@@ -221,7 +227,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("board handler is nil")
 	}
 
-	if weatherHandler, err := weather.NewHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
+	if weatherHandler, err := weather.NewHandler(weatherRouter, s.geoIp, s.weatherApi); err != nil {
 		return nil, fmt.Errorf("failed to create weather handler: %w", err)
 	} else if weatherHandler == nil {
 		return nil, errors.New("weather handler is nil")
