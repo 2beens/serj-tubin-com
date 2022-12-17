@@ -227,11 +227,10 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("board handler is nil")
 	}
 
-	if weatherHandler, err := weather.NewHandler(weatherRouter, s.geoIp, s.weatherApi); err != nil {
-		return nil, fmt.Errorf("failed to create weather handler: %w", err)
-	} else if weatherHandler == nil {
-		return nil, errors.New("weather handler is nil")
-	}
+	weatherHandler := weather.NewHandler(s.geoIp, s.weatherApi)
+	weatherRouter.HandleFunc("/current", weatherHandler.HandleCurrent).Methods("GET")
+	weatherRouter.HandleFunc("/tomorrow", weatherHandler.HandleTomorrow).Methods("GET")
+	weatherRouter.HandleFunc("/5days", weatherHandler.Handle5Days).Methods("GET")
 
 	reqRateLimiter := redis_rate.NewLimiter(s.redisClient)
 	if misc.NewHandler(r, reqRateLimiter, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {

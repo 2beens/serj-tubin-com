@@ -11,7 +11,6 @@ import (
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
-	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -27,23 +26,16 @@ var (
 )
 
 func NewHandler(
-	weatherRouter *mux.Router,
 	geoIp *geoip.Api,
 	weatherApi *Api,
-) (*Handler, error) {
-	handler := &Handler{
+) *Handler {
+	return &Handler{
 		geoIp:      geoIp,
 		weatherApi: weatherApi,
 	}
-
-	weatherRouter.HandleFunc("/current", handler.handleCurrent).Methods("GET")
-	weatherRouter.HandleFunc("/tomorrow", handler.handleTomorrow).Methods("GET")
-	weatherRouter.HandleFunc("/5days", handler.handle5Days).Methods("GET")
-
-	return handler, nil
 }
 
-func (handler *Handler) handleCurrent(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) HandleCurrent(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "weather.handleCurrent")
 	defer span.End()
 
@@ -101,7 +93,7 @@ func (handler *Handler) handleCurrent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (handler *Handler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) HandleTomorrow(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "weather.handleTomorrow")
 	defer span.End()
 
@@ -168,7 +160,7 @@ func (handler *Handler) handleTomorrow(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (handler *Handler) handle5Days(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) Handle5Days(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "weather.handle5Days")
 	defer span.End()
 
