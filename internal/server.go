@@ -223,9 +223,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		return nil, errors.New("blog handler is nil")
 	}
 
-	if board.NewBoardHandler(boardRouter, s.boardClient, s.loginChecker) == nil {
-		return nil, errors.New("board handler is nil")
-	}
+	boardHandler := board.NewBoardHandler(s.boardClient, s.loginChecker)
+	boardHandler.SetupRoutes(boardRouter)
 
 	weatherHandler := weather.NewHandler(s.geoIp, s.weatherApi)
 	weatherRouter.HandleFunc("/current", weatherHandler.HandleCurrent).Methods("GET")
@@ -237,9 +236,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		panic("misc handler is nil")
 	}
 
-	if netlog.NewHandler(netlogRouter, s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker) == nil {
-		panic("netlog visits handler is nil")
-	}
+	netlogHandler := netlog.NewHandler(s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker)
+	netlogHandler.SetupRoutes(netlogRouter)
 
 	notesHandler := notes_box.NewHandler(s.notesBoxApi, s.loginChecker, s.metricsManager)
 	notesRouter.HandleFunc("", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
