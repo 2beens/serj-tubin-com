@@ -65,7 +65,7 @@ func NewManager(namespace, subsystem string, reg prometheus.Registerer) *Manager
 		Name:      "netlog_visits_backed_up",
 		Help:      "Number of netlog visits backed up",
 	})
-	counterRateLimitedRequests := promauto.NewCounter(prometheus.CounterOpts{
+	counterRateLimitedRequests := factory.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: subsystem,
 		Name:      "rate_limited_requests",

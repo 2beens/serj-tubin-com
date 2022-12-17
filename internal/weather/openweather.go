@@ -1,9 +1,8 @@
 package weather
 
 import (
+	"embed"
 	"encoding/json"
-	"io"
-	"os"
 	"time"
 )
 
@@ -108,20 +107,14 @@ type InfoShort struct {
 	WeatherDescriptions []Description `json:"descriptions"`
 }
 
-func LoadCitiesData() ([]City, error) {
-	citiesJsonFile, err := os.Open("./data/city.list.json")
-	if err != nil {
-		return []City{}, err
-	}
-	defer citiesJsonFile.Close()
+//go:embed data/city.list.json
+var citiesRawData embed.FS
 
-	citiesJsonFileData, err := io.ReadAll(citiesJsonFile)
-	if err != nil {
-		return []City{}, err
-	}
+func LoadCitiesData() ([]City, error) {
+	citiesJsonFileData, _ := citiesRawData.ReadFile("data/city.list.json")
 
 	var cities []City
-	if err = json.Unmarshal(citiesJsonFileData, &cities); err != nil {
+	if err := json.Unmarshal(citiesJsonFileData, &cities); err != nil {
 		return []City{}, err
 	}
 
