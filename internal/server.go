@@ -218,10 +218,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	notesRouter := r.PathPrefix("/notes").Subrouter()
 
-	// TODO: refactor this - return handlers, but define routes here, similar to notes handler
-	if blog.NewBlogHandler(blogRouter, s.blogApi, s.loginChecker) == nil {
-		return nil, errors.New("blog handler is nil")
-	}
+	blogHandler := blog.NewBlogHandler(s.blogApi, s.loginChecker)
+	blogHandler.SetupRoutes(blogRouter)
 
 	boardHandler := board.NewBoardHandler(s.boardClient, s.loginChecker)
 	boardHandler.SetupRoutes(boardRouter)
@@ -232,9 +230,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	weatherRouter.HandleFunc("/5days", weatherHandler.Handle5Days).Methods("GET")
 
 	reqRateLimiter := redis_rate.NewLimiter(s.redisClient)
-	if misc.NewHandler(r, reqRateLimiter, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {
-		panic("misc handler is nil")
-	}
+	miscHandler := misc.NewHandler(s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin)
+	miscHandler.SetupRoutes(r, reqRateLimiter)
 
 	netlogHandler := netlog.NewHandler(s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker)
 	netlogHandler.SetupRoutes(netlogRouter)
