@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	testingpkg "github.com/2beens/serjtubincom/pkg/testing"
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
@@ -51,7 +52,7 @@ func (l *testReqeustRateLimiter) Allow(_ context.Context, key string, limit redi
 func TestNewMiscHandler(t *testing.T) {
 	mainRouter := mux.NewRouter()
 	handler := NewHandler(nil, nil, "dummy", &auth.Service{}, &auth.Admin{})
-	handler.SetupRoutes(mainRouter, nil)
+	handler.SetupRoutes(mainRouter, nil, metrics.NewTestManager())
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
 
@@ -153,7 +154,7 @@ func TestLogin(t *testing.T) {
 	)
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
-	handler.SetupRoutes(mainRouter, reqRateLimiter)
+	handler.SetupRoutes(mainRouter, reqRateLimiter, metrics.NewTestManager())
 
 	reqRateLimiter.Limits["login"] = 1
 

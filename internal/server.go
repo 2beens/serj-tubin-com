@@ -231,7 +231,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	reqRateLimiter := redis_rate.NewLimiter(s.redisClient)
 	miscHandler := misc.NewHandler(s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin)
-	miscHandler.SetupRoutes(r, reqRateLimiter)
+	miscHandler.SetupRoutes(r, reqRateLimiter, s.metricsManager)
 
 	netlogHandler := netlog.NewHandler(s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker)
 	netlogHandler.SetupRoutes(netlogRouter)

@@ -7,11 +7,12 @@ import (
 
 type Manager struct {
 	// counters
-	CounterRequests           *prometheus.CounterVec
-	CounterNetlogVisits       prometheus.Counter
-	CounterNotes              prometheus.Counter
-	CounterHandleRequestPanic prometheus.Counter
-	CounterVisitsBackups      prometheus.Counter
+	CounterRequests            *prometheus.CounterVec
+	CounterNetlogVisits        prometheus.Counter
+	CounterNotes               prometheus.Counter
+	CounterHandleRequestPanic  prometheus.Counter
+	CounterVisitsBackups       prometheus.Counter
+	CounterRateLimitedRequests prometheus.Counter
 
 	// gauges
 	GaugeRequests   prometheus.Gauge
@@ -64,6 +65,12 @@ func NewManager(namespace, subsystem string, reg prometheus.Registerer) *Manager
 		Name:      "netlog_visits_backed_up",
 		Help:      "Number of netlog visits backed up",
 	})
+	counterRateLimitedRequests := promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "rate_limited_requests",
+		Help:      "The total number of rate limited requests",
+	})
 
 	gaugeRequests := factory.NewGauge(prometheus.GaugeOpts{
 		Namespace:   namespace,
@@ -96,20 +103,22 @@ func NewManager(namespace, subsystem string, reg prometheus.Registerer) *Manager
 
 	histogramRequestDuration := factory.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: namespace,
+		Subsystem: subsystem,
 		Name:      "request_duration_seconds",
 		Help:      "Histogram of response time for requests in seconds",
 		Buckets:   []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 	}, []string{"route", "method", "status_code"})
 
 	return &Manager{
-		CounterRequests:           counterRequests,
-		CounterNetlogVisits:       counterNetlogVisits,
-		CounterNotes:              counterNotes,
-		CounterHandleRequestPanic: counterHandleRequestPanic,
-		CounterVisitsBackups:      counterVisitsBackups,
-		GaugeRequests:             gaugeRequests,
-		GaugeLifeSignal:           gaugeLifeSignal,
-		HistNetlogBackupDuration:  histNetlogBackupDuration,
-		HistogramRequestDuration:  histogramRequestDuration,
+		CounterRequests:            counterRequests,
+		CounterNetlogVisits:        counterNetlogVisits,
+		CounterNotes:               counterNotes,
+		CounterHandleRequestPanic:  counterHandleRequestPanic,
+		CounterVisitsBackups:       counterVisitsBackups,
+		CounterRateLimitedRequests: counterRateLimitedRequests,
+		GaugeRequests:              gaugeRequests,
+		GaugeLifeSignal:            gaugeLifeSignal,
+		HistNetlogBackupDuration:   histNetlogBackupDuration,
+		HistogramRequestDuration:   histogramRequestDuration,
 	}
 }
