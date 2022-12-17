@@ -1,6 +1,10 @@
 package weather
 
-import "time"
+import (
+	"embed"
+	"encoding/json"
+	"time"
+)
 
 type Description struct {
 	ID          int    `json:"id"`
@@ -101,4 +105,18 @@ type City struct {
 type InfoShort struct {
 	Timestamp           int           `json:"timestamp"`
 	WeatherDescriptions []Description `json:"descriptions"`
+}
+
+//go:embed data/city.list.json
+var citiesRawData embed.FS
+
+func LoadCitiesData() ([]City, error) {
+	citiesJsonFileData, _ := citiesRawData.ReadFile("data/city.list.json")
+
+	var cities []City
+	if err := json.Unmarshal(citiesJsonFileData, &cities); err != nil {
+		return []City{}, err
+	}
+
+	return cities, nil
 }

@@ -1,6 +1,7 @@
 package file_box
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -26,6 +27,8 @@ func TestNewFileHandler(t *testing.T) {
 }
 
 func TestFileHandler_handleGet(t *testing.T) {
+	ctx := context.Background()
+
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
 	require.NoError(t, err)
@@ -38,6 +41,7 @@ func TestFileHandler_handleGet(t *testing.T) {
 		randomContent := strings.NewReader(fmt.Sprintf("random test content %d", i))
 		fileName := fmt.Sprintf("file_%d", i)
 		fileId, err := api.Save(
+			ctx,
 			fileName,
 			parentId,
 			randomContent.Size(),
@@ -49,7 +53,7 @@ func TestFileHandler_handleGet(t *testing.T) {
 
 		// make the first 5 files not private
 		if i <= 5 {
-			require.NoError(t, api.UpdateInfo(fileId, fileName, false))
+			require.NoError(t, api.UpdateInfo(ctx, fileId, fileName, false))
 		}
 
 		addedFiles = append(addedFiles, fileId)
@@ -103,6 +107,8 @@ func TestFileHandler_handleGet(t *testing.T) {
 }
 
 func TestFileHandler_handleDeleteFile(t *testing.T) {
+	ctx := context.Background()
+
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
 	require.NoError(t, err)
@@ -115,6 +121,7 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 		randomContent := strings.NewReader(fmt.Sprintf("random test content %d", i))
 		fileName := fmt.Sprintf("file_%d", i)
 		fileId, err := api.Save(
+			ctx,
 			fileName,
 			parentId,
 			randomContent.Size(),
@@ -126,7 +133,7 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 
 		// make the first 5 files not private
 		if i <= 5 {
-			require.NoError(t, api.UpdateInfo(fileId, fileName, false))
+			require.NoError(t, api.UpdateInfo(ctx, fileId, fileName, false))
 		}
 
 		addedFiles = append(addedFiles, fileId)
@@ -141,7 +148,7 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 	r := RouterSetup(fileHandler)
 
 	// before delete, file there?
-	file1, parent, err := api.Get(addedFiles[0])
+	file1, parent, err := api.Get(ctx, addedFiles[0])
 	require.NoError(t, err)
 	assert.NotNil(t, file1)
 	assert.Equal(t, parentId, parent.Id)
@@ -159,17 +166,19 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 
 	assert.Len(t, api.root.Files, filesLen-2)
 
-	file, parent, err := api.Get(addedFiles[0])
+	file, parent, err := api.Get(ctx, addedFiles[0])
 	assert.ErrorIs(t, err, ErrFileNotFound)
 	assert.Nil(t, file)
 	assert.Nil(t, parent)
-	file, parent, err = api.Get(addedFiles[2])
+	file, parent, err = api.Get(ctx, addedFiles[2])
 	assert.ErrorIs(t, err, ErrFileNotFound)
 	assert.Nil(t, file)
 	assert.Nil(t, parent)
 }
 
 func TestFileHandler_handleUpdateInfo(t *testing.T) {
+	ctx := context.Background()
+
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
 	require.NoError(t, err)
@@ -180,6 +189,7 @@ func TestFileHandler_handleUpdateInfo(t *testing.T) {
 	fileContent := strings.NewReader(fileContentString)
 	fileName := "test-name"
 	fileId, err := api.Save(
+		ctx,
 		fileName,
 		parentId,
 		fileContent.Size(),
@@ -221,6 +231,8 @@ func TestFileHandler_handleUpdateInfo(t *testing.T) {
 }
 
 func TestFileHandler_handleGetRoot(t *testing.T) {
+	ctx := context.Background()
+
 	tempRootDir := t.TempDir()
 	api, err := NewDiskApi(tempRootDir)
 	require.NoError(t, err)
@@ -230,6 +242,7 @@ func TestFileHandler_handleGetRoot(t *testing.T) {
 	fileContent := strings.NewReader("random test file content")
 	fileName := "test-name"
 	fileId, err := api.Save(
+		ctx,
 		fileName,
 		rootId,
 		fileContent.Size(),

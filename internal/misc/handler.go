@@ -9,6 +9,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/middleware"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
@@ -27,22 +28,26 @@ type Handler struct {
 }
 
 func NewHandler(
-	mainRouter *mux.Router,
-	rateLimiter middleware.RequestRateLimiter,
 	geoIp *geoip.Api,
 	quotesManager *QuotesManager,
 	versionInfo string,
 	authService *auth.Service,
 	admin *auth.Admin,
 ) *Handler {
-	handler := &Handler{
+	return &Handler{
 		geoIp:         geoIp,
 		quotesManager: quotesManager,
 		versionInfo:   versionInfo,
 		authService:   authService,
 		admin:         admin,
 	}
+}
 
+func (handler *Handler) SetupRoutes(
+	mainRouter *mux.Router,
+	rateLimiter middleware.RequestRateLimiter,
+	metricsManager *metrics.Manager,
+) {
 	mainRouter.HandleFunc("/", handler.handleRoot).Methods("GET", "POST", "OPTIONS").Name("root")
 	mainRouter.HandleFunc("/quote/random", handler.handleGetRandomQuote).Methods("GET").Name("quote")
 	mainRouter.HandleFunc("/whereami", handler.handleWhereAmI).Methods("GET").Name("whereami")
@@ -58,10 +63,8 @@ func NewHandler(
 		Methods("GET", "OPTIONS").Name("logout")
 
 	// rate limit the /login and /logout endpoints to prevent abuse
-	loginSubrouter.Use(middleware.RateLimit(rateLimiter, "login", 30))
+	loginSubrouter.Use(middleware.RateLimit(rateLimiter, "login", 15, metricsManager))
 	loginSubrouter.Use(middleware.Cors())
-
-	return handler
 }
 
 func (handler *Handler) handleRoot(w http.ResponseWriter, r *http.Request) {

@@ -11,9 +11,11 @@ import (
 	"strings"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type FileHandler struct {
@@ -29,6 +31,9 @@ func NewFileHandler(api *DiskApi, loginChecker auth.Checker) *FileHandler {
 }
 
 func (handler *FileHandler) handleDownloadFolder(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.downloadFolder")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -50,11 +55,13 @@ func (handler *FileHandler) handleDownloadFolder(w http.ResponseWriter, r *http.
 
 	log.Debugf("--> will try to download folder [%d]", folderId)
 
-	folder, err := handler.api.GetFolder(folderId)
+	folder, err := handler.api.GetFolder(ctx, folderId)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+
+	span.SetAttributes(attribute.String("folder.name", folder.Name))
 
 	w.Header().Set("Content-Type", "application/zip")
 	if err := pkg.Compress(folder.Path, w); err != nil {
@@ -65,6 +72,9 @@ func (handler *FileHandler) handleDownloadFolder(w http.ResponseWriter, r *http.
 }
 
 func (handler *FileHandler) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.downloadFile")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -86,7 +96,7 @@ func (handler *FileHandler) handleDownloadFile(w http.ResponseWriter, r *http.Re
 
 	log.Debugf("--> will try to download file [%d]", id)
 
-	file, _, err := handler.api.Get(id)
+	file, _, err := handler.api.Get(ctx, id)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -102,6 +112,9 @@ func (handler *FileHandler) handleDownloadFile(w http.ResponseWriter, r *http.Re
 
 // handleGet - get file content
 func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.get")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -121,7 +134,7 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileInfo, _, err := handler.api.Get(id)
+	fileInfo, _, err := handler.api.Get(ctx, id)
 	if err != nil {
 		log.Errorf("read file [%d]: %s", id, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -158,6 +171,9 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.updateInfo")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -191,7 +207,7 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 	}
 	isPrivate := isPrivateStr == "true"
 
-	if err := handler.api.UpdateInfo(id, newName, isPrivate); err != nil {
+	if err := handler.api.UpdateInfo(ctx, id, newName, isPrivate); err != nil {
 		log.Errorf("update file info [%d]: %s", id, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -201,6 +217,9 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 }
 
 func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.delete")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -236,7 +255,7 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 	for _, id := range ids {
 		log.Debugf("-> tryint to delete item: %d", id)
 
-		fileInfo, _, err := handler.api.Get(id)
+		fileInfo, _, err := handler.api.Get(ctx, id)
 		if err != nil && err != ErrFileNotFound {
 			log.Errorf("delete file [%d]: %s", id, err)
 			//http.Error(w, "internal error", http.StatusInternalServerError)
@@ -266,6 +285,9 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 }
 
 func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.getRoot")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "GET, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -290,6 +312,9 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 }
 
 func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.newFolder")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -334,6 +359,9 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 
 // handleUpload - save file or create a directory
 func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.upload")
+	defer span.End()
+
 	if r.Method == http.MethodOptions {
 		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
@@ -385,6 +413,7 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 		}
 
 		newFileId, err := handler.api.Save(
+			ctx,
 			fileHeader.Filename,
 			folderId,
 			fileHeader.Size,
@@ -432,6 +461,9 @@ func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handle
 				w.WriteHeader(http.StatusOK)
 				return
 			}
+
+			_, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.auth")
+			defer span.End()
 
 			isLogged, err := handler.isLogged(r)
 			if err != nil {

@@ -42,6 +42,7 @@ type Server struct {
 	config          *config.Config
 	blogApi         *blog.PsqlApi
 	geoIp           *geoip.Api
+	weatherApi      *weather.Api
 	quotesManager   *misc.QuotesManager
 	boardAeroClient *aerospike.BoardAeroClient
 	boardClient     *board.Client
@@ -50,9 +51,7 @@ type Server struct {
 
 	browserRequestsSecret string // used in netlog, when posting new visit
 
-	openWeatherAPIUrl string
-	openWeatherApiKey string
-	versionInfo       string
+	versionInfo string
 
 	redisClient  *redis.Client
 	loginChecker *auth.LoginChecker
@@ -158,18 +157,28 @@ func NewServer(
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
+	weatherCitiesData, err := weather.LoadCitiesData()
+	if err != nil {
+		log.Errorf("failed to load weather cities data: %s", err)
+		return nil, fmt.Errorf("failed to load weather cities data: %s", err)
+	}
+
 	s := &Server{
 		config:                config,
 		blogApi:               blogApi,
-		openWeatherAPIUrl:     "http://api.openweathermap.org/data/2.5",
-		openWeatherApiKey:     openWeatherApiKey,
 		browserRequestsSecret: browserRequestsSecret,
 		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, ipInfoAPIKey, tracedHttpClient, rdb),
-		boardAeroClient:       boardAeroClient,
-		boardClient:           boardClient,
-		netlogVisitsApi:       netlogVisitsApi,
-		notesBoxApi:           notesBoxApi,
-		versionInfo:           versionInfo,
+		weatherApi: weather.NewApi(
+			"http://api.openweathermap.org/data/2.5",
+			openWeatherApiKey,
+			weatherCitiesData,
+			tracedHttpClient,
+		),
+		boardAeroClient: boardAeroClient,
+		boardClient:     boardClient,
+		netlogVisitsApi: netlogVisitsApi,
+		notesBoxApi:     notesBoxApi,
+		versionInfo:     versionInfo,
 
 		redisClient:  rdb,
 		authService:  authService,
@@ -201,9 +210,6 @@ func NewServer(
 
 func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
-
-	// TODO: it should do some degree of auto tracing, but it does not
-	// update: actually, seems like adds some tracing info
 	r.Use(otelmux.Middleware("main-router"))
 
 	blogRouter := r.PathPrefix("/blog").Subrouter()
@@ -212,29 +218,23 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	notesRouter := r.PathPrefix("/notes").Subrouter()
 
-	// TODO: refactor this - return handlers, but define routes here, similar to notes handler
-	if blog.NewBlogHandler(blogRouter, s.blogApi, s.loginChecker) == nil {
-		return nil, errors.New("blog handler is nil")
-	}
+	blogHandler := blog.NewBlogHandler(s.blogApi, s.loginChecker)
+	blogHandler.SetupRoutes(blogRouter)
 
-	if board.NewBoardHandler(boardRouter, s.boardClient, s.loginChecker) == nil {
-		return nil, errors.New("board handler is nil")
-	}
+	boardHandler := board.NewBoardHandler(s.boardClient, s.loginChecker)
+	boardHandler.SetupRoutes(boardRouter)
 
-	if weatherHandler, err := weather.NewHandler(weatherRouter, s.geoIp, s.openWeatherAPIUrl, s.openWeatherApiKey); err != nil {
-		return nil, fmt.Errorf("failed to create weather handler: %w", err)
-	} else if weatherHandler == nil {
-		return nil, errors.New("weather handler is nil")
-	}
+	weatherHandler := weather.NewHandler(s.geoIp, s.weatherApi)
+	weatherRouter.HandleFunc("/current", weatherHandler.HandleCurrent).Methods("GET")
+	weatherRouter.HandleFunc("/tomorrow", weatherHandler.HandleTomorrow).Methods("GET")
+	weatherRouter.HandleFunc("/5days", weatherHandler.Handle5Days).Methods("GET")
 
 	reqRateLimiter := redis_rate.NewLimiter(s.redisClient)
-	if misc.NewHandler(r, reqRateLimiter, s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin) == nil {
-		panic("misc handler is nil")
-	}
+	miscHandler := misc.NewHandler(s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin)
+	miscHandler.SetupRoutes(r, reqRateLimiter, s.metricsManager)
 
-	if netlog.NewHandler(netlogRouter, s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker) == nil {
-		panic("netlog visits handler is nil")
-	}
+	netlogHandler := netlog.NewHandler(s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker)
+	netlogHandler.SetupRoutes(netlogRouter)
 
 	notesHandler := notes_box.NewHandler(s.notesBoxApi, s.loginChecker, s.metricsManager)
 	notesRouter.HandleFunc("", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")

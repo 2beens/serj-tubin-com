@@ -1,6 +1,7 @@
 package file_box
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,7 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var (
@@ -75,11 +78,15 @@ func (da *DiskApi) getFileRecursive(id int64, folder *Folder) (*File, *Folder) {
 }
 
 func (da *DiskApi) UpdateInfo(
+	ctx context.Context,
 	id int64,
 	newName string,
 	isPrivate bool,
 ) error {
-	file, _, err := da.Get(id)
+	ctx, span := tracing.GlobalTracer.Start(ctx, "diskApi.updateInfo")
+	defer span.End()
+
+	file, _, err := da.Get(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -101,6 +108,7 @@ func (da *DiskApi) UpdateInfo(
 }
 
 func (da *DiskApi) Save(
+	ctx context.Context,
 	filename string,
 	folderId int64,
 	size int64,
@@ -109,6 +117,11 @@ func (da *DiskApi) Save(
 ) (int64, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
+
+	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.updateInfo")
+	defer span.End()
+	span.SetAttributes(attribute.String("file.name", filename))
+	span.SetAttributes(attribute.Int64("file.size", size))
 
 	log.Debugf("disk api: saving new file: %s, folder id: %d", filename, folderId)
 
@@ -152,9 +165,12 @@ func (da *DiskApi) Save(
 	return newId, nil
 }
 
-func (da *DiskApi) Get(id int64) (*File, *Folder, error) {
+func (da *DiskApi) Get(ctx context.Context, id int64) (*File, *Folder, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
+
+	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.getFile")
+	defer span.End()
 
 	log.Debugf("disk api: getting file: %d", id)
 
@@ -248,9 +264,12 @@ func (da *DiskApi) GetRootFolder() (*Folder, error) {
 	return da.root, nil
 }
 
-func (da *DiskApi) GetFolder(id int64) (*Folder, error) {
+func (da *DiskApi) GetFolder(ctx context.Context, id int64) (*Folder, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
+
+	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.getFolder")
+	defer span.End()
 
 	log.Debugf("disk api: getting folder id: %d", id)
 

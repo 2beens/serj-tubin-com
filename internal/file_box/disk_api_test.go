@@ -1,6 +1,7 @@
 package file_box
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -23,6 +24,7 @@ func TestNewDiskApi(t *testing.T) {
 }
 
 func TestDiskApi_UpdateInfo(t *testing.T) {
+	ctx := context.Background()
 	tempDir := t.TempDir()
 	api, err := NewDiskApi(tempDir)
 	require.NoError(t, err)
@@ -31,13 +33,13 @@ func TestDiskApi_UpdateInfo(t *testing.T) {
 	// non-existing file
 	file1Id := int64(100)
 	parentId := int64(0)
-	err = api.UpdateInfo(file1Id, "new-name", false)
+	err = api.UpdateInfo(ctx, file1Id, "new-name", false)
 	require.Error(t, err)
 	assert.Equal(t, err.Error(), "file not found")
 
 	fileName := "file1"
 	randomContent := strings.NewReader("random test content")
-	file1Id, err = api.Save(fileName, parentId, randomContent.Size(), "rand-binary", randomContent)
+	file1Id, err = api.Save(ctx, fileName, parentId, randomContent.Size(), "rand-binary", randomContent)
 	require.NoError(t, err)
 	assert.True(t, file1Id > 0)
 	assert.Len(t, api.root.Files, 1)
@@ -50,14 +52,14 @@ func TestDiskApi_UpdateInfo(t *testing.T) {
 	assert.Equal(t, fileName, file1.Name)
 	assert.True(t, file1.IsPrivate)
 
-	err = api.UpdateInfo(file1Id, "new-name", false)
+	err = api.UpdateInfo(ctx, file1Id, "new-name", false)
 	require.NoError(t, err)
 
 	// after update
 	assert.Equal(t, "new-name", file1.Name)
 	assert.False(t, file1.IsPrivate)
 
-	file1retrieved, parent, err := api.Get(file1Id)
+	file1retrieved, parent, err := api.Get(ctx, file1Id)
 	require.NoError(t, err)
 	assert.Equal(t, "new-name", file1retrieved.Name)
 	assert.False(t, file1retrieved.IsPrivate)
@@ -65,6 +67,7 @@ func TestDiskApi_UpdateInfo(t *testing.T) {
 }
 
 func TestDiskApi_Save_InRoot(t *testing.T) {
+	ctx := context.Background()
 	tempDir := t.TempDir()
 	api, err := NewDiskApi(tempDir)
 	require.NoError(t, err)
@@ -76,6 +79,7 @@ func TestDiskApi_Save_InRoot(t *testing.T) {
 	for i := 1; i <= filesLen; i++ {
 		randomContent := strings.NewReader(fmt.Sprintf("random test content %d", i))
 		fileId, err := api.Save(
+			ctx,
 			fmt.Sprintf("file_%d", i),
 			parentId,
 			randomContent.Size(),
@@ -90,7 +94,7 @@ func TestDiskApi_Save_InRoot(t *testing.T) {
 	assert.Len(t, api.root.Files, filesLen)
 	require.Len(t, addedFiles, filesLen)
 
-	file1, parent, err := api.Get(addedFiles[0])
+	file1, parent, err := api.Get(ctx, addedFiles[0])
 	require.NoError(t, err)
 	require.NotNil(t, file1)
 	require.NotEmpty(t, file1.Path)
@@ -102,6 +106,7 @@ func TestDiskApi_Save_InRoot(t *testing.T) {
 }
 
 func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
+	ctx := context.Background()
 	tempDir := t.TempDir()
 	api, err := NewDiskApi(tempDir)
 	require.NoError(t, err)
@@ -110,6 +115,7 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 	// add one file to the root
 	randomContent := strings.NewReader("random test content 1")
 	file1Id, err := api.Save(
+		ctx,
 		"file_1",
 		0,
 		randomContent.Size(),
@@ -127,6 +133,7 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 	// add one file to the folder1
 	randomContent = strings.NewReader("random test content 2")
 	file2Id, err := api.Save(
+		ctx,
 		"file_2",
 		folder1.Id,
 		randomContent.Size(),
@@ -139,7 +146,7 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 	assert.Len(t, folder1.Files, 1)
 	assert.Len(t, folder1.Subfolders, 0)
 
-	retrievedFile2, _, err := api.Get(file2Id)
+	retrievedFile2, _, err := api.Get(ctx, file2Id)
 	require.NoError(t, err)
 	require.NotNil(t, retrievedFile2)
 	assert.Equal(t, file2Id, retrievedFile2.Id)
@@ -152,7 +159,7 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 
 	err = api.Delete(file2Id)
 	require.NoError(t, err)
-	retrievedFile2, _, err = api.Get(file2Id)
+	retrievedFile2, _, err = api.Get(ctx, file2Id)
 	assert.ErrorIs(t, err, ErrFileNotFound)
 	require.Nil(t, retrievedFile2)
 
@@ -161,6 +168,7 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 }
 
 func TestDiskApi_DeleteFolder(t *testing.T) {
+	ctx := context.Background()
 	tempDir := t.TempDir()
 	api, err := NewDiskApi(tempDir)
 	require.NoError(t, err)
@@ -172,6 +180,7 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	// add one file to the root
 	randomContent := strings.NewReader("random test content 1")
 	file1Id, err := api.Save(
+		ctx,
 		"file_1",
 		0,
 		randomContent.Size(),
@@ -192,6 +201,7 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	// add one file to the folder1
 	randomContent = strings.NewReader("random test content 2")
 	file2Id, err := api.Save(
+		ctx,
 		"file_2",
 		folder1.Id,
 		randomContent.Size(),
@@ -219,10 +229,10 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, api.root.Files, 1)
 	assert.Len(t, api.root.Subfolders, 1) // only folder2 left in the root
-	folder1, err = api.GetFolder(folder1.Id)
+	folder1, err = api.GetFolder(ctx, folder1.Id)
 	require.ErrorIs(t, err, ErrFolderNotFound)
 	assert.Nil(t, folder1)
-	folder11, err = api.GetFolder(folder11.Id)
+	folder11, err = api.GetFolder(ctx, folder11.Id)
 	require.ErrorIs(t, err, ErrFolderNotFound)
 	assert.Nil(t, folder11)
 }

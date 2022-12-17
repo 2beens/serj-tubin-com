@@ -16,7 +16,6 @@ func WriteResponseBytes(w http.ResponseWriter, contentType string, message []byt
 	}
 
 	if _, err := w.Write(message); err != nil {
-		// TODO: add metrics and alarms instead... sometime in the future
 		log.Errorf("failed to write response [%s]: %s", message, err)
 	}
 }

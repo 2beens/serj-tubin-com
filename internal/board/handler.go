@@ -22,15 +22,16 @@ type Handler struct {
 }
 
 func NewBoardHandler(
-	router *mux.Router,
 	board *Client,
 	loginChecker *auth.LoginChecker,
 ) *Handler {
-	handler := &Handler{
+	return &Handler{
 		boardClient:  board,
 		loginChecker: loginChecker,
 	}
+}
 
+func (handler *Handler) SetupRoutes(router *mux.Router) {
 	router.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
 	router.HandleFunc("/messages/delete/{id}", handler.handleDeleteMessage).Methods("DELETE", "OPTIONS").Name("delete-message")
 	router.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
@@ -40,8 +41,6 @@ func NewBoardHandler(
 	router.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET").Name("messages-page")
 
 	router.Use(handler.authMiddleware())
-
-	return handler
 }
 
 func (handler *Handler) handleGetMessagesPage(w http.ResponseWriter, r *http.Request) {

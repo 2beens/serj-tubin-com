@@ -20,15 +20,16 @@ type Handler struct {
 }
 
 func NewBlogHandler(
-	blogRouter *mux.Router,
 	blogApi Api,
 	loginChecker auth.Checker,
 ) *Handler {
-	handler := &Handler{
+	return &Handler{
 		blogApi:      blogApi,
 		loginChecker: loginChecker,
 	}
+}
 
+func (handler *Handler) SetupRoutes(blogRouter *mux.Router) {
 	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
 	blogRouter.HandleFunc("/update", handler.handleUpdateBlog).Methods("POST", "OPTIONS").Name("update-blog")
 	blogRouter.HandleFunc("/clap", handler.handleBlogClapped).Methods("PATCH", "OPTIONS").Name("blog-clapped")
@@ -37,8 +38,6 @@ func NewBlogHandler(
 	blogRouter.HandleFunc("/page/{page}/size/{size}", handler.handleGetPage).Methods("GET").Name("blogs-page")
 
 	blogRouter.Use(handler.authMiddleware())
-
-	return handler
 }
 
 func (handler *Handler) handleNewBlog(w http.ResponseWriter, r *http.Request) {

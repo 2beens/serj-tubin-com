@@ -26,19 +26,20 @@ type Handler struct {
 }
 
 func NewHandler(
-	router *mux.Router,
 	netlogApi Api,
 	instrumentation *metrics.Manager,
 	browserRequestsSecret string,
 	loginChecker *auth.LoginChecker,
 ) *Handler {
-	handler := &Handler{
+	return &Handler{
 		netlogApi:             netlogApi,
 		metrics:               instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
 		loginChecker:          loginChecker,
 	}
+}
 
+func (handler *Handler) SetupRoutes(router *mux.Router) {
 	router.HandleFunc("/new", handler.handleNewVisit).Methods("POST", "OPTIONS").Name("new-visit")
 	router.HandleFunc("/", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-last")
 	router.HandleFunc("/limit/{limit}", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-with-limit")
@@ -46,8 +47,6 @@ func NewHandler(
 	router.HandleFunc("/s/{source}/f/{field}/search/{keywords}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("search-page")
 
 	router.Use(handler.authMiddleware())
-
-	return handler
 }
 
 func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {

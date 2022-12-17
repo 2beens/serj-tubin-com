@@ -21,7 +21,8 @@ func TestNewBoardHandler(t *testing.T) {
 	r := mux.NewRouter()
 	boardRouter := r.PathPrefix("/board").Subrouter()
 
-	handler := NewBoardHandler(boardRouter, nil, nil)
+	handler := NewBoardHandler(nil, nil)
+	handler.SetupRoutes(boardRouter)
 	require.NotNil(t, handler)
 	require.NotNil(t, boardRouter)
 
@@ -90,7 +91,8 @@ func TestBoardHandler_handleMessagesCount(t *testing.T) {
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, boardClient, loginChecker)
+	handler := NewBoardHandler(boardClient, loginChecker)
+	handler.SetupRoutes(r)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/count", nil)
@@ -109,7 +111,8 @@ func TestBoardHandler_handleGetAllMessages(t *testing.T) {
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, boardClient, loginChecker)
+	handler := NewBoardHandler(boardClient, loginChecker)
+	handler.SetupRoutes(r)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/all", nil)
@@ -138,7 +141,8 @@ func TestBoardHandler_handleGetLastMessages(t *testing.T) {
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, boardClient, loginChecker)
+	handler := NewBoardHandler(boardClient, loginChecker)
+	handler.SetupRoutes(r)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/last/2", nil)
@@ -166,7 +170,8 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, boardClient, loginChecker)
+	handler := NewBoardHandler(boardClient, loginChecker)
+	handler.SetupRoutes(r)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/page/2/size/2", nil)
@@ -223,7 +228,8 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, boardClient, loginChecker)
+	handler := NewBoardHandler(boardClient, loginChecker)
+	handler.SetupRoutes(r)
 	require.NotNil(t, handler)
 
 	// wrong session token
@@ -319,7 +325,8 @@ func TestBoardHandler_handleMessagesRange(t *testing.T) {
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, boardClient, loginChecker)
+	handler := NewBoardHandler(boardClient, loginChecker)
+	handler.SetupRoutes(r)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "/messages/from/1/to/3", nil)
@@ -359,7 +366,8 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 
 	r := mux.NewRouter()
-	handler := NewBoardHandler(r, boardClient, loginChecker)
+	handler := NewBoardHandler(boardClient, loginChecker)
+	handler.SetupRoutes(r)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("POST", "/messages/new", nil)

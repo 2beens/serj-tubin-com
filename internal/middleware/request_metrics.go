@@ -9,12 +9,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func RequestMetrics(instr *metrics.Manager) func(next http.Handler) http.Handler {
+func RequestMetrics(metricsManager *metrics.Manager) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
 			statusCode := http.StatusOK
 			defer func(begin time.Time) {
-				instr.HistogramRequestDuration.WithLabelValues(
+				metricsManager.HistogramRequestDuration.WithLabelValues(
 					req.URL.Path,
 					req.Method,
 					strconv.Itoa(statusCode),
@@ -27,7 +27,7 @@ func RequestMetrics(instr *metrics.Manager) func(next http.Handler) http.Handler
 			next.ServeHTTP(resp, req)
 			statusCode = resp.statusCode
 
-			instr.CounterRequests.With(
+			metricsManager.CounterRequests.With(
 				prometheus.Labels{
 					"method": req.Method,
 					"status": strconv.Itoa(resp.statusCode),
