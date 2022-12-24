@@ -13,7 +13,6 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
 )
 
 func getPsqlApi(t *testing.T) (*PsqlApi, error) {
@@ -91,8 +90,6 @@ func cleanupAndAddTestVisits(ctx context.Context, t *testing.T, psqlApi *PsqlApi
 }
 
 func TestUtil_getQueryLikeCondition(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	// no keywords
 	queryLike := getQueryWhereCondition("url", "chrome", []string{})
 	assert.Equal(t, "WHERE source = 'chrome'", queryLike)
@@ -124,7 +121,6 @@ func TestNewNetlogPsqlApi(t *testing.T) {
 }
 
 func TestPsqlApi_AddVisit(t *testing.T) {
-	defer goleak.VerifyNone(t)
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
@@ -180,7 +176,6 @@ func TestPsqlApi_AddVisit(t *testing.T) {
 }
 
 func TestPsqlApi_GetAllVisits(t *testing.T) {
-	defer goleak.VerifyNone(t)
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
@@ -214,7 +209,6 @@ func TestPsqlApi_GetAllVisits(t *testing.T) {
 }
 
 func TestPsqlApi_GetVisits_and_Count(t *testing.T) {
-	defer goleak.VerifyNone(t)
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
@@ -275,7 +269,6 @@ func TestPsqlApi_GetVisits_and_Count(t *testing.T) {
 }
 
 func TestPsqlApi_GetVisitsPage(t *testing.T) {
-	defer goleak.VerifyNone(t)
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)

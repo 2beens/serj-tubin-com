@@ -10,12 +10,9 @@ import (
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
 )
 
 func TestAuthService_IsLogged(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	db, mock := redismock.NewClientMock()
 
 	loginChecker := NewLoginChecker(time.Hour, db)
