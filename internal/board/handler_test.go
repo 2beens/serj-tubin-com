@@ -15,7 +15,18 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
+
+// use TestMain(m *testing.M) { ... } for
+// global set-up/tear-down for all the tests in a package
+func TestMain(m *testing.M) {
+	// Do stuff BEFORE the tests
+	m.Run()
+
+	// do stuff AFTER the tests
+	goleak.VerifyTestMain(m)
+}
 
 func TestNewBoardHandler(t *testing.T) {
 	r := mux.NewRouter()
