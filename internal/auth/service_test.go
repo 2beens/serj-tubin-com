@@ -26,6 +26,8 @@ func TestMain(m *testing.M) {
 
 func TestAuthService_NewAuthService(t *testing.T) {
 	db, mock := redismock.NewClientMock()
+	defer db.Close()
+
 	authService := NewAuthService(time.Hour, db)
 	require.NotNil(t, authService)
 	assert.NotNil(t, authService.redisClient)
