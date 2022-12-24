@@ -13,9 +13,12 @@ import (
 	promcl "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func Test_trySendMetrics(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	metrics, reg := metrics.NewTestManagerAndRegistry()
 	dir, err := os.MkdirTemp("", "serj-server-unix")
 	if err != nil {

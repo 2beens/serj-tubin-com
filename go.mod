@@ -25,6 +25,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.36.4
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.36.4
 	go.opentelemetry.io/otel v1.11.1
+	go.uber.org/goleak v1.2.0
 	go.uber.org/multierr v1.8.0
 	golang.org/x/crypto v0.1.0
 	google.golang.org/api v0.100.0

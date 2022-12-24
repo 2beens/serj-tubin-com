@@ -97,6 +97,7 @@ func (handler *Handler) HandleTomorrow(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "weather.handleTomorrow")
 	defer span.End()
 
+	// TODO: this is not respected
 	w.Header().Set("Content-Type", "application/json")
 
 	userIp, err := pkg.ReadUserIP(r)

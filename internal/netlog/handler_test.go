@@ -12,15 +12,18 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
-	"github.com/go-redis/redismock/v8"
 
+	"github.com/go-redis/redismock/v8"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func TestNewNetlogHandler(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	r := mux.NewRouter()
 	router := r.PathPrefix("/netlog").Subrouter()
 	netlogApi := NewTestApi()
@@ -85,6 +88,8 @@ func TestNewNetlogHandler(t *testing.T) {
 }
 
 func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
@@ -116,6 +121,8 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 }
 
 func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
@@ -148,6 +155,7 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 }
 
 func TestNetlogHandler_handleGetAll(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
@@ -199,6 +207,7 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 }
 
 func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	db, _ := redismock.NewClientMock()
 
 	browserReqSecret := "rakija"
@@ -260,6 +269,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 }
 
 func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	db, _ := redismock.NewClientMock()
 
 	browserReqSecret := "beer"
@@ -327,6 +337,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 }
 
 func TestNetlogHandler_handleGetPage(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
