@@ -14,13 +14,8 @@ import (
 	"go.uber.org/goleak"
 )
 
-// use TestMain(m *testing.M) { ... } for
-// global set-up/tear-down for all the tests in a package
 func TestMain(m *testing.M) {
-	// Do stuff BEFORE the tests
 	m.Run()
-
-	// do stuff AFTER the tests
 	goleak.VerifyTestMain(m)
 }
 
@@ -71,6 +66,7 @@ func TestAuthService_ScanAndClean(t *testing.T) {
 // integration kinda test (uses real redis connection)
 func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 	ctx, rdb := testingpkg.GetRedisClientAndCtx(t)
+	defer rdb.Close()
 
 	authService := NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
@@ -133,6 +129,8 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 
 func TestAuthService_Login_Logout(t *testing.T) {
 	ctx, rdb := testingpkg.GetRedisClientAndCtx(t)
+	defer rdb.Close()
+
 	now := time.Now()
 
 	authService := NewAuthService(time.Hour, rdb)

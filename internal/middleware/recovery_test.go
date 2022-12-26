@@ -6,9 +6,18 @@ import (
 	"testing"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 )
+
+// TestMain will run goleak after all tests have been run in the package
+// to detect any goroutine leaks
+func TestMain(m *testing.M) {
+	m.Run()
+	goleak.VerifyTestMain(m)
+}
 
 func Test_panicRecoveryMiddleware_nonPanic(t *testing.T) {
 	metrics := metrics.NewTestManager()

@@ -12,9 +12,18 @@ import (
 	"testing"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
+
+// TestMain will run goleak after all tests have been run in the package
+// to detect any goroutine leaks
+func TestMain(m *testing.M) {
+	m.Run()
+	goleak.VerifyTestMain(m)
+}
 
 func TestNewFileHandler(t *testing.T) {
 	tempRootDir := t.TempDir()
