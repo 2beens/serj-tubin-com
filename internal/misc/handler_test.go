@@ -144,7 +144,7 @@ func TestNewMiscHandler(t *testing.T) {
 
 func TestLogin(t *testing.T) {
 	os.Setenv("REDIS_PASS", "<remove>")
-	_, rdb := testingpkg.GetRedisClientAndCtx(t)
+	rdb := testingpkg.GetRedisClientAndCtx(t)
 	defer rdb.Close()
 
 	authService := auth.NewAuthService(time.Hour, rdb)

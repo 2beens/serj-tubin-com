@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -70,8 +71,12 @@ func TestAuthService_ScanAndClean(t *testing.T) {
 
 // integration kinda test (uses real redis connection)
 func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
-	ctx, rdb := testingpkg.GetRedisClientAndCtx(t)
+	os.Setenv("REDIS_PASS", "<remove>")
+	rdb := testingpkg.GetRedisClientAndCtx(t)
 	defer rdb.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	authService := NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
@@ -114,7 +119,7 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 
 	wg.Add(loginsCount)
 	for token := range addedTokens {
-		// simluate many logouts requested at once
+		// simulate many logouts requested at once
 		go func(token string) {
 			loggedOut, err := authService.Logout(ctx, token)
 			assert.NoError(t, err)
@@ -133,8 +138,12 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 }
 
 func TestAuthService_Login_Logout(t *testing.T) {
-	ctx, rdb := testingpkg.GetRedisClientAndCtx(t)
+	os.Setenv("REDIS_PASS", "<remove>")
+	rdb := testingpkg.GetRedisClientAndCtx(t)
 	defer rdb.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	now := time.Now()
 

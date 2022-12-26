@@ -11,14 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func GetRedisClientAndCtx(t *testing.T) (context.Context, *redis.Client) {
+func GetRedisClientAndCtx(t *testing.T) *redis.Client {
 	t.Helper()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	go func() {
-		<-ctx.Done()
-		cancel()
-	}()
 
 	redisHost := os.Getenv("REDIS_HOST")
 	if redisHost == "" {
@@ -40,9 +34,12 @@ func GetRedisClientAndCtx(t *testing.T) (context.Context, *redis.Client) {
 		DB:       0, // use default DB
 	})
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	pingRes, err := rdb.Ping(ctx).Result()
 	require.NoError(t, err)
 	t.Logf("redis ping res: %s", pingRes)
 
-	return ctx, rdb
+	return rdb
 }
