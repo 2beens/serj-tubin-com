@@ -25,7 +25,12 @@ func TestMain(m *testing.M) {
 	m.Run()
 
 	// do stuff AFTER the tests
-	goleak.VerifyTestMain(m)
+	goleak.VerifyTestMain(m,
+		// INFO: https://github.com/go-redis/redis/issues/1029
+		goleak.IgnoreTopFunction(
+			"github.com/go-redis/redis/v8/internal/pool.(*ConnPool).reaper",
+		),
+	)
 }
 
 func TestNewBoardHandler(t *testing.T) {

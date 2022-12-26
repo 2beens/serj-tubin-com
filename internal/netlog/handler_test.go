@@ -34,6 +34,7 @@ func TestMain(m *testing.M) {
 		goleak.IgnoreTopFunction(
 			"github.com/go-redis/redis/v8/internal/pool.(*ConnPool).reaper",
 		),
+		goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"),
 	)
 }
 

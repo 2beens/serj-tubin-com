@@ -33,7 +33,12 @@ const (
 // to detect any goroutine leaks
 func TestMain(m *testing.M) {
 	m.Run()
-	goleak.VerifyTestMain(m)
+	goleak.VerifyTestMain(m,
+		// INFO: https://github.com/go-redis/redis/issues/1029
+		goleak.IgnoreTopFunction(
+			"github.com/go-redis/redis/v8/internal/pool.(*ConnPool).reaper",
+		),
+	)
 }
 
 func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
