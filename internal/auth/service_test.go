@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -11,10 +12,23 @@ import (
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	m.Run()
+	goleak.VerifyTestMain(m,
+		// INFO: https://github.com/go-redis/redis/issues/1029
+		goleak.IgnoreTopFunction(
+			"github.com/go-redis/redis/v8/internal/pool.(*ConnPool).reaper",
+		),
+	)
+}
 
 func TestAuthService_NewAuthService(t *testing.T) {
 	db, mock := redismock.NewClientMock()
+	defer db.Close()
+
 	authService := NewAuthService(time.Hour, db)
 	require.NotNil(t, authService)
 	assert.NotNil(t, authService.redisClient)
@@ -57,7 +71,12 @@ func TestAuthService_ScanAndClean(t *testing.T) {
 
 // integration kinda test (uses real redis connection)
 func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
-	ctx, rdb := testingpkg.GetRedisClientAndCtx(t)
+	os.Setenv("REDIS_PASS", "<remove>")
+	rdb := testingpkg.GetRedisClientAndCtx(t)
+	defer rdb.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	authService := NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
@@ -100,7 +119,7 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 
 	wg.Add(loginsCount)
 	for token := range addedTokens {
-		// simluate many logouts requested at once
+		// simulate many logouts requested at once
 		go func(token string) {
 			loggedOut, err := authService.Logout(ctx, token)
 			assert.NoError(t, err)
@@ -119,7 +138,13 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 }
 
 func TestAuthService_Login_Logout(t *testing.T) {
-	ctx, rdb := testingpkg.GetRedisClientAndCtx(t)
+	os.Setenv("REDIS_PASS", "<remove>")
+	rdb := testingpkg.GetRedisClientAndCtx(t)
+	defer rdb.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	now := time.Now()
 
 	authService := NewAuthService(time.Hour, rdb)

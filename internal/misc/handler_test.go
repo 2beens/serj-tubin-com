@@ -14,18 +14,35 @@ import (
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	testingpkg "github.com/2beens/serjtubincom/pkg/testing"
+
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
-type testReqeustRateLimiter struct {
+// use TestMain(m *testing.M) { ... } for
+// global set-up/tear-down for all the tests in a package
+func TestMain(m *testing.M) {
+	// Do stuff BEFORE the tests
+	m.Run()
+
+	// do stuff AFTER the tests
+	goleak.VerifyTestMain(m,
+		// INFO: https://github.com/go-redis/redis/issues/1029
+		goleak.IgnoreTopFunction(
+			"github.com/go-redis/redis/v8/internal/pool.(*ConnPool).reaper",
+		),
+	)
+}
+
+type testRequestRateLimiter struct {
 	// key to limit map
 	Limits map[string]int
 }
 
-func (l *testReqeustRateLimiter) Allow(_ context.Context, key string, limit redis_rate.Limit) (*redis_rate.Result, error) {
+func (l *testRequestRateLimiter) Allow(_ context.Context, key string, limit redis_rate.Limit) (*redis_rate.Result, error) {
 	res := &redis_rate.Result{
 		Limit: redis_rate.Limit{
 			Rate:   0,
@@ -127,7 +144,8 @@ func TestNewMiscHandler(t *testing.T) {
 
 func TestLogin(t *testing.T) {
 	os.Setenv("REDIS_PASS", "<remove>")
-	_, rdb := testingpkg.GetRedisClientAndCtx(t)
+	rdb := testingpkg.GetRedisClientAndCtx(t)
+	defer rdb.Close()
 
 	authService := auth.NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
@@ -142,7 +160,7 @@ func TestLogin(t *testing.T) {
 	passwordHash := "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
 
 	mainRouter := mux.NewRouter()
-	reqRateLimiter := &testReqeustRateLimiter{
+	reqRateLimiter := &testRequestRateLimiter{
 		Limits: map[string]int{},
 	}
 	handler := NewHandler(

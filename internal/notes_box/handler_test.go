@@ -13,7 +13,20 @@ import (
 
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
+
+// TestMain will run goleak after all tests have been run in the package
+// to detect any goroutine leaks
+func TestMain(m *testing.M) {
+	m.Run()
+	goleak.VerifyTestMain(m,
+		// INFO: https://github.com/go-redis/redis/issues/1029
+		goleak.IgnoreTopFunction(
+			"github.com/go-redis/redis/v8/internal/pool.(*ConnPool).reaper",
+		),
+	)
+}
 
 func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	api := NewTestApi()

@@ -318,6 +318,8 @@ func (s *Server) GracefulShutdown() {
 	// TODO: probably not needed to be set explicitly
 	s.metricsManager.GaugeLifeSignal.Set(0)
 
+	// TODO: check if prometheus data has to be flushed before total shutdown
+
 	s.otelShutdown()
 	log.Trace("otel shut down ...")
 

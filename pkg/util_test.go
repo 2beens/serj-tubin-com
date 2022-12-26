@@ -4,7 +4,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	m.Run()
+	goleak.VerifyTestMain(m)
+}
 
 func TestBytesToString(t *testing.T) {
 	want := "test"

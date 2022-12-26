@@ -17,10 +17,10 @@ import (
 )
 
 type FileService struct {
-	api          *DiskApi
-	loginChecker *auth.LoginChecker
-	httpServer   *http.Server
-	otelShutdown func()
+	api           *DiskApi
+	loginChecker  *auth.LoginChecker
+	httpServer    *http.Server
+	shutdownFuncs []func()
 }
 
 func NewFileService(
@@ -58,10 +58,19 @@ func NewFileService(
 		return nil, err
 	}
 
+	shutdownFuncs := []func(){
+		otelShutdown,
+		func() {
+			if err := rdb.Close(); err != nil {
+				log.Errorf("redis close: %s", err)
+			}
+		},
+	}
+
 	return &FileService{
-		api:          api,
-		loginChecker: auth.NewLoginChecker(auth.DefaultTTL, rdb),
-		otelShutdown: otelShutdown,
+		api:           api,
+		loginChecker:  auth.NewLoginChecker(auth.DefaultTTL, rdb),
+		shutdownFuncs: shutdownFuncs,
 	}, nil
 }
 
@@ -105,9 +114,11 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 }
 
 func (fs *FileService) GracefulShutdown() {
-	log.Debugln("otel shutting down ...")
-	fs.otelShutdown()
-	log.Debugln("otel shut down")
+	log.Debugln("shutting down ...")
+
+	for _, sf := range fs.shutdownFuncs {
+		sf()
+	}
 
 	if fs.httpServer != nil {
 		maxWaitDuration := time.Second * 10

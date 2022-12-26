@@ -351,6 +351,10 @@ go.opentelemetry.io/proto/otlp/trace/v1
 # go.uber.org/atomic v1.10.0
 ## explicit; go 1.18
 go.uber.org/atomic
+# go.uber.org/goleak v1.2.0
+## explicit; go 1.18
+go.uber.org/goleak
+go.uber.org/goleak/internal/stack
 # go.uber.org/multierr v1.8.0
 ## explicit; go 1.14
 go.uber.org/multierr
