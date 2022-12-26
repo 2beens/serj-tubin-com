@@ -18,7 +18,7 @@ import (
 func getPsqlApi(t *testing.T) (*PsqlApi, error) {
 	t.Helper()
 
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	host := os.Getenv("POSTGRES_HOST")
@@ -116,6 +116,7 @@ func TestUtil_getQueryLikeCondition(t *testing.T) {
 func TestNewNetlogPsqlApi(t *testing.T) {
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 	require.NotNil(t, psqlApi)
 	assert.NotNil(t, psqlApi.db)
 }
@@ -124,6 +125,7 @@ func TestPsqlApi_AddVisit(t *testing.T) {
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 
 	count, err := psqlApi.CountAll(ctx)
 	require.NoError(t, err)
@@ -179,6 +181,7 @@ func TestPsqlApi_GetAllVisits(t *testing.T) {
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 
 	_, err = deleteAllVisits(ctx, psqlApi)
 	require.NoError(t, err)
@@ -212,6 +215,7 @@ func TestPsqlApi_GetVisits_and_Count(t *testing.T) {
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 
 	_ = cleanupAndAddTestVisits(ctx, t, psqlApi)
 
@@ -272,6 +276,7 @@ func TestPsqlApi_GetVisitsPage(t *testing.T) {
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 
 	addedVisits := cleanupAndAddTestVisits(ctx, t, psqlApi)
 	v1, v2, v3, v4, v4b := addedVisits[0], addedVisits[1], addedVisits[2], addedVisits[3], addedVisits[4]
