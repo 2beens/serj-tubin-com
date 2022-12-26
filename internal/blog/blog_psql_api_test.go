@@ -17,7 +17,7 @@ import (
 func getPsqlApi(t *testing.T) (*PsqlApi, error) {
 	t.Helper()
 
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	host := os.Getenv("POSTGRES_HOST")
@@ -36,6 +36,7 @@ func getPsqlApi(t *testing.T) (*PsqlApi, error) {
 func TestNewBlogPsqlApi(t *testing.T) {
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 	require.NotNil(t, psqlApi)
 	assert.NotNil(t, psqlApi.db)
 }
@@ -44,6 +45,7 @@ func TestPsqlApi_AddBlog_DeleteBlog(t *testing.T) {
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 
 	blogsCount, err := psqlApi.BlogsCount(ctx)
 	require.NoError(t, err)
@@ -91,6 +93,7 @@ func TestPsqlApi_UpdateBlog_BlogClapped(t *testing.T) {
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 
 	clapsCount := 10
 	blog := &Blog{
@@ -128,6 +131,7 @@ func TestPsqlApi_All(t *testing.T) {
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 
 	blogsCount, err := psqlApi.BlogsCount(ctx)
 	require.NoError(t, err)
@@ -155,6 +159,7 @@ func TestPsqlApi_GetBlogsPage(t *testing.T) {
 	ctx := context.Background()
 	psqlApi, err := getPsqlApi(t)
 	require.NoError(t, err)
+	defer psqlApi.CloseDB()
 
 	addedCount := 5
 	for i := 1; i <= addedCount; i++ {
