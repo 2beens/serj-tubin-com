@@ -171,28 +171,34 @@ func (handler *Handler) handleNewMessage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err := r.ParseForm()
-	if err != nil {
-		log.Errorf("add new message failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
+	var boardMessage Message
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := json.NewDecoder(r.Body).Decode(&boardMessage); err != nil {
+			log.Errorf("store new message, unmarshal message json params: %s", err)
+			http.Error(w, "failed to store message", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Errorf("add new message failed, parse form error: %s", err)
+			http.Error(w, "parse form error", http.StatusInternalServerError)
+			return
+		}
+		boardMessage = Message{
+			Author:  r.Form.Get("author"),
+			Message: r.Form.Get("message"),
+		}
 	}
 
-	message := r.Form.Get("message")
-	if message == "" {
+	if boardMessage.Message == "" {
 		http.Error(w, "error, message empty", http.StatusBadRequest)
 		return
 	}
-	author := r.Form.Get("author")
-	if author == "" {
-		author = "anon"
+	if boardMessage.Author == "" {
+		boardMessage.Author = "anon"
 	}
 
-	boardMessage := Message{
-		Timestamp: time.Now().Unix(),
-		Author:    author,
-		Message:   message,
-	}
+	boardMessage.Timestamp = time.Now().Unix()
 
 	id, err := handler.boardClient.NewMessage(boardMessage)
 	if err != nil {
