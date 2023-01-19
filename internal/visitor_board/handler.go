@@ -1,4 +1,4 @@
-package board
+package visitor_board
 
 import (
 	"encoding/json"
@@ -171,28 +171,34 @@ func (handler *Handler) handleNewMessage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err := r.ParseForm()
-	if err != nil {
-		log.Errorf("add new message failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
+	var boardMessage Message
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := json.NewDecoder(r.Body).Decode(&boardMessage); err != nil {
+			log.Errorf("store new message, unmarshal message json params: %s", err)
+			http.Error(w, "failed to store message", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Errorf("add new message failed, parse form error: %s", err)
+			http.Error(w, "parse form error", http.StatusInternalServerError)
+			return
+		}
+		boardMessage = Message{
+			Author:  r.Form.Get("author"),
+			Message: r.Form.Get("message"),
+		}
 	}
 
-	message := r.Form.Get("message")
-	if message == "" {
+	if boardMessage.Message == "" {
 		http.Error(w, "error, message empty", http.StatusBadRequest)
 		return
 	}
-	author := r.Form.Get("author")
-	if author == "" {
-		author = "anon"
+	if boardMessage.Author == "" {
+		boardMessage.Author = "anon"
 	}
 
-	boardMessage := Message{
-		Timestamp: time.Now().Unix(),
-		Author:    author,
-		Message:   message,
-	}
+	boardMessage.Timestamp = time.Now().Unix()
 
 	id, err := handler.boardClient.NewMessage(boardMessage)
 	if err != nil {
@@ -232,10 +238,10 @@ func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Requ
 			http.Error(w, "invalid limit provided", http.StatusBadRequest)
 			return
 		}
-		log.Printf("getting last %d board messages ... ", limit)
+		log.Printf("getting last %d visitor_board messages ... ", limit)
 	} else {
 		limit = 0
-		log.Print("getting all board messages ... ")
+		log.Print("getting all visitor_board messages ... ")
 	}
 
 	allBoardMessages, err := handler.boardClient.AllMessagesCache(ctx, true)
@@ -287,7 +293,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 			if authToken == "" {
-				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[missing token] [visitor_board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
@@ -299,7 +305,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 				return
 			}
 			if !isLogged {
-				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[invalid token] [visitor_board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}

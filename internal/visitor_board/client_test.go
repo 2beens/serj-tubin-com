@@ -1,4 +1,4 @@
-package board
+package visitor_board
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	boardAero "github.com/2beens/serjtubincom/internal/board/aerospike"
+	boardAero "github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

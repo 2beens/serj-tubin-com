@@ -82,7 +82,7 @@ func TestBoardAeroClient_CheckConnection(t *testing.T) {
 		return boardClient.WaitForReady(200*time.Millisecond) == nil
 	}, time.Second, 100*time.Millisecond)
 
-	// TODO: first abstract the aero client away from the board api, then test this
+	// TODO: first abstract the aero client away from the visitor_board api, then test this
 	//assert.NoError(t, boardClient.CheckConnection())
 }
 

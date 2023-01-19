@@ -1,6 +1,7 @@
-package board
+package visitor_board
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -449,4 +450,51 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	}
 	assert.True(t, firstFound)
 	assert.True(t, secondFound)
+}
+
+func TestBoardHandler_handleNewMessage_jsonPayload(t *testing.T) {
+	boardClient, _, aeroTestClient, initialBoardMessages := getTestBoardClient()
+	redisClient, _ := redismock.NewClientMock()
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
+
+	r := mux.NewRouter()
+	handler := NewBoardHandler(boardClient, loginChecker)
+	handler.SetupRoutes(r)
+	require.NotNil(t, handler)
+
+	newMsgParams := Message{
+		Message: "testmsg",
+		Author:  "testperson",
+	}
+	newMsgParamsBytes, err := json.Marshal(newMsgParams)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("POST", "/messages/new", bytes.NewBuffer(newMsgParamsBytes))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, "added:5", rr.Body.String())
+	messagesCount, err := boardClient.MessagesCount()
+	require.NoError(t, err)
+	assert.Equal(t, len(initialBoardMessages)+1, messagesCount)
+	assert.Equal(t, len(initialBoardMessages)+1, len(aeroTestClient.AeroBinMaps))
+
+	// with empty message
+	newMsgParams = Message{
+		Author: "anon",
+	}
+	newMsgParamsBytes, err = json.Marshal(newMsgParams)
+	require.NoError(t, err)
+
+	req, err = http.NewRequest("POST", "/messages/new", bytes.NewBuffer(newMsgParamsBytes))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	rr = httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	assert.Equal(t, "error, message empty\n", rr.Body.String())
 }
