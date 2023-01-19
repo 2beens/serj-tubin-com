@@ -9,7 +9,7 @@ import (
 	"github.com/2beens/serjtubincom/tools"
 )
 
-// set / fix the id counter for visitor board messages
+// set / fix the id counter for visitor visitor_board messages
 func main() {
 	fmt.Println("starting aerospike id counter for visitor board messages fix/set ...")
 

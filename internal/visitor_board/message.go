@@ -1,7 +1,7 @@
-package board
+package visitor_board
 
 import (
-	"github.com/2beens/serjtubincom/internal/board/aerospike"
+	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 	log "github.com/sirupsen/logrus"
 )
 

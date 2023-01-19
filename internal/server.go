@@ -13,8 +13,6 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
-	"github.com/2beens/serjtubincom/internal/board"
-	"github.com/2beens/serjtubincom/internal/board/aerospike"
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/middleware"
@@ -24,6 +22,8 @@ import (
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	metricsmiddleware "github.com/2beens/serjtubincom/internal/telemetry/metrics/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+	"github.com/2beens/serjtubincom/internal/visitor_board"
+	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 	"github.com/2beens/serjtubincom/internal/weather"
 
 	"github.com/go-redis/redis/v8"
@@ -45,7 +45,7 @@ type Server struct {
 	weatherApi      *weather.Api
 	quotesManager   *misc.QuotesManager
 	boardAeroClient *aerospike.BoardAeroClient
-	boardClient     *board.Client
+	boardClient     *visitor_board.Client
 	netlogVisitsApi *netlog.PsqlApi
 	notesBoxApi     *notes_box.PsqlApi
 
@@ -78,15 +78,15 @@ func NewServer(
 ) (*Server, error) {
 	boardAeroClient, err := aerospike.NewBoardAeroClient(config.AeroHost, config.AeroPort, config.AeroNamespace, config.AeroMessagesSet)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create board aero client: %w", err)
+		return nil, fmt.Errorf("failed to create visitor_board aero client: %w", err)
 	}
 
-	boardCache, err := board.NewBoardCache()
+	boardCache, err := visitor_board.NewBoardCache()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create board cache: %w", err)
+		return nil, fmt.Errorf("failed to create visitor_board cache: %w", err)
 	}
 
-	boardClient, err := board.NewClient(ctx, boardAeroClient, boardCache)
+	boardClient, err := visitor_board.NewClient(ctx, boardAeroClient, boardCache)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
@@ -221,7 +221,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	blogHandler := blog.NewBlogHandler(s.blogApi, s.loginChecker)
 	blogHandler.SetupRoutes(blogRouter)
 
-	boardHandler := board.NewBoardHandler(s.boardClient, s.loginChecker)
+	boardHandler := visitor_board.NewBoardHandler(s.boardClient, s.loginChecker)
 	boardHandler.SetupRoutes(boardRouter)
 
 	weatherHandler := weather.NewHandler(s.geoIp, s.weatherApi)
@@ -331,7 +331,7 @@ func (s *Server) GracefulShutdown() {
 
 	if s.boardAeroClient != nil {
 		s.boardAeroClient.Close()
-		log.Trace("board aero client closed")
+		log.Trace("visitor_board aero client closed")
 	}
 	if s.netlogVisitsApi != nil {
 		s.netlogVisitsApi.CloseDB()

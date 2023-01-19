@@ -258,7 +258,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 			}
 
 			if authToken == "" {
-				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[missing token] [visitor_board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				span.SetStatus(codes.Error, "missing-auth-token")
 				return
@@ -273,7 +273,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 				return
 			}
 			if !isLogged {
-				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[invalid token] [visitor_board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				span.SetStatus(codes.Error, "not-logged")
 				return

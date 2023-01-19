@@ -1,4 +1,4 @@
-package board
+package visitor_board
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	boardAero "github.com/2beens/serjtubincom/internal/board/aerospike"
+	boardAero "github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	log "github.com/sirupsen/logrus"
@@ -81,7 +81,7 @@ func (c *Client) CacheBoardMessages(cacheKey string, messages []*Message) {
 	if !c.cache.Set(cacheKey, messages, int64(len(messages)*3)) {
 		log.Errorf("failed to set cache for [%s]... for some reason", cacheKey)
 	} else {
-		log.Debugf("board messages cache set for [%s]", cacheKey)
+		log.Debugf("visitor_board messages cache set for [%s]", cacheKey)
 	}
 }
 
@@ -124,7 +124,7 @@ func (c *Client) NewMessage(message Message) (int, error) {
 }
 
 func (c *Client) DeleteMessage(messageId string) (bool, error) {
-	log.Tracef("board - about to delete message: %s", messageId)
+	log.Tracef("visitor_board - about to delete message: %s", messageId)
 	c.InvalidateCaches()
 	return c.aeroClient.Delete(messageId)
 }

@@ -1,9 +1,9 @@
-package board
+package visitor_board
 
 import (
 	"testing"
 
-	"github.com/2beens/serjtubincom/internal/board/aerospike"
+	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 
 	"time"
 

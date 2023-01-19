@@ -1,4 +1,4 @@
-package board
+package visitor_board
 
 import (
 	"encoding/json"
@@ -238,10 +238,10 @@ func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Requ
 			http.Error(w, "invalid limit provided", http.StatusBadRequest)
 			return
 		}
-		log.Printf("getting last %d board messages ... ", limit)
+		log.Printf("getting last %d visitor_board messages ... ", limit)
 	} else {
 		limit = 0
-		log.Print("getting all board messages ... ")
+		log.Print("getting all visitor_board messages ... ")
 	}
 
 	allBoardMessages, err := handler.boardClient.AllMessagesCache(ctx, true)
@@ -293,7 +293,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 			if authToken == "" {
-				log.Tracef("[missing token] [board handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[missing token] [visitor_board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
@@ -305,7 +305,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 				return
 			}
 			if !isLogged {
-				log.Tracef("[invalid token] [board handler] unauthorized => %s", r.URL.Path)
+				log.Tracef("[invalid token] [visitor_board handler] unauthorized => %s", r.URL.Path)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				return
 			}
