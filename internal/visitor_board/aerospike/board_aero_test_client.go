@@ -21,12 +21,6 @@ func NewBoardAeroTestClient() *BoardAeroTestClient {
 	}
 }
 
-func NewBoardAeroTestClientWithBins(aeroBinMaps map[string]AeroBinMap) *BoardAeroTestClient {
-	return &BoardAeroTestClient{
-		AeroBinMaps: aeroBinMaps,
-	}
-}
-
 func (tc *BoardAeroTestClient) WaitForReady(_ time.Duration) error {
 	return nil
 }

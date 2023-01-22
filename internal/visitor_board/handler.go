@@ -211,7 +211,7 @@ func (handler *Handler) handleNewMessage(w http.ResponseWriter, r *http.Request)
 	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", id))
 }
 
-func (handler *Handler) handleMessagesCount(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleMessagesCount(w http.ResponseWriter, _ *http.Request) {
 	count, err := handler.boardClient.MessagesCount()
 	if err != nil {
 		log.Errorf("get all messages count error: %s", err)
