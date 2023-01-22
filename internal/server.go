@@ -198,7 +198,11 @@ func NewServer(
 	if err != nil {
 		return nil, fmt.Errorf("open quotes file: %w", err)
 	}
-	defer quotesCsvFile.Close()
+	defer func() {
+		if err := quotesCsvFile.Close(); err != nil {
+			log.Warnf("close quotes csv file: %s", err)
+		}
+	}()
 
 	s.quotesManager, err = misc.NewQuoteManager(csv.NewReader(quotesCsvFile))
 	if err != nil {

@@ -93,7 +93,7 @@ services:
     volumes:
       - ./docker-data-redis:/data
     ports:
-      - 6379:6379
+      - "6379:6379"
     networks:
       - back-tier
 
@@ -103,7 +103,7 @@ services:
       - postgres
     restart: always
     ports:
-      - 8088:8080
+      - "8088:8080"
     networks:
       - back-tier
       - front-tier

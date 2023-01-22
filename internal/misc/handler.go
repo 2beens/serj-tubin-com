@@ -67,7 +67,7 @@ func (handler *Handler) SetupRoutes(
 	loginSubrouter.Use(middleware.Cors())
 }
 
-func (handler *Handler) handleRoot(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleRoot(w http.ResponseWriter, _ *http.Request) {
 	pkg.WriteResponse(w, "", "I'm OK, thanks ;)")
 }
 
@@ -216,6 +216,6 @@ func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	pkg.WriteResponse(w, "", "logged-out")
 }
 
-func (handler *Handler) handleGetVersionInfo(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) handleGetVersionInfo(w http.ResponseWriter, _ *http.Request) {
 	pkg.WriteResponse(w, "", handler.versionInfo)
 }

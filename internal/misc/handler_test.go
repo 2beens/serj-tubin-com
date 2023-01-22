@@ -143,9 +143,11 @@ func TestNewMiscHandler(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	os.Setenv("REDIS_PASS", "<remove>")
+	require.NoError(t, os.Setenv("REDIS_PASS", "<remove>"))
 	rdb := testingpkg.GetRedisClientAndCtx(t)
-	defer rdb.Close()
+	defer func() {
+		assert.NoError(t, rdb.Close())
+	}()
 
 	authService := auth.NewAuthService(time.Hour, rdb)
 	require.NotNil(t, authService)
