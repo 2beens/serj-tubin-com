@@ -42,8 +42,8 @@ func TestNewNetlogHandler(t *testing.T) {
 	r := mux.NewRouter()
 	router := r.PathPrefix("/netlog").Subrouter()
 	netlogApi := NewTestApi()
-	metrics := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, metrics, "", nil)
+	m := metrics.NewTestManager()
+	handler := NewHandler(netlogApi, m, "", nil)
 	handler.SetupRoutes(router)
 	require.NotNil(t, handler)
 	require.NotNil(t, router)
@@ -111,8 +111,8 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 	netlogApi := NewTestApi()
 
 	r := mux.NewRouter()
-	metrics := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, metrics, browserReqSecret, loginChecker)
+	m := metrics.NewTestManager()
+	handler := NewHandler(netlogApi, m, browserReqSecret, loginChecker)
 	handler.SetupRoutes(r)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
@@ -143,8 +143,8 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	metrics := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, metrics, browserReqSecret, loginChecker)
+	m := metrics.NewTestManager()
+	handler := NewHandler(netlogApi, m, browserReqSecret, loginChecker)
 	handler.SetupRoutes(netlogRouter)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
@@ -193,8 +193,8 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	metrics := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, metrics, browserReqSecret, loginChecker)
+	m := metrics.NewTestManager()
+	handler := NewHandler(netlogApi, m, browserReqSecret, loginChecker)
 	handler.SetupRoutes(netlogRouter)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
@@ -245,8 +245,8 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	metrics := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, metrics, browserReqSecret, loginChecker)
+	m := metrics.NewTestManager()
+	handler := NewHandler(netlogApi, m, browserReqSecret, loginChecker)
 	handler.SetupRoutes(netlogRouter)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
@@ -274,7 +274,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 	// visits len is unchanged
 	assert.Len(t, netlogApi.Visits, 2)
 
-	assert.Equal(t, float64(0), testutil.ToFloat64(metrics.CounterNetlogVisits))
+	assert.Equal(t, float64(0), testutil.ToFloat64(m.CounterNetlogVisits))
 }
 
 func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
@@ -306,8 +306,8 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	metrics := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, metrics, browserReqSecret, loginChecker)
+	m := metrics.NewTestManager()
+	handler := NewHandler(netlogApi, m, browserReqSecret, loginChecker)
 	handler.SetupRoutes(netlogRouter)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
@@ -341,7 +341,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 	assert.Equal(t, req.PostForm.Get("url"), addedVisit.URL)
 	assert.Equal(t, time.Unix(int64(jsTimestamp)/1000, 0), addedVisit.Timestamp)
 
-	assert.Equal(t, float64(1), testutil.ToFloat64(metrics.CounterNetlogVisits))
+	assert.Equal(t, float64(1), testutil.ToFloat64(m.CounterNetlogVisits))
 }
 
 func TestNetlogHandler_handleGetPage(t *testing.T) {
@@ -404,8 +404,8 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	metrics := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, metrics, "browserReqSecret", loginChecker)
+	m := metrics.NewTestManager()
+	handler := NewHandler(netlogApi, m, "browserReqSecret", loginChecker)
 	handler.SetupRoutes(netlogRouter)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
@@ -442,5 +442,5 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	assert.Equal(t, "test:url:6", resp.Visits[1].URL)
 	assert.Equal(t, "test:url:7", resp.Visits[2].URL)
 
-	assert.Equal(t, float64(0), testutil.ToFloat64(metrics.CounterNetlogVisits))
+	assert.Equal(t, float64(0), testutil.ToFloat64(m.CounterNetlogVisits))
 }

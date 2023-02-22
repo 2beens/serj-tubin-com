@@ -91,16 +91,18 @@ func TestNewBlogHandler(t *testing.T) {
 			method: "GET",
 		},
 	} {
-		t.Run(caseName, func(t *testing.T) {
+		nextRoute := route
+		cn := caseName
+		t.Run(cn, func(t *testing.T) {
 			t.Parallel()
-			req, err := http.NewRequest(route.method, route.path, nil)
+			req, err := http.NewRequest(nextRoute.method, nextRoute.path, nil)
 			require.NoError(t, err)
 
 			routeMatch := &mux.RouteMatch{}
-			route := r.Get(route.name)
-			require.NotNil(t, route)
-			isMatch := route.Match(req, routeMatch)
-			assert.True(t, isMatch, caseName)
+			gotRoute := r.Get(nextRoute.name)
+			require.NotNil(t, gotRoute)
+			isMatch := gotRoute.Match(req, routeMatch)
+			assert.True(t, isMatch, cn)
 		})
 	}
 }
