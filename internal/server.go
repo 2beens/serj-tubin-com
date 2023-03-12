@@ -64,19 +64,28 @@ type Server struct {
 	otelShutdown   func()
 }
 
+type NewServerParams struct {
+	Config                  *config.Config
+	OpenWeatherApiKey       string
+	IpInfoAPIKey            string
+	BrowserRequestsSecret   string
+	VersionInfo             string
+	AdminUsername           string
+	AdminPasswordHash       string
+	RedisPassword           string
+	HoneycombTracingEnabled bool
+}
+
 func NewServer(
 	ctx context.Context,
-	config *config.Config,
-	openWeatherApiKey string,
-	ipInfoAPIKey string,
-	browserRequestsSecret string,
-	versionInfo string,
-	adminUsername string,
-	adminPasswordHash string,
-	redisPassword string,
-	honeycombTracingEnabled bool,
+	params NewServerParams,
 ) (*Server, error) {
-	boardAeroClient, err := aerospike.NewBoardAeroClient(config.AeroHost, config.AeroPort, config.AeroNamespace, config.AeroMessagesSet)
+	boardAeroClient, err := aerospike.NewBoardAeroClient(
+		params.Config.AeroHost,
+		params.Config.AeroPort,
+		params.Config.AeroNamespace,
+		params.Config.AeroMessagesSet,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor_board aero client: %w", err)
 	}
@@ -91,14 +100,14 @@ func NewServer(
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
 
-	if openWeatherApiKey == "" {
+	if params.OpenWeatherApiKey == "" {
 		log.Errorf("error getting Weather info: open weather api key not set")
 		return nil, errors.New("open weather API key not set")
 	}
 
 	blogApi, err := blog.NewBlogPsqlApi(
 		ctx,
-		config.PostgresHost, config.PostgresPort, config.PostgresDBName,
+		params.Config.PostgresHost, params.Config.PostgresPort, params.Config.PostgresDBName,
 		true,
 	)
 	if err != nil {
@@ -107,7 +116,7 @@ func NewServer(
 
 	netlogVisitsApi, err := netlog.NewNetlogPsqlApi(
 		ctx,
-		config.PostgresHost, config.PostgresPort, config.PostgresDBName,
+		params.Config.PostgresHost, params.Config.PostgresPort, params.Config.PostgresDBName,
 		true,
 	)
 	if err != nil {
@@ -116,7 +125,7 @@ func NewServer(
 
 	notesBoxApi, err := notes_box.NewPsqlApi(
 		ctx,
-		config.PostgresHost, config.PostgresPort, config.PostgresDBName,
+		params.Config.PostgresHost, params.Config.PostgresPort, params.Config.PostgresDBName,
 		true,
 	)
 	if err != nil {
@@ -128,8 +137,8 @@ func NewServer(
 	metricsManager.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     net.JoinHostPort(config.RedisHost, config.RedisPort),
-		Password: redisPassword,
+		Addr:     net.JoinHostPort(params.Config.RedisHost, params.Config.RedisPort),
+		Password: params.RedisPassword,
 		DB:       0, // use default DB
 	})
 
@@ -148,7 +157,7 @@ func NewServer(
 	}()
 
 	// use honeycomb distro to setup OpenTelemetry SDK
-	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled, "main-backend", rdb)
+	otelShutdown, err := tracing.HoneycombSetup(params.HoneycombTracingEnabled, "main-backend", rdb)
 	if err != nil {
 		return nil, err
 	}
@@ -164,13 +173,13 @@ func NewServer(
 	}
 
 	s := &Server{
-		config:                config,
+		config:                params.Config,
 		blogApi:               blogApi,
-		browserRequestsSecret: browserRequestsSecret,
-		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, ipInfoAPIKey, tracedHttpClient, rdb),
+		browserRequestsSecret: params.BrowserRequestsSecret,
+		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, params.IpInfoAPIKey, tracedHttpClient, rdb),
 		weatherApi: weather.NewApi(
 			"http://api.openweathermap.org/data/2.5",
-			openWeatherApiKey,
+			params.OpenWeatherApiKey,
 			weatherCitiesData,
 			tracedHttpClient,
 		),
@@ -178,14 +187,14 @@ func NewServer(
 		boardClient:     boardClient,
 		netlogVisitsApi: netlogVisitsApi,
 		notesBoxApi:     notesBoxApi,
-		versionInfo:     versionInfo,
+		versionInfo:     params.VersionInfo,
 
 		redisClient:  rdb,
 		authService:  authService,
 		loginChecker: auth.NewLoginChecker(auth.DefaultTTL, rdb),
 		admin: &auth.Admin{
-			Username:     adminUsername,
-			PasswordHash: adminPasswordHash,
+			Username:     params.AdminUsername,
+			PasswordHash: params.AdminPasswordHash,
 		},
 
 		// telemetry
@@ -194,7 +203,7 @@ func NewServer(
 		otelShutdown:   otelShutdown,
 	}
 
-	quotesCsvFile, err := os.Open(config.QuotesCsvPath)
+	quotesCsvFile, err := os.Open(params.Config.QuotesCsvPath)
 	if err != nil {
 		return nil, fmt.Errorf("open quotes file: %w", err)
 	}

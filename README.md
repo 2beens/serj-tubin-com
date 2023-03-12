@@ -28,7 +28,7 @@
 * I use GitHub Workflow Actions for a part of CI/CD
     * unit testing
     * static code analysis
-    * deploy on new releaseg
+    * deploy on new release
 * I use PostgreSQL to store blog posts and personal web history (netlog), notes, etc.
 * I also use Redis to store session data
 * Prometheus is used for metrics (then Grafana to visualize them)
