@@ -89,15 +89,17 @@ func main() {
 
 	server, err := internal.NewServer(
 		ctx,
-		cfg,
-		openWeatherApiKey,
-		ipInfoAPIKey,
-		browserRequestsSecret,
-		versionInfo,
-		adminUsername,
-		adminPasswordHash,
-		redisPassword,
-		honeycombEnabled,
+		internal.NewServerParams{
+			Config:                  cfg,
+			OpenWeatherApiKey:       openWeatherApiKey,
+			IpInfoAPIKey:            ipInfoAPIKey,
+			BrowserRequestsSecret:   browserRequestsSecret,
+			VersionInfo:             versionInfo,
+			AdminUsername:           adminUsername,
+			AdminPasswordHash:       adminPasswordHash,
+			RedisPassword:           redisPassword,
+			HoneycombTracingEnabled: honeycombEnabled,
+		},
 	)
 	if err != nil {
 		log.Fatal(err)

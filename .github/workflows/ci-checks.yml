@@ -2,6 +2,14 @@ name: CI
 on:
   pull_request:
 jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Scan for Vulnerabilities in Code
+        uses: Templum/govulncheck-action@v0.0.9
+        with:
+          fail-on-vuln: true
   golangci:
     name: linter checks
     runs-on: ubuntu-latest
