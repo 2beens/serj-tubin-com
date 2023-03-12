@@ -2,6 +2,7 @@ package visitor_board
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -12,35 +13,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getTestBoardClient() (*Client, *BoardTestCache, *boardAero.BoardAeroTestClient, map[int]*Message) {
+func getTestBoardClient() (*Client, *BoardTestCache, *boardAero.BoardAeroTestClient, []Message) {
 	now := time.Now()
-	initialBoardMessages := map[int]*Message{
-		0: {
-			ID:        0,
+	initialBoardMessages := []Message{
+		{
 			Author:    "serj",
 			Timestamp: now.Add(-time.Hour).Unix(),
 			Message:   "test message blabla",
 		},
-		1: {
-			ID:        1,
+		{
 			Author:    "serj",
 			Timestamp: now.Unix(),
 			Message:   "test message gragra",
 		},
-		2: {
-			ID:        2,
+		{
 			Author:    "ana",
 			Timestamp: now.Add(-2 * time.Hour).Unix(),
 			Message:   "test message aaaaa",
 		},
-		3: {
-			ID:        3,
+		{
 			Author:    "drago",
 			Timestamp: now.Add(-5 * 24 * time.Hour).Unix(),
 			Message:   "drago's test message aaaaa sve",
 		},
-		4: {
-			ID:        4,
+		{
 			Author:    "rodjak nenad",
 			Timestamp: now.Add(-2 * time.Minute).Unix(),
 			Message:   "ja se mislim sta'e bilo",
@@ -55,30 +51,12 @@ func getTestBoardClient() (*Client, *BoardTestCache, *boardAero.BoardAeroTestCli
 		panic(err)
 	}
 
-	if _, err := boardClient.NewMessage(*initialBoardMessages[0]); err != nil {
-		panic(err)
+	for _, m := range initialBoardMessages {
+		fmt.Printf("++ %d %s: %d\n", m.ID, m.Author, m.Timestamp)
+		if _, err := boardClient.NewMessage(m); err != nil {
+			panic(err)
+		}
 	}
-	if _, err := boardClient.NewMessage(*initialBoardMessages[1]); err != nil {
-		panic(err)
-	}
-	if _, err := boardClient.NewMessage(*initialBoardMessages[2]); err != nil {
-		panic(err)
-	}
-	if _, err := boardClient.NewMessage(*initialBoardMessages[3]); err != nil {
-		panic(err)
-	}
-	if _, err := boardClient.NewMessage(*initialBoardMessages[4]); err != nil {
-		panic(err)
-	}
-
-	// FIXME: when storing messages in a loop, we got some race condition
-	// indication of a design smell
-	//for _, m := range initialBoardMessages {
-	//	fmt.Printf("++ %d %s: %d\n", m.ID, m.Author, m.Timestamp)
-	//	if err := boardClient.NewMessage(*m); err != nil {
-	//		panic(err)
-	//	}
-	//}
 
 	boardCache.ClearFunctionCallsLog()
 
