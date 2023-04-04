@@ -59,7 +59,7 @@ func (api *PsqlApi) CloseDB() {
 
 func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.add")
-	span.SetAttributes(attribute.String("source", visit.Source))
+	span.SetAttributes(attribute.String("visit.source", visit.Source))
 	defer span.End()
 	defer func() {
 		if err != nil {
@@ -103,9 +103,9 @@ func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) (err error) {
 func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) ([]*Visit, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.all")
 	if fromTimestamp != nil {
-		span.SetAttributes(attribute.String("from-time", fromTimestamp.String()))
+		span.SetAttributes(attribute.String("visit.from-time", fromTimestamp.String()))
 	} else {
-		span.SetAttributes(attribute.String("from-time", "nil"))
+		span.SetAttributes(attribute.String("visit.from-time", "nil"))
 	}
 	defer span.End()
 
@@ -165,8 +165,8 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 
 func (api *PsqlApi) GetVisits(ctx context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.getVisits")
-	span.SetAttributes(attribute.String("source", source))
-	span.SetAttributes(attribute.String("field", field))
+	span.SetAttributes(attribute.String("visit.source", source))
+	span.SetAttributes(attribute.String("visit.field", field))
 	span.SetAttributes(attribute.Int("limit", limit))
 	defer span.End()
 
@@ -221,8 +221,8 @@ func (api *PsqlApi) CountAll(ctx context.Context) (int, error) {
 
 func (api *PsqlApi) Count(ctx context.Context, keywords []string, field string, source string) (int, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.count")
-	span.SetAttributes(attribute.String("source", source))
-	span.SetAttributes(attribute.String("field", field))
+	span.SetAttributes(attribute.String("visit.source", source))
+	span.SetAttributes(attribute.String("visit.field", field))
 	defer span.End()
 
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
@@ -258,8 +258,8 @@ func (api *PsqlApi) Count(ctx context.Context, keywords []string, field string, 
 
 func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.getVisitsPage")
-	span.SetAttributes(attribute.String("source", source))
-	span.SetAttributes(attribute.String("field", field))
+	span.SetAttributes(attribute.String("visit.source", source))
+	span.SetAttributes(attribute.String("visit.field", field))
 	span.SetAttributes(attribute.Int("page", page))
 	span.SetAttributes(attribute.Int("size", size))
 	defer span.End()
