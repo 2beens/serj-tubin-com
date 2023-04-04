@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	netUrl "net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -161,6 +163,14 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	parsedURL, err := netUrl.Parse(url)
+	if err != nil {
+		log.Printf("failed to parse visit url: %s", err)
+		span.SetAttributes(attribute.String("visit.hostname", "<invalid/errored>"))
+	} else {
+		span.SetAttributes(attribute.String("visit.hostname", parsedURL.Host))
+	}
+
 	visit := &Visit{
 		Title:     title,
 		URL:       url,
@@ -169,6 +179,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := handler.netlogApi.AddVisit(ctx, visit); err != nil {
 		log.Printf("failed to add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
+		span.RecordError(err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		return
 	}
@@ -176,6 +187,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 	handler.metrics.CounterNetlogVisits.Inc()
 
 	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
+	// TODO: no need to return any response, status code should be enough
 	pkg.WriteResponse(w, "", "added")
 }
 
