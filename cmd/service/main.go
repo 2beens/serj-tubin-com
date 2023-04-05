@@ -30,6 +30,8 @@ func main() {
 		panic(err)
 	}
 
+	cfg.SentryDSN = os.Getenv("SENTRY_DSN")
+
 	logging.Setup(cfg.LogsPath, cfg.LogToStdout, cfg.LogLevel)
 
 	log.Debugf("using port: %d", cfg.Port)

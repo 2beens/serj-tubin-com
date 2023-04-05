@@ -25,6 +25,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 	"github.com/2beens/serjtubincom/internal/weather"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
@@ -79,6 +80,19 @@ func NewServer(
 	ctx context.Context,
 	params NewServerParams,
 ) (*Server, error) {
+	if params.Config.SentryEnabled {
+		log.Infoln("Sentry enabled, setting up ...")
+		err := sentry.Init(sentry.ClientOptions{
+			Dsn: params.Config.SentryDSN,
+			// TODO: check if needed
+			TracesSampleRate: 1.0,
+			Environment:      params.Config.Environment,
+		})
+		if err != nil {
+			log.Errorf("sentry.Init: %s", err)
+		}
+	}
+
 	boardAeroClient, err := aerospike.NewBoardAeroClient(
 		params.Config.AeroHost,
 		params.Config.AeroPort,
@@ -353,6 +367,8 @@ func (s *Server) GracefulShutdown() {
 	if err := os.RemoveAll(s.config.NetlogUnixSocketAddrDir); err != nil {
 		log.Errorf("failed to cleanup netlog backup unix socket dir: %s", err)
 	}
+
+	sentry.Flush(5 * time.Second)
 
 	maxWaitDuration := time.Second * 15
 	ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
