@@ -19,7 +19,7 @@ import (
 func main() {
 	fmt.Println("starting ...")
 
-	env := flag.String("env", "development", "environment [prod | production | dev | development | ddev | doockerdev ]")
+	env := flag.String("env", "development", "environment [prod | production | dev | development | ddev | dockerdev ]")
 	configPath := flag.String("config", "./config.toml", "path for the TOML config file")
 	flag.Parse()
 
@@ -30,9 +30,16 @@ func main() {
 		panic(err)
 	}
 
-	cfg.SentryDSN = os.Getenv("SENTRY_DSN")
-
-	logging.Setup(cfg.LogsPath, cfg.LogToStdout, cfg.LogLevel)
+	sentryDSN := os.Getenv("SENTRY_DSN")
+	logging.Setup(logging.LoggerSetupParams{
+		LogFileName:   cfg.LogsPath,
+		LogToStdout:   cfg.LogToStdout,
+		LogLevel:      cfg.LogLevel,
+		LogFormatJSON: false,
+		Environment:   cfg.Environment,
+		SentryEnabled: cfg.SentryEnabled,
+		SentryDSN:     sentryDSN,
+	})
 
 	log.Debugf("using port: %d", cfg.Port)
 	log.Debugf("using server logs path: [%s]", cfg.LogsPath)

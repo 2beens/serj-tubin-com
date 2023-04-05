@@ -21,6 +21,7 @@ func main() {
 		"",
 		"root path for the files storage",
 	)
+	env := flag.String("env", "development", "environment [prod | production | dev | development | ddev | dockerdev ]")
 	host := flag.String("host", "localhost", "host for the file service")
 	port := flag.Int("port", 1987, "port for the file service")
 	redisHost := flag.String("rhost", "localhost", "auth service redis host")
@@ -58,7 +59,17 @@ func main() {
 		log.Debugln("honeycomb tracing disabled")
 	}
 
-	logging.Setup(*logFilePath, *logToStdout, *logLevel)
+	sentryDSN := os.Getenv("SENTRY_DSN")
+	logging.Setup(logging.LoggerSetupParams{
+		LogFileName:   *logFilePath,
+		LogToStdout:   *logToStdout,
+		LogLevel:      *logLevel,
+		LogFormatJSON: false,
+		Environment:   *env,
+		// TODO:
+		SentryEnabled: false,
+		SentryDSN:     sentryDSN,
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	chOsInterrupt := make(chan os.Signal, 1)

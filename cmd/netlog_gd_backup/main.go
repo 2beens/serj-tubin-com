@@ -40,7 +40,16 @@ func main() {
 		panic(err)
 	}
 
-	logging.Setup(*logsPath, *logToStdout, "trace")
+	sentryDSN := os.Getenv("SENTRY_DSN")
+	logging.Setup(logging.LoggerSetupParams{
+		LogFileName:   *logsPath,
+		LogToStdout:   *logToStdout,
+		LogLevel:      "trace",
+		LogFormatJSON: false,
+		Environment:   cfg.Environment,
+		SentryEnabled: cfg.SentryEnabled,
+		SentryDSN:     sentryDSN,
+	})
 
 	log.Println("staring netlog backup ...")
 

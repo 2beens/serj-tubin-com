@@ -80,19 +80,6 @@ func NewServer(
 	ctx context.Context,
 	params NewServerParams,
 ) (*Server, error) {
-	if params.Config.SentryEnabled {
-		log.Infoln("Sentry enabled, setting up ...")
-		err := sentry.Init(sentry.ClientOptions{
-			Dsn: params.Config.SentryDSN,
-			// TODO: check if needed
-			TracesSampleRate: 1.0,
-			Environment:      params.Config.Environment,
-		})
-		if err != nil {
-			log.Errorf("sentry.Init: %s", err)
-		}
-	}
-
 	boardAeroClient, err := aerospike.NewBoardAeroClient(
 		params.Config.AeroHost,
 		params.Config.AeroPort,
@@ -368,7 +355,9 @@ func (s *Server) GracefulShutdown() {
 		log.Errorf("failed to cleanup netlog backup unix socket dir: %s", err)
 	}
 
-	sentry.Flush(5 * time.Second)
+	if ok := sentry.Flush(5 * time.Second); ok {
+		log.Debugf("sentry flush ok: %t", ok)
+	}
 
 	maxWaitDuration := time.Second * 15
 	ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)

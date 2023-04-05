@@ -56,7 +56,7 @@ redis_port = "6379"
 # QUOTES FILE
 quotes_csv_path = "./assets/quotes.csv"
 # SENTRY
-sentry_enabled = true
+sentry_enabled = false
 
 [production]
 host = "localhost"
