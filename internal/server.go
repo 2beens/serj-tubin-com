@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -98,11 +97,6 @@ func NewServer(
 	boardClient, err := visitor_board.NewClient(ctx, boardAeroClient, boardCache)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
-	}
-
-	if params.OpenWeatherApiKey == "" {
-		log.Errorf("error getting Weather info: open weather api key not set")
-		return nil, errors.New("open weather API key not set")
 	}
 
 	blogApi, err := blog.NewBlogPsqlApi(
