@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"log"
 	"os"
 	"strings"
 
@@ -22,10 +21,8 @@ type LoggerSetupParams struct {
 }
 
 func Setup(params LoggerSetupParams) {
-	logger := logrus.New()
-
 	if params.LogFormatJSON {
-		logger.Formatter = &logrus.JSONFormatter{}
+		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
 
 	if params.SentryEnabled {
@@ -36,7 +33,7 @@ func Setup(params LoggerSetupParams) {
 			TracesSampleRate: 1.0,
 		})
 		if err != nil {
-			logger.Errorf("sentry.Init: %s", err)
+			logrus.Errorf("sentry.Init: %s", err)
 		}
 
 		hook := NewSentryHook([]logrus.Level{
@@ -44,22 +41,22 @@ func Setup(params LoggerSetupParams) {
 			logrus.FatalLevel,
 			logrus.ErrorLevel,
 		})
-		logger.AddHook(hook)
+		logrus.AddHook(hook)
 
-		sentry.CaptureMessage("Sentry set up successfully")
-		logger.Infoln("Sentry set up successfully")
+		sentry.CaptureMessage("sentry set up success")
+		logrus.Infoln("Sentry set up successfully")
 	}
 
-	logger.SetLevel(GetLevel(params.LogLevel))
+	logrus.SetLevel(GetLevel(params.LogLevel))
 
 	if params.LogFileName == "" {
-		logger.SetOutput(os.Stdout)
-		logger.Println("writing logs only to STDOUT")
+		logrus.SetOutput(os.Stdout)
+		logrus.Println("writing logs only to STDOUT")
 		return
 	}
 
 	if params.LogToStdout {
-		logger.Println("writing logs to file and STDOUT")
+		logrus.Println("writing logs to file and STDOUT")
 	}
 
 	if !strings.HasSuffix(params.LogFileName, ".log") {
@@ -77,17 +74,12 @@ func Setup(params LoggerSetupParams) {
 	}
 
 	if params.LogToStdout {
-		logger.SetOutput(
+		logrus.SetOutput(
 			pkg.NewCombinedWriter(os.Stdout, lumberJackLogger),
 		)
 	} else {
-		logger.SetOutput(lumberJackLogger)
+		logrus.SetOutput(lumberJackLogger)
 	}
-
-	// Use logrus for standard log output
-	// Note that `log` here references stdlib's log
-	// Not logrus imported under the name `log`.
-	log.SetOutput(logger.Writer())
 }
 
 func GetLevel(level string) logrus.Level {
