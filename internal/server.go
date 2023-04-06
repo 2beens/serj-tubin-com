@@ -25,6 +25,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 	"github.com/2beens/serjtubincom/internal/weather"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
@@ -352,6 +353,10 @@ func (s *Server) GracefulShutdown() {
 	log.Debugln("removing netlog backup unix socket ...")
 	if err := os.RemoveAll(s.config.NetlogUnixSocketAddrDir); err != nil {
 		log.Errorf("failed to cleanup netlog backup unix socket dir: %s", err)
+	}
+
+	if ok := sentry.Flush(5 * time.Second); ok {
+		log.Debugf("sentry flush ok: %t", ok)
 	}
 
 	maxWaitDuration := time.Second * 15

@@ -36,6 +36,7 @@ services:
       OTEL_SERVICE_NAME: serj-tubin-com-docker-dev
       HONEYCOMB_ENABLED: "false"
       HONEYCOMB_API_KEY: ""
+      SENTRY_DSN: todo
 
   fileservice:
     image: golang:latest

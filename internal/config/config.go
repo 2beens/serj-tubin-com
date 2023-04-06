@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	IsDev bool
-	Host  string
-	Port  int
+	IsDev       bool
+	Host        string
+	Port        int
+	Environment string
 	// logging
 	LogLevel    string `toml:"log_level"`
 	LogsPath    string `toml:"logs_path"`
@@ -35,6 +36,9 @@ type Config struct {
 	RedisPort string `toml:"redis_port"`
 	// Quotes
 	QuotesCsvPath string `toml:"quotes_csv_path"`
+	// Sentry
+	SentryEnabled bool   `toml:"sentry_enabled"`
+	SentryDSN     string // loaded from env. var.
 }
 
 type Toml struct {
@@ -80,6 +84,8 @@ func Load(env, path string) (*Config, error) {
 	if env == "development" {
 		cfg.IsDev = true
 	}
+
+	cfg.Environment = env
 
 	return cfg, nil
 }

@@ -25,6 +25,8 @@ redis_host = "st-redis"
 redis_port = "6379"
 # QUOTES FILE
 quotes_csv_path = "./assets/quotes.csv"
+# SENTRY
+sentry_enabled = false
 
 [development]
 host = "localhost"
@@ -53,6 +55,8 @@ redis_host = "localhost"
 redis_port = "6379"
 # QUOTES FILE
 quotes_csv_path = "./assets/quotes.csv"
+# SENTRY
+sentry_enabled = false
 
 [production]
 host = "localhost"
@@ -81,3 +85,5 @@ redis_host = "162.55.179.82"
 redis_port = "6379"
 # QUOTES FILE
 quotes_csv_path = "./assets/quotes.csv"
+# SENTRY
+sentry_enabled = true

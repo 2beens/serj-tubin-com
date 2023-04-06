@@ -1,33 +1,73 @@
 package logging
 
 import (
+	"log"
 	"os"
 	"strings"
 
 	"github.com/2beens/serjtubincom/pkg"
-	log "github.com/sirupsen/logrus"
+	"github.com/getsentry/sentry-go"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func Setup(logFileName string, logToStdout bool, logLevel string) {
-	log.SetLevel(GetLevel(logLevel))
+type LoggerSetupParams struct {
+	LogFileName   string
+	LogToStdout   bool
+	LogLevel      string
+	LogFormatJSON bool
+	Environment   string
+	SentryEnabled bool
+	SentryDSN     string
+}
 
-	if logFileName == "" {
-		log.SetOutput(os.Stdout)
-		log.Println("writing logs only to STDOUT")
+func Setup(params LoggerSetupParams) {
+	logger := logrus.New()
+
+	if params.LogFormatJSON {
+		logger.Formatter = &logrus.JSONFormatter{}
+	}
+
+	if params.SentryEnabled {
+		err := sentry.Init(sentry.ClientOptions{
+			Environment: params.Environment,
+			Dsn:         params.SentryDSN,
+			// TODO: check if needed
+			TracesSampleRate: 1.0,
+		})
+		if err != nil {
+			logger.Errorf("sentry.Init: %s", err)
+		}
+
+		hook := NewSentryHook([]logrus.Level{
+			logrus.PanicLevel,
+			logrus.FatalLevel,
+			logrus.ErrorLevel,
+		})
+		logger.AddHook(hook)
+
+		sentry.CaptureMessage("Sentry set up successfully")
+		logger.Infoln("Sentry set up successfully")
+	}
+
+	logger.SetLevel(GetLevel(params.LogLevel))
+
+	if params.LogFileName == "" {
+		logger.SetOutput(os.Stdout)
+		logger.Println("writing logs only to STDOUT")
 		return
 	}
 
-	if logToStdout {
-		log.Println("writing logs to file and STDOUT")
+	if params.LogToStdout {
+		logger.Println("writing logs to file and STDOUT")
 	}
 
-	if !strings.HasSuffix(logFileName, ".log") {
-		logFileName += ".log"
+	if !strings.HasSuffix(params.LogFileName, ".log") {
+		params.LogFileName += ".log"
 	}
 
 	lumberJackLogger := &lumberjack.Logger{
-		Filename:  logFileName,
+		Filename:  params.LogFileName,
 		MaxSize:   50,    // megabytes
 		LocalTime: false, // false -> use UTC
 		Compress:  true,  // disabled by default
@@ -36,28 +76,35 @@ func Setup(logFileName string, logToStdout bool, logLevel string) {
 		//MaxAge:     730,   //days
 	}
 
-	if logToStdout {
-		log.SetOutput(pkg.NewCombinedWriter(os.Stdout, lumberJackLogger))
+	if params.LogToStdout {
+		logger.SetOutput(
+			pkg.NewCombinedWriter(os.Stdout, lumberJackLogger),
+		)
 	} else {
-		log.SetOutput(lumberJackLogger)
+		logger.SetOutput(lumberJackLogger)
 	}
+
+	// Use logrus for standard log output
+	// Note that `log` here references stdlib's log
+	// Not logrus imported under the name `log`.
+	log.SetOutput(logger.Writer())
 }
 
-func GetLevel(level string) log.Level {
+func GetLevel(level string) logrus.Level {
 	switch strings.ToLower(level) {
 	case "debug":
-		return log.DebugLevel
+		return logrus.DebugLevel
 	case "error":
-		return log.ErrorLevel
+		return logrus.ErrorLevel
 	case "fatal":
-		return log.FatalLevel
+		return logrus.FatalLevel
 	case "info":
-		return log.InfoLevel
+		return logrus.InfoLevel
 	case "trace":
-		return log.TraceLevel
+		return logrus.TraceLevel
 	case "warn":
-		return log.WarnLevel
+		return logrus.WarnLevel
 	default:
-		return log.TraceLevel
+		return logrus.TraceLevel
 	}
 }

@@ -17,6 +17,7 @@ Environment="SERJ_REDIS_PASS=<value_here>"
 Environment="OTEL_SERVICE_NAME=serj-tubin-com-main-backend"
 Environment="HONEYCOMB_ENABLED=true"
 Environment="HONEYCOMB_API_KEY=<value_here>"
+Environment="SENTRY_DSN=<value_here>"
 WorkingDirectory=/home/serj/serj-tubin-com
 ExecStart=/home/serj/serj-tubin-com/bin/service -env=production -config=/home/serj/serj-tubin-com/config.toml
 
