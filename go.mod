@@ -18,7 +18,6 @@ require (
 	github.com/honeycombio/opentelemetry-go-contrib/launcher v0.0.0-20221031150637-a3c60ed98d54
 	github.com/ipinfo/go/v2 v2.9.1
 	github.com/jackc/pgx/v5 v5.1.1
-	github.com/makasim/sentryhook v0.4.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/sirupsen/logrus v1.9.0
@@ -32,6 +31,8 @@ require (
 	google.golang.org/api v0.100.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
+
+require github.com/rogpeppe/go-internal v1.10.0 // indirect
 
 require (
 	cloud.google.com/go/compute v1.10.0 // indirect

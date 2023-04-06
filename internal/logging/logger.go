@@ -7,7 +7,6 @@ import (
 
 	"github.com/2beens/serjtubincom/pkg"
 	"github.com/getsentry/sentry-go"
-	"github.com/makasim/sentryhook"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -40,11 +39,12 @@ func Setup(params LoggerSetupParams) {
 			logger.Errorf("sentry.Init: %s", err)
 		}
 
-		logger.AddHook(sentryhook.New([]logrus.Level{
+		hook := NewSentryHook([]logrus.Level{
 			logrus.PanicLevel,
 			logrus.FatalLevel,
 			logrus.ErrorLevel,
-		}))
+		})
+		logger.AddHook(hook)
 
 		logger.Error("the error would be sent to sentry")
 		sentry.CaptureMessage("Sentry set up successfully")

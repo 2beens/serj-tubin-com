@@ -1,4 +1,4 @@
-package sentryhook
+package logging
 
 import (
 	"reflect"
@@ -21,6 +21,13 @@ type Converter func(entry *logrus.Entry, event *sentry.Event, hub *sentry.Hub)
 
 type Option func(h *Hook)
 
+// Hook is a logrus hook for sentry
+// giving credits to: github.com/makasim/sentryhook
+// had to copy-paste it here, as it was not handling
+// the context for a hub properly when logging Error:
+//
+//		 it would panic in case logger.Error(...) was called without adding ctx
+//	  the fix for that is in Fire(...) method
 type Hook struct {
 	hub       *sentry.Hub
 	levels    []logrus.Level
@@ -29,7 +36,7 @@ type Hook struct {
 	converter Converter
 }
 
-func New(levels []logrus.Level, options ...Option) Hook {
+func NewSentryHook(levels []logrus.Level, options ...Option) Hook {
 	h := Hook{
 		levels:    levels,
 		hub:       sentry.CurrentHub(),
@@ -80,7 +87,10 @@ func (hook Hook) Fire(entry *logrus.Entry) error {
 		event.Tags[k] = v
 	}
 
-	hub := sentry.GetHubFromContext(entry.Context)
+	var hub *sentry.Hub = nil
+	if entry.Context != nil {
+		hub = sentry.GetHubFromContext(entry.Context)
+	}
 	if hub == nil {
 		hub = hook.hub
 	}
