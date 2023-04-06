@@ -19,7 +19,9 @@ jobs:
           go-version: 1.20.3
       - uses: actions/checkout@v3
       - name: Run linter
-        uses: golangci/golangci-lint-action@v3.3.0
+        uses: golangci/golangci-lint-action@v3.4.0
+        with:
+          args: --timeout 5m
   tests:
     name: tests
     runs-on: ubuntu-latest
