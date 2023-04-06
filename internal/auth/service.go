@@ -128,13 +128,16 @@ func (as *Service) ScanAndClean(ctx context.Context) {
 		return
 	}
 
+	failedCount := 0
+
 	log.Warnf("=> auth service, scan and clean [%d sessions] start ...", len(sessionTokens))
 	var toRemove []string
 	for _, token := range sessionTokens {
 		sessionKey := sessionKeyPrefix + token
 		cmd := as.redisClient.Get(ctx, sessionKey)
 		if err := cmd.Err(); err != nil {
-			log.Errorf("=> auth service, scan and clean token %s: %s", token, err)
+			log.Debugf("=> auth service, scan and clean token %s: %s", token, err)
+			failedCount++
 			continue
 		}
 
@@ -142,6 +145,7 @@ func (as *Service) ScanAndClean(ctx context.Context) {
 		createdAtUnix, err := strconv.ParseInt(createdAtUnixStr, 10, 64)
 		if err != nil {
 			log.Errorf("=> auth service, scan and clean token %s: %s", token, err)
+			failedCount++
 			continue
 		}
 
@@ -151,6 +155,10 @@ func (as *Service) ScanAndClean(ctx context.Context) {
 			log.Warnf("=>\twill clean the session with token: %s", token)
 			toRemove = append(toRemove, token)
 		}
+	}
+
+	if failedCount >= 100 {
+		log.Errorf("auth service, scan and cleaned failed to scan %d tokens", failedCount)
 	}
 
 	for _, token := range toRemove {

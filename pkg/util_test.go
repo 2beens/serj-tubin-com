@@ -4,12 +4,26 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 )
 
 func TestMain(m *testing.M) {
 	m.Run()
 	goleak.VerifyTestMain(m)
+}
+
+func TestGenerateRandomString(t *testing.T) {
+	s, err := GenerateRandomString(0)
+	require.Error(t, err)
+	assert.Empty(t, s)
+
+	for i := 1; i <= 8; i++ {
+		s, err := GenerateRandomString(i * 5)
+		t.Log(s)
+		require.NoError(t, err)
+		assert.Len(t, s, i*5)
+	}
 }
 
 func TestBytesToString(t *testing.T) {
