@@ -56,7 +56,8 @@ func main() {
 	adminPasswordHash := os.Getenv("SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH")
 	if adminUsername == "" || adminPasswordHash == "" {
 		log.Errorf("admin username and password not set. use SERJ_TUBIN_COM_ADMIN_USERNAME and SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH")
-		return
+		adminUsername = "todo"
+		adminPasswordHash = "$$2a$$14$$gPDY7P8qGduPi.OKoPKzM.N/MTyZpP.q2tmbprdHH.1jyw7fK3KfW"
 	}
 
 	browserRequestsSecret := os.Getenv("SERJ_BROWSER_REQ_SECRET")
