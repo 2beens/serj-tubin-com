@@ -68,7 +68,7 @@ func (api *Api) GetIPGeoInfo(ctx context.Context, userIp string) (*ipinfo.Core, 
 	userIpKey := fmt.Sprintf("ip-info::%s", userIp)
 	cmd := api.redisClient.Get(ctx, userIpKey)
 	if err := cmd.Err(); err != nil {
-		log.Errorf("failed to find ip info from redis for [%s]: %s", userIpKey, err)
+		log.Debugf("failed to find ip info from redis for [%s]: %s", userIpKey, err)
 	}
 
 	var err error

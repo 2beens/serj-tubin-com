@@ -4,8 +4,9 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"crypto/rand"
-	"encoding/base64"
+	"errors"
 	"io"
+	"math/big"
 	"os"
 	"path/filepath"
 	"unsafe"
@@ -16,26 +17,26 @@ func BytesToString(buf []byte) string {
 	return *(*string)(unsafe.Pointer(&buf))
 }
 
-// GenerateRandomBytes returns securely generated random bytes.
-// It will return an error if the system's secure random
-// number generator fails to function correctly, in which
-// case the caller should not continue
-func GenerateRandomBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
-	if err != nil {
-		return nil, err
+const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+// GenerateRandomString generates a random string of the specified length
+// containing only alphanumeric characters.
+func GenerateRandomString(length int) (string, error) {
+	if length <= 0 {
+		return "", errors.New("string length must be a positive number")
 	}
-
-	return b, nil
-}
-
-// GenerateRandomString returns a URL-safe, base64 encoded
-// securely generated random string.
-func GenerateRandomString(s int) (string, error) {
-	b, err := GenerateRandomBytes(s)
-	return base64.URLEncoding.EncodeToString(b), err
+	b := make([]byte, length)
+	for i := range b {
+		n, err := rand.Int(
+			rand.Reader,
+			big.NewInt(int64(len(charset))),
+		)
+		if err != nil {
+			return "", err
+		}
+		b[i] = charset[n.Int64()]
+	}
+	return string(b), nil
 }
 
 // PathExists returns whether the given file or directory exists
