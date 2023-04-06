@@ -46,7 +46,6 @@ func Setup(params LoggerSetupParams) {
 		})
 		logger.AddHook(hook)
 
-		logger.Error("the error would be sent to sentry")
 		sentry.CaptureMessage("Sentry set up successfully")
 		logger.Infoln("Sentry set up successfully")
 	}

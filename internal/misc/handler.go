@@ -2,6 +2,7 @@ package misc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -53,6 +54,7 @@ func (handler *Handler) SetupRoutes(
 	mainRouter.HandleFunc("/whereami", handler.handleWhereAmI).Methods("GET").Name("whereami")
 	mainRouter.HandleFunc("/myip", handler.handleGetMyIp).Methods("GET").Name("myip")
 	mainRouter.HandleFunc("/version", handler.handleGetVersionInfo).Methods("GET").Name("version")
+	mainRouter.HandleFunc("/test/err", handler.handleTestErr).Methods("GET").Name("test/error")
 
 	loginSubrouter := mainRouter.PathPrefix("/a").Subrouter()
 	loginSubrouter.
@@ -69,6 +71,17 @@ func (handler *Handler) SetupRoutes(
 
 func (handler *Handler) handleRoot(w http.ResponseWriter, _ *http.Request) {
 	pkg.WriteResponse(w, "", "I'm OK, thanks ;)")
+}
+
+// TODO: remove me after sentry tested
+func (handler *Handler) handleTestErr(w http.ResponseWriter, _ *http.Request) {
+	err := errors.New("err msg")
+	log.
+		WithField("test field", "dummy value").
+		WithError(err).
+		Errorln("test error fired")
+	log.Errorln("just a simple test error")
+	http.Error(w, "test error", http.StatusInternalServerError)
 }
 
 func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
