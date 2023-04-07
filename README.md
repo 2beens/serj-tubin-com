@@ -33,6 +33,7 @@
 * I also use Redis to store session data
 * Prometheus is used for metrics (then Grafana to visualize them)
 * Honeycomb is used for distributed tracing
+* Sentry for error tracking and alerting
 * I use Vue to make the frontend part (was my first Vue project, so I don't like it)
     * source @ https://github.com/2beens/serj-tubin-vue
 * ❗️ Disclaimer: some parts of the system are deliberately unoptimized or complicated for testing ☑️ / learning 👨🏼‍🏫 / trial 🛠 purposes
