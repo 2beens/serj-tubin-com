@@ -60,6 +60,7 @@ func (api *PsqlApi) CloseDB() {
 func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.add")
 	span.SetAttributes(attribute.String("visit.source", visit.Source))
+	span.SetAttributes(attribute.String("visit.device", visit.Device))
 	defer span.End()
 	defer func() {
 		if err != nil {
@@ -77,8 +78,8 @@ func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) (err error) {
 
 	rows, err := api.db.Query(
 		ctx,
-		`INSERT INTO netlog.visit (title, source, url, timestamp) VALUES ($1, $2, $3, $4) RETURNING id;`,
-		visit.Title, visit.Source, visit.URL, visit.Timestamp,
+		`INSERT INTO netlog.visit (title, source, device, url, timestamp) VALUES ($1, $2, $3, $4, $5) RETURNING id;`,
+		visit.Title, visit.Source, visit.Device, visit.URL, visit.Timestamp,
 	)
 	if err != nil {
 		return err
@@ -116,7 +117,7 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 			ctx,
 			`
 			SELECT
-				id, COALESCE(title, '') as title, COALESCE(source, '') as source, url, timestamp
+				id, COALESCE(title, '') as title, COALESCE(source, '') as source, COALESCE(device, '') as device, url, timestamp
 			FROM netlog.visit
 			WHERE timestamp >= $1;`,
 			fromTimestamp,
@@ -126,7 +127,7 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 			ctx,
 			`
 			SELECT
-				id, COALESCE(title, '') as title, COALESCE(source, '') as source, url, timestamp
+				id, COALESCE(title, '') as title, COALESCE(source, '') as source, COALESCE(device, '') as device, url, timestamp
 			FROM netlog.visit;`,
 		)
 	}
@@ -139,27 +140,8 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 		return nil, err
 	}
 
-	var visits []*Visit
-	for rows.Next() {
-		var id int
-		var title string
-		var source string
-		var url string
-		var timestamp time.Time
-		if err := rows.Scan(&id, &title, &source, &url, &timestamp); err != nil {
-			return nil, err
-		}
-		visits = append(visits, &Visit{
-			Id:        id,
-			Title:     title,
-			Source:    source,
-			URL:       url,
-			Timestamp: timestamp,
-		})
-	}
-
+	visits := visitsFromRows(rows)
 	span.SetAttributes(attribute.Int("found-visits", len(visits)))
-
 	return visits, nil
 }
 
@@ -173,7 +155,7 @@ func (api *PsqlApi) GetVisits(ctx context.Context, keywords []string, field stri
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT
-			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
+			id, COALESCE(title, ''), COALESCE(source, ''), COALESCE(device, '') as device, url, timestamp
 		FROM netlog.visit
 		%s
 		ORDER BY id DESC
@@ -194,24 +176,8 @@ func (api *PsqlApi) GetVisits(ctx context.Context, keywords []string, field stri
 		return nil, err
 	}
 
-	var visits []*Visit
-	for rows.Next() {
-		var id int
-		var title string
-		var source string
-		var url string
-		var timestamp time.Time
-		if err := rows.Scan(&id, &title, &source, &url, &timestamp); err != nil {
-			return nil, err
-		}
-		visits = append(visits, &Visit{
-			Id:        id,
-			Title:     title,
-			URL:       url,
-			Timestamp: timestamp,
-		})
-	}
-
+	visits := visitsFromRows(rows)
+	span.SetAttributes(attribute.Int("found-visits", len(visits)))
 	return visits, nil
 }
 
@@ -284,7 +250,7 @@ func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field 
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
 		SELECT
-			id, COALESCE(title, ''), COALESCE(source, ''), url, timestamp
+			id, COALESCE(title, ''), COALESCE(source, ''), COALESCE(device, '') as device, url, timestamp
 		FROM netlog.visit
 		%s
 		ORDER BY timestamp DESC
@@ -307,25 +273,8 @@ func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field 
 		return nil, err
 	}
 
-	var visits []*Visit
-	for rows.Next() {
-		var id int
-		var title string
-		var source string
-		var url string
-		var timestamp time.Time
-		if err := rows.Scan(&id, &title, &source, &url, &timestamp); err != nil {
-			return nil, err
-		}
-		visits = append(visits, &Visit{
-			Id:        id,
-			Title:     title,
-			Source:    source,
-			URL:       url,
-			Timestamp: timestamp,
-		})
-	}
-
+	visits := visitsFromRows(rows)
+	span.SetAttributes(attribute.Int("found-visits", len(visits)))
 	return visits, nil
 }
 
@@ -357,4 +306,28 @@ func getQueryWhereCondition(column, source string, keywords []string) string {
 	}
 
 	return sbQueryLike.String()
+}
+
+func visitsFromRows(rows pgx.Rows) []*Visit {
+	var visits []*Visit
+	for rows.Next() {
+		var id int
+		var title string
+		var source string
+		var device string
+		var url string
+		var timestamp time.Time
+		if err := rows.Scan(&id, &title, &source, &device, &url, &timestamp); err != nil {
+			return nil
+		}
+		visits = append(visits, &Visit{
+			Id:        id,
+			Title:     title,
+			Source:    source,
+			Device:    device,
+			URL:       url,
+			Timestamp: timestamp,
+		})
+	}
+	return visits
 }

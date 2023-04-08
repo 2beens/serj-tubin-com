@@ -147,6 +147,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 
 	title := r.Form.Get("title")
 	source := r.Form.Get("source")
+	device := r.Form.Get("device")
 	url := r.Form.Get("url")
 	if url == "" {
 		http.Error(w, "error, url empty", http.StatusBadRequest)
@@ -175,6 +176,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		Title:     title,
 		URL:       url,
 		Source:    source,
+		Device:    device,
 		Timestamp: time.Unix(timestamp/1000, 0),
 	}
 	if err := handler.netlogApi.AddVisit(ctx, visit); err != nil {
