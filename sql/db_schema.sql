@@ -17,6 +17,7 @@ CREATE TABLE netlog.visit
     id SERIAL PRIMARY KEY,
     title VARCHAR,
     source VARCHAR,
+    device VARCHAR,
     url VARCHAR NOT NULL,
     timestamp TIMESTAMPTZ NOT NULL
 );

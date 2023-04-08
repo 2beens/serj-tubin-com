@@ -52,30 +52,35 @@ func cleanupAndAddTestVisits(ctx context.Context, t *testing.T, psqlApi *PsqlApi
 	v1 := &Visit{
 		Title:     "title one",
 		Source:    "pc",
+		Device:    "home-pc",
 		URL:       "https://www.one.com/",
 		Timestamp: now,
 	}
 	v2 := &Visit{
 		Title:     "title two",
 		Source:    "safari",
+		Device:    "mb-work",
 		URL:       "https://www.two.com/",
 		Timestamp: now.Add(-1 * time.Minute),
 	}
 	v3 := &Visit{
 		Title:     "title three",
 		Source:    "chrome",
+		Device:    "mb-work",
 		URL:       "https://www.three.com/",
 		Timestamp: now.Add(-2 * time.Minute),
 	}
 	v4 := &Visit{
 		Title:     "title four",
 		Source:    "chrome",
+		Device:    "mb-serj",
 		URL:       "https://www.four.com/",
 		Timestamp: now.Add(-3 * time.Minute),
 	}
 	v4b := &Visit{
 		Title:     "title four b",
 		Source:    "chrome",
+		Device:    "mb-serj",
 		URL:       "https://www.four.com/beta",
 		Timestamp: now.Add(-4 * time.Minute),
 	}
@@ -136,6 +141,7 @@ func TestPsqlApi_AddVisit(t *testing.T) {
 		Title:     "test",
 		Source:    "pc",
 		URL:       "",
+		Device:    "mb-serj",
 		Timestamp: time.Now(),
 	})
 	assert.Equal(t, "visit url or timestamp empty", err.Error())
@@ -144,18 +150,21 @@ func TestPsqlApi_AddVisit(t *testing.T) {
 	v1 := &Visit{
 		Title:     gofakeit.Name(),
 		Source:    "pc",
+		Device:    "mb-serj",
 		URL:       gofakeit.URL(),
 		Timestamp: now,
 	}
 	v2 := &Visit{
 		Title:     gofakeit.Name(),
 		Source:    "safari",
+		Device:    "mb-serj",
 		URL:       gofakeit.URL(),
 		Timestamp: now,
 	}
 	v3 := &Visit{
 		Title:     gofakeit.Name(),
 		Source:    "chrome",
+		Device:    "mb-work1",
 		URL:       gofakeit.URL(),
 		Timestamp: now,
 	}
@@ -175,6 +184,20 @@ func TestPsqlApi_AddVisit(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 3, countAfter-count)
+
+	allVisits, err := psqlApi.GetAllVisits(ctx, nil)
+	require.NoError(t, err)
+	require.Len(t, allVisits, countAfter)
+
+	var foundV1 *Visit
+	for _, v := range allVisits {
+		if v.Id == v1.Id {
+			foundV1 = v
+			break
+		}
+	}
+	require.NotNil(t, foundV1)
+	assert.Equal(t, *foundV1, *v1)
 }
 
 func TestPsqlApi_GetAllVisits(t *testing.T) {
@@ -196,6 +219,7 @@ func TestPsqlApi_GetAllVisits(t *testing.T) {
 		psqlApi.AddVisit(ctx, &Visit{
 			Title:     gofakeit.Name(),
 			Source:    "pc",
+			Device:    "mb-serj",
 			URL:       gofakeit.URL(),
 			Timestamp: now.Add(time.Duration(i) * time.Minute),
 		})
