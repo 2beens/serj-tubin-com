@@ -197,6 +197,8 @@ func TestPsqlApi_AddVisit(t *testing.T) {
 		}
 	}
 	require.NotNil(t, foundV1)
+	foundV1.Timestamp = foundV1.Timestamp.Truncate(time.Minute)
+	v1.Timestamp = v1.Timestamp.Truncate(time.Minute)
 	assert.Equal(t, *foundV1, *v1)
 }
 

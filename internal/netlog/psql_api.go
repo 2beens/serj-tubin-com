@@ -140,29 +140,8 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 		return nil, err
 	}
 
-	var visits []*Visit
-	for rows.Next() {
-		var id int
-		var title string
-		var source string
-		var device string
-		var url string
-		var timestamp time.Time
-		if err := rows.Scan(&id, &title, &source, &device, &url, &timestamp); err != nil {
-			return nil, err
-		}
-		visits = append(visits, &Visit{
-			Id:        id,
-			Title:     title,
-			Source:    source,
-			Device:    device,
-			URL:       url,
-			Timestamp: timestamp,
-		})
-	}
-
+	visits := visitsFromRows(rows)
 	span.SetAttributes(attribute.Int("found-visits", len(visits)))
-
 	return visits, nil
 }
 
@@ -197,27 +176,8 @@ func (api *PsqlApi) GetVisits(ctx context.Context, keywords []string, field stri
 		return nil, err
 	}
 
-	var visits []*Visit
-	for rows.Next() {
-		var id int
-		var title string
-		var source string
-		var device string
-		var url string
-		var timestamp time.Time
-		if err := rows.Scan(&id, &title, &source, &device, &url, &timestamp); err != nil {
-			return nil, err
-		}
-		visits = append(visits, &Visit{
-			Id:        id,
-			Title:     title,
-			Source:    source,
-			Device:    device,
-			URL:       url,
-			Timestamp: timestamp,
-		})
-	}
-
+	visits := visitsFromRows(rows)
+	span.SetAttributes(attribute.Int("found-visits", len(visits)))
 	return visits, nil
 }
 
@@ -313,27 +273,8 @@ func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field 
 		return nil, err
 	}
 
-	var visits []*Visit
-	for rows.Next() {
-		var id int
-		var title string
-		var source string
-		var device string
-		var url string
-		var timestamp time.Time
-		if err := rows.Scan(&id, &title, &source, &device, &url, &timestamp); err != nil {
-			return nil, err
-		}
-		visits = append(visits, &Visit{
-			Id:        id,
-			Title:     title,
-			Source:    source,
-			Device:    device,
-			URL:       url,
-			Timestamp: timestamp,
-		})
-	}
-
+	visits := visitsFromRows(rows)
+	span.SetAttributes(attribute.Int("found-visits", len(visits)))
 	return visits, nil
 }
 
@@ -365,4 +306,28 @@ func getQueryWhereCondition(column, source string, keywords []string) string {
 	}
 
 	return sbQueryLike.String()
+}
+
+func visitsFromRows(rows pgx.Rows) []*Visit {
+	var visits []*Visit
+	for rows.Next() {
+		var id int
+		var title string
+		var source string
+		var device string
+		var url string
+		var timestamp time.Time
+		if err := rows.Scan(&id, &title, &source, &device, &url, &timestamp); err != nil {
+			return nil
+		}
+		visits = append(visits, &Visit{
+			Id:        id,
+			Title:     title,
+			Source:    source,
+			Device:    device,
+			URL:       url,
+			Timestamp: timestamp,
+		})
+	}
+	return visits
 }
