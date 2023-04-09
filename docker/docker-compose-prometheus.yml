@@ -37,7 +37,7 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle' # allow restart on the fly with curl -X POST http://localhost:9000/-/reload
-      - '--storage.tsdb.retention.time=2y' # https://prometheus.io/docs/prometheus/latest/storage/#operational-aspects
+      - '--storage.tsdb.retention.time=800d' # 800d = a bit over 2 years; https://prometheus.io/docs/prometheus/latest/storage/#operational-aspects
     ports:
       - "9090:9090"
 
