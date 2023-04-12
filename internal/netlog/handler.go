@@ -180,9 +180,9 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		Timestamp: time.Unix(timestamp/1000, 0),
 	}
 	if err := handler.netlogApi.AddVisit(ctx, visit); err != nil {
-		log.Printf("failed to add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
-		span.RecordError(err)
+		log.Errorf("add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
+		span.RecordError(err)
 		return
 	}
 

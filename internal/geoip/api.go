@@ -80,10 +80,10 @@ func (api *Api) GetIPGeoInfo(ctx context.Context, userIp string) (*ipinfo.Core, 
 			if ipInfo.City != "" && ipInfo.Country != "" {
 				return ipInfo, nil
 			}
+		} else {
+			// continue, and try getting it from IP Info API
+			log.Errorf("unmarshal cached ip info from redis for %s: %s", userIp, err)
 		}
-
-		log.Errorf("failed to unmarshal cached ip info from redis for %s: %s", userIp, err)
-		// continue, and try getting it from IP Info API
 	} else {
 		span.SetAttributes(attribute.Bool("user.ip.from-cache", false))
 		log.Debugf("ip info value from redis not found for [%s]", userIp)
@@ -104,7 +104,7 @@ func (api *Api) GetIPGeoInfo(ctx context.Context, userIp string) (*ipinfo.Core, 
 	// cache response object in redis
 	cmdSet := api.redisClient.Set(ctx, userIpKey, ipInfoJson, 0)
 	if err := cmdSet.Err(); err != nil {
-		log.Errorf("failed to cache ip info in redis for %s: %s", userIp, err)
+		log.Errorf("cache ip info in redis for %s: %s", userIp, err)
 	} else {
 		log.Debugf("ip info cache set in redis for: %s", userIp)
 	}
