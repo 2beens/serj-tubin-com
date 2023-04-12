@@ -17,6 +17,7 @@
 ### Used tech 🛠
 * Golang 🦫🩵to make this all happen 👨🏼‍💻
 * `Dockerfile` and `docker/` folder contain configs for running the service stack within Docker
+  * `cd docker && docker-compose up -d` to run it all
 * Aerospike to store those visitor board messages 💿
     * there are better choices than Aerospike, I know, just wanted to test Aerospike
     * update: I am thinking to replace it for something else
