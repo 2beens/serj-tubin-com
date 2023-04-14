@@ -151,34 +151,48 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.login")
 	defer span.End()
 
-	err := r.ParseForm()
-	if err != nil {
-		log.Errorf("login failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
+	type loginRequest struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
 	}
 
-	username := r.Form.Get("username")
-	if username == "" {
+	var loginReq loginRequest
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
+			log.Errorf("store new message, unmarshal message json params: %s", err)
+			http.Error(w, "failed to store message", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Errorf("login failed, parse form error: %s", err)
+			http.Error(w, "parse form error", http.StatusInternalServerError)
+			return
+		}
+		loginReq = loginRequest{
+			Username: r.Form.Get("username"),
+			Password: r.Form.Get("password"),
+		}
+	}
+
+	if loginReq.Username == "" {
 		http.Error(w, "error, username empty", http.StatusBadRequest)
 		return
 	}
-
-	password := r.Form.Get("password")
-	if password == "" {
+	if loginReq.Password == "" {
 		http.Error(w, "error, password empty", http.StatusBadRequest)
 		return
 	}
 
-	if !pkg.CheckPasswordHash(password, handler.admin.PasswordHash) {
-		log.Tracef("[password] failed login attempt for user: %s", username)
+	if !pkg.CheckPasswordHash(loginReq.Password, handler.admin.PasswordHash) {
+		log.Tracef("[password] failed login attempt for user: %s", loginReq.Username)
 		log.Println(handler.admin)
 		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
 		return
 	}
 
-	if username != handler.admin.Username {
-		log.Tracef("[username] failed login attempt for user: %s", username)
+	if loginReq.Username != handler.admin.Username {
+		log.Tracef("[username] failed login attempt for user: %s", loginReq.Username)
 		log.Println(handler.admin)
 		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
 		return
