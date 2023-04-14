@@ -40,22 +40,38 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		log.Errorf("add new note failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
+	type newNoteRequest struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
 	}
 
-	title := r.Form.Get("title")
-	content := r.Form.Get("content")
-	if content == "" {
+	var newNoteReq newNoteRequest
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := json.NewDecoder(r.Body).Decode(&newNoteReq); err != nil {
+			log.Errorf("new note, unmarshal json params: %s", err)
+			http.Error(w, "add note failed", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Errorf("add new note failed, parse form error: %s", err)
+			http.Error(w, "parse form error", http.StatusInternalServerError)
+			return
+		}
+		newNoteReq = newNoteRequest{
+			Title:   r.Form.Get("title"),
+			Content: r.Form.Get("content"),
+		}
+	}
+
+	if newNoteReq.Content == "" {
 		http.Error(w, "error, content empty", http.StatusBadRequest)
 		return
 	}
 
 	note := &Note{
-		Title:     title,
-		Content:   content,
+		Title:     newNoteReq.Title,
+		Content:   newNoteReq.Content,
 		CreatedAt: time.Now(),
 	}
 
@@ -79,34 +95,53 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		log.Errorf("update note failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
+	type updateNoteRequest struct {
+		ID      int    `json:"id"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
 	}
 
-	title := r.Form.Get("title")
-	content := r.Form.Get("content")
-	if content == "" {
+	var updateNoteReq updateNoteRequest
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := json.NewDecoder(r.Body).Decode(&updateNoteReq); err != nil {
+			log.Errorf("update note, unmarshal json params: %s", err)
+			http.Error(w, "update note failed", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Errorf("update note failed, parse form error: %s", err)
+			http.Error(w, "parse form error", http.StatusInternalServerError)
+			return
+		}
+
+		idStr := r.Form.Get("id")
+		if idStr == "" {
+			http.Error(w, "error, id empty", http.StatusBadRequest)
+			return
+		}
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "error, id invalid", http.StatusBadRequest)
+			return
+		}
+
+		updateNoteReq = updateNoteRequest{
+			ID:      id,
+			Title:   r.Form.Get("title"),
+			Content: r.Form.Get("content"),
+		}
+	}
+
+	if updateNoteReq.Content == "" {
 		http.Error(w, "error, content empty", http.StatusBadRequest)
-		return
-	}
-	idStr := r.Form.Get("id")
-	if idStr == "" {
-		http.Error(w, "error, id empty", http.StatusBadRequest)
-		return
-	}
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "error, id invalid", http.StatusBadRequest)
 		return
 	}
 
 	note := &Note{
-		Id:      id,
-		Title:   title,
-		Content: content,
-		// CreatedAt: not updateable for now,
+		Id:      updateNoteReq.ID,
+		Title:   updateNoteReq.Title,
+		Content: updateNoteReq.Content,
 	}
 
 	if err := handler.api.Update(r.Context(), note); err != nil {

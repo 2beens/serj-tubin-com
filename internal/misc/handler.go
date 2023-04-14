@@ -59,7 +59,7 @@ func (handler *Handler) SetupRoutes(
 	loginSubrouter := mainRouter.PathPrefix("/a").Subrouter()
 	loginSubrouter.
 		HandleFunc("/login", handler.handleLogin).
-		Methods("POST").Name("login")
+		Methods("POST", "OPTIONS").Name("login")
 	loginSubrouter.
 		HandleFunc("/logout", handler.handleLogout).
 		Methods("GET", "OPTIONS").Name("logout")
@@ -151,6 +151,12 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.login")
 	defer span.End()
 
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	type loginRequest struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -159,8 +165,8 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var loginReq loginRequest
 	if r.Header.Get("Content-Type") == "application/json" {
 		if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
-			log.Errorf("store new message, unmarshal message json params: %s", err)
-			http.Error(w, "failed to store message", http.StatusBadRequest)
+			log.Errorf("login, unmarshal json params: %s", err)
+			http.Error(w, "login failed", http.StatusBadRequest)
 			return
 		}
 	} else {
