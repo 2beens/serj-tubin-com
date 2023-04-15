@@ -190,6 +190,14 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 	}
 	reqData.URL = decodedURL
 
+	decodedTitle, err := url.QueryUnescape(reqData.Title)
+	if err != nil {
+		log.Errorf("add new netlog visit failed, decode title error: %s", err)
+		http.Error(w, "decode title error", http.StatusInternalServerError)
+		return
+	}
+	reqData.Title = decodedTitle
+
 	if reqData.URL == "" {
 		http.Error(w, "error, url empty", http.StatusBadRequest)
 		return
