@@ -1,6 +1,7 @@
 package file_box
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -137,25 +138,26 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 				return req, nil
 			},
 		},
-		// TODO: getting 404 ... jesus ...
-		//"json payload": {
-		//	req: func(idsToDelete []int64) (*http.Request, error) {
-		//		delReqBytes, err := json.Marshal(deleteRequest{
-		//			Ids: idsToDelete,
-		//		})
-		//		if err != nil {
-		//			return nil, err
-		//		}
-		//
-		//		req, err := http.NewRequest("POST", "/f/del", bytes.NewBuffer(delReqBytes))
-		//		if err != nil {
-		//			return nil, err
-		//		}
-		//		req.Header.Set("Content-Type", "application/json")
-		//
-		//		return req, nil
-		//	},
-		//},
+		"json payload": {
+			req: func(idsToDelete []int64) (*http.Request, error) {
+				delReqBytes, err := json.Marshal(deleteRequest{
+					Ids: idsToDelete,
+				})
+				if err != nil {
+					return nil, err
+				}
+
+				req, err := http.NewRequest("POST", "/f/del", bytes.NewBuffer(delReqBytes))
+				if err != nil {
+					return nil, err
+				}
+
+				req.Header.Set("X-SERJ-TOKEN", "test-token")
+				req.Header.Set("Content-Type", "application/json")
+
+				return req, nil
+			},
+		},
 	}
 
 	for tn, tc := range testCases {
