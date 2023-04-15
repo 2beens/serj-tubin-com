@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	netUrl "net/url"
 	"strconv"
 	"strings"
@@ -180,6 +181,14 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 			Timestamp: timestamp,
 		}
 	}
+
+	decodedURL, err := url.QueryUnescape(reqData.URL)
+	if err != nil {
+		log.Errorf("add new netlog visit failed, decode url error: %s", err)
+		http.Error(w, "decode url error", http.StatusInternalServerError)
+		return
+	}
+	reqData.URL = decodedURL
 
 	if reqData.URL == "" {
 		http.Error(w, "error, url empty", http.StatusBadRequest)
