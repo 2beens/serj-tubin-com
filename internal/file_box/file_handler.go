@@ -18,6 +18,19 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
+type deleteRequest struct {
+	Ids []int64 `json:"ids"`
+}
+
+type updateInfoRequest struct {
+	Name      string `json:"name"`
+	IsPrivate bool   `json:"is_private"`
+}
+
+type newFolderRequest struct {
+	Name string `json:"name"`
+}
+
 type FileHandler struct {
 	api          *DiskApi
 	loginChecker auth.Checker
@@ -193,21 +206,31 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		log.Errorf("update file info failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
+	var updateInfoReq updateInfoRequest
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := json.NewDecoder(r.Body).Decode(&updateInfoReq); err != nil {
+			log.Errorf("update file info failed, decode request error: %s", err)
+			http.Error(w, "update file info failed", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Errorf("update file info failed, parse form error: %s", err)
+			http.Error(w, "parse form error", http.StatusInternalServerError)
+			return
+		}
+		isPrivateStr := r.Form.Get("is_private")
+		if isPrivateStr == "" {
+			http.Error(w, "error, 'is private' empty", http.StatusBadRequest)
+			return
+		}
+		updateInfoReq = updateInfoRequest{
+			Name:      r.Form.Get("name"),
+			IsPrivate: isPrivateStr == "true",
+		}
 	}
 
-	newName := r.Form.Get("name")
-	isPrivateStr := r.Form.Get("is_private")
-	if isPrivateStr == "" {
-		http.Error(w, "error, 'is private' empty", http.StatusBadRequest)
-		return
-	}
-	isPrivate := isPrivateStr == "true"
-
-	if err := handler.api.UpdateInfo(ctx, id, newName, isPrivate); err != nil {
+	if err := handler.api.UpdateInfo(ctx, id, updateInfoReq.Name, updateInfoReq.IsPrivate); err != nil {
 		log.Errorf("update file info [%d]: %s", id, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -226,33 +249,43 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err := r.ParseForm()
-	if err != nil {
-		log.Errorf("delete files/folders, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
-	}
-
-	idsParam := r.Form.Get("ids")
-	if idsParam == "" {
-		http.Error(w, "error, IDs parameter empty", http.StatusBadRequest)
-		return
-	}
-	idsRaw := strings.Split(idsParam, ",")
-	var ids []int64
-	for _, idRaw := range idsRaw {
-		id, err := strconv.ParseInt(idRaw, 10, 64)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("error, file/folder ID [%s] invalid", idRaw), http.StatusBadRequest)
+	var deleteReq deleteRequest
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := json.NewDecoder(r.Body).Decode(&deleteReq); err != nil {
+			log.Errorf("delete files/folders, decode request error: %s", err)
+			http.Error(w, "delete files/folders failed", http.StatusInternalServerError)
 			return
 		}
-		ids = append(ids, id)
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Errorf("delete files/folders, parse form error: %s", err)
+			http.Error(w, "parse form error", http.StatusInternalServerError)
+			return
+		}
+		idsParam := r.Form.Get("ids")
+		if idsParam == "" {
+			http.Error(w, "error, IDs parameter empty", http.StatusBadRequest)
+			return
+		}
+		idsRaw := strings.Split(idsParam, ",")
+		var ids []int64
+		for _, idRaw := range idsRaw {
+			id, err := strconv.ParseInt(idRaw, 10, 64)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error, file/folder ID [%s] invalid", idRaw), http.StatusBadRequest)
+				return
+			}
+			ids = append(ids, id)
+		}
+		deleteReq = deleteRequest{
+			Ids: ids,
+		}
 	}
 
-	log.Debugf("--> will try to delete [%d] items", len(ids))
+	log.Debugf("--> will try to delete [%d] items", len(deleteReq.Ids))
 
 	deletedCount := 0
-	for _, id := range ids {
+	for _, id := range deleteReq.Ids {
 		log.Debugf("-> tryint to delete item: %d", id)
 
 		fileInfo, _, err := handler.api.Get(ctx, id)
@@ -334,21 +367,32 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		log.Errorf("create child folder failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
+	var newFolderReq newFolderRequest
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := json.NewDecoder(r.Body).Decode(&newFolderReq); err != nil {
+			log.Errorf("create new folder, decode request: %s", err)
+			http.Error(w, "create new folder failed", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Errorf("create child folder failed, parse form error: %s", err)
+			http.Error(w, "parse form error", http.StatusInternalServerError)
+			return
+		}
+		newFolderReq = newFolderRequest{
+			Name: r.Form.Get("name"),
+		}
 	}
 
-	name := r.Form.Get("name")
-	if name == "" {
+	if newFolderReq.Name == "" {
 		http.Error(w, "error, folder name empty", http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("creating child folder [%s] for folder [%d]", name, parentId)
+	log.Printf("creating child folder [%s] for folder [%d]", newFolderReq.Name, parentId)
 
-	if f, err := handler.api.NewFolder(parentId, name); err != nil {
+	if f, err := handler.api.NewFolder(parentId, newFolderReq.Name); err != nil {
 		log.Errorf("create child folder for %d: %s", parentId, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	} else {

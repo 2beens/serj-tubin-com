@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -357,6 +358,44 @@ func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 	require.NotNil(t, addedPost)
 	assert.Equal(t, "Nonsense", addedPost.Title)
 	assert.Equal(t, "This content makes no sense", addedPost.Content)
+	assert.False(t, addedPost.CreatedAt.IsZero())
+}
+
+func TestBlogHandler_handleNewBlog_jsonPayload_correctToken(t *testing.T) {
+	redisClient, redisMock := redismock.NewClientMock()
+	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
+
+	r := mux.NewRouter()
+	handler := NewBlogHandler(blogApi, loginChecker)
+	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
+
+	newBlogParams := newBlogRequest{
+		Title:   "test title",
+		Content: "test content",
+	}
+	newBlogParamsBytes, err := json.Marshal(newBlogParams)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("POST", "/blog/new", bytes.NewBuffer(newBlogParamsBytes))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
+	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
+
+	currentPostsCount := blogApi.PostsCount()
+
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, "added:5", rr.Body.String())
+	assert.Equal(t, currentPostsCount+1, blogApi.PostsCount())
+
+	addedPost, ok := blogApi.Posts[5]
+	require.True(t, ok)
+	require.NotNil(t, addedPost)
+	assert.Equal(t, newBlogParams.Title, addedPost.Title)
+	assert.Equal(t, newBlogParams.Content, addedPost.Content)
 	assert.False(t, addedPost.CreatedAt.IsZero())
 }
 

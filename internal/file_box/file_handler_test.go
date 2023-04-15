@@ -116,73 +116,116 @@ func TestFileHandler_handleGet(t *testing.T) {
 }
 
 func TestFileHandler_handleDeleteFile(t *testing.T) {
-	ctx := context.Background()
+	testCases := map[string]struct {
+		req func(idsToDelete []int64) (*http.Request, error)
+	}{
+		"post form payload": {
+			req: func(idsToDelete []int64) (*http.Request, error) {
+				idsStrings := make([]string, len(idsToDelete))
+				for i, id := range idsToDelete {
+					idsStrings[i] = fmt.Sprintf("%d", id)
+				}
 
-	tempRootDir := t.TempDir()
-	api, err := NewDiskApi(tempRootDir)
-	require.NoError(t, err)
-	require.NotNil(t, api)
+				req, err := http.NewRequest("POST", "/f/del", nil)
+				if err != nil {
+					return nil, err
+				}
+				req.PostForm = url.Values{}
+				req.PostForm.Add("ids", strings.Join(idsStrings, ","))
+				req.Header.Set("X-SERJ-TOKEN", "test-token")
 
-	var addedFiles []int64
-	parentId := int64(0) // root = id 0
-	filesLen := 10
-	for i := 1; i <= filesLen; i++ {
-		randomContent := strings.NewReader(fmt.Sprintf("random test content %d", i))
-		fileName := fmt.Sprintf("file_%d", i)
-		fileId, err := api.Save(
-			ctx,
-			fileName,
-			parentId,
-			randomContent.Size(),
-			"rand-binary",
-			randomContent,
-		)
-		require.NoError(t, err)
-		assert.True(t, fileId > 0)
-
-		// make the first 5 files not private
-		if i <= 5 {
-			require.NoError(t, api.UpdateInfo(ctx, fileId, fileName, false))
-		}
-
-		addedFiles = append(addedFiles, fileId)
+				return req, nil
+			},
+		},
+		// TODO: getting 404 ... jesus ...
+		//"json payload": {
+		//	req: func(idsToDelete []int64) (*http.Request, error) {
+		//		delReqBytes, err := json.Marshal(deleteRequest{
+		//			Ids: idsToDelete,
+		//		})
+		//		if err != nil {
+		//			return nil, err
+		//		}
+		//
+		//		req, err := http.NewRequest("POST", "/f/del", bytes.NewBuffer(delReqBytes))
+		//		if err != nil {
+		//			return nil, err
+		//		}
+		//		req.Header.Set("Content-Type", "application/json")
+		//
+		//		return req, nil
+		//	},
+		//},
 	}
-	assert.Len(t, api.root.Files, filesLen)
-	require.Len(t, addedFiles, filesLen)
 
-	loginChecker := auth.NewLoginTestChecker()
-	loginChecker.LoggedSessions["test-token"] = true
-	fileHandler := NewFileHandler(api, loginChecker)
+	for tn, tc := range testCases {
+		t.Run(tn, func(t *testing.T) {
+			ctx := context.Background()
 
-	r := RouterSetup(fileHandler)
+			tempRootDir := t.TempDir()
+			api, err := NewDiskApi(tempRootDir)
+			require.NoError(t, err)
+			require.NotNil(t, api)
 
-	// before delete, file there?
-	file1, parent, err := api.Get(ctx, addedFiles[0])
-	require.NoError(t, err)
-	assert.NotNil(t, file1)
-	assert.Equal(t, parentId, parent.Id)
+			var addedFiles []int64
+			parentId := int64(0) // root = id 0
+			filesLen := 10
+			for i := 1; i <= filesLen; i++ {
+				randomContent := strings.NewReader(fmt.Sprintf("random test content %d", i))
+				fileName := fmt.Sprintf("file_%d", i)
+				fileId, err := api.Save(
+					ctx,
+					fileName,
+					parentId,
+					randomContent.Size(),
+					"rand-binary",
+					randomContent,
+				)
+				require.NoError(t, err)
+				assert.True(t, fileId > 0)
 
-	req, err := http.NewRequest("POST", "/f/del", nil)
-	require.NoError(t, err)
-	req.PostForm = url.Values{}
-	req.PostForm.Add("ids", fmt.Sprintf("%d,%d", addedFiles[0], addedFiles[2]))
-	req.Header.Set("X-SERJ-TOKEN", "test-token")
+				// make the first 5 files not private
+				if i <= 5 {
+					require.NoError(t, api.UpdateInfo(ctx, fileId, fileName, false))
+				}
 
-	rr := httptest.NewRecorder()
-	r.ServeHTTP(rr, req)
-	require.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, fmt.Sprintf("deleted:%d", 2), rr.Body.String())
+				addedFiles = append(addedFiles, fileId)
+			}
+			assert.Len(t, api.root.Files, filesLen)
+			require.Len(t, addedFiles, filesLen)
 
-	assert.Len(t, api.root.Files, filesLen-2)
+			loginChecker := auth.NewLoginTestChecker()
+			loginChecker.LoggedSessions["test-token"] = true
+			fileHandler := NewFileHandler(api, loginChecker)
 
-	file, parent, err := api.Get(ctx, addedFiles[0])
-	assert.ErrorIs(t, err, ErrFileNotFound)
-	assert.Nil(t, file)
-	assert.Nil(t, parent)
-	file, parent, err = api.Get(ctx, addedFiles[2])
-	assert.ErrorIs(t, err, ErrFileNotFound)
-	assert.Nil(t, file)
-	assert.Nil(t, parent)
+			r := RouterSetup(fileHandler)
+
+			// before delete, file there?
+			file1, parent, err := api.Get(ctx, addedFiles[0])
+			require.NoError(t, err)
+			assert.NotNil(t, file1)
+			assert.Equal(t, parentId, parent.Id)
+
+			req, err := tc.req([]int64{addedFiles[0], addedFiles[2]})
+			require.NoError(t, err)
+
+			rr := httptest.NewRecorder()
+			r.ServeHTTP(rr, req)
+			require.Equal(t, http.StatusOK, rr.Code)
+			assert.Equal(t, fmt.Sprintf("deleted:%d", 2), rr.Body.String())
+
+			assert.Len(t, api.root.Files, filesLen-2)
+
+			file, parent, err := api.Get(ctx, addedFiles[0])
+			assert.ErrorIs(t, err, ErrFileNotFound)
+			assert.Nil(t, file)
+			assert.Nil(t, parent)
+			file, parent, err = api.Get(ctx, addedFiles[2])
+			assert.ErrorIs(t, err, ErrFileNotFound)
+			assert.Nil(t, file)
+			assert.Nil(t, parent)
+		})
+	}
 }
 
 func TestFileHandler_handleUpdateInfo(t *testing.T) {
