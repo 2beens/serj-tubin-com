@@ -20,6 +20,14 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
+type newVisitRequest struct {
+	Title     string `json:"title"`
+	Source    string `json:"source"`
+	Device    string `json:"device"`
+	URL       string `json:"url"`
+	Timestamp int64  `json:"timestamp"`
+}
+
 type Handler struct {
 	browserRequestsSecret string
 	netlogApi             Api
@@ -139,48 +147,65 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		log.Errorf("add new netlog visit failed, parse form error: %s", err)
-		http.Error(w, "parse form error", http.StatusInternalServerError)
-		return
+	var reqData newVisitRequest
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := json.NewDecoder(r.Body).Decode(&reqData); err != nil {
+			log.Errorf("add new netlog visit failed, decode json error: %s", err)
+			http.Error(w, "decode json error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Errorf("add new netlog visit failed, parse form error: %s", err)
+			http.Error(w, "parse form error", http.StatusInternalServerError)
+			return
+		}
+
+		timestampStr := r.Form.Get("timestamp")
+		if timestampStr == "" {
+			http.Error(w, "error, timestamp empty", http.StatusBadRequest)
+			return
+		}
+		timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+		if err != nil {
+			http.Error(w, "error, timestamp invalid", http.StatusBadRequest)
+			return
+		}
+
+		reqData = newVisitRequest{
+			Title:     r.Form.Get("title"),
+			Source:    r.Form.Get("source"),
+			Device:    r.Form.Get("device"),
+			URL:       r.Form.Get("url"),
+			Timestamp: timestamp,
+		}
 	}
 
-	title := r.Form.Get("title")
-	source := r.Form.Get("source")
-	device := r.Form.Get("device")
-	url := r.Form.Get("url")
-	if url == "" {
+	if reqData.URL == "" {
 		http.Error(w, "error, url empty", http.StatusBadRequest)
 		return
 	}
-	timestampStr := r.Form.Get("timestamp")
-	if timestampStr == "" {
-		http.Error(w, "error, timestamp empty", http.StatusBadRequest)
-		return
-	}
-	timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
-	if err != nil {
-		http.Error(w, "error, timestamp invalid", http.StatusBadRequest)
-		return
-	}
 
-	parsedURL, err := netUrl.Parse(url)
+	parsedURL, err := netUrl.Parse(reqData.URL)
 	if err != nil {
-		log.Printf("failed to parse visit url: %s", err)
+		log.Errorf("failed to parse visit url: %s", err)
 		span.SetAttributes(attribute.String("visit.hostname", "<invalid/errored>"))
 	} else {
 		span.SetAttributes(attribute.String("visit.hostname", parsedURL.Host))
 	}
 
+	span.SetAttributes(attribute.String("visit.device", reqData.Source))
+	span.SetAttributes(attribute.String("visit.device", reqData.Device))
+
 	visit := &Visit{
-		Title:     title,
-		URL:       url,
-		Source:    source,
-		Device:    device,
-		Timestamp: time.Unix(timestamp/1000, 0),
+		Title:     reqData.Title,
+		URL:       reqData.URL,
+		Source:    reqData.Source,
+		Device:    reqData.Device,
+		Timestamp: time.Unix(reqData.Timestamp/1000, 0),
 	}
 	if err := handler.netlogApi.AddVisit(ctx, visit); err != nil {
-		log.Errorf("add new visit [%s], [%s]: %s", visit.Timestamp, url, err)
+		log.Errorf("add new visit [%d], [%s] [%s]: %s", reqData.Timestamp, reqData.Source, reqData.Device, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		span.RecordError(err)
 		return
@@ -188,7 +213,8 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 
 	handler.metrics.CounterNetlogVisits.Inc()
 
-	log.Printf("new visit added: [%s] [%s]: %s", source, visit.Timestamp, visit.URL)
+	log.Printf("new visit added: [%s] [%s][%s]", visit.Timestamp, visit.Source, visit.Device)
+
 	// TODO: no need to return any response, status code should be enough
 	pkg.WriteResponse(w, "", "added")
 }
