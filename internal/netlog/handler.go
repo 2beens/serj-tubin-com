@@ -205,7 +205,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		Timestamp: time.Unix(reqData.Timestamp/1000, 0),
 	}
 	if err := handler.netlogApi.AddVisit(ctx, visit); err != nil {
-		log.Errorf("add new visit [%d], [%s]: %s", reqData.Timestamp, reqData.URL, err)
+		log.Errorf("add new visit [%d], [%s] [%s]: %s", reqData.Timestamp, reqData.Source, reqData.Device, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		span.RecordError(err)
 		return
@@ -213,7 +213,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 
 	handler.metrics.CounterNetlogVisits.Inc()
 
-	log.Printf("new visit added: [%s] [%s]: %s", visit.Source, visit.Timestamp, visit.URL)
+	log.Printf("new visit added: [%s] [%s][%s]", visit.Timestamp, visit.Source, visit.Device)
 
 	// TODO: no need to return any response, status code should be enough
 	pkg.WriteResponse(w, "", "added")
