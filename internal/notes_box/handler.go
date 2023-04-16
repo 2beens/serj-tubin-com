@@ -34,12 +34,6 @@ func NewHandler(
 }
 
 func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "POST, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	type newNoteRequest struct {
 		Title   string `json:"title"`
 		Content string `json:"content"`
@@ -89,12 +83,6 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "PUT, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	type updateNoteRequest struct {
 		ID      int    `json:"id"`
 		Title   string `json:"title"`
@@ -204,13 +192,14 @@ func (handler *Handler) AuthMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {
-				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Add("Allow", "PUT, POST, DELETE, OPTIONS")
 				w.WriteHeader(http.StatusOK)
 				return
 			}
 
 			// a non standard req. header is set, and thus - browser makes a preflight/OPTIONS request:
 			//	https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#preflighted_requests
+			// TODO: use Authorization header, not this custom one
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 
 			if authToken == "" {
