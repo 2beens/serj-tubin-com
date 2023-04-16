@@ -183,6 +183,7 @@ func TestLogin(t *testing.T) {
 	req.PostForm = url.Values{}
 	req.PostForm.Add("username", username)
 	req.PostForm.Add("password", password)
+	req.Header.Set("Origin", "test")
 
 	mainRouter.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)

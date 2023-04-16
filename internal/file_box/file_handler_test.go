@@ -77,6 +77,7 @@ func TestFileHandler_handleGet(t *testing.T) {
 	r := RouterSetup(fileHandler)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[4]), nil)
+	req.Header.Set("Origin", "test")
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
@@ -84,6 +85,7 @@ func TestFileHandler_handleGet(t *testing.T) {
 
 	req, err = http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[0]), nil)
 	require.NoError(t, err)
+	req.Header.Set("Origin", "test")
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, "random test content 1", rr.Body.String())
@@ -91,6 +93,7 @@ func TestFileHandler_handleGet(t *testing.T) {
 	// private file - should not return anything
 	req, err = http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[8]), nil)
 	require.NoError(t, err)
+	req.Header.Set("Origin", "test")
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusNotFound, rr.Code)
@@ -100,6 +103,7 @@ func TestFileHandler_handleGet(t *testing.T) {
 	loginChecker.LoggedSessions["test-token"] = true
 	req, err = http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[8]), nil)
 	require.NoError(t, err)
+	req.Header.Set("Origin", "test")
 	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
@@ -109,6 +113,7 @@ func TestFileHandler_handleGet(t *testing.T) {
 	loginChecker.LoggedSessions["test-token"] = false
 	req, err = http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[8]), nil)
 	require.NoError(t, err)
+	req.Header.Set("Origin", "test")
 	req.Header.Set("X-SERJ-TOKEN", "test-token")
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
@@ -134,6 +139,7 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 				req.PostForm = url.Values{}
 				req.PostForm.Add("ids", strings.Join(idsStrings, ","))
 				req.Header.Set("X-SERJ-TOKEN", "test-token")
+				req.Header.Set("Origin", "test")
 
 				return req, nil
 			},
@@ -152,6 +158,7 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 					return nil, err
 				}
 
+				req.Header.Set("Origin", "test")
 				req.Header.Set("X-SERJ-TOKEN", "test-token")
 				req.Header.Set("Content-Type", "application/json")
 
@@ -239,6 +246,7 @@ func TestFileHandler_handleUpdateInfo(t *testing.T) {
 				req, err := http.NewRequest("POST", fmt.Sprintf("/f/update/%d", fileId), nil)
 				require.NoError(t, err)
 				req.Header.Set("X-SERJ-TOKEN", "test-token")
+				req.Header.Set("Origin", "test")
 				req.PostForm = url.Values{}
 				req.PostForm.Add("is_private", "false")
 				req.PostForm.Add("name", "safari")
@@ -262,6 +270,7 @@ func TestFileHandler_handleUpdateInfo(t *testing.T) {
 
 				req.Header.Set("X-SERJ-TOKEN", "test-token")
 				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", "test")
 
 				return req
 			},
@@ -352,6 +361,7 @@ func TestFileHandler_handleGetRoot(t *testing.T) {
 	req, err := http.NewRequest("GET", "/f/root", nil)
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", "test-token")
+	req.Header.Set("Origin", "test")
 
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
@@ -374,6 +384,7 @@ func TestFileHandler_handleGetRoot(t *testing.T) {
 	req, err = http.NewRequest("GET", "/f/root", nil)
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", "test-token")
+	req.Header.Set("Origin", "test")
 
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
@@ -383,6 +394,7 @@ func TestFileHandler_handleGetRoot(t *testing.T) {
 	// now missing token - no root should return
 	req, err = http.NewRequest("GET", "/f/root", nil)
 	require.NoError(t, err)
+	req.Header.Set("Origin", "test")
 
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
