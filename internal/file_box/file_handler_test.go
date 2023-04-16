@@ -231,57 +231,93 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 }
 
 func TestFileHandler_handleUpdateInfo(t *testing.T) {
-	ctx := context.Background()
+	testCases := map[string]struct {
+		req func(fileId int64, t *testing.T) *http.Request
+	}{
+		"post form payload": {
+			req: func(fileId int64, t *testing.T) *http.Request {
+				req, err := http.NewRequest("POST", fmt.Sprintf("/f/update/%d", fileId), nil)
+				require.NoError(t, err)
+				req.Header.Set("X-SERJ-TOKEN", "test-token")
+				req.PostForm = url.Values{}
+				req.PostForm.Add("is_private", "false")
+				req.PostForm.Add("name", "safari")
+				return req
+			},
+		},
+		"json payload": {
+			req: func(fileId int64, t *testing.T) *http.Request {
+				delReqBytes, err := json.Marshal(updateInfoRequest{
+					Name:      "safari",
+					IsPrivate: false,
+				})
+				require.NoError(t, err)
 
-	tempRootDir := t.TempDir()
-	api, err := NewDiskApi(tempRootDir)
-	require.NoError(t, err)
-	require.NotNil(t, api)
+				req, err := http.NewRequest(
+					"POST",
+					fmt.Sprintf("/f/update/%d", fileId),
+					bytes.NewBuffer(delReqBytes),
+				)
+				require.NoError(t, err)
 
-	parentId := int64(0) // root = id 0
-	fileContentString := "random test file content"
-	fileContent := strings.NewReader(fileContentString)
-	fileName := "test-name"
-	fileId, err := api.Save(
-		ctx,
-		fileName,
-		parentId,
-		fileContent.Size(),
-		"rand-binary",
-		fileContent,
-	)
-	require.NoError(t, err)
-	assert.True(t, fileId > 0)
-	assert.Len(t, api.root.Files, 1)
+				req.Header.Set("X-SERJ-TOKEN", "test-token")
+				req.Header.Set("Content-Type", "application/json")
 
-	loginChecker := auth.NewLoginTestChecker()
-	loginChecker.LoggedSessions["test-token"] = true
-	fileHandler := NewFileHandler(api, loginChecker)
+				return req
+			},
+		},
+	}
 
-	r := RouterSetup(fileHandler)
+	for tn, tc := range testCases {
+		t.Run(tn, func(t *testing.T) {
+			ctx := context.Background()
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("/f/update/%d", fileId), nil)
-	require.NoError(t, err)
-	req.Header.Set("X-SERJ-TOKEN", "test-token")
-	req.PostForm = url.Values{}
-	req.PostForm.Add("is_private", "false")
-	req.PostForm.Add("name", "safari")
+			tempRootDir := t.TempDir()
+			api, err := NewDiskApi(tempRootDir)
+			require.NoError(t, err)
+			require.NotNil(t, api)
 
-	// before
-	file := api.root.Files[fileId]
-	assert.Equal(t, fileName, file.Name)
-	assert.True(t, file.IsPrivate)
+			parentId := int64(0) // root = id 0
+			fileContentString := "random test file content"
+			fileContent := strings.NewReader(fileContentString)
+			fileName := "test-name"
+			fileId, err := api.Save(
+				ctx,
+				fileName,
+				parentId,
+				fileContent.Size(),
+				"rand-binary",
+				fileContent,
+			)
+			require.NoError(t, err)
+			assert.True(t, fileId > 0)
+			assert.Len(t, api.root.Files, 1)
 
-	rr := httptest.NewRecorder()
-	r.ServeHTTP(rr, req)
-	assert.Equal(t, fmt.Sprintf("updated:%d", fileId), rr.Body.String())
+			loginChecker := auth.NewLoginTestChecker()
+			loginChecker.LoggedSessions["test-token"] = true
+			fileHandler := NewFileHandler(api, loginChecker)
 
-	// after
-	assert.Equal(t, "safari", file.Name)
-	assert.False(t, file.IsPrivate)
-	fileContentRetrieved, err := os.ReadFile(file.Path)
-	require.NoError(t, err)
-	assert.Equal(t, fileContentString, string(fileContentRetrieved))
+			r := RouterSetup(fileHandler)
+
+			req := tc.req(fileId, t)
+
+			// before
+			file := api.root.Files[fileId]
+			assert.Equal(t, fileName, file.Name)
+			assert.True(t, file.IsPrivate)
+
+			rr := httptest.NewRecorder()
+			r.ServeHTTP(rr, req)
+			assert.Equal(t, fmt.Sprintf("updated:%d", fileId), rr.Body.String())
+
+			// after
+			assert.Equal(t, "safari", file.Name)
+			assert.False(t, file.IsPrivate)
+			fileContentRetrieved, err := os.ReadFile(file.Path)
+			require.NoError(t, err)
+			assert.Equal(t, fileContentString, string(fileContentRetrieved))
+		})
+	}
 }
 
 func TestFileHandler_handleGetRoot(t *testing.T) {
