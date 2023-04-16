@@ -16,15 +16,21 @@ git fetch --all
 echo "--> git: rebase ..."
 git rebase
 
-#   3 build project
-echo "--> building project ..."
+#   3 build projects
+echo "--> building main service ..."
 /usr/local/go/bin/go build -o /home/serj/serj-tubin-com/bin/service cmd/service/main.go
-echo "--> build project done"
+echo "--> build main service done"
+echo "--> building file box service ..."
+/usr/local/go/bin/go build -o /home/serj/serj-tubin-com/bin/file-box cmd/file_service/main.go
+echo "--> build file box service done"
 
-#   4 restart service and show info
-echo "--> restarting service ..."
+#   4 restart services
+echo "--> restarting main service ..."
 echo "${SERJ_PASS}\n" | sudo /bin/systemctl restart serj-tubin-backend.service
-echo "--> service restarted"
+echo "--> main service restarted"
+echo "--> restarting file box service ..."
+echo "${SERJ_PASS}\n" | sudo /bin/systemctl restart serj-tubin-file-box.service
+echo "--> file box service restarted"
 
 # build netlog backup tool (initiated by crontab)
 echo "--> building netlog backup tool ..."
