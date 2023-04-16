@@ -207,7 +207,7 @@ func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	defer span.End()
 
 	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
 	}

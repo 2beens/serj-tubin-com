@@ -290,7 +290,6 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 			defer span.End()
 
 			if r.Method == http.MethodOptions {
-				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.WriteHeader(http.StatusOK)
 				span.SetStatus(codes.Ok, "options-ok")
 				return
