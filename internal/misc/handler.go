@@ -70,7 +70,7 @@ func (handler *Handler) SetupRoutes(
 }
 
 func (handler *Handler) handleRoot(w http.ResponseWriter, _ *http.Request) {
-	pkg.WriteResponse(w, "", "I'm OK, thanks ;)")
+	pkg.WriteTextResponseOK(w, "I'm OK, thanks ;)")
 }
 
 // TODO: remove me after sentry tested
@@ -98,7 +98,7 @@ func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	pkg.WriteResponseBytes(w, "", qBytes)
+	pkg.WriteResponseBytesOK(w, pkg.ContentType.JSON, qBytes)
 }
 
 func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +128,7 @@ func (handler *Handler) handleWhereAmI(w http.ResponseWriter, r *http.Request) {
 	span.SetAttributes(attribute.String("user.country", ipInfo.Country))
 
 	geoResp := fmt.Sprintf(`{"city":"%s", "country":"%s"}`, ipInfo.City, ipInfo.Country)
-	pkg.WriteResponse(w, "application/json", geoResp)
+	pkg.WriteJSONResponseOK(w, geoResp)
 }
 
 func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +144,7 @@ func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
 
 	span.SetAttributes(attribute.String("user.ip", ip))
 	span.SetStatus(codes.Ok, fmt.Sprintf("user IP address: %s", ip))
-	pkg.WriteResponse(w, "", ip)
+	pkg.WriteTextResponseOK(w, ip)
 }
 
 func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -214,7 +214,7 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// token should probably not be logged, but whatta hell
 	log.Tracef("new login, token: %s", token)
 
-	pkg.WriteResponse(w, "", fmt.Sprintf(`{"token": "%s"}`, token))
+	pkg.WriteJSONResponseOK(w, fmt.Sprintf(`{"token": "%s"}`, token))
 }
 
 func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -246,9 +246,9 @@ func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("logout for [%s] success", authToken)
 
-	pkg.WriteResponse(w, "", "logged-out")
+	pkg.WriteTextResponseOK(w, "logged-out")
 }
 
 func (handler *Handler) handleGetVersionInfo(w http.ResponseWriter, _ *http.Request) {
-	pkg.WriteResponse(w, "", handler.versionInfo)
+	pkg.WriteTextResponseOK(w, handler.versionInfo)
 }

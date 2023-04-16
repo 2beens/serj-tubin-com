@@ -349,7 +349,7 @@ func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 	currentPostsCount := blogApi.PostsCount()
 
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	require.Equal(t, "added:5", rr.Body.String())
 	assert.Equal(t, currentPostsCount+1, blogApi.PostsCount())
 
@@ -387,7 +387,7 @@ func TestBlogHandler_handleNewBlog_jsonPayload_correctToken(t *testing.T) {
 	currentPostsCount := blogApi.PostsCount()
 
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	require.Equal(t, "added:5", rr.Body.String())
 	assert.Equal(t, currentPostsCount+1, blogApi.PostsCount())
 
