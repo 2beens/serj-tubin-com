@@ -43,8 +43,14 @@ func VisitsBackupUnixSocketListenerSetup(
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				log.Errorf("netlog backup unix socket listener conn accept: %s", err)
-				return
+				select {
+				case <-ctx.Done():
+					log.Error("netlog backup unix socket listener conn accept: context done")
+					return
+				default:
+					log.Errorf("netlog backup unix socket listener conn accept: %s", err)
+					return
+				}
 			}
 			log.Debugf("netlog backup unix socket got new conn: %s", conn.RemoteAddr().String())
 
