@@ -166,11 +166,6 @@ func (handler *Handler) handleMessagesRange(w http.ResponseWriter, r *http.Reque
 }
 
 func (handler *Handler) handleNewMessage(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	var boardMessage Message
 	if r.Header.Get("Content-Type") == "application/json" {
 		if err := json.NewDecoder(r.Body).Decode(&boardMessage); err != nil {

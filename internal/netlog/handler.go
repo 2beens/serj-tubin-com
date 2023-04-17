@@ -64,12 +64,6 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.getPage")
 	defer span.End()
 
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "GET, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	vars := mux.Vars(r)
 
 	field := vars["field"]
@@ -141,12 +135,6 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.new")
 	defer span.End()
-
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "POST, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
 
 	var reqData newVisitRequest
 	if r.Header.Get("Content-Type") == "application/json" {
@@ -240,12 +228,6 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.getPage")
 	defer span.End()
 
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "GET, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	vars := mux.Vars(r)
 
 	// TODO: maybe make configurable
@@ -290,6 +272,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 			defer span.End()
 
 			if r.Method == http.MethodOptions {
+				w.Header().Add("Allow", "GET, POST, OPTIONS")
 				w.WriteHeader(http.StatusOK)
 				span.SetStatus(codes.Ok, "options-ok")
 				return
