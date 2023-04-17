@@ -236,7 +236,7 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	pkg.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("updated:%d", id)))
+	pkg.WriteTextResponseOK(w, fmt.Sprintf("updated:%d", id))
 }
 
 func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
@@ -314,7 +314,7 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	pkg.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("deleted:%d", deletedCount)))
+	pkg.WriteTextResponseOK(w, fmt.Sprintf("deleted:%d", deletedCount))
 }
 
 func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request) {
@@ -341,7 +341,7 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	pkg.WriteResponseBytes(w, "application/json", rootInfoJson)
+	pkg.WriteJSONResponseOK(w, string(rootInfoJson))
 }
 
 func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Request) {
@@ -397,7 +397,7 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	} else {
 		log.Printf("child folder [%d][%s] for folder [%d] created", f.Id, f.Name, parentId)
-		pkg.WriteResponseBytes(w, "application/json", []byte(fmt.Sprintf("created:%d", f.Id)))
+		pkg.WriteResponse(w, pkg.ContentType.Text, fmt.Sprintf("created:%d", f.Id), http.StatusCreated)
 	}
 }
 
@@ -480,7 +480,10 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 		log.Tracef("new file added %d: [%s] added", newFileId, fileHeader.Filename)
 	}
 
-	pkg.WriteResponse(w, "", fmt.Sprintf("added:%s", strings.Join(addedFileIds, ",")))
+	pkg.WriteTextResponseOK(
+		w,
+		fmt.Sprintf("added:%s", strings.Join(addedFileIds, ",")),
+	)
 }
 
 func (handler *FileHandler) isLogged(r *http.Request) (bool, error) {

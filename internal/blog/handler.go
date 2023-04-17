@@ -98,8 +98,12 @@ func (handler *Handler) handleNewBlog(w http.ResponseWriter, r *http.Request) {
 
 	log.Tracef("new blog %d: [%s] added", newBlog.Id, newBlog.Title)
 
-	// TODO: refactor and unify responses
-	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", newBlog.Id))
+	pkg.WriteResponse(
+		w,
+		pkg.ContentType.Text,
+		fmt.Sprintf("added:%d", newBlog.Id),
+		http.StatusCreated,
+	)
 }
 
 func (handler *Handler) handleUpdateBlog(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +152,7 @@ func (handler *Handler) handleUpdateBlog(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", updateBlogReq.ID))
+	pkg.WriteTextResponseOK(w, fmt.Sprintf("updated:%d", updateBlogReq.ID))
 }
 
 func (handler *Handler) handleBlogClapped(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +191,7 @@ func (handler *Handler) handleBlogClapped(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", clapBlogReq.ID))
+	pkg.WriteTextResponseOK(w, fmt.Sprintf("updated:%d", clapBlogReq.ID))
 }
 
 func (handler *Handler) handleDeleteBlog(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +214,7 @@ func (handler *Handler) handleDeleteBlog(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
+	pkg.WriteTextResponseOK(w, fmt.Sprintf("deleted:%d", id))
 }
 
 func (handler *Handler) handleAll(w http.ResponseWriter, r *http.Request) {
@@ -229,7 +233,7 @@ func (handler *Handler) handleAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pkg.WriteResponseBytes(w, "application/json", allBlogsJson)
+	pkg.WriteResponseBytesOK(w, "application/json", allBlogsJson)
 }
 
 func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
@@ -290,7 +294,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 
 	resJson := fmt.Sprintf(`{"posts": %s, "total": %d}`, blogPostsJson, totalBlogsCount)
 
-	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
+	pkg.WriteJSONResponseOK(w, resJson)
 }
 
 func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {

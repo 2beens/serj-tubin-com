@@ -86,7 +86,7 @@ func (handler *Handler) handleGetMessagesPage(w http.ResponseWriter, r *http.Req
 	w.Header().Add("Content-Type", "application/json")
 
 	if len(boardMessages) == 0 {
-		pkg.WriteResponse(w, "application/json", "[]")
+		pkg.WriteJSONResponseOK(w, "[]")
 		return
 	}
 
@@ -97,7 +97,7 @@ func (handler *Handler) handleGetMessagesPage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	pkg.WriteResponseBytes(w, "application/json", messagesJson)
+	pkg.WriteJSONResponseOK(w, string(messagesJson))
 }
 
 func (handler *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
@@ -117,11 +117,11 @@ func (handler *Handler) handleDeleteMessage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// TODO: again - return proper JSON / requested response format
+	// TODO: again - return proper JSON / requested response format (i.e. here just status code)
 	if deleted {
-		pkg.WriteResponse(w, "", "true")
+		pkg.WriteTextResponseOK(w, "true")
 	} else {
-		pkg.WriteResponse(w, "", "false")
+		pkg.WriteTextResponseOK(w, "false")
 	}
 }
 
@@ -151,7 +151,7 @@ func (handler *Handler) handleMessagesRange(w http.ResponseWriter, r *http.Reque
 	}
 
 	if len(boardMessages) == 0 {
-		pkg.WriteResponse(w, "application/json", "[]")
+		pkg.WriteJSONResponseOK(w, "[]")
 		return
 	}
 
@@ -162,7 +162,7 @@ func (handler *Handler) handleMessagesRange(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	pkg.WriteResponseBytes(w, "application/json", messagesJson)
+	pkg.WriteJSONResponseOK(w, string(messagesJson))
 }
 
 func (handler *Handler) handleNewMessage(w http.ResponseWriter, r *http.Request) {
@@ -207,8 +207,7 @@ func (handler *Handler) handleNewMessage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// TODO: refactor and unify responses
-	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", id))
+	pkg.WriteResponse(w, pkg.ContentType.Text, fmt.Sprintf("added:%d", id), http.StatusCreated)
 }
 
 func (handler *Handler) handleMessagesCount(w http.ResponseWriter, _ *http.Request) {
@@ -220,8 +219,7 @@ func (handler *Handler) handleMessagesCount(w http.ResponseWriter, _ *http.Reque
 	}
 
 	resp := fmt.Sprintf(`{"count":%d}`, count)
-	// TODO: application/json is always returned, maybe add middleware which will add it to every request
-	pkg.WriteResponse(w, "application/json", resp)
+	pkg.WriteJSONResponseOK(w, resp)
 }
 
 func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Request) {
@@ -262,7 +260,7 @@ func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Requ
 	}
 
 	if len(boardMessages) == 0 {
-		pkg.WriteResponse(w, "application/json", "[]")
+		pkg.WriteJSONResponseOK(w, "[]")
 		return
 	}
 
@@ -273,7 +271,7 @@ func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	pkg.WriteResponseBytes(w, "application/json", messagesJson)
+	pkg.WriteJSONResponseOK(w, string(messagesJson))
 }
 
 func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {

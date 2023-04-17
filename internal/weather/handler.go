@@ -87,10 +87,7 @@ func (handler *Handler) HandleCurrent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = w.Write(weatherDescriptionsBytes)
-	if err != nil {
-		log.Errorf("failed to write response for weather: %s", err)
-	}
+	pkg.WriteResponseBytesOK(w, pkg.ContentType.JSON, weatherDescriptionsBytes)
 }
 
 func (handler *Handler) HandleTomorrow(w http.ResponseWriter, r *http.Request) {
@@ -155,10 +152,7 @@ func (handler *Handler) HandleTomorrow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = w.Write(weatherForecastBytes)
-	if err != nil {
-		log.Errorf("failed to write response for weather tomorrow: %s", err)
-	}
+	pkg.WriteResponseBytesOK(w, pkg.ContentType.JSON, weatherForecastBytes)
 }
 
 func (handler *Handler) Handle5Days(w http.ResponseWriter, r *http.Request) {
@@ -218,8 +212,5 @@ func (handler *Handler) Handle5Days(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = w.Write(weatherForecastBytes)
-	if err != nil {
-		log.Errorf("failed to write response for weather tomorrow: %s", err)
-	}
+	pkg.WriteResponseBytesOK(w, pkg.ContentType.JSON, weatherForecastBytes)
 }

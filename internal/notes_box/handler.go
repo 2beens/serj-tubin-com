@@ -85,7 +85,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	handler.metrics.CounterNotes.Inc()
 
 	log.Printf("new note added: [%s] [%s]: %d", addedNote.Title, addedNote.CreatedAt, addedNote.Id)
-	pkg.WriteResponse(w, "", fmt.Sprintf("added:%d", addedNote.Id))
+	pkg.WriteResponse(w, pkg.ContentType.Text, fmt.Sprintf("added:%d", addedNote.Id), http.StatusCreated)
 }
 
 func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +151,7 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("note updated: [%s] [%s]: %d", note.Title, note.CreatedAt, note.Id)
-	pkg.WriteResponse(w, "", fmt.Sprintf("updated:%d", note.Id))
+	pkg.WriteTextResponseOK(w, fmt.Sprintf("updated:%d", note.Id))
 }
 
 func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +174,7 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pkg.WriteResponse(w, "", fmt.Sprintf("deleted:%d", id))
+	pkg.WriteTextResponseOK(w, fmt.Sprintf("deleted:%d", id))
 }
 
 func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
@@ -197,7 +197,7 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resJson := fmt.Sprintf(`{"notes": %s, "total": %d}`, notesJson, len(notes))
-	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
+	pkg.WriteTextResponseOK(w, resJson)
 }
 
 func (handler *Handler) AuthMiddleware() func(next http.Handler) http.Handler {

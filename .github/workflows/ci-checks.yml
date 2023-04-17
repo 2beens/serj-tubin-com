@@ -2,15 +2,22 @@ name: CI
 on:
   pull_request:
 jobs:
-  govulncheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Scan for Vulnerabilities in Code
-        uses: Templum/govulncheck-action@v0.10.0
-        with:
-          go-version: 1.20
-          fail-on-vuln: true
+  # TODO: disabling - tool fails to run, opened an issue in their repo:
+  # https://github.com/Templum/govulncheck-action/issues/37
+#  govulncheck:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#      - name: Scan for Vulnerabilities in Code
+#        uses: Templum/govulncheck-action@v0.10.0
+#        with:
+#          go-version: 1.20
+#          vulncheck-version: latest
+#          package: ./...
+#          fail-on-vuln: true
+#        env:
+#          DEBUG: "true"
+
   golangci:
     name: linter checks
     runs-on: ubuntu-latest

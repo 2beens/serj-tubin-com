@@ -47,7 +47,7 @@ func TestGeoIp_GetRequestGeoInfo(t *testing.T) {
 		apiCallsCount++
 
 		if r.Method == http.MethodGet && r.URL.Path == "/127.0.0.2" {
-			pkg.WriteResponse(w, "application/json", ipInfoTestResponse)
+			pkg.WriteJSONResponseOK(w, ipInfoTestResponse)
 			return
 		}
 

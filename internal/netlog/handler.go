@@ -116,7 +116,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 
 	if len(visits) == 0 {
 		resJson := fmt.Sprintf(`{"visits": %s, "total": 0}`, "[]")
-		pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
+		pkg.WriteJSONResponseOK(w, resJson)
 		return
 	}
 
@@ -135,7 +135,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resJson := fmt.Sprintf(`{"visits": %s, "total": %d}`, visitsJson, allVisitsCount)
-	pkg.WriteResponseBytes(w, "application/json", []byte(resJson))
+	pkg.WriteJSONResponseOK(w, resJson)
 }
 
 func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
@@ -232,8 +232,8 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("new visit added: [%s] [%s][%s]", visit.Timestamp, visit.Source, visit.Device)
 
-	// TODO: no need to return any response, status code should be enough
-	pkg.WriteResponse(w, "", "added")
+	// TODO: no need to return any response data, status code should be enough
+	pkg.WriteResponse(w, pkg.ContentType.Text, "added", http.StatusCreated)
 }
 
 func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
@@ -269,7 +269,7 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(visits) == 0 {
-		pkg.WriteResponseBytes(w, "application/json", []byte("[]"))
+		pkg.WriteJSONResponseOK(w, "[]")
 		return
 	}
 
@@ -280,7 +280,7 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pkg.WriteResponseBytes(w, "application/json", visitsJson)
+	pkg.WriteJSONResponseOK(w, string(visitsJson))
 }
 
 func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
@@ -306,7 +306,7 @@ func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
 					reqIp, _ := pkg.ReadUserIP(r)
 					log.Warnf("unauthorized /netlog/new request detected from %s, authToken: %s", reqIp, authToken)
 					// fool the "attacker" by a fake positive response
-					pkg.WriteResponse(w, "", "added")
+					pkg.WriteTextResponseOK(w, "added")
 					span.SetStatus(codes.Error, "decoy-sent")
 					return
 				}

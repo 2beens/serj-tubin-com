@@ -267,7 +267,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 
 	netlogRouter.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, "text/plain; charset=utf-8", rr.Header().Get("Content-Type"))
+	assert.Equal(t, "text/plain", rr.Header().Get("Content-Type"))
 
 	resp := rr.Body.Bytes()
 	assert.Equal(t, "added", string(resp)) // this is a false positive "added"
@@ -323,8 +323,6 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, _ := redismock.NewClientMock()
 
-			t.Logf("----->> running test: %s", name)
-
 			browserReqSecret := "beer"
 			loginChecker := auth.NewLoginChecker(time.Hour, db)
 			netlogApi := NewTestApi()
@@ -369,9 +367,8 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			netlogRouter.ServeHTTP(rr, req)
-			require.Equal(t, http.StatusOK, rr.Code)
-			assert.Equal(t, http.StatusOK, rr.Code)
-			assert.Equal(t, "text/plain; charset=utf-8", rr.Header().Get("Content-Type"))
+			require.Equal(t, http.StatusCreated, rr.Code)
+			assert.Equal(t, "text/plain", rr.Header().Get("Content-Type"))
 
 			resp := rr.Body.Bytes()
 			assert.Equal(t, "added", string(resp))

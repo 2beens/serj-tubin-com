@@ -395,7 +395,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	require.Equal(t, "added:5", rr.Body.String())
 	messagesCount, err := boardClient.MessagesCount()
 	require.NoError(t, err)
@@ -410,7 +410,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	rr = httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	require.Equal(t, "added:6", rr.Body.String())
 	messagesCount, err = boardClient.MessagesCount()
 	require.NoError(t, err)
@@ -475,7 +475,7 @@ func TestBoardHandler_handleNewMessage_jsonPayload(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	require.Equal(t, "added:5", rr.Body.String())
 	messagesCount, err := boardClient.MessagesCount()
 	require.NoError(t, err)
