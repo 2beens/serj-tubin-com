@@ -387,6 +387,54 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 		})
 	}
 }
+func TestNetlogHandler_handleNewVisit_options_validToken(t *testing.T) {
+	db, _ := redismock.NewClientMock()
+
+	browserReqSecret := "beer"
+	loginChecker := auth.NewLoginChecker(time.Hour, db)
+	netlogApi := NewTestApi()
+
+	now := time.Now()
+	visit0 := Visit{
+		Id:        0,
+		Title:     "test title 0",
+		Source:    "chrome",
+		URL:       "test:url:0",
+		Timestamp: now,
+	}
+	visit1 := Visit{
+		Id:        1,
+		Title:     "test title 1",
+		Source:    "chrome",
+		URL:       "test:url:1",
+		Timestamp: now,
+	}
+	netlogApi.Visits[0] = visit0
+	netlogApi.Visits[1] = visit1
+
+	require.Len(t, netlogApi.Visits, 2)
+
+	r := mux.NewRouter()
+	netlogRouter := r.PathPrefix("/netlog").Subrouter()
+	m := metrics.NewTestManager()
+	handler := NewHandler(netlogApi, m, browserReqSecret, loginChecker)
+	handler.SetupRoutes(netlogRouter)
+	require.NotNil(t, handler)
+	require.NotNil(t, r)
+	require.NotNil(t, netlogRouter)
+
+	req, err := http.NewRequest("OPTIONS", "/netlog/new", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	netlogRouter.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	resp := rr.Body.Bytes()
+	assert.Equal(t, "", string(resp))
+	assert.Len(t, netlogApi.Visits, 2)
+	assert.Equal(t, float64(0), testutil.ToFloat64(m.CounterNetlogVisits))
+}
 
 func TestNetlogHandler_handleGetPage(t *testing.T) {
 	db, mock := redismock.NewClientMock()
