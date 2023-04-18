@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/middleware"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
@@ -221,6 +222,12 @@ func TestBlogHandler_handleNewBlog_notLoggedIn(t *testing.T) {
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
+	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		"browserRequestsSecret",
+		loginChecker,
+	)
+	r.Use(authMiddleware.AuthCheck())
+
 	handler := NewBlogHandler(blogApi, loginChecker)
 	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
 
@@ -366,6 +373,12 @@ func TestBlogHandler_handleNewBlog_jsonPayload_correctToken(t *testing.T) {
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
 
 	r := mux.NewRouter()
+	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		"browserRequestsSecret",
+		loginChecker,
+	)
+	r.Use(authMiddleware.AuthCheck())
+
 	handler := NewBlogHandler(blogApi, loginChecker)
 	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
 

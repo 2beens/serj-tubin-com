@@ -18,7 +18,6 @@ import (
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 )
 
 type newVisitRequest struct {
@@ -56,8 +55,6 @@ func (handler *Handler) SetupRoutes(router *mux.Router) {
 	router.HandleFunc("/limit/{limit}", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-with-limit")
 	router.HandleFunc("/s/{source}/f/{field}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("visits-page")
 	router.HandleFunc("/s/{source}/f/{field}/search/{keywords}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("search-page")
-
-	router.Use(handler.authMiddleware())
 }
 
 func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
@@ -263,63 +260,4 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pkg.WriteJSONResponseOK(w, string(visitsJson))
-}
-
-func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, span := tracing.GlobalTracer.Start(r.Context(), "netlogHandler.auth")
-			defer span.End()
-
-			if r.Method == http.MethodOptions {
-				w.Header().Add("Allow", "GET, POST, OPTIONS")
-				w.WriteHeader(http.StatusOK)
-				span.SetStatus(codes.Ok, "options-ok")
-				return
-			}
-
-			// a non standard req. header is set, and thus - browser makes a preflight/OPTIONS request:
-			//	https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#preflighted_requests
-			authToken := r.Header.Get("X-SERJ-TOKEN")
-
-			// requests coming from browser extension
-			if strings.HasPrefix(r.URL.Path, "/netlog/new") {
-				if handler.browserRequestsSecret != authToken {
-					reqIp, _ := pkg.ReadUserIP(r)
-					log.Warnf("unauthorized /netlog/new request detected from %s, authToken: %s", reqIp, authToken)
-					// fool the "attacker" by a fake positive response
-					pkg.WriteTextResponseOK(w, "added")
-					span.SetStatus(codes.Error, "decoy-sent")
-					return
-				}
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			if authToken == "" {
-				log.Tracef("[missing token] [visitor_board handler] unauthorized => %s", r.URL.Path)
-				http.Error(w, "no can do", http.StatusUnauthorized)
-				span.SetStatus(codes.Error, "missing-auth-token")
-				return
-			}
-
-			isLogged, err := handler.loginChecker.IsLogged(ctx, authToken)
-			if err != nil {
-				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
-				http.Error(w, "no can do", http.StatusUnauthorized)
-				span.SetStatus(codes.Error, "check-logged-err")
-				span.RecordError(err)
-				return
-			}
-			if !isLogged {
-				log.Tracef("[invalid token] [visitor_board handler] unauthorized => %s", r.URL.Path)
-				http.Error(w, "no can do", http.StatusUnauthorized)
-				span.SetStatus(codes.Error, "not-logged")
-				return
-			}
-
-			span.SetStatus(codes.Ok, "ok")
-			next.ServeHTTP(w, r)
-		})
-	}
 }

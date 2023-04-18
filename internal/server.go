@@ -249,17 +249,22 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	notesRouter.HandleFunc("", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
 	notesRouter.HandleFunc("", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
 	notesRouter.HandleFunc("/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
-	notesRouter.Use(notesHandler.AuthMiddleware())
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	}).Methods("GET", "POST", "PUT", "OPTIONS").Name("unknown")
 
+	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		s.browserRequestsSecret,
+		s.loginChecker,
+	)
+
 	r.Use(middleware.PanicRecovery(s.metricsManager))
-	r.Use(middleware.RequestMetrics(s.metricsManager))
 	r.Use(middleware.LogRequest())
+	r.Use(middleware.RequestMetrics(s.metricsManager))
 	r.Use(middleware.Cors())
+	r.Use(authMiddleware.AuthCheck())
 	r.Use(middleware.DrainAndCloseRequest())
 
 	return r, nil
