@@ -26,7 +26,7 @@ if [[ $(uname -m) == 'arm64' ]]; then
   docker compose -p serjservice \
     -f docker-compose.yml \
     -f docker-compose.apple-m1.yml \
-    up --build -d
+    down
 else
-  docker compose -p serjservice up --build -d
+  docker compose -p serjservice down
 fi
