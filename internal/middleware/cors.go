@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var allowedOrigins = map[string]bool{
@@ -21,6 +23,7 @@ func Cors() func(next http.Handler) http.Handler {
 				)
 				w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, PATCH, DELETE")
 			} else {
+				log.Debugf("---->> Origin [%s] is not allowed", origin)
 				w.WriteHeader(http.StatusForbidden)
 				return
 			}

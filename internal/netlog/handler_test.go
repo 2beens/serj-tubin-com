@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/go-redis/redismock/v8"
 
@@ -110,6 +111,7 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 	browserReqSecret := "beer"
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := NewTestApi()
+	netlogApi.Visits = make(map[int]Visit, 0)
 
 	r := mux.NewRouter()
 	m := metrics.NewTestManager()
@@ -174,24 +176,6 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := NewTestApi()
 
-	now := time.Now()
-	visit0 := Visit{
-		Id:        0,
-		Title:     "test title 0",
-		Source:    "chrome",
-		URL:       "test:url:0",
-		Timestamp: now,
-	}
-	visit1 := Visit{
-		Id:        1,
-		Title:     "test title 1",
-		Source:    "chrome",
-		URL:       "test:url:1",
-		Timestamp: now,
-	}
-	netlogApi.Visits[0] = visit0
-	netlogApi.Visits[1] = visit1
-
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	m := metrics.NewTestManager()
@@ -223,26 +207,6 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 	browserReqSecret := "rakija"
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := NewTestApi()
-
-	now := time.Now()
-	visit0 := Visit{
-		Id:        0,
-		Title:     "test title 0",
-		Source:    "chrome",
-		URL:       "test:url:0",
-		Timestamp: now,
-	}
-	visit1 := Visit{
-		Id:        1,
-		Title:     "test title 1",
-		Source:    "chrome",
-		URL:       "test:url:1",
-		Timestamp: now,
-	}
-	netlogApi.Visits[0] = visit0
-	netlogApi.Visits[1] = visit1
-
-	assert.Len(t, netlogApi.Visits, 2)
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
@@ -287,6 +251,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 				req, err := http.NewRequest("POST", "/netlog/new", nil)
 				require.NoError(t, err)
 				req.Header.Set("X-SERJ-TOKEN", "beer")
+				req.Header.Set("Origin", "test")
 
 				req.PostForm = url.Values{}
 				req.PostForm.Add("title", newVisitReq.Title)
@@ -313,6 +278,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 				require.NoError(t, err)
 				req.Header.Set("X-SERJ-TOKEN", "beer")
 				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", "test")
 
 				return req
 			},
@@ -321,40 +287,21 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			db, _ := redismock.NewClientMock()
-
-			browserReqSecret := "beer"
-			loginChecker := auth.NewLoginChecker(time.Hour, db)
-			netlogApi := NewTestApi()
-
-			now := time.Now()
-			visit0 := Visit{
-				Id:        0,
-				Title:     "test title 0",
-				Source:    "chrome",
-				URL:       "test:url:0",
-				Timestamp: now,
-			}
-			visit1 := Visit{
-				Id:        1,
-				Title:     "test title 1",
-				Source:    "chrome",
-				URL:       "test:url:1",
-				Timestamp: now,
-			}
-			netlogApi.Visits[0] = visit0
-			netlogApi.Visits[1] = visit1
-
-			assert.Len(t, netlogApi.Visits, 2)
-
-			r := mux.NewRouter()
-			netlogRouter := r.PathPrefix("/netlog").Subrouter()
 			m := metrics.NewTestManager()
-			handler := NewHandler(netlogApi, m, browserReqSecret, loginChecker)
+			// TODO: add integration tests instead of this approach
+			r := mux.NewRouter()
+			r.Use(middleware.PanicRecovery(m))
+			r.Use(middleware.RequestMetrics(m))
+			r.Use(middleware.LogRequest())
+			r.Use(middleware.Cors())
+			r.Use(middleware.DrainAndCloseRequest())
+
+			db, _ := redismock.NewClientMock()
+			netlogApi := NewTestApi()
+			handler := NewHandler(netlogApi, m, "beer", auth.NewLoginChecker(time.Hour, db))
+
+			netlogRouter := r.PathPrefix("/netlog").Subrouter()
 			handler.SetupRoutes(netlogRouter)
-			require.NotNil(t, handler)
-			require.NotNil(t, r)
-			require.NotNil(t, netlogRouter)
 
 			newVisitReq := newVisitRequest{
 				Title:     "Nonsense Title",
@@ -366,7 +313,7 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 			req := tc.req(t, newVisitReq)
 			rr := httptest.NewRecorder()
 
-			netlogRouter.ServeHTTP(rr, req)
+			r.ServeHTTP(rr, req)
 			require.Equal(t, http.StatusCreated, rr.Code)
 			assert.Equal(t, "text/plain", rr.Header().Get("Content-Type"))
 
@@ -387,41 +334,17 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 		})
 	}
 }
+
 func TestNetlogHandler_handleNewVisit_options_validToken(t *testing.T) {
 	db, _ := redismock.NewClientMock()
-
-	browserReqSecret := "beer"
-	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	netlogApi := NewTestApi()
-
-	now := time.Now()
-	visit0 := Visit{
-		Id:        0,
-		Title:     "test title 0",
-		Source:    "chrome",
-		URL:       "test:url:0",
-		Timestamp: now,
-	}
-	visit1 := Visit{
-		Id:        1,
-		Title:     "test title 1",
-		Source:    "chrome",
-		URL:       "test:url:1",
-		Timestamp: now,
-	}
-	netlogApi.Visits[0] = visit0
-	netlogApi.Visits[1] = visit1
-
-	require.Len(t, netlogApi.Visits, 2)
 
 	r := mux.NewRouter()
 	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	m := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, m, browserReqSecret, loginChecker)
+	handler := NewHandler(netlogApi, m, "beer", auth.NewLoginChecker(time.Hour, db))
 	handler.SetupRoutes(netlogRouter)
 	require.NotNil(t, handler)
-	require.NotNil(t, r)
-	require.NotNil(t, netlogRouter)
 
 	req, err := http.NewRequest("OPTIONS", "/netlog/new", nil)
 	require.NoError(t, err)
@@ -430,8 +353,7 @@ func TestNetlogHandler_handleNewVisit_options_validToken(t *testing.T) {
 	netlogRouter.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
 
-	resp := rr.Body.Bytes()
-	assert.Equal(t, "", string(resp))
+	assert.Equal(t, "", rr.Body.String())
 	assert.Len(t, netlogApi.Visits, 2)
 	assert.Equal(t, float64(0), testutil.ToFloat64(m.CounterNetlogVisits))
 }
@@ -444,24 +366,6 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	netlogApi := NewTestApi()
 
 	now := time.Now()
-	visit0 := Visit{
-		Id:        0,
-		Title:     "test title 0",
-		Source:    "chrome",
-		URL:       "test:url:0",
-		Timestamp: now,
-	}
-	visit1 := Visit{
-		Id:        1,
-		Title:     "test title 1",
-		Source:    "chrome",
-		URL:       "test:url:1",
-		Timestamp: now,
-	}
-
-	netlogApi.Visits[0] = visit0
-	netlogApi.Visits[1] = visit1
-
 	for id := 2; id <= 8; id++ {
 		netlogApi.Visits[id] = Visit{
 			Id:        id,
