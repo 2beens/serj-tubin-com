@@ -52,18 +52,24 @@ func VisitsBackupUnixSocketListenerSetup(
 			conn, err := listener.Accept()
 			if err != nil {
 				log.Errorf("netlog backup unix socket listener conn accept: %s", err)
-				return
+				pkg.SleepWithContext(ctx, time.Minute)
+				continue
 			}
 			log.Debugf("netlog backup unix socket got new conn: %s", conn.RemoteAddr().String())
 
 			// if it takes over 5 minutes to transfer all netlog data, then something is probably not right
 			if err := conn.SetDeadline(time.Now().Add(5 * time.Minute)); err != nil {
 				log.Errorf("failed to set conn timeout: %s", err)
-				return
+				pkg.SleepWithContext(ctx, time.Minute)
+				continue
 			}
 
 			go func() {
-				defer func() { _ = conn.Close() }()
+				defer func() {
+					if err := conn.Close(); err != nil {
+						log.Errorf("netlog backup, close conn: %s", err)
+					}
+				}()
 
 				buf := make([]byte, 1024)
 				n, err := conn.Read(buf)
