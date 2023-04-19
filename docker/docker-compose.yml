@@ -91,7 +91,6 @@ services:
   redis:
     image: redis
     command: redis-server --appendonly yes --requirepass todo
-    container_name: st-redis
     volumes:
       - ./docker-data-redis:/data
     ports:

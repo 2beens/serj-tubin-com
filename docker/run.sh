@@ -9,8 +9,8 @@ if [ $num_args -lt 1 ]; then
   print_usage_and_exit
 fi
 
-if [ "$1" != "up" ] && [ "$1" != "down" ]; then
-  echo "Error: first argument must be either 'up' or 'down'"
+if [ "$1" != "up" ] && [ "$1" != "down" ] && [ "$1" != "stop" ]; then
+  echo "Error: first argument must one of the following: 'up', 'down' or 'stop'"
   print_usage_and_exit
 fi
 
@@ -40,7 +40,7 @@ if [ "$1" == "up" ]; then
   else
     docker compose -p serjservice up --build -d
   fi
-else # down
+elif [ "$1" == "down" ]; then
   if [[ $(uname -m) == 'arm64' ]]; then
     echo "Using down on docker-compose.apple-m1.yml additionally ..."
     docker compose -p serjservice \
@@ -50,12 +50,22 @@ else # down
   else
     docker compose -p serjservice down
   fi
+else # stop
+  if [[ $(uname -m) == 'arm64' ]]; then
+    echo "Using stop on docker-compose.apple-m1.yml additionally ..."
+    docker compose -p serjservice \
+      -f docker-compose.yml \
+      -f docker-compose.apple-m1.yml \
+      stop
+  else
+    docker compose -p serjservice stop
+  fi
 fi
 
 echo "Done."
 
 ############ FUNCTIONS ###################
 print_usage_and_exit() {
-  echo "Usage: run.sh [up|down] [--nerdctl|-nc for nerdctl instead of docker]"
+  echo "Usage: run.sh [up|down|stop] [--nerdctl|-nc for nerdctl instead of docker]"
   exit 0
 }
