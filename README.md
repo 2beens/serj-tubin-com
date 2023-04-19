@@ -47,3 +47,10 @@
   - for metrics use Prometheus
   - for tracing use free Honeycomb plan
     - https://ui.honeycomb.io/serj-tubin-com/environments/test/send-data#
+
+### Easiest way to run it: yes, Docker 🐳🐳🐳🐳
+```sh
+cd docker
+make up
+# or make up-win on windows
+```
