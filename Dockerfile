@@ -1,14 +1,55 @@
-FROM golang:latest
+FROM golang:1.20.3-alpine AS builder
 
-WORKDIR /go/src/app
+# Disables the use of CGo when building the go app; CGo is a feature in the Go that allows code to call C functions.
+# By disabling CGo, we ensure that the Go binary does not depend on any C libraries, which provides a few benefits:
+#   Static binary
+#   Smaller Docker image
+#   Improved security
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+
+WORKDIR /build
+
+# Adding a user and running the service as that user is a security best practice, which helps limit the potential damage in case the service is compromised.
+# When the service runs as a non-root user, it has fewer privileges than the root user, which can mitigate the risk of unauthorized access and restrict the attacker's capabilities within the container.
+RUN adduser -D stservice
+
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY . .
 
-ENV OPEN_WEATHER_API_KEY="dummy"
-ENV SERJ_TUBIN_COM_SECRET_WORD="dummy"
-ENV SERJ_TUBIN_COM_ADMIN_USERNAME="dummy"
-ENV SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH="dummy"
-ENV SERJ_BROWSER_REQ_SECRET="dummy"
+# -w: disable the generation of debugging information (DWARF) in the resulting binary
+# -s: disable the generation of the symbol table in the resulting binary
+RUN go build -o bin/service -ldflags="-w -s" cmd/service/main.go
 
-RUN go build -o bin/service cmd/service/main.go
+FROM scratch
 
-CMD ["./bin/service", "-env", "dockerdev"]
+ARG OPEN_WEATHER_API_KEY_ARG=todo
+ARG SERJ_TUBIN_COM_ADMIN_USERNAME_ARG=todo
+ARG SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH_ARG=$$2a$$14$$gPDY7P8qGduPi.OKoPKzM.N/MTyZpP.q2tmbprdHH.1jyw7fK3KfW
+ARG SERJ_BROWSER_REQ_SECRET_ARG=todo
+ARG SERJ_REDIS_PASS_ARG=todo
+ARG OTEL_SERVICE_NAME_ARG=serj-tubin-com-docker-dev
+ARG HONEYCOMB_ENABLED_ARG="false"
+ARG HONEYCOMB_API_KEY_ARG=""
+ARG SENTRY_DSN_ARG=todo
+
+ENV OPEN_WEATHER_API_KEY=${OPEN_WEATHER_API_KEY_ARG}
+ENV SERJ_TUBIN_COM_ADMIN_USERNAME=${SERJ_TUBIN_COM_ADMIN_USERNAME_ARG}
+ENV SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH=${SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH_ARG}
+ENV SERJ_BROWSER_REQ_SECRET=${SERJ_BROWSER_REQ_SECRET_ARG}
+ENV SERJ_REDIS_PASS=${SERJ_REDIS_PASS_ARG}
+ENV OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME_ARG}
+ENV HONEYCOMB_ENABLED=${HONEYCOMB_ENABLED_ARG}
+ENV HONEYCOMB_API_KEY=${HONEYCOMB_API_KEY_ARG}
+ENV SENTRY_DSN=${SENTRY_DSN_ARG}
+
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /build/bin/service /usr/bin/service
+COPY --from=builder /build/bin/service /usr/bin/service
+COPY --from=builder /build/config.toml config.toml
+COPY --from=builder /build/assets assets
+
+USER stservice
+CMD ["./usr/bin/service", "-env", "dockerdev"]
