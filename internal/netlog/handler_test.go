@@ -216,38 +216,79 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 }
 
 func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
-	db, _ := redismock.NewClientMock()
+	testCases := map[string]struct {
+		req func(t *testing.T, newVisitReq newVisitRequest) *http.Request
+	}{
+		"post form payload": {
+			req: func(t *testing.T, newVisitReq newVisitRequest) *http.Request {
+				req, err := http.NewRequest("POST", "/netlog/new", nil)
+				require.NoError(t, err)
+				req.Header.Set("Origin", "test")
+				req.Header.Set("X-SERJ-TOKEN", "beer")
 
-	netlogApi := NewTestApi()
-	m := metrics.NewTestManager()
-	loginChecker := auth.NewLoginChecker(time.Hour, db)
-	browserReqSecret := "rakija"
-	r := setupNetlogRouterForTests(t, netlogApi, m, loginChecker, browserReqSecret)
+				req.PostForm = url.Values{}
+				req.PostForm.Add("title", "Nonsense Title")
+				req.PostForm.Add("source", "safari")
+				req.PostForm.Add("url", "https://hypofriend.de/en/mortgage-tips/first-time-buyers")
+				req.PostForm.Add("timestamp", strconv.Itoa(1612622746987))
 
-	req, err := http.NewRequest("POST", "/netlog/new", nil)
-	require.NoError(t, err)
-	req.Header.Set("Origin", "test")
-	req.Header.Set("X-SERJ-TOKEN", "beer")
-	rr := httptest.NewRecorder()
+				return req
+			},
+		},
+		"json payload": {
+			req: func(t *testing.T, newVisitReq newVisitRequest) *http.Request {
+				reqBytes, err := json.Marshal(newVisitRequest{
+					Title:     newVisitReq.Title,
+					Source:    newVisitReq.Source,
+					Device:    newVisitReq.Device,
+					URL:       newVisitReq.URL,
+					Timestamp: newVisitReq.Timestamp,
+				})
+				require.NoError(t, err)
 
-	jsTimestamp := 1612622746987
-	req.PostForm = url.Values{}
-	req.PostForm.Add("title", "Nonsense Title")
-	req.PostForm.Add("source", "safari")
-	req.PostForm.Add("url", "https://hypofriend.de/en/mortgage-tips/first-time-buyers")
-	req.PostForm.Add("timestamp", strconv.Itoa(jsTimestamp))
+				req, err := http.NewRequest("POST", "/netlog/new", bytes.NewBuffer(reqBytes))
+				require.NoError(t, err)
+				req.Header.Set("X-SERJ-TOKEN", "beer")
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", "test")
 
-	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, "text/plain", rr.Header().Get("Content-Type"))
+				return req
+			},
+		},
+	}
 
-	resp := rr.Body.Bytes()
-	assert.Equal(t, "added", string(resp)) // this is a false positive "added"
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			db, _ := redismock.NewClientMock()
 
-	// visits len is unchanged
-	assert.Len(t, netlogApi.Visits, 2)
+			netlogApi := NewTestApi()
+			m := metrics.NewTestManager()
+			loginChecker := auth.NewLoginChecker(time.Hour, db)
+			browserReqSecret := "rakija"
+			r := setupNetlogRouterForTests(t, netlogApi, m, loginChecker, browserReqSecret)
 
-	assert.Equal(t, float64(0), testutil.ToFloat64(m.CounterNetlogVisits))
+			newVisitReq := newVisitRequest{
+				Title:     "Nonsense Title",
+				Source:    "safari",
+				Device:    "super-cool-pc",
+				URL:       "https://hypofriend.de/en/mortgage-tips/first-time-buyers",
+				Timestamp: 1612622746987,
+			}
+			req := tc.req(t, newVisitReq)
+			rr := httptest.NewRecorder()
+
+			r.ServeHTTP(rr, req)
+			assert.Equal(t, http.StatusOK, rr.Code)
+			assert.Equal(t, "text/plain", rr.Header().Get("Content-Type"))
+
+			resp := rr.Body.Bytes()
+			assert.Equal(t, "added", string(resp)) // this is a false positive "added"
+
+			// visits len is unchanged
+			assert.Len(t, netlogApi.Visits, 2)
+			assert.Equal(t, float64(0), testutil.ToFloat64(m.CounterNetlogVisits))
+		})
+	}
 }
 
 func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
