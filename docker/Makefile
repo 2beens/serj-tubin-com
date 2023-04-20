@@ -4,17 +4,17 @@
 .PHONY: up-prometheus up-redis down-prometheus down-redis
 .PHONY: logs-fileservice logs-main
 .PHONY: rebuild-fileservice rebuild-mainservice
+.PHONY: up-mainservice-nc, down-mainservice-nc, stop-mainservice-nc
+.PHONY: up-mainservice, down-mainservice, stop-mainservice
 .PHONY: redis-cli
 
 # using regular docker on unix
 up:
 	@echo "Starting services ..."
 	@./run.sh up
-
 down:
 	@echo "Stopping services ..."
 	@./run.sh down
-
 stop:
 	@echo "Stopping services ..."
 	@./run.sh stop
@@ -23,11 +23,9 @@ stop:
 up-nc:
 	@echo "Starting services via nerdctl ..."
 	@./run.sh up --nerdctl
-
 down-nc:
 	@echo "Removing services via nerdctl ..."
 	@./run.sh down --nerdctl
-
 stop-nc:
 	@echo "Stopping services via nerdctl ..."
 	@./run.sh stop --nerdctl
@@ -35,17 +33,29 @@ stop-nc:
 # oh my dear windows
 up-win:
 	powershell.exe -Command "docker compose -p serjservice up --build -d"
-
 down-win:
 	powershell.exe -Command "docker compose -p serjservice down"
-
 stop-win:
 	powershell.exe -Command "docker compose -p serjservice stop"
+
+# will run only the main service and its dependencies
+up-mainservice:
+	@docker compose -f docker-compose.yml -f docker-compose.apple-m1.yml up mainservice --build -d
+down-mainservice:
+	@docker compose -f docker-compose.yml -f docker-compose.apple-m1.yml down
+stop-mainservice:
+	@docker compose -f docker-compose.yml -f docker-compose.apple-m1.yml stop mainservice
+
+up-mainservice-nc:
+	@nerdctl compose -f docker-compose.yml -f docker-compose.apple-m1.yml up mainservice --build -d
+down-mainservice-nc:
+	@nerdctl compose -f docker-compose.yml -f docker-compose.apple-m1.yml down
+stop-mainservice-nc:
+	@nerdctl compose -f docker-compose.yml -f docker-compose.apple-m1.yml stop mainservice
 
 up-prometheus:
 	@echo "Starting Prometheus in Docker ..."
 	@docker compose -p serj-tubin-com-prometheus -f docker-compose-prometheus.yml up -d
-
 up-redis:
 	@echo "Starting Redis in Docker ..."
 	@docker compose -p serj-tubin-com-redis -f docker-compose-redis.yml up -d
@@ -53,21 +63,18 @@ up-redis:
 down-prometheus:
 	@echo "Stopping Prometheus in Docker ..."
 	@docker compose -p serj-tubin-com-prometheus -f docker-compose-prometheus.yml down
-
 down-redis:
 	@echo "Stopping Redis in Docker ..."
 	@docker compose -p serj-tubin-com-redis -f docker-compose-redis.yml down
 
 logs-fileservice:
 	@docker compose -p serjservice logs fileservice --follow
-
 logs-main:
 	@docker compose -p serjservice logs mainservice --follow
 
 rebuild-fileservice:
 	@echo "Recreating file service without building dependencies ..."
 	@docker compose -p serjservice up -d --force-recreate --no-deps --build fileservice
-
 rebuild-mainservice:
 	@echo "Recreating main service without building dependencies ..."
 	@docker compose -p serjservice up -d --force-recreate --no-deps --build mainservice
