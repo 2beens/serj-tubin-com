@@ -77,6 +77,15 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 			// TODO: use Authorization header, not this custom one
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 
+			// visitor board: only path /messages/delete/ is protected
+			if strings.HasPrefix(r.URL.Path, "/messages/") {
+				if !strings.HasPrefix(r.URL.Path, "/messages/delete/") {
+					span.SetStatus(codes.Ok, "ok")
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
 			// requests coming from browser extension
 			if strings.HasPrefix(r.URL.Path, "/netlog/new") {
 				if h.browserRequestsSecret != authToken {

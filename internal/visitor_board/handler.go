@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
@@ -39,8 +38,6 @@ func (handler *Handler) SetupRoutes(router *mux.Router) {
 	router.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
 	router.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET").Name("messages-range")
 	router.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET").Name("messages-page")
-
-	router.Use(handler.authMiddleware())
 }
 
 func (handler *Handler) handleGetMessagesPage(w http.ResponseWriter, r *http.Request) {
@@ -267,42 +264,4 @@ func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Requ
 	}
 
 	pkg.WriteJSONResponseOK(w, string(messagesJson))
-}
-
-func (handler *Handler) authMiddleware() func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodOptions {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-
-			// for now, only path /messages/delete/ is protected
-			if !strings.HasPrefix(r.URL.Path, "/messages/delete/") {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			authToken := r.Header.Get("X-SERJ-TOKEN")
-			if authToken == "" {
-				log.Tracef("[missing token] [visitor_board handler] unauthorized => %s", r.URL.Path)
-				http.Error(w, "no can do", http.StatusUnauthorized)
-				return
-			}
-
-			isLogged, err := handler.loginChecker.IsLogged(r.Context(), authToken)
-			if err != nil {
-				log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
-				http.Error(w, "no can do", http.StatusUnauthorized)
-				return
-			}
-			if !isLogged {
-				log.Tracef("[invalid token] [visitor_board handler] unauthorized => %s", r.URL.Path)
-				http.Error(w, "no can do", http.StatusUnauthorized)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
 }
