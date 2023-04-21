@@ -8,7 +8,6 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
-	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
@@ -23,31 +22,10 @@ type Repo struct {
 	db *pgxpool.Pool
 }
 
-func NewRepo(
-	ctx context.Context,
-	dbHost, dbPort, dbName string,
-	tracingEnabled bool,
-) (*Repo, error) {
-	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
-	poolConfig, err := pgxpool.ParseConfig(connString)
-	if err != nil {
-		return nil, fmt.Errorf("parse netlog db config: %w", err)
-	}
-
-	if tracingEnabled {
-		poolConfig.ConnConfig.Tracer = otelpgx.NewTracer()
-	}
-
-	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
-	if err != nil {
-		return nil, fmt.Errorf("create connection pool: %w", err)
-	}
-
-	log.Debugf("notes api connected to: %s", connString)
-
+func NewRepo(db *pgxpool.Pool) *Repo {
 	return &Repo{
 		db: db,
-	}, nil
+	}
 }
 
 func (r *Repo) CloseDB() {
@@ -98,15 +76,35 @@ func (r *Repo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *Repo) List(ctx context.Context) ([]Message, error) {
-	rows, err := r.db.Query(
-		ctx,
-		`
-			SELECT
-				id, author, message, timestamp
-			FROM visitor_board_message
-			ORDER BY timestamp DESC;`,
-	)
+type ListOptions struct {
+	Limit int
+}
+
+func ListWithLimit(limit int) func(*ListOptions) {
+	return func(opts *ListOptions) {
+		opts.Limit = limit
+	}
+}
+
+func (r *Repo) List(ctx context.Context, options ...func(*ListOptions)) ([]Message, error) {
+	opts := &ListOptions{}
+	for _, option := range options {
+		option(opts)
+	}
+
+	limitClause := ""
+	var params []interface{}
+	if opts.Limit > 0 {
+		limitClause = "LIMIT $1"
+		params = append(params, opts.Limit)
+	}
+
+	query := `
+		SELECT
+			id, author, message, timestamp
+		FROM visitor_board_message
+		ORDER BY timestamp DESC ` + limitClause + ";"
+	rows, err := r.db.Query(ctx, query, params...)
 	if err != nil {
 		return nil, err
 	}

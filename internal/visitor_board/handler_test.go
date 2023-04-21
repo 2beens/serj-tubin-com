@@ -361,45 +361,6 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	}
 }
 
-func TestBoardHandler_handleMessagesRange(t *testing.T) {
-	boardClient, _, _, _ := getTestBoardClient()
-	redisClient, _ := redismock.NewClientMock()
-	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
-	m := metrics.NewTestManager()
-	r := setupVisitorBoardRouterForTests(t, boardClient, m, "", loginChecker)
-
-	req, err := http.NewRequest("GET", "/board/messages/from/1/to/3", nil)
-	require.NoError(t, err)
-	req.Header.Set("Origin", "test")
-	rr := httptest.NewRecorder()
-	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
-
-	var boardMessages []*Message
-	err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
-	require.NoError(t, err)
-	require.NotNil(t, boardMessages)
-
-	// order not guaranteed
-	require.Len(t, boardMessages, 3)
-	var found1, found2, found3 bool
-	for i := range boardMessages {
-		if boardMessages[i].ID == 1 {
-			found1 = true
-		}
-		if boardMessages[i].ID == 2 {
-			found2 = true
-		}
-		if boardMessages[i].ID == 3 {
-			found3 = true
-		}
-	}
-	assert.True(t, found1)
-	assert.True(t, found2)
-	assert.True(t, found3)
-}
-
 func TestBoardHandler_handleNewMessage(t *testing.T) {
 	boardClient, _, aeroTestClient, initialBoardMessages := getTestBoardClient()
 	redisClient, _ := redismock.NewClientMock()
