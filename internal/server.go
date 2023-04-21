@@ -387,6 +387,12 @@ func (s *Server) GracefulShutdown() {
 		}
 	}
 
+	if s.dbPool != nil {
+		log.Traceln("closing db pool ...")
+		s.dbPool.Close() // blocking operation
+		log.Trace("db pool closed")
+	}
+
 	if s.boardAeroClient != nil {
 		s.boardAeroClient.Close()
 		log.Trace("visitor_board aero client closed")

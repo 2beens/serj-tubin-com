@@ -28,12 +28,6 @@ func NewRepo(db *pgxpool.Pool) *Repo {
 	}
 }
 
-func (r *Repo) CloseDB() {
-	if r.db != nil {
-		r.db.Close()
-	}
-}
-
 func (r *Repo) Add(ctx context.Context, message Message) (int, error) {
 	rows, err := r.db.Query(
 		ctx,
