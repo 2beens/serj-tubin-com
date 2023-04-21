@@ -70,10 +70,11 @@ const (
 
 // ----------------
 
+// PredExp represents a predicate expression
 type PredExp interface {
 	String() string
 	marshaledSize() int
-	marshal(*baseCommand) error
+	marshal(*baseCommand)
 }
 
 type predExpBase struct {
@@ -101,7 +102,7 @@ func (e *predExpAnd) String() string {
 }
 
 // NewPredExpAnd creates an AND predicate. Argument describes the number of expressions.
-func NewPredExpAnd(nexpr uint16) *predExpAnd {
+func NewPredExpAnd(nexpr uint16) PredExp {
 	return &predExpAnd{nexpr: nexpr}
 }
 
@@ -109,10 +110,9 @@ func (e *predExpAnd) marshaledSize() int {
 	return e.predExpBase.marshaledSize() + 2
 }
 
-func (e *predExpAnd) marshal(cmd *baseCommand) error {
+func (e *predExpAnd) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, _AS_PREDEXP_AND, 2)
 	cmd.WriteUint16(e.nexpr)
-	return nil
 }
 
 // ---------------- predExpOr
@@ -128,7 +128,7 @@ func (e *predExpOr) String() string {
 }
 
 // NewPredExpOr creates an OR predicate. Argument describes the number of expressions.
-func NewPredExpOr(nexpr uint16) *predExpOr {
+func NewPredExpOr(nexpr uint16) PredExp {
 	return &predExpOr{nexpr: nexpr}
 }
 
@@ -136,10 +136,9 @@ func (e *predExpOr) marshaledSize() int {
 	return e.predExpBase.marshaledSize() + 2
 }
 
-func (e *predExpOr) marshal(cmd *baseCommand) error {
+func (e *predExpOr) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, _AS_PREDEXP_OR, 2)
 	cmd.WriteUint16(e.nexpr)
-	return nil
 }
 
 // ---------------- predExpNot
@@ -154,7 +153,7 @@ func (e *predExpNot) String() string {
 }
 
 // NewPredExpNot creates a NOT predicate
-func NewPredExpNot() *predExpNot {
+func NewPredExpNot() PredExp {
 	return &predExpNot{}
 }
 
@@ -162,9 +161,8 @@ func (e *predExpNot) marshaledSize() int {
 	return e.predExpBase.marshaledSize()
 }
 
-func (e *predExpNot) marshal(cmd *baseCommand) error {
+func (e *predExpNot) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, _AS_PREDEXP_NOT, 0)
-	return nil
 }
 
 // ---------------- predExpIntegerValue
@@ -180,7 +178,7 @@ func (e *predExpIntegerValue) String() string {
 }
 
 // NewPredExpIntegerValue embeds an int64 value in a predicate expression.
-func NewPredExpIntegerValue(val int64) *predExpIntegerValue {
+func NewPredExpIntegerValue(val int64) PredExp {
 	return &predExpIntegerValue{val: val}
 }
 
@@ -188,10 +186,9 @@ func (e *predExpIntegerValue) marshaledSize() int {
 	return e.predExpBase.marshaledSize() + 8
 }
 
-func (e *predExpIntegerValue) marshal(cmd *baseCommand) error {
+func (e *predExpIntegerValue) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, _AS_PREDEXP_INTEGER_VALUE, 8)
 	cmd.WriteInt64(e.val)
-	return nil
 }
 
 // ---------------- predExpStringValue
@@ -207,7 +204,7 @@ func (e *predExpStringValue) String() string {
 }
 
 // NewPredExpStringValue embeds a string value in a predicate expression.
-func NewPredExpStringValue(val string) *predExpStringValue {
+func NewPredExpStringValue(val string) PredExp {
 	return &predExpStringValue{val: val}
 }
 
@@ -215,10 +212,9 @@ func (e *predExpStringValue) marshaledSize() int {
 	return e.predExpBase.marshaledSize() + len(e.val)
 }
 
-func (e *predExpStringValue) marshal(cmd *baseCommand) error {
+func (e *predExpStringValue) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, _AS_PREDEXP_STRING_VALUE, uint32(len(e.val)))
 	cmd.WriteString(e.val)
-	return nil
 }
 
 // ---------------- predExpGeoJSONValue
@@ -234,7 +230,7 @@ func (e *predExpGeoJSONValue) String() string {
 }
 
 // NewPredExpGeoJSONValue embeds a GeoJSON value in a predicate expression.
-func NewPredExpGeoJSONValue(val string) *predExpGeoJSONValue {
+func NewPredExpGeoJSONValue(val string) PredExp {
 	return &predExpGeoJSONValue{val: val}
 }
 
@@ -245,12 +241,11 @@ func (e *predExpGeoJSONValue) marshaledSize() int {
 		len(e.val) // strlen value
 }
 
-func (e *predExpGeoJSONValue) marshal(cmd *baseCommand) error {
+func (e *predExpGeoJSONValue) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, _AS_PREDEXP_GEOJSON_VALUE, uint32(1+2+len(e.val)))
 	cmd.WriteByte(uint8(0))
 	cmd.WriteUint16(0)
 	cmd.WriteString(e.val)
-	return nil
 }
 
 // ---------------- predExp???Bin
@@ -268,32 +263,32 @@ func (e *predExpBin) String() string {
 }
 
 // NewPredExpUnknownBin creates a Bin predicate expression which its type is not known.
-func NewPredExpUnknownBin(name string) *predExpBin {
+func NewPredExpUnknownBin(name string) PredExp {
 	return &predExpBin{name: name, tag: _AS_PREDEXP_UNKNOWN_BIN}
 }
 
-// NewPredExpUnknownBin creates a Bin predicate expression which its type is integer.
-func NewPredExpIntegerBin(name string) *predExpBin {
+// NewPredExpIntegerBin creates a Bin predicate expression which its type is integer.
+func NewPredExpIntegerBin(name string) PredExp {
 	return &predExpBin{name: name, tag: _AS_PREDEXP_INTEGER_BIN}
 }
 
-// NewPredExpUnknownBin creates a Bin predicate expression which its type is String.
-func NewPredExpStringBin(name string) *predExpBin {
+// NewPredExpStringBin creates a Bin predicate expression which its type is String.
+func NewPredExpStringBin(name string) PredExp {
 	return &predExpBin{name: name, tag: _AS_PREDEXP_STRING_BIN}
 }
 
-// NewPredExpUnknownBin creates a Bin predicate expression which its type is GeoJSON.
-func NewPredExpGeoJSONBin(name string) *predExpBin {
+// NewPredExpGeoJSONBin creates a Bin predicate expression which its type is GeoJSON.
+func NewPredExpGeoJSONBin(name string) PredExp {
 	return &predExpBin{name: name, tag: _AS_PREDEXP_GEOJSON_BIN}
 }
 
-// NewPredExpUnknownBin creates a Bin predicate expression which its type is List.
-func NewPredExpListBin(name string) *predExpBin {
+// NewPredExpListBin creates a Bin predicate expression which its type is List.
+func NewPredExpListBin(name string) PredExp {
 	return &predExpBin{name: name, tag: _AS_PREDEXP_LIST_BIN}
 }
 
-// NewPredExpUnknownBin creates a Bin predicate expression which its type is Map.
-func NewPredExpMapBin(name string) *predExpBin {
+// NewPredExpMapBin creates a Bin predicate expression which its type is Map.
+func NewPredExpMapBin(name string) PredExp {
 	return &predExpBin{name: name, tag: _AS_PREDEXP_MAP_BIN}
 }
 
@@ -301,10 +296,9 @@ func (e *predExpBin) marshaledSize() int {
 	return e.predExpBase.marshaledSize() + len(e.name)
 }
 
-func (e *predExpBin) marshal(cmd *baseCommand) error {
+func (e *predExpBin) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, e.tag, uint32(len(e.name)))
 	cmd.WriteString(e.name)
-	return nil
 }
 
 // ---------------- predExp???Var
@@ -322,17 +316,17 @@ func (e *predExpVar) String() string {
 }
 
 // NewPredExpIntegerVar creates 64 bit integer variable used in list/map iterations.
-func NewPredExpIntegerVar(name string) *predExpVar {
+func NewPredExpIntegerVar(name string) PredExp {
 	return &predExpVar{name: name, tag: _AS_PREDEXP_INTEGER_VAR}
 }
 
 // NewPredExpStringVar creates string variable used in list/map iterations.
-func NewPredExpStringVar(name string) *predExpVar {
+func NewPredExpStringVar(name string) PredExp {
 	return &predExpVar{name: name, tag: _AS_PREDEXP_STRING_VAR}
 }
 
 // NewPredExpGeoJSONVar creates GeoJSON variable used in list/map iterations.
-func NewPredExpGeoJSONVar(name string) *predExpVar {
+func NewPredExpGeoJSONVar(name string) PredExp {
 	return &predExpVar{name: name, tag: _AS_PREDEXP_GEOJSON_VAR}
 }
 
@@ -340,10 +334,9 @@ func (e *predExpVar) marshaledSize() int {
 	return e.predExpBase.marshaledSize() + len(e.name)
 }
 
-func (e *predExpVar) marshal(cmd *baseCommand) error {
+func (e *predExpVar) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, e.tag, uint32(len(e.name)))
 	cmd.WriteString(e.name)
-	return nil
 }
 
 // ---------------- predExpMD (RecDeviceSize, RecLastUpdate, RecVoidTime)
@@ -373,23 +366,22 @@ func (e *predExpMD) marshaledSize() int {
 	return e.predExpBase.marshaledSize()
 }
 
-func (e *predExpMD) marshal(cmd *baseCommand) error {
+func (e *predExpMD) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, e.tag, 0)
-	return nil
 }
 
 // NewPredExpRecDeviceSize creates record size on disk predicate
-func NewPredExpRecDeviceSize() *predExpMD {
+func NewPredExpRecDeviceSize() PredExp {
 	return &predExpMD{tag: _AS_PREDEXP_REC_DEVICE_SIZE}
 }
 
 // NewPredExpRecLastUpdate creates record last update predicate
-func NewPredExpRecLastUpdate() *predExpMD {
+func NewPredExpRecLastUpdate() PredExp {
 	return &predExpMD{tag: _AS_PREDEXP_REC_LAST_UPDATE}
 }
 
 // NewPredExpRecVoidTime creates record expiration time predicate expressed in nanoseconds since 1970-01-01 epoch as 64 bit integer.
-func NewPredExpRecVoidTime() *predExpMD {
+func NewPredExpRecVoidTime() PredExp {
 	return &predExpMD{tag: _AS_PREDEXP_REC_VOID_TIME}
 }
 
@@ -409,10 +401,9 @@ func (e *predExpMDDigestModulo) marshaledSize() int {
 	return e.predExpBase.marshaledSize() + 4
 }
 
-func (e *predExpMDDigestModulo) marshal(cmd *baseCommand) error {
+func (e *predExpMDDigestModulo) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, _AS_PREDEXP_REC_DIGEST_MODULO, 4)
 	cmd.WriteInt32(e.mod)
-	return nil
 }
 
 // NewPredExpRecDigestModulo creates a digest modulo record metadata value predicate expression.
@@ -422,12 +413,12 @@ func (e *predExpMDDigestModulo) marshal(cmd *baseCommand) error {
 //
 // For example, the following sequence of predicate expressions
 // selects records that have digest(key) % 3 == 1):
-// stmt.SetPredExp(
-// 		NewPredExpRecDigestModulo(3),
-// 		NewPredExpIntegerValue(1),
-// 		NewPredExpIntegerEqual(),
-// )
-func NewPredExpRecDigestModulo(mod int32) *predExpMDDigestModulo {
+//  stmt.SetPredExp(
+//  	NewPredExpRecDigestModulo(3),
+//  	NewPredExpIntegerValue(1),
+//  	NewPredExpIntegerEqual(),
+//  )
+func NewPredExpRecDigestModulo(mod int32) PredExp {
 	return &predExpMDDigestModulo{mod: mod}
 }
 
@@ -468,58 +459,57 @@ func (e *predExpCompare) marshaledSize() int {
 	return e.predExpBase.marshaledSize()
 }
 
-func (e *predExpCompare) marshal(cmd *baseCommand) error {
+func (e *predExpCompare) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, e.tag, 0)
-	return nil
 }
 
 // NewPredExpIntegerEqual creates Equal predicate for integer values
-func NewPredExpIntegerEqual() *predExpCompare {
+func NewPredExpIntegerEqual() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_INTEGER_EQUAL}
 }
 
 // NewPredExpIntegerUnequal creates NotEqual predicate for integer values
-func NewPredExpIntegerUnequal() *predExpCompare {
+func NewPredExpIntegerUnequal() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_INTEGER_UNEQUAL}
 }
 
 // NewPredExpIntegerGreater creates Greater Than predicate for integer values
-func NewPredExpIntegerGreater() *predExpCompare {
+func NewPredExpIntegerGreater() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_INTEGER_GREATER}
 }
 
 // NewPredExpIntegerGreaterEq creates Greater Than Or Equal predicate for integer values
-func NewPredExpIntegerGreaterEq() *predExpCompare {
+func NewPredExpIntegerGreaterEq() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_INTEGER_GREATEREQ}
 }
 
 // NewPredExpIntegerLess creates Less Than predicate for integer values
-func NewPredExpIntegerLess() *predExpCompare {
+func NewPredExpIntegerLess() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_INTEGER_LESS}
 }
 
 // NewPredExpIntegerLessEq creates Less Than Or Equal predicate for integer values
-func NewPredExpIntegerLessEq() *predExpCompare {
+func NewPredExpIntegerLessEq() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_INTEGER_LESSEQ}
 }
 
 // NewPredExpStringEqual creates Equal predicate for string values
-func NewPredExpStringEqual() *predExpCompare {
+func NewPredExpStringEqual() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_STRING_EQUAL}
 }
 
 // NewPredExpStringUnequal creates Not Equal predicate for string values
-func NewPredExpStringUnequal() *predExpCompare {
+func NewPredExpStringUnequal() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_STRING_UNEQUAL}
 }
 
 // NewPredExpGeoJSONWithin creates Within Region predicate for GeoJSON values
-func NewPredExpGeoJSONWithin() *predExpCompare {
+func NewPredExpGeoJSONWithin() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_GEOJSON_WITHIN}
 }
 
 // NewPredExpGeoJSONContains creates Region Contains predicate for GeoJSON values
-func NewPredExpGeoJSONContains() *predExpCompare {
+func NewPredExpGeoJSONContains() PredExp {
 	return &predExpCompare{tag: _AS_PREDEXP_GEOJSON_CONTAINS}
 }
 
@@ -536,7 +526,7 @@ func (e *predExpStringRegex) String() string {
 }
 
 // NewPredExpStringRegex creates a Regex predicate
-func NewPredExpStringRegex(cflags uint32) *predExpStringRegex {
+func NewPredExpStringRegex(cflags uint32) PredExp {
 	return &predExpStringRegex{cflags: cflags}
 }
 
@@ -544,10 +534,9 @@ func (e *predExpStringRegex) marshaledSize() int {
 	return e.predExpBase.marshaledSize() + 4
 }
 
-func (e *predExpStringRegex) marshal(cmd *baseCommand) error {
+func (e *predExpStringRegex) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, _AS_PREDEXP_STRING_REGEX, 4)
 	cmd.WriteUint32(e.cflags)
-	return nil
 }
 
 // ---------------- predExp???Iterate???
@@ -579,32 +568,32 @@ func (e *predExpIter) String() string {
 }
 
 // NewPredExpListIterateOr creates an Or iterator predicate for list items
-func NewPredExpListIterateOr(name string) *predExpIter {
+func NewPredExpListIterateOr(name string) PredExp {
 	return &predExpIter{name: name, tag: _AS_PREDEXP_LIST_ITERATE_OR}
 }
 
 // NewPredExpMapKeyIterateOr creates an Or iterator predicate on map keys
-func NewPredExpMapKeyIterateOr(name string) *predExpIter {
+func NewPredExpMapKeyIterateOr(name string) PredExp {
 	return &predExpIter{name: name, tag: _AS_PREDEXP_MAPKEY_ITERATE_OR}
 }
 
 // NewPredExpMapValIterateOr creates an Or iterator predicate on map values
-func NewPredExpMapValIterateOr(name string) *predExpIter {
+func NewPredExpMapValIterateOr(name string) PredExp {
 	return &predExpIter{name: name, tag: _AS_PREDEXP_MAPVAL_ITERATE_OR}
 }
 
 // NewPredExpListIterateAnd creates an And iterator predicate for list items
-func NewPredExpListIterateAnd(name string) *predExpIter {
+func NewPredExpListIterateAnd(name string) PredExp {
 	return &predExpIter{name: name, tag: _AS_PREDEXP_LIST_ITERATE_AND}
 }
 
 // NewPredExpMapKeyIterateAnd creates an And iterator predicate on map keys
-func NewPredExpMapKeyIterateAnd(name string) *predExpIter {
+func NewPredExpMapKeyIterateAnd(name string) PredExp {
 	return &predExpIter{name: name, tag: _AS_PREDEXP_MAPKEY_ITERATE_AND}
 }
 
-// NewPredExpMapKeyIterateAnd creates an And iterator predicate on map values
-func NewPredExpMapValIterateAnd(name string) *predExpIter {
+// NewPredExpMapValIterateAnd creates an And iterator predicate on map values
+func NewPredExpMapValIterateAnd(name string) PredExp {
 	return &predExpIter{name: name, tag: _AS_PREDEXP_MAPVAL_ITERATE_AND}
 }
 
@@ -612,8 +601,7 @@ func (e *predExpIter) marshaledSize() int {
 	return e.predExpBase.marshaledSize() + len(e.name)
 }
 
-func (e *predExpIter) marshal(cmd *baseCommand) error {
+func (e *predExpIter) marshal(cmd *baseCommand) {
 	e.marshalTL(cmd, e.tag, uint32(len(e.name)))
 	cmd.WriteString(e.name)
-	return nil
 }

@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,14 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	. "github.com/aerospike/aerospike-client-go/types"
-	Buffer "github.com/aerospike/aerospike-client-go/utils/buffer"
+	"github.com/aerospike/aerospike-client-go/types"
 )
 
 // Partition encapsulates partition information.
 type Partition struct {
-	Namespace   string
+	// Namespace of the partition
+	Namespace string
+	// PartitionId of the partition
 	PartitionId int
 	partitions  *Partitions
 	replica     ReplicaPolicy
@@ -35,13 +36,11 @@ type Partition struct {
 // NewPartition returns a partition representation
 func NewPartition(partitions *Partitions, key *Key, replica ReplicaPolicy, linearize bool) *Partition {
 	return &Partition{
-		partitions: partitions,
-		Namespace:  key.Namespace(),
-		replica:    replica,
-		linearize:  linearize,
-		// CAN'T USE MOD directly - mod will give negative numbers.
-		// First AND makes positive and negative correctly, then mod.
-		PartitionId: int(Buffer.LittleBytesToInt32(key.digest[:], 0)&0xFFFF) & (_PARTITIONS - 1),
+		partitions:  partitions,
+		Namespace:   key.Namespace(),
+		replica:     replica,
+		linearize:   linearize,
+		PartitionId: key.PartitionId(),
 	}
 }
 
@@ -180,7 +179,7 @@ func (ptn *Partition) PrepareRetryRead(isClientTimeout bool) {
 	}
 }
 
-// PrepareRetryRead increases sequence number before write retries
+// PrepareRetryWrite increases sequence number before write retries
 func (ptn *Partition) PrepareRetryWrite(isClientTimeout bool) {
 	if !isClientTimeout {
 		ptn.sequence++
@@ -273,5 +272,5 @@ func newInvalidNamespaceError(ns string, mapSize int) error {
 	if mapSize != 0 {
 		s = "Namespace not found in partition map: " + ns
 	}
-	return NewAerospikeError(INVALID_NAMESPACE, s)
+	return types.NewAerospikeError(types.INVALID_NAMESPACE, s)
 }

@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,8 @@ import (
 	"reflect"
 
 	ParticleType "github.com/aerospike/aerospike-client-go/internal/particle_type"
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/types"
+
 	Buffer "github.com/aerospike/aerospike-client-go/utils/buffer"
 )
 
@@ -232,7 +233,7 @@ func (upckr *unpacker) unpackBlob(count int, isMapKey bool) (interface{}, error)
 		val = NewGeoJSONValue(string(upckr.buffer[upckr.offset : upckr.offset+count]))
 
 	default:
-		panic(NewAerospikeError(SERIALIZE_ERROR, fmt.Sprintf("Error while unpacking BLOB. Type-header with code `%d` not recognized.", theType)))
+		return nil, types.NewAerospikeError(types.PARSE_ERROR, fmt.Sprintf("Error while unpacking BLOB. Type-header with code `%d` not recognized.", theType))
 	}
 	upckr.offset += count
 
@@ -411,5 +412,5 @@ func (upckr *unpacker) unpackObject(isMapKey bool) (interface{}, error) {
 		}
 	}
 
-	return nil, NewAerospikeError(SERIALIZE_ERROR)
+	return nil, types.NewAerospikeError(types.SERIALIZE_ERROR)
 }

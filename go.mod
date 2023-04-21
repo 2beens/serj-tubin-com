@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/BurntSushi/toml v1.2.1
-	github.com/aerospike/aerospike-client-go v3.0.0+incompatible
+	github.com/aerospike/aerospike-client-go v4.5.2+incompatible
 	github.com/brianvoe/gofakeit/v6 v6.19.0
 	github.com/coocood/freecache v1.1.0
 	github.com/dgraph-io/ristretto v0.0.3

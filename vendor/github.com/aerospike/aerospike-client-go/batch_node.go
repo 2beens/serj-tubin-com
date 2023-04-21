@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 package aerospike
 
 import (
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/types"
 )
 
 type batchNode struct {
@@ -27,7 +27,7 @@ func newBatchNodeList(cluster *Cluster, policy *BatchPolicy, keys []*Key) ([]*ba
 	nodes := cluster.GetNodes()
 
 	if len(nodes) == 0 {
-		return nil, NewAerospikeError(SERVER_NOT_AVAILABLE, "command failed because cluster is empty.")
+		return nil, types.NewAerospikeError(types.SERVER_NOT_AVAILABLE, "command failed because cluster is empty.")
 	}
 
 	// Create initial key capacity for each node as average + 25%.
@@ -64,7 +64,7 @@ func newBatchNodeListKeys(cluster *Cluster, policy *BatchPolicy, keys []*Key, se
 	nodes := cluster.GetNodes()
 
 	if len(nodes) == 0 {
-		return nil, NewAerospikeError(SERVER_NOT_AVAILABLE, "command failed because cluster is empty.")
+		return nil, types.NewAerospikeError(types.SERVER_NOT_AVAILABLE, "command failed because cluster is empty.")
 	}
 
 	// Create initial key capacity for each node as average + 25%.
@@ -82,16 +82,16 @@ func newBatchNodeListKeys(cluster *Cluster, policy *BatchPolicy, keys []*Key, se
 	// Split keys by server node.
 	batchNodes := make([]*batchNode, 0, len(nodes))
 
-	for i, offset := range batchSeed.offsets {
+	for _, offset := range batchSeed.offsets {
 		node, err := GetNodeBatchRead(cluster, keys[offset], replicaPolicy, replicaPolicySC, sequenceAP, sequenceSC)
 		if err != nil {
 			return nil, err
 		}
 
 		if batchNode := findBatchNode(batchNodes, node); batchNode == nil {
-			batchNodes = append(batchNodes, newBatchNode(node, keysPerNode, i))
+			batchNodes = append(batchNodes, newBatchNode(node, keysPerNode, offset))
 		} else {
-			batchNode.AddKey(i)
+			batchNode.AddKey(offset)
 		}
 	}
 	return batchNodes, nil
@@ -101,7 +101,7 @@ func newBatchNodeListRecords(cluster *Cluster, policy *BatchPolicy, records []*B
 	nodes := cluster.GetNodes()
 
 	if len(nodes) == 0 {
-		return nil, NewAerospikeError(SERVER_NOT_AVAILABLE, "command failed because cluster is empty.")
+		return nil, types.NewAerospikeError(types.SERVER_NOT_AVAILABLE, "command failed because cluster is empty.")
 	}
 
 	// Create initial key capacity for each node as average + 25%.
@@ -119,16 +119,16 @@ func newBatchNodeListRecords(cluster *Cluster, policy *BatchPolicy, records []*B
 	// Split keys by server node.
 	batchNodes := make([]*batchNode, 0, len(nodes))
 
-	for i, offset := range batchSeed.offsets {
+	for _, offset := range batchSeed.offsets {
 		node, err := GetNodeBatchRead(cluster, records[offset].Key, replicaPolicy, replicaPolicySC, sequenceAP, sequenceSC)
 		if err != nil {
 			return nil, err
 		}
 
 		if batchNode := findBatchNode(batchNodes, node); batchNode == nil {
-			batchNodes = append(batchNodes, newBatchNode(node, keysPerNode, i))
+			batchNodes = append(batchNodes, newBatchNode(node, keysPerNode, offset))
 		} else {
-			batchNode.AddKey(i)
+			batchNode.AddKey(offset)
 		}
 	}
 	return batchNodes, nil
@@ -138,7 +138,7 @@ func newBatchIndexNodeList(cluster *Cluster, policy *BatchPolicy, records []*Bat
 	nodes := cluster.GetNodes()
 
 	if len(nodes) == 0 {
-		return nil, NewAerospikeError(SERVER_NOT_AVAILABLE, "command failed because cluster is empty.")
+		return nil, types.NewAerospikeError(types.SERVER_NOT_AVAILABLE, "command failed because cluster is empty.")
 	}
 
 	// Create initial key capacity for each node as average + 25%.

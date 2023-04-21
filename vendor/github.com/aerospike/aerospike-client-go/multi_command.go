@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,8 @@ package aerospike
 import (
 	"fmt"
 	"reflect"
-	"time"
 
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/types"
 	xrand "github.com/aerospike/aerospike-client-go/types/rand"
 	Buffer "github.com/aerospike/aerospike-client-go/utils/buffer"
 )
@@ -31,15 +30,13 @@ type baseMultiCommand struct {
 	clusterKey int64
 	first      bool
 
-	terminationError ResultCode
-
 	recordset *Recordset
 
-	terminationErrorType ResultCode
+	// Used in correct Scans/Queries
+	tracker        *partitionTracker
+	nodePartitions *nodePartitions
 
-	errChan chan error
-
-	socketTimeout time.Duration
+	terminationErrorType types.ResultCode
 
 	resObjType     reflect.Type
 	resObjMappings map[string][]int
@@ -62,8 +59,7 @@ var prepareReflectionData func(cmd *baseMultiCommand)
 func newMultiCommand(node *Node, recordset *Recordset) *baseMultiCommand {
 	cmd := &baseMultiCommand{
 		baseCommand: baseCommand{
-			node:    node,
-			oneShot: true,
+			node: node,
 		},
 		recordset: recordset,
 	}
@@ -74,7 +70,7 @@ func newMultiCommand(node *Node, recordset *Recordset) *baseMultiCommand {
 	return cmd
 }
 
-func newCorrectMultiCommand(node *Node, recordset *Recordset, namespace string, clusterKey int64, first bool) *baseMultiCommand {
+func newStreamingMultiCommand(node *Node, recordset *Recordset, namespace string, clusterKey int64, first bool) *baseMultiCommand {
 	cmd := &baseMultiCommand{
 		baseCommand: baseCommand{
 			node:    node,
@@ -84,6 +80,21 @@ func newCorrectMultiCommand(node *Node, recordset *Recordset, namespace string, 
 		clusterKey: clusterKey,
 		first:      first,
 		recordset:  recordset,
+	}
+
+	if prepareReflectionData != nil {
+		prepareReflectionData(cmd)
+	}
+	return cmd
+}
+
+func newCorrectStreamingMultiCommand(recordset *Recordset, namespace string) *baseMultiCommand {
+	cmd := &baseMultiCommand{
+		baseCommand: baseCommand{
+			oneShot: true,
+		},
+		namespace: namespace,
+		recordset: recordset,
 	}
 
 	if prepareReflectionData != nil {
@@ -117,8 +128,8 @@ func (cmd *baseMultiCommand) parseResult(ifc command, conn *Connection) error {
 
 	cmd.bc = newBufferedConn(conn, 0)
 	for status {
-		if err := cmd.conn.initInflater(false, 0); err != nil {
-			return NewAerospikeError(PARSE_ERROR, "Error setting up zlib inflater:", err.Error())
+		if err = cmd.conn.initInflater(false, 0); err != nil {
+			return types.NewAerospikeError(types.PARSE_ERROR, "Error setting up zlib inflater:", err.Error())
 		}
 		cmd.bc.reset(8)
 
@@ -141,8 +152,8 @@ func (cmd *baseMultiCommand) parseResult(ifc command, conn *Connection) error {
 			}
 
 			receiveSize = int(Buffer.BytesToInt64(cmd.dataBuffer, 0)) - 8
-			if err := cmd.conn.initInflater(true, compressedSize-8); err != nil {
-				return NewAerospikeError(PARSE_ERROR, fmt.Sprintf("Error setting up zlib inflater for size `%d`: %s", compressedSize-8, err.Error()))
+			if err = cmd.conn.initInflater(true, compressedSize-8); err != nil {
+				return types.NewAerospikeError(types.PARSE_ERROR, fmt.Sprintf("Error setting up zlib inflater for size `%d`: %s", compressedSize-8, err.Error()))
 			}
 
 			// read the first 8 bytes
@@ -154,7 +165,7 @@ func (cmd *baseMultiCommand) parseResult(ifc command, conn *Connection) error {
 
 		// Validate header to make sure we are at the beginning of a message
 		proto = Buffer.BytesToInt64(cmd.dataBuffer, 0)
-		if err := cmd.validateHeader(proto); err != nil {
+		if err = cmd.validateHeader(proto); err != nil {
 			return err
 		}
 
@@ -217,7 +228,7 @@ func (cmd *baseMultiCommand) readBytes(length int) (err error) {
 	// Corrupted data streams can result in a huge length.
 	// Do a sanity check here.
 	if length > MaxBufferSize || length < 0 {
-		return NewAerospikeError(PARSE_ERROR, fmt.Sprintf("Invalid readBytes length: %d", length))
+		return types.NewAerospikeError(types.PARSE_ERROR, fmt.Sprintf("Invalid readBytes length: %d", length))
 	}
 
 	cmd.dataBuffer, err = cmd.bc.read(length)
@@ -238,13 +249,13 @@ func (cmd *baseMultiCommand) parseRecordResults(ifc command, receiveSize int) (b
 			err = newNodeError(cmd.node, err)
 			return false, err
 		}
-		resultCode := ResultCode(cmd.dataBuffer[5] & 0xFF)
+		resultCode := types.ResultCode(cmd.dataBuffer[5] & 0xFF)
 
 		if resultCode != 0 {
-			if resultCode == KEY_NOT_FOUND_ERROR || resultCode == FILTERED_OUT {
+			if resultCode == types.KEY_NOT_FOUND_ERROR || resultCode == types.FILTERED_OUT {
 				return false, nil
 			}
-			err := NewAerospikeError(resultCode)
+			err := types.NewAerospikeError(resultCode)
 			err = newNodeError(cmd.node, err)
 			return false, err
 		}
@@ -257,7 +268,7 @@ func (cmd *baseMultiCommand) parseRecordResults(ifc command, receiveSize int) (b
 		}
 
 		generation := Buffer.BytesToUint32(cmd.dataBuffer, 6)
-		expiration := TTL(Buffer.BytesToUint32(cmd.dataBuffer, 10))
+		expiration := types.TTL(Buffer.BytesToUint32(cmd.dataBuffer, 10))
 		fieldCount := int(Buffer.BytesToUint16(cmd.dataBuffer, 18))
 		opCount := int(Buffer.BytesToUint16(cmd.dataBuffer, 20))
 
@@ -267,6 +278,12 @@ func (cmd *baseMultiCommand) parseRecordResults(ifc command, receiveSize int) (b
 			return false, err
 		}
 
+		// Partition is done, don't go further
+		if (info3 & _INFO3_PARTITION_DONE) != 0 {
+			cmd.tracker.partitionDone(cmd.nodePartitions, int(generation))
+			return true, nil
+		}
+
 		// if there is a recordset, process the record traditionally
 		// otherwise, it is supposed to be a record channel
 		if cmd.selectCases == nil {
@@ -274,30 +291,26 @@ func (cmd *baseMultiCommand) parseRecordResults(ifc command, receiveSize int) (b
 			var bins BinMap
 
 			for i := 0; i < opCount; i++ {
-				if err := cmd.readBytes(8); err != nil {
-					err = newNodeError(cmd.node, err)
-					return false, err
+				if err = cmd.readBytes(8); err != nil {
+					return false, newNodeError(cmd.node, err)
 				}
 
 				opSize := int(Buffer.BytesToUint32(cmd.dataBuffer, 0))
 				particleType := int(cmd.dataBuffer[5])
 				nameSize := int(cmd.dataBuffer[7])
 
-				if err := cmd.readBytes(nameSize); err != nil {
-					err = newNodeError(cmd.node, err)
-					return false, err
+				if err = cmd.readBytes(nameSize); err != nil {
+					return false, newNodeError(cmd.node, err)
 				}
 				name := string(cmd.dataBuffer[:nameSize])
 
 				particleBytesSize := opSize - (4 + nameSize)
 				if err = cmd.readBytes(particleBytesSize); err != nil {
-					err = newNodeError(cmd.node, err)
-					return false, err
+					return false, newNodeError(cmd.node, err)
 				}
 				value, err := bytesToParticle(particleType, cmd.dataBuffer, 0, particleBytesSize)
 				if err != nil {
-					err = newNodeError(cmd.node, err)
-					return false, err
+					return false, newNodeError(cmd.node, err)
 				}
 
 				if bins == nil {
@@ -312,7 +325,14 @@ func (cmd *baseMultiCommand) parseRecordResults(ifc command, receiveSize int) (b
 			// send back the result on the async channel
 			case cmd.recordset.Records <- newRecord(cmd.node, key, bins, generation, expiration):
 			case <-cmd.recordset.cancelled:
-				return false, NewAerospikeError(cmd.terminationErrorType)
+				switch cmd.terminationErrorType {
+				case types.SCAN_TERMINATED:
+					return false, types.ErrScanTerminated
+				case types.QUERY_TERMINATED:
+					return false, types.ErrQueryTerminated
+				default:
+					return false, types.NewAerospikeError(cmd.terminationErrorType)
+				}
 			}
 		} else if multiObjectParser != nil {
 			obj := reflect.New(cmd.resObjType)
@@ -328,8 +348,12 @@ func (cmd *baseMultiCommand) parseRecordResults(ifc command, receiveSize int) (b
 			switch chosen {
 			case 0: // object sent
 			case 1: // cancel channel is closed
-				return false, NewAerospikeError(cmd.terminationErrorType)
+				return false, types.NewAerospikeError(cmd.terminationErrorType)
 			}
+		}
+
+		if cmd.tracker != nil {
+			cmd.tracker.setDigest(cmd.nodePartitions, key)
 		}
 	}
 

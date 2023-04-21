@@ -1,6 +1,6 @@
 // +build !app_engine
 
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +18,8 @@ package lua
 
 import (
 	"github.com/aerospike/aerospike-client-go/logger"
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
-
-type LuaAerospike struct {
-	s chan interface{}
-}
 
 const luaLuaAerospikeTypeName = "LuaAerospike"
 

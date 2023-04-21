@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/types"
 	Buffer "github.com/aerospike/aerospike-client-go/utils/buffer"
 )
 
@@ -127,7 +127,7 @@ func NewKeyWithDigest(namespace string, setName string, key interface{}, digest 
 // SetDigest sets a custom hash
 func (ky *Key) SetDigest(digest []byte) error {
 	if len(digest) != 20 {
-		return NewAerospikeError(PARAMETER_ERROR, "Invalid digest: Digest is required to be exactly 20 bytes.")
+		return types.NewAerospikeError(types.PARAMETER_ERROR, "Invalid digest: Digest is required to be exactly 20 bytes.")
 	}
 	copy(ky.digest[:], digest)
 	return nil
@@ -156,4 +156,11 @@ func (ky *Key) computeDigest() error {
 	// the following line does not allocate on he heap anymore.
 	ky.keyWriter.hash.Sum(ky.digest[:])
 	return nil
+}
+
+// PartitionId returns the partition that the key belongs to.
+func (ky *Key) PartitionId() int {
+	// CAN'T USE MOD directly - mod will give negative numbers.
+	// First AND makes positive and negative correctly, then mod.
+	return int(Buffer.LittleBytesToInt32(ky.digest[:], 0)&0xFFFF) & (_PARTITIONS - 1)
 }

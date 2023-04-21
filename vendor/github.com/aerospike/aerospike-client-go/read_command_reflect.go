@@ -1,6 +1,6 @@
 // +build !as_performance
 
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package aerospike
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
 	"strings"
@@ -42,11 +43,11 @@ func parseObject(
 
 	// There can be fields in the response (setname etc).
 	// But for now, ignore them. Expose them to the API if needed in the future.
-	// Logger.Debug("field count: %d, databuffer: %v", fieldCount, cmd.dataBuffer)
+	//logger.Logger.Debug("field count: %d, databuffer: %v", fieldCount, cmd.dataBuffer)
 	if fieldCount > 0 {
 		// Just skip over all the fields
 		for i := 0; i < fieldCount; i++ {
-			// Logger.Debug("%d", receiveOffset)
+			//logger.Logger.Debug("%d", receiveOffset)
 			fieldSize := int(Buffer.BytesToUint32(cmd.dataBuffer, receiveOffset))
 			receiveOffset += (4 + fieldSize)
 		}
@@ -103,21 +104,17 @@ func setObjectMetaFields(obj reflect.Value, ttl, gen uint32) error {
 
 	ttlMap, genMap := objectMappings.getMetaMappings(iobj.Type())
 
-	if ttlMap != nil {
-		for i := range ttlMap {
-			f := iobj.FieldByIndex(ttlMap[i])
-			if err := setValue(f, ttl, true); err != nil {
-				return err
-			}
+	for i := range ttlMap {
+		f := iobj.FieldByIndex(ttlMap[i])
+		if err := setValue(f, ttl, true); err != nil {
+			return err
 		}
 	}
 
-	if genMap != nil {
-		for i := range genMap {
-			f := iobj.FieldByIndex(genMap[i])
-			if err := setValue(f, gen, true); err != nil {
-				return err
-			}
+	for i := range genMap {
+		f := iobj.FieldByIndex(genMap[i])
+		if err := setValue(f, gen, true); err != nil {
+			return err
 		}
 	}
 
@@ -150,24 +147,16 @@ func setValue(f reflect.Value, value interface{}, supportsFloat bool) error {
 		}
 
 		switch f.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			f.SetInt(int64(value.(int)))
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			switch v := value.(type) {
-			case uint8:
-				f.SetUint(uint64(v))
-			case uint16:
-				f.SetUint(uint64(v))
-			case uint32:
-				f.SetUint(uint64(v))
-			case uint64:
-				f.SetUint(v)
-			case uint:
-				f.SetUint(uint64(v))
-			default:
-				f.SetUint(uint64(value.(int)))
-			}
+		case reflect.Int, reflect.Int64, reflect.Int8, reflect.Int16, reflect.Int32,
+			reflect.Uint, reflect.Uint64, reflect.Uint8, reflect.Uint16, reflect.Uint32:
+			v := reflect.ValueOf(value)
+			v = v.Convert(f.Type())
+			f.Set(v)
 		case reflect.Float64, reflect.Float32:
+			if v, ok := value.(float32); ok {
+				value = float64(v)
+			}
+
 			// if value has returned as a float
 			if fv, ok := value.(float64); ok {
 				f.SetFloat(fv)
@@ -185,27 +174,20 @@ func setValue(f reflect.Value, value interface{}, supportsFloat bool) error {
 			}
 			f.Set(rv)
 		case reflect.Bool:
-			f.SetBool(value.(int) == 1)
+			switch v := value.(type) {
+			case int:
+				f.SetBool(v == 1)
+			case bool:
+				f.SetBool(v)
+			default:
+				return fmt.Errorf("Invalid value `%#v` for boolean field", value)
+			}
 		case reflect.Interface:
 			if value != nil {
 				f.Set(reflect.ValueOf(value))
 			}
 		case reflect.Ptr:
 			switch f.Type().Elem().Kind() {
-			case reflect.Int:
-				tempV := value.(int)
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
-				}
-				f.Set(rv)
-			case reflect.Uint:
-				tempV := uint(value.(int))
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
-				}
-				f.Set(rv)
 			case reflect.String:
 				tempV := value.(string)
 				rv := reflect.ValueOf(&tempV)
@@ -213,62 +195,14 @@ func setValue(f reflect.Value, value interface{}, supportsFloat bool) error {
 					rv = rv.Convert(f.Type())
 				}
 				f.Set(rv)
-			case reflect.Int8:
-				tempV := int8(value.(int))
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
+			case reflect.Int, reflect.Int64, reflect.Int8, reflect.Int16, reflect.Int32,
+				reflect.Uint, reflect.Uint64, reflect.Uint8, reflect.Uint16, reflect.Uint32:
+				v := reflect.ValueOf(value).Convert(f.Type().Elem())
+				if f.IsZero() {
+					f.Set(reflect.New(f.Type().Elem()))
 				}
-				f.Set(rv)
-			case reflect.Uint8:
-				tempV := uint8(value.(int))
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
-				}
-				f.Set(rv)
-			case reflect.Int16:
-				tempV := int16(value.(int))
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
-				}
-				f.Set(rv)
-			case reflect.Uint16:
-				tempV := uint16(value.(int))
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
-				}
-				f.Set(rv)
-			case reflect.Int32:
-				tempV := int32(value.(int))
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
-				}
-				f.Set(rv)
-			case reflect.Uint32:
-				tempV := uint32(value.(int))
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
-				}
-				f.Set(rv)
-			case reflect.Int64:
-				tempV := int64(value.(int))
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
-				}
-				f.Set(rv)
-			case reflect.Uint64:
-				tempV := uint64(value.(int))
-				rv := reflect.ValueOf(&tempV)
-				if rv.Type() != f.Type() {
-					rv = rv.Convert(f.Type())
-				}
-				f.Set(rv)
+
+				f.Elem().Set(v)
 			case reflect.Float64:
 				// it is possible that the value is an integer set in the field
 				// via the old float<->int64 type cast
@@ -285,13 +219,26 @@ func setValue(f reflect.Value, value interface{}, supportsFloat bool) error {
 				}
 				f.Set(rv)
 			case reflect.Bool:
-				tempV := bool(value.(int) == 1)
+				var tempV bool
+				switch v := value.(type) {
+				case int:
+					tempV = (v == 1)
+				case bool:
+					tempV = v
+				default:
+					return fmt.Errorf("Invalid value `%#v` for boolean field", value)
+				}
+
 				rv := reflect.ValueOf(&tempV)
 				if rv.Type() != f.Type() {
 					rv = rv.Convert(f.Type())
 				}
 				f.Set(rv)
 			case reflect.Float32:
+				if v, ok := value.(float32); ok {
+					value = float64(v)
+				}
+
 				// it is possible that the value is an integer set in the field
 				// via the old float<->int64 type cast
 				var tempV64 float64
@@ -315,23 +262,22 @@ func setValue(f reflect.Value, value interface{}, supportsFloat bool) error {
 					tm := time.Unix(0, int64(value.(int)))
 					f.Set(reflect.ValueOf(&tm))
 					break
-				} else {
-					valMap := value.(map[interface{}]interface{})
-					// iteraste over struct fields and recursively fill them up
-					if valMap != nil {
-						newObjPtr := f
-						if f.IsNil() {
-							newObjPtr = reflect.New(f.Type().Elem())
-						}
-
-						theStruct := newObjPtr.Elem()
-						if err := setStructValue(theStruct, valMap, supportsFloat, theStruct.Type(), nil); err != nil {
-							return err
-						}
-
-						// set the field
-						f.Set(newObjPtr)
+				}
+				valMap := value.(map[interface{}]interface{})
+				// iteraste over struct fields and recursively fill them up
+				if valMap != nil {
+					newObjPtr := f
+					if f.IsNil() {
+						newObjPtr = reflect.New(f.Type().Elem())
 					}
+
+					theStruct := newObjPtr.Elem()
+					if err := setStructValue(theStruct, valMap, supportsFloat, theStruct.Type(), nil); err != nil {
+						return err
+					}
+
+					// set the field
+					f.Set(newObjPtr)
 				}
 			} // switch ptr
 		case reflect.Slice, reflect.Array:
@@ -343,7 +289,7 @@ func setValue(f reflect.Value, value interface{}, supportsFloat bool) error {
 					f.Set(reflect.MakeSlice(reflect.SliceOf(f.Type().Elem()), theArray.Len(), theArray.Len()))
 				} else if f.Len() < theArray.Len() {
 					count := theArray.Len() - f.Len()
-					f = reflect.AppendSlice(f, reflect.MakeSlice(reflect.SliceOf(f.Type().Elem()), count, count))
+					f.Set(reflect.AppendSlice(f, reflect.MakeSlice(reflect.SliceOf(f.Type().Elem()), count, count)))
 				}
 			}
 
@@ -439,7 +385,7 @@ func setStructValue(f reflect.Value, valMap map[interface{}]interface{}, support
 		}
 
 		alias := fld.Name
-		tag := strings.Trim(fld.Tag.Get(aerospikeTag), " ")
+		tag := strings.Trim(stripOptions(fld.Tag.Get(aerospikeTag)), " ")
 		if tag != "" {
 			alias = tag
 		}

@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// citrusleaf epoc: Jan 01 2010 00:00:00 GMT
+	// CITRUSLEAF_EPOCH defines the citrusleaf epoc: Jan 01 2010 00:00:00 GMT
 	CITRUSLEAF_EPOCH = 1262304000
 )
 
@@ -22,7 +22,7 @@ func TTL(secsFromCitrusLeafEpoc uint32) uint32 {
 		// "never expires" interpretation.
 		now := time.Now().Unix()
 		expiration := int64(CITRUSLEAF_EPOCH + secsFromCitrusLeafEpoc)
-		if expiration < 0 || expiration > now {
+		if (expiration < 0 && now >= 0) || expiration > now {
 			return uint32(expiration - now)
 		}
 		return 1

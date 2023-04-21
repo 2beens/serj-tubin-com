@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,17 +15,18 @@
 package aerospike
 
 // BitResizeFlags specifies the bitwise operation flags for resize.
+type BitResizeFlags int
 
 const (
 	// BitResizeFlagsDefault specifies the defalt flag.
-	BitResizeFlagsDefault = 0
+	BitResizeFlagsDefault BitResizeFlags = 0
 
 	// BitResizeFlagsFromFront Adds/removes bytes from the beginning instead of the end.
-	BitResizeFlagsFromFront = 1
+	BitResizeFlagsFromFront BitResizeFlags = 1
 
 	// BitResizeFlagsGrowOnly will only allow the byte[] size to increase.
-	BitResizeFlagsGrowOnly = 2
+	BitResizeFlagsGrowOnly BitResizeFlags = 2
 
 	// BitResizeFlagsShrinkOnly will only allow the byte[] size to decrease.
-	BitResizeFlagsShrinkOnly = 4
+	BitResizeFlagsShrinkOnly BitResizeFlags = 4
 )

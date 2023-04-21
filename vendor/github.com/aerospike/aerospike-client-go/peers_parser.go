@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,15 +15,15 @@
 package aerospike
 
 import (
-	// . "github.com/aerospike/aerospike-client-go/logger"
+	// "github.com/aerospike/aerospike-client-go/logger"
 
 	"io"
 	"strconv"
 
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/types"
 )
 
-var aeroerr error = NewAerospikeError(PARSE_ERROR, "Error parsing peers list.")
+var aeroerr = types.NewAerospikeError(types.PARSE_ERROR, "Error parsing peers list.")
 
 func parsePeers(cluster *Cluster, node *Node) (*peerListParser, error) {
 	cmd := cluster.clientPolicy.peersString()
@@ -35,7 +35,7 @@ func parsePeers(cluster *Cluster, node *Node) (*peerListParser, error) {
 
 	peersStr, exists := info[cmd]
 	if !exists {
-		return nil, NewAerospikeError(PARSE_ERROR, "Info Command response was empty.")
+		return nil, types.NewAerospikeError(types.PARSE_ERROR, "Info Command response was empty.")
 	}
 
 	p := peerListParser{buf: []byte(peersStr)}

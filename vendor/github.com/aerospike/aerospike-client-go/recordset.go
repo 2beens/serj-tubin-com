@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,13 @@ import (
 	"runtime"
 	"sync"
 
-	. "github.com/aerospike/aerospike-client-go/internal/atomic"
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/internal/atomic"
+	"github.com/aerospike/aerospike-client-go/types"
+
+	xornd "github.com/aerospike/aerospike-client-go/types/rand"
 )
 
+// Result is the value returned by Recordset's Results() function.
 type Result struct {
 	Record *Record
 	Err    error
@@ -48,9 +51,9 @@ type objectset struct {
 	Errors chan error
 
 	wgGoroutines sync.WaitGroup
-	goroutines   *AtomicInt
+	goroutines   *atomic.Int
 
-	closed, active *AtomicBool
+	closed, active *atomic.Bool
 	cancelled      chan struct{}
 
 	chanLock sync.Mutex
@@ -60,7 +63,16 @@ type objectset struct {
 
 // TaskId returns the transactionId/jobId sent to the server for this recordset.
 func (os *objectset) TaskId() uint64 {
+	os.chanLock.Lock()
+	defer os.chanLock.Unlock()
 	return os.taskID
+}
+
+// Always set the taskID client-side to a non-zero random value
+func (os *objectset) resetTaskID() {
+	os.chanLock.Lock()
+	defer os.chanLock.Unlock()
+	os.taskID = uint64(xornd.Int64())
 }
 
 // Recordset encapsulates the result of Scan and Query commands.
@@ -79,7 +91,7 @@ func recordsetFinalizer(rs *Recordset) {
 }
 
 // newObjectset generates a new RecordSet instance.
-func newObjectset(objChan reflect.Value, goroutines int, taskID uint64) *objectset {
+func newObjectset(objChan reflect.Value, goroutines int) *objectset {
 
 	if objChan.Kind() != reflect.Chan ||
 		objChan.Type().Elem().Kind() != reflect.Ptr ||
@@ -90,24 +102,23 @@ func newObjectset(objChan reflect.Value, goroutines int, taskID uint64) *objects
 	rs := &objectset{
 		objChan:    objChan,
 		Errors:     make(chan error, goroutines),
-		active:     NewAtomicBool(true),
-		closed:     NewAtomicBool(false),
-		goroutines: NewAtomicInt(goroutines),
+		active:     atomic.NewBool(true),
+		closed:     atomic.NewBool(false),
+		goroutines: atomic.NewInt(goroutines),
 		cancelled:  make(chan struct{}),
-		taskID:     taskID,
 	}
 	rs.wgGoroutines.Add(goroutines)
-
+	rs.resetTaskID()
 	return rs
 }
 
 // newRecordset generates a new RecordSet instance.
-func newRecordset(recSize, goroutines int, taskID uint64) *Recordset {
+func newRecordset(recSize, goroutines int) *Recordset {
 	var nilChan chan *struct{}
 
 	rs := &Recordset{
 		Records:   make(chan *Record, recSize),
-		objectset: *newObjectset(reflect.ValueOf(nilChan), goroutines, taskID),
+		objectset: *newObjectset(reflect.ValueOf(nilChan), goroutines),
 	}
 
 	runtime.SetFinalizer(rs, recordsetFinalizer)
@@ -128,7 +139,7 @@ L:
 	select {
 	case record, ok = <-rcs.Records:
 		if !ok {
-			err = ErrRecordsetClosed
+			err = types.ErrRecordsetClosed
 		}
 	case err = <-rcs.Errors:
 		if err == nil {
@@ -182,7 +193,7 @@ func (rcs *Recordset) Results() <-chan *Result {
 		defer close(res)
 		for {
 			record, err := rcs.Read()
-			if err == ErrRecordsetClosed {
+			if err == types.ErrRecordsetClosed {
 				return
 			}
 
@@ -204,7 +215,7 @@ func (rcs *Recordset) Results() <-chan *Result {
 func (rcs *Recordset) Close() error {
 	// do it only once
 	if !rcs.closed.CompareAndToggle(false) {
-		return ErrRecordsetClosed
+		return types.ErrRecordsetClosed
 	}
 
 	// mark the recordset as inactive

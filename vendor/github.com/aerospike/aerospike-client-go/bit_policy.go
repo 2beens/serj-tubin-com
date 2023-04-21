@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +19,12 @@ type BitPolicy struct {
 	flags int
 }
 
+// DefaultBitPolicy will return the default BitPolicy
 func DefaultBitPolicy() *BitPolicy {
 	return &BitPolicy{BitWriteFlagsDefault}
 }
 
+// NewBitPolicy will return a BitPolicy will provided flags.
 func NewBitPolicy(flags int) *BitPolicy {
 	return &BitPolicy{flags}
 }

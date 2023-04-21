@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/aerospike/aerospike-client-go/logger"
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/logger"
+	"github.com/aerospike/aerospike-client-go/types"
 )
 
 // DefaultBufferSize specifies the initial size of the connection buffer when it is created.
@@ -76,7 +76,7 @@ func connectionFinalizer(c *Connection) {
 
 func errToTimeoutErr(conn *Connection, err error) error {
 	if err, ok := err.(net.Error); ok && err.Timeout() {
-		return ErrTimeout
+		return types.ErrTimeout
 	}
 	return err
 }
@@ -96,11 +96,11 @@ func newConnection(address string, timeout time.Duration) (*Connection, error) {
 
 	conn, err := net.DialTimeout("tcp", address, timeout)
 	if err != nil {
-		Logger.Debug("Connection to address `" + address + "` failed to establish with error: " + err.Error())
+		logger.Logger.Debug("Connection to address `%s` failed to establish with error: %s", address, err.Error())
 		return nil, errToTimeoutErr(nil, err)
 	}
 	newConn.conn = conn
-	newConn.limitReader = &io.LimitedReader{conn, 0}
+	newConn.limitReader = &io.LimitedReader{R: conn, N: 0}
 
 	// set timeout at the last possible moment
 	if err := newConn.SetTimeout(time.Now().Add(timeout), timeout); err != nil {
@@ -132,14 +132,18 @@ func NewConnection(policy *ClientPolicy, host *Host) (*Connection, error) {
 
 	sconn := tls.Client(conn.conn, tlsConfig)
 	if err := sconn.Handshake(); err != nil {
-		sconn.Close()
+		if cerr := sconn.Close(); cerr != nil {
+			logger.Logger.Debug("Closing connection after handshake error failed: %s", cerr.Error())
+		}
 		return nil, err
 	}
 
 	if host.TLSName != "" && !tlsConfig.InsecureSkipVerify {
 		if err := sconn.VerifyHostname(host.TLSName); err != nil {
-			sconn.Close()
-			Logger.Error("Connection to address `" + address + "` failed to establish with error: " + err.Error())
+			if cerr := sconn.Close(); cerr != nil {
+				logger.Logger.Debug("Closing connection after VerifyHostName error failed: %s", cerr.Error())
+			}
+			logger.Logger.Error("Connection to address `%s` failed to establish with error: %s", address, err.Error())
 			return nil, errToTimeoutErr(nil, err)
 		}
 	}
@@ -172,6 +176,7 @@ func (ctn *Connection) Write(buf []byte) (total int, err error) {
 	}
 
 	if ctn.node != nil {
+		ctn.node.incrErrorCount()
 		atomic.AddInt64(&ctn.node.stats.ConnectionsFailed, 1)
 	}
 
@@ -196,8 +201,7 @@ func (ctn *Connection) Read(buf []byte, length int) (total int, err error) {
 			r, err = ctn.inflater.Read(buf[total:length])
 			if err == io.EOF && total+r == length {
 				ctn.compressed = false
-				ctn.inflater.Close()
-				err = nil
+				err = ctn.inflater.Close()
 			}
 		}
 		total += r
@@ -213,6 +217,7 @@ func (ctn *Connection) Read(buf []byte, length int) (total int, err error) {
 	}
 
 	if ctn.node != nil {
+		ctn.node.incrErrorCount()
 		atomic.AddInt64(&ctn.node.stats.ConnectionsFailed, 1)
 	}
 
@@ -238,7 +243,7 @@ func (ctn *Connection) updateDeadline() error {
 		}
 	} else {
 		if now.After(ctn.deadline) {
-			return NewAerospikeError(TIMEOUT)
+			return types.NewAerospikeError(types.TIMEOUT)
 		}
 		if ctn.socketTimeout == 0 {
 			socketDeadline = ctn.deadline
@@ -286,7 +291,7 @@ func (ctn *Connection) Close() {
 			}
 
 			if err := ctn.conn.Close(); err != nil {
-				Logger.Warn(err.Error())
+				logger.Logger.Warn(err.Error())
 			}
 			ctn.conn = nil
 
@@ -373,7 +378,7 @@ func (ctn *Connection) login(policy *ClientPolicy, hashedPassword []byte, sessio
 }
 
 // Login will send authentication information to the server.
-// This function is provided for using the connection in conjuction with external libraries.
+// This function is provided for using the connection in conjunction with external libraries.
 // The password will be hashed everytime, which is a slow operation.
 func (ctn *Connection) Login(policy *ClientPolicy) error {
 	if !policy.RequiresAuthentication() {

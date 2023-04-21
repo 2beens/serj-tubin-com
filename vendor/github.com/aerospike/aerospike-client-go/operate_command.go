@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,13 +38,13 @@ func newOperateCommand(cluster *Cluster, policy *WritePolicy, key *Key, operatio
 		return operateCommand{}, err
 	}
 
-	readCommand, err := newReadCommand(cluster, &policy.BasePolicy, key, nil, partition)
+	rdCommand, err := newReadCommand(cluster, &policy.BasePolicy, key, nil, partition)
 	if err != nil {
 		return operateCommand{}, err
 	}
 
 	return operateCommand{
-		readCommand: readCommand,
+		readCommand: rdCommand,
 		policy:      policy,
 		operations:  operations,
 

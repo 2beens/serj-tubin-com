@@ -1,6 +1,6 @@
 // +build !app_engine
 
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,12 +17,16 @@
 package aerospike
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
-	. "github.com/aerospike/aerospike-client-go/internal/atomic"
+	"golang.org/x/sync/semaphore"
+
+	"github.com/aerospike/aerospike-client-go/internal/atomic"
 	lualib "github.com/aerospike/aerospike-client-go/internal/lua"
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/logger"
+	"github.com/aerospike/aerospike-client-go/types"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -50,7 +54,7 @@ func (clnt *Client) QueryAggregate(policy *QueryPolicy, statement *Statement, pa
 
 	nodes := clnt.cluster.GetNodes()
 	if len(nodes) == 0 {
-		return nil, NewAerospikeError(SERVER_NOT_AVAILABLE, "QueryAggregate failed because cluster is empty.")
+		return nil, types.NewAerospikeError(types.SERVER_NOT_AVAILABLE, "QueryAggregate failed because cluster is empty.")
 	}
 
 	clusterKey := int64(0)
@@ -61,10 +65,10 @@ func (clnt *Client) QueryAggregate(policy *QueryPolicy, statement *Statement, pa
 			return nil, err
 		}
 	}
-	first := NewAtomicBool(true)
+	first := atomic.NewBool(true)
 
 	// results channel must be async for performance
-	recSet := newRecordset(policy.RecordQueueSize, len(nodes), statement.TaskId)
+	recSet := newRecordset(policy.RecordQueueSize, len(nodes))
 
 	// get a lua instance
 	luaInstance := lualib.LuaPool.Get().(*lua.LState)
@@ -74,15 +78,22 @@ func (clnt *Client) QueryAggregate(policy *QueryPolicy, statement *Statement, pa
 
 	// Input Channel
 	inputChan := make(chan interface{}, 4096) // 4096 = number of partitions
-	istream := lualib.NewLuaStream(luaInstance, inputChan)
+	istream := lualib.NewStream(luaInstance, inputChan)
 
 	// Output Channe;
 	outputChan := make(chan interface{})
-	ostream := lualib.NewLuaStream(luaInstance, outputChan)
+	ostream := lualib.NewStream(luaInstance, outputChan)
 
 	// results channel must be async for performance
 	var wg sync.WaitGroup
 	wg.Add(len(nodes))
+	// results channel must be async for performance
+	maxConcurrentNodes := policy.MaxConcurrentNodes
+	if maxConcurrentNodes <= 0 {
+		maxConcurrentNodes = len(nodes)
+	}
+	sem := semaphore.NewWeighted(int64(maxConcurrentNodes))
+	ctx := context.Background()
 	for _, node := range nodes {
 		// copy policies to avoid race conditions
 		newPolicy := *policy
@@ -90,7 +101,11 @@ func (clnt *Client) QueryAggregate(policy *QueryPolicy, statement *Statement, pa
 		command.luaInstance = luaInstance
 		command.inputChan = inputChan
 
+		if err := sem.Acquire(ctx, 1); err != nil {
+			logger.Logger.Error("Constraint Semaphore failed for QueryAggregate: %s", err.Error())
+		}
 		go func() {
+			defer sem.Release(1)
 			defer wg.Done()
 			command.Execute()
 		}()
@@ -120,7 +135,7 @@ func (clnt *Client) QueryAggregate(policy *QueryPolicy, statement *Statement, pa
 		defer close(outputChan)
 		defer luaInstance.Close()
 
-		err := luaInstance.DoFile(lualib.LuaPath() + packageName + ".lua")
+		err := luaInstance.DoFile(lualib.Path() + packageName + ".lua")
 		if err != nil {
 			recSet.Errors <- err
 			return

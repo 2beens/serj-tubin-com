@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 package aerospike
 
-import . "github.com/aerospike/aerospike-client-go/types"
+import "github.com/aerospike/aerospike-client-go/types"
 
 type queryRecordCommand struct {
 	queryCommand
@@ -25,7 +25,7 @@ func newQueryRecordCommand(node *Node, policy *QueryPolicy, statement *Statement
 		queryCommand: *newQueryCommand(node, policy, nil, statement, nil, recordset, clusterKey, first),
 	}
 
-	cmd.terminationErrorType = QUERY_TERMINATED
+	cmd.terminationErrorType = types.QUERY_TERMINATED
 
 	return cmd
 }

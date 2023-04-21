@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,7 @@
 package aerospike
 
 import (
-	"bytes"
-
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/types"
 	Buffer "github.com/aerospike/aerospike-client-go/utils/buffer"
 )
 
@@ -26,7 +24,6 @@ type batchCommandExists struct {
 
 	keys        []*Key
 	existsArray []bool
-	index       int
 }
 
 func newBatchCommandExists(
@@ -45,7 +42,6 @@ func newBatchCommandExists(
 		keys:        keys,
 		existsArray: existsArray,
 	}
-	res.oneShot = false
 	return res
 }
 
@@ -72,15 +68,15 @@ func (cmd *batchCommandExists) parseRecordResults(ifc command, receiveSize int) 
 			return false, err
 		}
 
-		resultCode := ResultCode(cmd.dataBuffer[5] & 0xFF)
+		resultCode := types.ResultCode(cmd.dataBuffer[5] & 0xFF)
 
 		// The only valid server return codes are "ok" and "not found".
 		// If other return codes are received, then abort the batch.
-		if resultCode != 0 && resultCode != KEY_NOT_FOUND_ERROR {
-			if resultCode == FILTERED_OUT {
+		if resultCode != 0 && resultCode != types.KEY_NOT_FOUND_ERROR {
+			if resultCode == types.FILTERED_OUT {
 				cmd.filteredOutCnt++
 			} else {
-				return false, NewAerospikeError(resultCode)
+				return false, types.NewAerospikeError(resultCode)
 			}
 		}
 
@@ -96,25 +92,16 @@ func (cmd *batchCommandExists) parseRecordResults(ifc command, receiveSize int) 
 		opCount := int(Buffer.BytesToUint16(cmd.dataBuffer, 20))
 
 		if opCount > 0 {
-			return false, NewAerospikeError(PARSE_ERROR, "Received bins that were not requested!")
+			return false, types.NewAerospikeError(types.PARSE_ERROR, "Received bins that were not requested!")
 		}
 
-		key, err := cmd.parseKey(fieldCount)
+		_, err := cmd.parseKey(fieldCount)
 		if err != nil {
 			return false, err
 		}
 
-		var offset int
-		offset = batchIndex
-
-		if bytes.Equal(key.digest[:], cmd.keys[offset].digest[:]) {
-			// only set the results to true; as a result, no synchronization is needed
-			if resultCode == 0 {
-				cmd.existsArray[offset] = true
-			}
-		} else {
-			return false, NewAerospikeError(PARSE_ERROR, "Unexpected batch key returned: "+key.namespace+","+Buffer.BytesToHexString(key.digest[:])+". Expected: "+Buffer.BytesToHexString(cmd.keys[offset].digest[:]))
-		}
+		// only set the results to true; as a result, no synchronization is needed
+		cmd.existsArray[batchIndex] = resultCode == 0
 	}
 	return true, nil
 }

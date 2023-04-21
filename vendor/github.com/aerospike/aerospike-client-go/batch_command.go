@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 
 package aerospike
 
-import "time"
+import (
+	"time"
+)
 
 type batcher interface {
 	command
@@ -66,15 +68,19 @@ func (cmd *batchCommand) retryBatch(ifc batcher, cluster *Cluster, deadline time
 	}
 
 	// Run batch requests sequentially in same thread.
+	var errs []error
 	for _, batchNode := range batchNodes {
 		command := ifc.cloneBatchCommand(batchNode)
 		command.setSequence(cmd.sequenceAP, cmd.sequenceSC)
 		if err := command.executeAt(command, cmd.policy.GetBasePolicy(), true, deadline, iteration, commandSentCounter); err != nil {
-			return false, err
+			if !cmd.policy.AllowPartialResults {
+				return false, err
+			}
+			errs = append(errs, err)
 		}
 	}
 
-	return true, nil
+	return true, mergeErrors(errs)
 }
 
 func (cmd *batchCommand) setSequence(ap, sc int) {

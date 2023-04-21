@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ func newBatchIndexCommandGet(
 		node = batch.Node
 	}
 
-	return &batchIndexCommandGet{
+	res := &batchIndexCommandGet{
 		batchCommandGet{
 			batchCommand: batchCommand{
 				baseMultiCommand: *newMultiCommand(node, nil),
@@ -39,6 +39,7 @@ func newBatchIndexCommandGet(
 			indexRecords: records,
 		},
 	}
+	return res
 }
 
 func (cmd *batchIndexCommandGet) cloneBatchCommand(batch *batchNode) batcher {

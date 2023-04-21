@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ func NewBatchRead(key *Key, binNames []string) *BatchRead {
 	return res
 }
 
-// NewBatchRead defines a key to retrieve the record headers only in a batch operation.
+// NewBatchReadHeader defines a key to retrieve the record headers only in a batch operation.
 func NewBatchReadHeader(key *Key) *BatchRead {
 	return &BatchRead{
 		Key:         key,

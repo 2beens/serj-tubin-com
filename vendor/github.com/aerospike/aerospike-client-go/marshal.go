@@ -1,6 +1,6 @@
 // +build !as_performance
 
-// Copyright 2013-2019 Aerospike, Inc.
+// Copyright 2014-2019 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -172,7 +172,7 @@ func setBinMap(s reflect.Value, clusterSupportsFloat bool, typeOfT reflect.Type,
 		}
 
 		// skip unexported fields
-		if fld.PkgPath != "" {
+		if fld.PkgPath != "" && !fld.Anonymous {
 			continue
 		}
 
@@ -205,7 +205,7 @@ func structToMap(s reflect.Value, clusterSupportsFloat bool) BinMap {
 		return nil
 	}
 
-	var binMap BinMap = make(BinMap, s.NumField())
+	binMap := make(BinMap, s.NumField())
 
 	setBinMap(s, clusterSupportsFloat, s.Type(), binMap, nil)
 
@@ -318,7 +318,7 @@ func fillMapping(objType reflect.Type, mapping map[string][]int, fields []string
 		}
 
 		// skip unexported fields
-		if f.PkgPath != "" {
+		if f.PkgPath != "" && !f.Anonymous {
 			continue
 		}
 

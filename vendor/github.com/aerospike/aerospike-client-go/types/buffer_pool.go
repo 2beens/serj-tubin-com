@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ func (bp *BufferPool) Get() (res []byte) {
 		res = bp.pool[bp.pos]
 		bp.pos--
 	} else {
-		res = make([]byte, bp.initBufSize, bp.initBufSize)
+		res = make([]byte, bp.initBufSize)
 	}
 
 	bp.mutex.Unlock()

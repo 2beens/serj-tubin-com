@@ -1,6 +1,6 @@
 // +build !as_performance
 
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ func init() {
 	newValueReflect = concreteNewValueReflect
 }
 
+// if the returned value is nil, the caller will panic
 func concreteNewValueReflect(v interface{}) Value {
 	// check for array and map
 	rv := reflect.ValueOf(v)

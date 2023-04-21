@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,10 +13,6 @@
 // limitations under the License.
 
 package aerospike
-
-type operation interface {
-	write(cmd BufferEx) (int, error)
-}
 
 // OperationType determines operation type
 type OperationType *struct{ op byte }
@@ -125,7 +121,7 @@ func TouchOp() *Operation {
 	return &Operation{opType: _TOUCH, binValue: NewNullValue()}
 }
 
-// DeteleOp creates delete record database operation.
+// DeleteOp creates delete record database operation.
 func DeleteOp() *Operation {
 	return &Operation{opType: _DELETE, binValue: NewNullValue()}
 }

@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Portions may be licensed to Aerospike, Inc. under one or more contributor
 // license agreements.
@@ -110,8 +110,5 @@ func privilegeFrom(code uint8) privilegeCode {
 }
 
 func (p *Privilege) canScope() bool {
-	if p.code() >= 10 {
-		return true
-	}
-	return false
+	return p.code() >= 10
 }

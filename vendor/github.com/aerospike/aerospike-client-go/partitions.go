@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +20,10 @@ import (
 	"fmt"
 	"strconv"
 
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/types"
 )
 
+// Partitions represents a list of partitions
 type Partitions struct {
 	Replicas [][]*Node
 	SCMode   bool
@@ -151,7 +152,7 @@ func (pm partitionMap) validate() error {
 
 	for nsName, partition := range pm {
 		if len(partition.regimes) != _PARTITIONS {
-			errList = append(errList, fmt.Errorf("Wrong number of regimes for namespace `%s`. Must be %d, but found %d..", nsName, _PARTITIONS, len(partition.regimes)))
+			errList = append(errList, fmt.Errorf("Wrong number of regimes for namespace `%s`. Must be %d, but found %d.", nsName, _PARTITIONS, len(partition.regimes)))
 		}
 
 		for replica, partitionNodes := range partition.Replicas {
@@ -177,11 +178,11 @@ func (pm partitionMap) validate() error {
 		}
 
 		for nsName, partitionList := range replicaNodePartitionNotDefined {
-			errList = append(errList, fmt.Errorf("Replica partition nodes not defined for namespace `%s`: %d out of %d", nsName, len(partitionList), _PARTITIONS))
+			errList = append(errList, fmt.Errorf("Replica partition nodes not defined for namespace `%s`: %d", nsName, len(partitionList)))
 		}
 
 		errList = append(errList, errors.New("Partition map errors normally occur when the cluster has partitioned due to network anomaly or node crash, or is not configured properly. Refer to https://www.aerospike.com/docs/operations/configure for more information."))
-		return NewAerospikeError(INVALID_CLUSTER_PARTITION_MAP, mergeErrors(errList).Error())
+		return types.NewAerospikeError(types.INVALID_CLUSTER_PARTITION_MAP, mergeErrors(errList).Error())
 	}
 
 	return nil

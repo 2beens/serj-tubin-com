@@ -1,5 +1,212 @@
 # Change History
 
+
+## May 28 2021: v4.5.2
+  Minor fix release.
+
+  * **Fixes**
+
+    - Handle reading keys where the original value sent to the server was a list. Resolves Issue #350.
+
+## May 27 2021: v4.5.1
+  Minor fix release.
+
+  * **Fixes**
+
+    - Handle lack of key digests in `BatchExists` command.
+
+## April 9 2021: v4.5.0
+  Minor feature and fix release.
+
+  * **New Features**
+
+    - Allows reading of boolean types from the server, supported in Aerospike server v5.6. The current client will not support writing boolean type to the server. That features will be supported in the upcoming Go client v5.
+
+  * **Fixes**
+
+    - [CLIENT-1495] Tentatively check if a connection is allowed to avoid launching too many goroutines.
+
+  * **Fixes**
+
+    - Implements correct and re-triable Scans for the Reflection API.
+    - Fixes an obscure var shadowing bug in TLS connection handshake error logging.
+
+## March 12 2021: v4.4.0
+  Minor fix and improvements release. 
+
+  * **Fixes**
+
+    - Fixes an issue where the client's reflection API expected certain `int` value types returned from the database. That assumption was wrong for `CDT`s and free form `List`s and `Map`s. The client will now convert types to each other per Go's conversion rules where possible.
+
+  * **Improvements**
+
+    - Use a global TLS setting everywhere in tests.
+
+## March 1 2021: v4.3.0
+  Minor feature and fix and major clean up release. While there aren't many user facing changes, the quality of the code has been markedly improved. 
+  This release puts us on a good footing for the next few bigger releases.
+
+  * **New Features**:
+
+    - [CLIENT-1457] Support scan pagination through `ScanPartitions()` with `PartitionFilter`
+
+  * **Fixes**
+
+    - Fixes an issue where if errors and filtered records happened at the same time in Batch requests, no error would be returned to the user.
+
+  * **Improvements**
+
+    - Makes the code samples more readable in the docs.
+    - Fixes a lot of code samples in documentation, along with typos, etc.
+    - Fixes copy/paste naming errors in the documentation. Thanks to [Yevgeny Rizhkov](https://github.com/reugn)
+    - Removes a few unreachable lines from the code. Thanks to [Yevgeny Rizhkov](https://github.com/reugn)
+    - Handles a few TLS connection related issues in tests.
+
+## February 12 2021: v4.2.0
+
+  Major feature and improvements release.
+
+  * **New Features**:
+
+    - [CLIENT-1192] Adds Support for partition scans. Queries which lack a `Statement.Filter` will be automatically converted to partition scans. If the cluster supports partition scans, all Scans and Queries will use the new protocol to allow retrying in case of some errors.
+    - [CLIENT-1237] Adds Support for `MultiPolicy.MaxRecords` in scans and queries without `Statement.Filter`.
+    - Adds `NewHosts` convenience function. (Github #320) thanks to [Yegor Myskin](https://github.com/un000)
+
+  * **Improvements**
+
+    - Adds a few missing error checks.
+    - Moves examples files to dedicated folders to avoid `multiple main function` errors for new users.
+    - Some documentation clean up. (Github #314) thanks to [Shin Uozumi](https://github.com/sinozu)
+    - Fix typo in example `NewKey()`. (Github #331) thanks to [Patrick Kuca](https://github.com/pkuca)
+    - Adds an example to list operations (using operate and list policy).
+    - Runs the XDR tests only when XDR is configured on the server.
+    - Add TLS config to test params.
+    - Mark `NewPredExpXXX` return value as the PredExp interface instead of concrete type. It will now group them under the `PredExp` interface in the docs.
+
+  * **Changes**
+    - Only use `Policy.Priority` and `MultiPolicy.FailOnClusterChange` on server versions < 4.9. `Priority` is now deprecated and replaced with `MultiPolicy.RecordPerSecond`.
+    - `Statement.TaskID` is deprecated and will be removed in the next major version.
+    - `ScanPolicy.ConcurrentNodes` is deprecated and will be removed in the next major version.
+
+… versions < 4.9
+
+## January 25 2021: v4.1.0
+
+  Major feature release.
+
+  * **New Features**:
+
+    - [CLIENT-1417] Adds Circuit-Breaker. Rejects command when assigned node's error rate exceeds `ClientPolicy.MaxErrorRate` over `ClientPolicy.ErrorRateWindow`.
+    - [CLIENT-1410] Adds `Client.SetXDRFilter()`.
+    - [CLIENT-1433] Adds `ExpMemorySize()` to expression filters.
+
+  * **Fixes**
+
+    - Fixes an issue where remainder miscalculation would cause the connection pool to be smaller than it should have been. (Github #332) thanks to [ShawnZhang](https://github.com/xqzhang2015)
+
+  * **Improvements**
+
+    - [CLIENT-1434] Reset peers, partition and rebalance generations on node tend errors.
+    - Use named fields in `LimitedReader` initialization.
+    - Skip `device_total_bytes` tests in Expressions for memory-only namespaces
+    - Change unexported field check in marshaller in anticipation of go 1.16 changes
+
+  * **Changes**
+    - Pack byte array header with string header codes when using msgpack to be consistent with server.
+    - Adds `ResultCode.LOST_CONFLICT`
+    - Change log level from Debug to Error for partition validation failures
+
+  * **Fixes**
+
+    - Fix remainder calculation in `ConnectionHeap`.
+
+## November 27 2020: v4.0.0
+
+  Major feature release. Deprecates `PredExp` filters and replaces them with the far more capable Expressions.
+
+  * **New Features**:
+
+    - [CLIENT-1361] Replace predicate filters with new Aerospike Expressions.
+
+  * **Fixes**
+
+    - Allows unmarshalling of bool fields to sub objects in reflection API. (Github #325)
+    - Fixes an issue where BatchIndexGet commands were not retried in some circumstances.
+
+  * **Incompatible changes**:
+
+    - Changes the `BitResizeFlagsXXX` enum types to  `BitResizeFlags` type. This should not affect any code if the enums were used.
+    - Changes the `ListSortFlagsXXX` enum types to`ListSortFlags` are now typed. This should not affect any code if the enums were used.
+
+## November 9 2020: v3.1.1
+
+  Hotfix release. We recommend upgrading to this version, or cherry-picking the changeset to your vendored version if possible.
+
+  * **Fixes**
+
+    - Handle cleanup cases in `Offer` and `DropIdleTail` for `singleConnectionHeap`. (Github #318)
+    - Unlock the mutex in `singleConnectionHeap.Poll` if called after cleanup. (Github #323) thanks to [linchuan4028](https://github.com/linchuan4028)
+
+  * **Changes**
+
+    - Removes support for versions prior to Go v1.12 due to incompatibility in the testing library we use. Go v1.9+ should still work, though they will not be tested in our tests.
+
+## September 10 2020: v3.1.0
+
+  Minor fix release.
+
+  * **Fixes**
+
+    - Fixes an issue where initial tend was not adhering to the `ClientPolicy.Timeout`. (CLIENT-1344)
+
+## August 19 2020: v3.0.5
+
+  Minor fix release.
+
+  * **Fixes**
+
+    - Corrects the maximum bin name size in error message.
+    - Fixes geo coordinates in predexp tests due to more strict server validation.
+    - Fixes misspelled words and doc links. PR #311, thanks to [Abhay](https://github.com/pnutmath)
+
+## July 7 2020: v3.0.4
+
+  Minor fix release.
+
+  * **Fixes**
+
+    - Fixes `Client.SetWhitelist` API.
+    - Fixes an issue where `Whilelist` was not set during `QueryRole`.
+
+## July 3 2020: v3.0.3
+
+  Minor fix release.
+
+  * **Fixes**
+
+    - Resolves an issue where batch retry could return some nil records in some situations.
+
+## June 24 2020: v3.0.2
+
+  Minor improvement release.
+
+  * **Fixes**
+
+    - Fixes an issue where if a slice was pre-assigned on a struct, the data would not be allocated to it in reflection API. PR #302, thanks to [gdm85](https://github.com/gdm85)
+    - Fixes an issue where `Node.GetConnection()` could in rare circumstances return no connection without an `error`. This would potentially cause a panic in VERY slow production servers.
+
+  * **Improvements**
+
+    - Converts a few panics to errors in wire protocol encoding/decoding. Resolves issue #304.
+
+## June 17 2020: v3.0.1
+
+  Minor bug fix release.
+
+  * **Fixes**
+
+    - Fixes caching of embedded structs with options in alias. Resolves issue #301.
+
 ## June 8 2020: v3.0.0
 
   Major feature release. There are a few minor breaking API changes. See `ClientPolicy`.

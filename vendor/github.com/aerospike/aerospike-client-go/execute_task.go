@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/types"
 )
 
 // ExecuteTask is used to poll for long running server execute job completion.
@@ -71,7 +71,7 @@ func (etsk *ExecuteTask) IsDone() (bool, error) {
 
 		if strings.HasPrefix(response, "ERROR:") {
 			// Mark done and quit immediately.
-			return false, NewAerospikeError(UDF_BAD_RESPONSE, response)
+			return false, types.NewAerospikeError(types.UDF_BAD_RESPONSE, response)
 		}
 
 		find := "status="

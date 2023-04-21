@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,7 @@
 package aerospike
 
 import (
-	// "fmt"
-
-	// . "github.com/aerospike/aerospike-client-go/logger"
-	. "github.com/aerospike/aerospike-client-go/types"
+	"github.com/aerospike/aerospike-client-go/types"
 	Buffer "github.com/aerospike/aerospike-client-go/utils/buffer"
 )
 
@@ -26,10 +23,14 @@ type serverCommand struct {
 	queryCommand
 }
 
-func newServerCommand(node *Node, policy *QueryPolicy, writePolicy *WritePolicy, statement *Statement, operations []*Operation) *serverCommand {
+func newServerCommand(node *Node, policy *QueryPolicy, writePolicy *WritePolicy, statement *Statement, taskId uint64, operations []*Operation) *serverCommand {
 	return &serverCommand{
 		queryCommand: *newQueryCommand(node, policy, writePolicy, statement, operations, nil, 0, false),
 	}
+}
+
+func (cmd *serverCommand) writeBuffer(ifc command) (err error) {
+	return cmd.setQuery(cmd.policy, cmd.writePolicy, cmd.statement, cmd.statement.TaskId, cmd.operations, cmd.writePolicy != nil, nil)
 }
 
 func (cmd *serverCommand) parseRecordResults(ifc command, receiveSize int) (bool, error) {
@@ -42,13 +43,13 @@ func (cmd *serverCommand) parseRecordResults(ifc command, receiveSize int) (bool
 		if err := cmd.readBytes(int(_MSG_REMAINING_HEADER_SIZE)); err != nil {
 			return false, err
 		}
-		resultCode := ResultCode(cmd.dataBuffer[5] & 0xFF)
+		resultCode := types.ResultCode(cmd.dataBuffer[5] & 0xFF)
 
 		if resultCode != 0 {
-			if resultCode == KEY_NOT_FOUND_ERROR {
+			if resultCode == types.KEY_NOT_FOUND_ERROR {
 				return false, nil
 			}
-			return false, NewAerospikeError(resultCode)
+			return false, types.NewAerospikeError(resultCode)
 		}
 
 		info3 := int(cmd.dataBuffer[3])

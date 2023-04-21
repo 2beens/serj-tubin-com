@@ -1,4 +1,4 @@
-// Copyright 2013-2020 Aerospike, Inc.
+// Copyright 2014-2021 Aerospike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@ import (
 	"time"
 
 	ParticleType "github.com/aerospike/aerospike-client-go/internal/particle_type"
+	"github.com/aerospike/aerospike-client-go/types"
+
 	Buffer "github.com/aerospike/aerospike-client-go/utils/buffer"
 )
 
@@ -37,7 +39,7 @@ func packIfcList(cmd BufferEx, list []interface{}) (int, error) {
 	size += n
 
 	for i := range list {
-		n, err := packObject(cmd, list[i], false)
+		n, err = packObject(cmd, list[i], false)
 		if err != nil {
 			return 0, err
 		}
@@ -73,7 +75,7 @@ func packValueArray(cmd BufferEx, list ValueArray) (int, error) {
 	size += n
 
 	for i := range list {
-		n, err := list[i].pack(cmd)
+		n, err = list[i].pack(cmd)
 		if err != nil {
 			return 0, err
 		}
@@ -102,7 +104,7 @@ func packIfcMap(cmd BufferEx, theMap map[interface{}]interface{}) (int, error) {
 	size += n
 
 	for k, v := range theMap {
-		n, err := packObject(cmd, k, true)
+		n, err = packObject(cmd, k, true)
 		if err != nil {
 			return 0, err
 		}
@@ -131,7 +133,7 @@ func packJsonMap(cmd BufferEx, theMap map[string]interface{}) (int, error) {
 	size += n
 
 	for k, v := range theMap {
-		n, err := packString(cmd, k)
+		n, err = packString(cmd, k)
 		if err != nil {
 			return 0, err
 		}
@@ -202,13 +204,8 @@ func packBytes(cmd BufferEx, b []byte) (int, error) {
 }
 
 func packByteArrayBegin(cmd BufferEx, length int) (int, error) {
-	if length < 32 {
-		return packAByte(cmd, 0xa0|byte(length))
-	} else if length < 65536 {
-		return packShort(cmd, 0xda, int16(length))
-	} else {
-		return packInt(cmd, 0xdb, int32(length))
-	}
+	// Use string header codes for byte arrays.
+	return packStringBegin(cmd, length)
 }
 
 func packObject(cmd BufferEx, obj interface{}, mapKey bool) (int, error) {
@@ -259,27 +256,27 @@ func packObject(cmd BufferEx, obj interface{}, mapKey bool) (int, error) {
 		return packFloat64(cmd, v)
 	case struct{}:
 		if mapKey {
-			panic(fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
+			return 0, types.NewAerospikeError(types.SERIALIZE_ERROR, fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
 		}
 		return packIfcMap(cmd, map[interface{}]interface{}{})
 	case []interface{}:
 		if mapKey {
-			panic(fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
+			return 0, types.NewAerospikeError(types.SERIALIZE_ERROR, fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
 		}
 		return packIfcList(cmd, v)
 	case map[interface{}]interface{}:
 		if mapKey {
-			panic(fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
+			return 0, types.NewAerospikeError(types.SERIALIZE_ERROR, fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
 		}
 		return packIfcMap(cmd, v)
 	case ListIter:
 		if mapKey {
-			panic(fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
+			return 0, types.NewAerospikeError(types.SERIALIZE_ERROR, fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
 		}
 		return packList(cmd, obj.(ListIter))
 	case MapIter:
 		if mapKey {
-			panic(fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
+			return 0, types.NewAerospikeError(types.SERIALIZE_ERROR, fmt.Sprintf("Maps, Slices, and bounded arrays other than Bounded Byte Arrays are not supported as Map keys. Value: %#v", v))
 		}
 		return packMap(cmd, obj.(MapIter))
 	}
@@ -294,7 +291,7 @@ func packObject(cmd BufferEx, obj interface{}, mapKey bool) (int, error) {
 		return packObjectReflect(cmd, obj, mapKey)
 	}
 
-	panic(fmt.Sprintf("Type `%v (%s)` not supported to pack. ", obj, reflect.TypeOf(obj).String()))
+	return 0, types.NewAerospikeError(types.SERIALIZE_ERROR, fmt.Sprintf("Type `%v (%s)` not supported to pack. ", obj, reflect.TypeOf(obj).String()))
 }
 
 func packAUInt64(cmd BufferEx, val uint64) (int, error) {
@@ -353,21 +350,29 @@ func PackString(cmd BufferEx, val string) (int, error) {
 	return packString(cmd, val)
 }
 
+func packStringBegin(cmd BufferEx, size int) (int, error) {
+	if size < 32 {
+		return packAByte(cmd, 0xa0|byte(size))
+	} else if size < 256 {
+		return packByte(cmd, 0xd9, byte(size))
+	} else if size < 65536 {
+		return packShort(cmd, 0xda, int16(size))
+	}
+	return packInt(cmd, 0xdb, int32(size))
+}
+
 func packString(cmd BufferEx, val string) (int, error) {
 	size := 0
 	slen := len(val) + 1
-	n, err := packByteArrayBegin(cmd, slen)
+	n, err := packStringBegin(cmd, slen)
 	if err != nil {
 		return n, err
 	}
 	size += n
 
 	if cmd != nil {
-		n, err = 1, cmd.WriteByte(byte(ParticleType.STRING))
-		if err != nil {
-			return size + n, err
-		}
-		size += n
+		cmd.WriteByte(byte(ParticleType.STRING))
+		size++
 
 		n, err = cmd.WriteString(val)
 		if err != nil {
@@ -376,6 +381,28 @@ func packString(cmd BufferEx, val string) (int, error) {
 		size += n
 	} else {
 		size += 1 + len(val)
+	}
+
+	return size, nil
+}
+
+func packRawString(cmd BufferEx, val string) (int, error) {
+	size := 0
+	slen := len(val)
+	n, err := packStringBegin(cmd, slen)
+	if err != nil {
+		return n, err
+	}
+	size += n
+
+	if cmd != nil {
+		n, err = cmd.WriteString(val)
+		if err != nil {
+			return size + n, err
+		}
+		size += n
+	} else {
+		size += len(val)
 	}
 
 	return size, nil
@@ -391,11 +418,8 @@ func packGeoJson(cmd BufferEx, val string) (int, error) {
 	size += n
 
 	if cmd != nil {
-		n, err = 1, cmd.WriteByte(byte(ParticleType.GEOJSON))
-		if err != nil {
-			return size + n, err
-		}
-		size += n
+		cmd.WriteByte(byte(ParticleType.GEOJSON))
+		size++
 
 		n, err = cmd.WriteString(val)
 		if err != nil {
@@ -418,13 +442,8 @@ func packByteArray(cmd BufferEx, src []byte) (int, error) {
 
 func packInt64(cmd BufferEx, valType int, val int64) (int, error) {
 	if cmd != nil {
-		size, err := 1, cmd.WriteByte(byte(valType))
-		if err != nil {
-			return size, err
-		}
-
-		n, err := cmd.WriteInt64(val)
-		return size + n, err
+		cmd.WriteByte(byte(valType))
+		cmd.WriteInt64(val)
 	}
 	return 1 + 8, nil
 }
@@ -436,38 +455,24 @@ func PackUInt64(cmd BufferEx, val uint64) (int, error) {
 
 func packUInt64(cmd BufferEx, val uint64) (int, error) {
 	if cmd != nil {
-		size, err := 1, cmd.WriteByte(byte(0xcf))
-		if err != nil {
-			return size, err
-		}
-
-		n, err := cmd.WriteInt64(int64(val))
-		return size + n, err
+		cmd.WriteByte(byte(0xcf))
+		cmd.WriteInt64(int64(val))
 	}
 	return 1 + 8, nil
 }
 
 func packInt(cmd BufferEx, valType int, val int32) (int, error) {
 	if cmd != nil {
-		size, err := 1, cmd.WriteByte(byte(valType))
-		if err != nil {
-			return size, err
-		}
-		n, err := cmd.WriteInt32(val)
-		return size + n, err
+		cmd.WriteByte(byte(valType))
+		cmd.WriteInt32(val)
 	}
 	return 1 + 4, nil
 }
 
 func packShort(cmd BufferEx, valType int, val int16) (int, error) {
 	if cmd != nil {
-		size, err := 1, cmd.WriteByte(byte(valType))
-		if err != nil {
-			return size, err
-		}
-
-		n, err := cmd.WriteInt16(val)
-		return size + n, err
+		cmd.WriteByte(byte(valType))
+		cmd.WriteInt16(val)
 	}
 	return 1 + 2, nil
 }
@@ -476,96 +481,50 @@ func packShort(cmd BufferEx, valType int, val int16) (int, error) {
 // for wire transfer only
 func packShortRaw(cmd BufferEx, val int16) (int, error) {
 	if cmd != nil {
-		return cmd.WriteInt16(val)
+		cmd.WriteInt16(val)
 	}
 	return 2, nil
 }
 
 func packInfinity(cmd BufferEx) (int, error) {
 	if cmd != nil {
-		size := 0
-		n, err := 1, cmd.WriteByte(byte(0xd4))
-		if err != nil {
-			return n, err
-		}
-		size += n
-
-		n, err = 1, cmd.WriteByte(0xff)
-		if err != nil {
-			return size + n, err
-		}
-		size += n
-
-		n, err = 1, cmd.WriteByte(0x01)
-		if err != nil {
-			return size + n, err
-		}
-		size += n
-
-		return size, nil
+		cmd.WriteByte(byte(0xd4))
+		cmd.WriteByte(0xff)
+		cmd.WriteByte(0x01)
 	}
 	return 3, nil
 }
 
 func packWildCard(cmd BufferEx) (int, error) {
 	if cmd != nil {
-		size := 0
-		n, err := 1, cmd.WriteByte(byte(0xd4))
-		if err != nil {
-			return n, err
-		}
-		size += n
-
-		n, err = 1, cmd.WriteByte(0xff)
-		if err != nil {
-			return size + n, err
-		}
-		size += n
-
-		n, err = 1, cmd.WriteByte(0x00)
-		if err != nil {
-			return size + n, err
-		}
-		size += n
-
-		return size, nil
+		cmd.WriteByte(byte(0xd4))
+		cmd.WriteByte(0xff)
+		cmd.WriteByte(0x00)
 	}
 	return 3, nil
 }
 
 func packByte(cmd BufferEx, valType int, val byte) (int, error) {
 	if cmd != nil {
-		size := 0
-		n, err := 1, cmd.WriteByte(byte(valType))
-		if err != nil {
-			return n, err
-		}
-		size += n
-
-		n, err = 1, cmd.WriteByte(val)
-		if err != nil {
-			return size + n, err
-		}
-		size += n
-
-		return size, nil
+		cmd.WriteByte(byte(valType))
+		cmd.WriteByte(val)
 	}
 	return 1 + 1, nil
 }
 
-// Pack nil packs a nil value
+// PackNil packs a nil value
 func PackNil(cmd BufferEx) (int, error) {
 	return packNil(cmd)
 }
 
 func packNil(cmd BufferEx) (int, error) {
 	if cmd != nil {
-		return 1, cmd.WriteByte(0xc0)
+		cmd.WriteByte(0xc0)
 	}
 	return 1, nil
 }
 
-// Pack bool packs a bool value
+// PackBool packs a bool value
 func PackBool(cmd BufferEx, val bool) (int, error) {
 	return packBool(cmd, val)
 }
@@ -573,9 +532,10 @@ func PackBool(cmd BufferEx, val bool) (int, error) {
 func packBool(cmd BufferEx, val bool) (int, error) {
 	if cmd != nil {
 		if val {
-			return 1, cmd.WriteByte(0xc3)
+			cmd.WriteByte(0xc3)
+		} else {
+			cmd.WriteByte(0xc2)
 		}
-		return 1, cmd.WriteByte(0xc2)
 	}
 	return 1, nil
 }
@@ -587,14 +547,8 @@ func PackFloat32(cmd BufferEx, val float32) (int, error) {
 
 func packFloat32(cmd BufferEx, val float32) (int, error) {
 	if cmd != nil {
-		size := 0
-		n, err := 1, cmd.WriteByte(0xca)
-		if err != nil {
-			return n, err
-		}
-		size += n
-		n, err = cmd.WriteFloat32(val)
-		return size + n, err
+		cmd.WriteByte(0xca)
+		cmd.WriteFloat32(val)
 	}
 	return 1 + 4, nil
 }
@@ -606,24 +560,24 @@ func PackFloat64(cmd BufferEx, val float64) (int, error) {
 
 func packFloat64(cmd BufferEx, val float64) (int, error) {
 	if cmd != nil {
-		size := 0
-		n, err := 1, cmd.WriteByte(0xcb)
-		if err != nil {
-			return n, err
-		}
-		size += n
-		n, err = cmd.WriteFloat64(val)
-		return size + n, err
+		cmd.WriteByte(0xcb)
+		cmd.WriteFloat64(val)
 	}
 	return 1 + 8, nil
 }
 
 func packAByte(cmd BufferEx, val byte) (int, error) {
 	if cmd != nil {
-		return 1, cmd.WriteByte(val)
+		cmd.WriteByte(val)
 	}
 	return 1, nil
 }
+
+/***************************************************************************
+
+	packer
+
+***************************************************************************/
 
 // packer implements a buffered packer
 type packer struct {
@@ -635,80 +589,69 @@ func newPacker() *packer {
 	return &packer{}
 }
 
-// Int64ToBytes converts an int64 into slice of Bytes.
-func (vb *packer) WriteInt64(num int64) (int, error) {
+// WriteInt64 writes an int64 to the buffer
+func (vb *packer) WriteInt64(num int64) int {
 	return vb.WriteUint64(uint64(num))
 }
 
-// Uint64ToBytes converts an uint64 into slice of Bytes.
-func (vb *packer) WriteUint64(num uint64) (int, error) {
+// WriteUint64 writes an uint64 to the buffer
+func (vb *packer) WriteUint64(num uint64) int {
 	binary.BigEndian.PutUint64(vb.tempBuffer[:8], num)
-	vb.Write(vb.tempBuffer[:8])
-	return 8, nil
+	n, _ := vb.Write(vb.tempBuffer[:8])
+	return n
 }
 
-// Int32ToBytes converts an int32 to a byte slice of size 4
-func (vb *packer) WriteInt32(num int32) (int, error) {
+// WriteInt32 writes an int32 to the buffer
+func (vb *packer) WriteInt32(num int32) int {
 	return vb.WriteUint32(uint32(num))
 }
 
-// Uint32ToBytes converts an uint32 to a byte slice of size 4
-func (vb *packer) WriteUint32(num uint32) (int, error) {
+// WriteUint32 writes an uint32 to the buffer
+func (vb *packer) WriteUint32(num uint32) int {
 	binary.BigEndian.PutUint32(vb.tempBuffer[:4], num)
-	vb.Write(vb.tempBuffer[:4])
-	return 4, nil
+	n, _ := vb.Write(vb.tempBuffer[:4])
+	return n
 }
 
-// Int16ToBytes converts an int16 to slice of bytes
-func (vb *packer) WriteInt16(num int16) (int, error) {
+// WriteInt16 writes an int16 to the buffer
+func (vb *packer) WriteInt16(num int16) int {
 	return vb.WriteUint16(uint16(num))
 }
 
-// UInt16ToBytes converts an iuint16 to slice of bytes
-func (vb *packer) WriteUint16(num uint16) (int, error) {
+// WriteUint16 writes an uint16 to the buffer
+func (vb *packer) WriteUint16(num uint16) int {
 	binary.BigEndian.PutUint16(vb.tempBuffer[:2], num)
-	vb.Write(vb.tempBuffer[:2])
-	return 2, nil
+	n, _ := vb.Write(vb.tempBuffer[:2])
+	return n
 }
 
-func (vb *packer) WriteFloat32(float float32) (int, error) {
+// WriteFloat32 writes an float32 to the buffer
+func (vb *packer) WriteFloat32(float float32) int {
 	bits := math.Float32bits(float)
 	binary.BigEndian.PutUint32(vb.tempBuffer[:4], bits)
-	vb.Write(vb.tempBuffer[:4])
-	return 4, nil
+	n, _ := vb.Write(vb.tempBuffer[:4])
+	return n
 }
 
-func (vb *packer) WriteFloat64(float float64) (int, error) {
+// WriteFloat64 writes an float64 to the buffer
+func (vb *packer) WriteFloat64(float float64) int {
 	bits := math.Float64bits(float)
 	binary.BigEndian.PutUint64(vb.tempBuffer[:8], bits)
-	vb.Write(vb.tempBuffer[:8])
-	return 8, nil
+	n, _ := vb.Write(vb.tempBuffer[:8])
+	return n
 }
 
-func (vb *packer) WriteByte(b byte) error {
-	_, err := vb.Write([]byte{b})
-	return err
+// WriteBool writes a bool to the buffer
+func (vb *packer) WriteBool(b bool) int {
+	if b {
+		vb.WriteByte(1)
+	} else {
+		vb.WriteByte(0)
+	}
+	return 1
 }
 
-func (vb *packer) WriteString(s string) (int, error) {
-	// To avoid allocating memory, write the strings in small chunks
-	l := len(s)
-	const size = 128
-	b := [size]byte{}
-	cnt := 0
-	for i := 0; i < l; i++ {
-		b[cnt] = s[i]
-		cnt++
-
-		if cnt == size {
-			vb.Write(b[:])
-			cnt = 0
-		}
-	}
-
-	if cnt > 0 {
-		vb.Write(b[:cnt])
-	}
-
-	return len(s), nil
+// WriteBytes writes a byte to the buffer
+func (vb *packer) WriteByte(b byte) {
+	vb.Write([]byte{b})
 }
