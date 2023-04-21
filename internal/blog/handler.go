@@ -43,13 +43,13 @@ func NewBlogHandler(
 	}
 }
 
-func (handler *Handler) SetupRoutes(blogRouter *mux.Router) {
-	blogRouter.HandleFunc("/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
-	blogRouter.HandleFunc("/update", handler.handleUpdateBlog).Methods("POST", "OPTIONS").Name("update-blog")
-	blogRouter.HandleFunc("/clap", handler.handleBlogClapped).Methods("PATCH", "OPTIONS").Name("blog-clapped")
-	blogRouter.HandleFunc("/delete/{id}", handler.handleDeleteBlog).Methods("DELETE", "OPTIONS").Name("delete-blog")
-	blogRouter.HandleFunc("/all", handler.handleAll).Methods("GET").Name("all-blogs")
-	blogRouter.HandleFunc("/page/{page}/size/{size}", handler.handleGetPage).Methods("GET").Name("blogs-page")
+func (handler *Handler) SetupRoutes(router *mux.Router) {
+	router.HandleFunc("/blog/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
+	router.HandleFunc("/blog/update", handler.handleUpdateBlog).Methods("POST", "OPTIONS").Name("update-blog")
+	router.HandleFunc("/blog/clap", handler.handleBlogClapped).Methods("PATCH", "OPTIONS").Name("blog-clapped")
+	router.HandleFunc("/blog/delete/{id}", handler.handleDeleteBlog).Methods("DELETE", "OPTIONS").Name("delete-blog")
+	router.HandleFunc("/blog/all", handler.handleAll).Methods("GET").Name("all-blogs")
+	router.HandleFunc("/blog/page/{page}/size/{size}", handler.handleGetPage).Methods("GET").Name("blogs-page")
 }
 
 func (handler *Handler) handleNewBlog(w http.ResponseWriter, r *http.Request) {

@@ -220,35 +220,29 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware("main-router"))
 
-	blogRouter := r.PathPrefix("/blog").Subrouter()
-	weatherRouter := r.PathPrefix("/weather").Subrouter()
-	boardRouter := r.PathPrefix("/board").Subrouter()
-	netlogRouter := r.PathPrefix("/netlog").Subrouter()
-	notesRouter := r.PathPrefix("/notes").Subrouter()
-
 	blogHandler := blog.NewBlogHandler(s.blogApi, s.loginChecker)
-	blogHandler.SetupRoutes(blogRouter)
+	blogHandler.SetupRoutes(r)
 
 	boardHandler := visitor_board.NewBoardHandler(s.boardClient, s.loginChecker)
-	boardHandler.SetupRoutes(boardRouter)
+	boardHandler.SetupRoutes(r)
 
 	weatherHandler := weather.NewHandler(s.geoIp, s.weatherApi)
-	weatherRouter.HandleFunc("/current", weatherHandler.HandleCurrent).Methods("GET")
-	weatherRouter.HandleFunc("/tomorrow", weatherHandler.HandleTomorrow).Methods("GET")
-	weatherRouter.HandleFunc("/5days", weatherHandler.Handle5Days).Methods("GET")
+	r.HandleFunc("/weather/current", weatherHandler.HandleCurrent).Methods("GET")
+	r.HandleFunc("/weather/tomorrow", weatherHandler.HandleTomorrow).Methods("GET")
+	r.HandleFunc("/weather/5days", weatherHandler.Handle5Days).Methods("GET")
 
 	reqRateLimiter := redis_rate.NewLimiter(s.redisClient)
 	miscHandler := misc.NewHandler(s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin)
 	miscHandler.SetupRoutes(r, reqRateLimiter, s.metricsManager)
 
 	netlogHandler := netlog.NewHandler(s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker)
-	netlogHandler.SetupRoutes(netlogRouter)
+	netlogHandler.SetupRoutes(r)
 
 	notesHandler := notes_box.NewHandler(s.notesBoxApi, s.loginChecker, s.metricsManager)
-	notesRouter.HandleFunc("", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
-	notesRouter.HandleFunc("", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
-	notesRouter.HandleFunc("", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
-	notesRouter.HandleFunc("/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
+	r.HandleFunc("/notes", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
+	r.HandleFunc("/notes", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
+	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
+	r.HandleFunc("/notes/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {

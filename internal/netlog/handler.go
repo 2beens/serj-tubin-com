@@ -50,11 +50,11 @@ func NewHandler(
 }
 
 func (handler *Handler) SetupRoutes(router *mux.Router) {
-	router.HandleFunc("/new", handler.handleNewVisit).Methods("POST", "OPTIONS").Name("new-visit")
-	router.HandleFunc("/", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-last")
-	router.HandleFunc("/limit/{limit}", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-with-limit")
-	router.HandleFunc("/s/{source}/f/{field}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("visits-page")
-	router.HandleFunc("/s/{source}/f/{field}/search/{keywords}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("search-page")
+	router.HandleFunc("/netlog/new", handler.handleNewVisit).Methods("POST", "OPTIONS").Name("new-visit")
+	router.HandleFunc("/netlog/", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-last")
+	router.HandleFunc("/netlog/limit/{limit}", handler.handleGetAll).Methods("GET", "OPTIONS").Name("get-with-limit")
+	router.HandleFunc("/netlog/s/{source}/f/{field}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("visits-page")
+	router.HandleFunc("/netlog/s/{source}/f/{field}/search/{keywords}/page/{page}/size/{size}", handler.handleGetPage).Methods("GET", "OPTIONS").Name("search-page")
 }
 
 func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {

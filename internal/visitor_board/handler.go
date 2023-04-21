@@ -31,13 +31,13 @@ func NewBoardHandler(
 }
 
 func (handler *Handler) SetupRoutes(router *mux.Router) {
-	router.HandleFunc("/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
-	router.HandleFunc("/messages/delete/{id}", handler.handleDeleteMessage).Methods("DELETE", "OPTIONS").Name("delete-message")
-	router.HandleFunc("/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
-	router.HandleFunc("/messages/all", handler.handleGetAllMessages).Methods("GET").Name("all-messages")
-	router.HandleFunc("/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
-	router.HandleFunc("/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET").Name("messages-range")
-	router.HandleFunc("/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET").Name("messages-page")
+	router.HandleFunc("/board/messages/new", handler.handleNewMessage).Methods("POST", "OPTIONS").Name("new-message")
+	router.HandleFunc("/board/messages/delete/{id}", handler.handleDeleteMessage).Methods("DELETE", "OPTIONS").Name("delete-message")
+	router.HandleFunc("/board/messages/count", handler.handleMessagesCount).Methods("GET").Name("count-messages")
+	router.HandleFunc("/board/messages/all", handler.handleGetAllMessages).Methods("GET").Name("all-messages")
+	router.HandleFunc("/board/messages/last/{limit}", handler.handleGetAllMessages).Methods("GET").Name("last-messages")
+	router.HandleFunc("/board/messages/from/{from}/to/{to}", handler.handleMessagesRange).Methods("GET").Name("messages-range")
+	router.HandleFunc("/board/messages/page/{page}/size/{size}", handler.handleGetMessagesPage).Methods("GET").Name("messages-page")
 }
 
 func (handler *Handler) handleGetMessagesPage(w http.ResponseWriter, r *http.Request) {

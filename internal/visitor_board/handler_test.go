@@ -67,12 +67,9 @@ func setupVisitorBoardRouterForTests(
 
 func TestNewBoardHandler(t *testing.T) {
 	r := mux.NewRouter()
-	boardRouter := r.PathPrefix("/board").Subrouter()
 
 	handler := NewBoardHandler(nil, nil)
-	handler.SetupRoutes(boardRouter)
-	require.NotNil(t, handler)
-	require.NotNil(t, boardRouter)
+	handler.SetupRoutes(r)
 
 	for caseName, route := range map[string]struct {
 		name   string
@@ -140,7 +137,7 @@ func TestBoardHandler_handleMessagesCount(t *testing.T) {
 	m := metrics.NewTestManager()
 	r := setupVisitorBoardRouterForTests(t, boardClient, m, "", loginChecker)
 
-	req, err := http.NewRequest("GET", "/messages/count", nil)
+	req, err := http.NewRequest("GET", "/board/messages/count", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr := httptest.NewRecorder()
@@ -158,7 +155,7 @@ func TestBoardHandler_handleGetAllMessages(t *testing.T) {
 	m := metrics.NewTestManager()
 	r := setupVisitorBoardRouterForTests(t, boardClient, m, "", loginChecker)
 
-	req, err := http.NewRequest("GET", "/messages/all", nil)
+	req, err := http.NewRequest("GET", "/board/messages/all", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr := httptest.NewRecorder()
@@ -186,7 +183,7 @@ func TestBoardHandler_handleGetLastMessages(t *testing.T) {
 	m := metrics.NewTestManager()
 	r := setupVisitorBoardRouterForTests(t, boardClient, m, "", loginChecker)
 
-	req, err := http.NewRequest("GET", "/messages/last/2", nil)
+	req, err := http.NewRequest("GET", "/board/messages/last/2", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr := httptest.NewRecorder()
@@ -213,7 +210,7 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	m := metrics.NewTestManager()
 	r := setupVisitorBoardRouterForTests(t, boardClient, m, "", loginChecker)
 
-	req, err := http.NewRequest("GET", "/messages/page/2/size/2", nil)
+	req, err := http.NewRequest("GET", "/board/messages/page/2/size/2", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr := httptest.NewRecorder()
@@ -240,7 +237,7 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	assert.True(t, found2)
 
 	// big size
-	req, err = http.NewRequest("GET", "/messages/page/2/size/200", nil)
+	req, err = http.NewRequest("GET", "/board/messages/page/2/size/200", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr = httptest.NewRecorder()
@@ -254,7 +251,7 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	require.Len(t, boardMessages, len(initialBoardMessages))
 
 	// invalid arguments
-	req, err = http.NewRequest("GET", "/messages/page/invalid/size/2", nil)
+	req, err = http.NewRequest("GET", "/board/messages/page/invalid/size/2", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr = httptest.NewRecorder()
@@ -272,7 +269,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	r := setupVisitorBoardRouterForTests(t, boardClient, m, "", loginChecker)
 
 	// wrong session token
-	req, err := http.NewRequest("DELETE", "/messages/delete/2", nil)
+	req, err := http.NewRequest("DELETE", "/board/messages/delete/2", nil)
 	req.Header.Set("Origin", "test")
 	req.Header.Set("X-SERJ-TOKEN", "mywrongsecret")
 	require.NoError(t, err)
@@ -285,7 +282,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(initialBoardMessages), messagesCount)
 
 	// session token missing
-	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
+	req, err = http.NewRequest("DELETE", "/board/messages/delete/2", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr = httptest.NewRecorder()
@@ -297,7 +294,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(initialBoardMessages), messagesCount)
 
 	// correct secret - messages should get removed
-	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
+	req, err = http.NewRequest("DELETE", "/board/messages/delete/2", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
@@ -312,7 +309,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(initialBoardMessages)-1, newCount)
 
 	// delete same message again - and fail to do so
-	req, err = http.NewRequest("DELETE", "/messages/delete/2", nil)
+	req, err = http.NewRequest("DELETE", "/board/messages/delete/2", nil)
 	require.NoError(t, err)
 	redisMock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 	req.Header.Set("Origin", "test")
@@ -327,7 +324,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(initialBoardMessages)-1, newCount)
 
 	// delete another one
-	req, err = http.NewRequest("DELETE", "/messages/delete/3", nil)
+	req, err = http.NewRequest("DELETE", "/board/messages/delete/3", nil)
 	require.NoError(t, err)
 	redisMock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 	req.Header.Set("Origin", "test")
@@ -342,7 +339,7 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 	assert.Equal(t, len(initialBoardMessages)-2, newCount)
 
 	// get all
-	req, err = http.NewRequest("GET", "/messages/all", nil)
+	req, err = http.NewRequest("GET", "/board/messages/all", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr = httptest.NewRecorder()
@@ -371,7 +368,7 @@ func TestBoardHandler_handleMessagesRange(t *testing.T) {
 	m := metrics.NewTestManager()
 	r := setupVisitorBoardRouterForTests(t, boardClient, m, "", loginChecker)
 
-	req, err := http.NewRequest("GET", "/messages/from/1/to/3", nil)
+	req, err := http.NewRequest("GET", "/board/messages/from/1/to/3", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr := httptest.NewRecorder()
@@ -410,7 +407,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	m := metrics.NewTestManager()
 	r := setupVisitorBoardRouterForTests(t, boardClient, m, "", loginChecker)
 
-	req, err := http.NewRequest("POST", "/messages/new", nil)
+	req, err := http.NewRequest("POST", "/board/messages/new", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	req.PostForm = url.Values{}
@@ -427,7 +424,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	assert.Equal(t, len(initialBoardMessages)+1, len(aeroTestClient.AeroBinMaps))
 
 	// add new message with empty author
-	req, err = http.NewRequest("POST", "/messages/new", nil)
+	req, err = http.NewRequest("POST", "/board/messages/new", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	req.PostForm = url.Values{}
@@ -443,7 +440,7 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	assert.Equal(t, len(initialBoardMessages)+2, len(aeroTestClient.AeroBinMaps))
 
 	// check messages created
-	req, err = http.NewRequest("GET", "/messages/all", nil)
+	req, err = http.NewRequest("GET", "/board/messages/all", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	rr = httptest.NewRecorder()
@@ -492,7 +489,7 @@ func TestBoardHandler_handleNewMessage_jsonPayload(t *testing.T) {
 	newMsgParamsBytes, err := json.Marshal(newMsgParams)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "/messages/new", bytes.NewBuffer(newMsgParamsBytes))
+	req, err := http.NewRequest("POST", "/board/messages/new", bytes.NewBuffer(newMsgParamsBytes))
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	req.Header.Set("Content-Type", "application/json")
@@ -513,7 +510,7 @@ func TestBoardHandler_handleNewMessage_jsonPayload(t *testing.T) {
 	newMsgParamsBytes, err = json.Marshal(newMsgParams)
 	require.NoError(t, err)
 
-	req, err = http.NewRequest("POST", "/messages/new", bytes.NewBuffer(newMsgParamsBytes))
+	req, err = http.NewRequest("POST", "/board/messages/new", bytes.NewBuffer(newMsgParamsBytes))
 	require.NoError(t, err)
 	req.Header.Set("Origin", "test")
 	req.Header.Set("Content-Type", "application/json")

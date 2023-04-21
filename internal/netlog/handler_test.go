@@ -63,22 +63,18 @@ func setupNetlogRouterForTests(
 	r.Use(authMiddleware.AuthCheck())
 	r.Use(middleware.DrainAndCloseRequest())
 
-	netlogRouter := r.PathPrefix("/netlog").Subrouter()
 	handler := NewHandler(netlogApi, metricsManager, browserReqSecret, loginChecker)
-	handler.SetupRoutes(netlogRouter)
+	handler.SetupRoutes(r)
 
 	return r
 }
 
 func TestNewNetlogHandler(t *testing.T) {
 	r := mux.NewRouter()
-	router := r.PathPrefix("/netlog").Subrouter()
 	netlogApi := NewTestApi()
 	m := metrics.NewTestManager()
 	handler := NewHandler(netlogApi, m, "", nil)
-	handler.SetupRoutes(router)
-	require.NotNil(t, handler)
-	require.NotNil(t, router)
+	handler.SetupRoutes(r)
 
 	for caseName, route := range map[string]struct {
 		name   string
@@ -126,7 +122,7 @@ func TestNewNetlogHandler(t *testing.T) {
 			require.NoError(t, err)
 
 			routeMatch := &mux.RouteMatch{}
-			route := router.Get(route.name)
+			route := r.Get(route.name)
 			require.NotNil(t, route)
 			isMatch := route.Match(req, routeMatch)
 			assert.True(t, isMatch, caseName)
@@ -150,7 +146,7 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
 
-	req, err := http.NewRequest("GET", "/", nil)
+	req, err := http.NewRequest("GET", "/netlog/", nil)
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", "tokenAbc123")
 	rr := httptest.NewRecorder()
