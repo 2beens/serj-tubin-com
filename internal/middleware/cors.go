@@ -17,12 +17,18 @@ func Cors() func(next http.Handler) http.Handler {
 			origin := r.Header.Get("Origin")
 
 			switch {
-			case allowedOrigins[origin], strings.HasPrefix(origin, "chrome-extension://"):
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-				w.Header().Set("Access-Control-Allow-Headers",
-					"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-SERJ-TOKEN",
-				)
-				w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, PATCH, DELETE")
+			case
+				allowedOrigins[origin],
+				strings.HasPrefix(origin, "chrome-extension://"),
+				// allow CORS to the files-box /link endpoint from anywhere
+				strings.HasPrefix(r.URL.Path, "/link/"):
+				{
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Access-Control-Allow-Headers",
+						"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-SERJ-TOKEN",
+					)
+					w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, PATCH, DELETE")
+				}
 			default:
 				w.WriteHeader(http.StatusForbidden)
 				return

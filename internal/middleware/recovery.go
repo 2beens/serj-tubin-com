@@ -14,7 +14,9 @@ func PanicRecovery(metricsManager *metrics.Manager) func(next http.Handler) http
 			defer func() {
 				if r := recover(); r != nil {
 					log.Printf("http: panic serving %s: %v\n%s", req.URL.Path, r, debug.Stack())
-					metricsManager.CounterHandleRequestPanic.Inc()
+					if metricsManager != nil {
+						metricsManager.CounterHandleRequestPanic.Inc()
+					}
 				}
 			}()
 

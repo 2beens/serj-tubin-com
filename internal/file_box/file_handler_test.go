@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -74,7 +75,8 @@ func TestFileHandler_handleGet(t *testing.T) {
 	loginChecker := auth.NewLoginTestChecker()
 	fileHandler := NewFileHandler(api, loginChecker)
 
-	r := RouterSetup(fileHandler)
+	metricsManager := metrics.NewTestManager()
+	r := RouterSetup(fileHandler, metricsManager)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("/link/%d", addedFiles[4]), nil)
 	req.Header.Set("Origin", "test")
@@ -207,7 +209,8 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 			loginChecker.LoggedSessions["test-token"] = true
 			fileHandler := NewFileHandler(api, loginChecker)
 
-			r := RouterSetup(fileHandler)
+			metricsManager := metrics.NewTestManager()
+			r := RouterSetup(fileHandler, metricsManager)
 
 			// before delete, file there?
 			file1, parent, err := api.Get(ctx, addedFiles[0])
@@ -306,7 +309,8 @@ func TestFileHandler_handleUpdateInfo(t *testing.T) {
 			loginChecker.LoggedSessions["test-token"] = true
 			fileHandler := NewFileHandler(api, loginChecker)
 
-			r := RouterSetup(fileHandler)
+			metricsManager := metrics.NewTestManager()
+			r := RouterSetup(fileHandler, metricsManager)
 
 			req := tc.req(fileId, t)
 
@@ -356,7 +360,8 @@ func TestFileHandler_handleGetRoot(t *testing.T) {
 	loginChecker.LoggedSessions["test-token"] = true
 	fileHandler := NewFileHandler(api, loginChecker)
 
-	r := RouterSetup(fileHandler)
+	metricsManager := metrics.NewTestManager()
+	r := RouterSetup(fileHandler, metricsManager)
 
 	req, err := http.NewRequest("GET", "/f/root", nil)
 	require.NoError(t, err)
