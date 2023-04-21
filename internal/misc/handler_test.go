@@ -12,9 +12,11 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
-	testingpkg "github.com/2beens/serjtubincom/pkg/testing"
 
+	testingpkg "github.com/2beens/serjtubincom/pkg/testing"
+	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -64,6 +66,43 @@ func (l *testRequestRateLimiter) Allow(_ context.Context, key string, limit redi
 	l.Limits[key]--
 
 	return res, nil
+}
+
+func setupNetlogRouterForTests(
+	t *testing.T,
+	authService *auth.Service,
+	adminUsername, adminPassHash string,
+	redisClient *redis.Client,
+	reqRateLimiter *testRequestRateLimiter,
+	metricsManager *metrics.Manager,
+	browserReqSecret string,
+) *mux.Router {
+	t.Helper()
+
+	r := mux.NewRouter()
+	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		browserReqSecret,
+		auth.NewLoginChecker(time.Hour, redisClient),
+	)
+
+	// the same setup as in Server.routerSetup() ... these are not so much of a "unit" tests
+	r.Use(middleware.PanicRecovery(metricsManager))
+	r.Use(middleware.LogRequest())
+	r.Use(middleware.RequestMetrics(metricsManager))
+	r.Use(middleware.Cors())
+	r.Use(authMiddleware.AuthCheck())
+	r.Use(middleware.DrainAndCloseRequest())
+
+	handler := NewHandler(
+		nil, nil,
+		"dummy", authService, &auth.Admin{
+			Username:     adminUsername,
+			PasswordHash: adminPassHash,
+		},
+	)
+	handler.SetupRoutes(r, reqRateLimiter, metrics.NewTestManager())
+
+	return r
 }
 
 func TestNewMiscHandler(t *testing.T) {
@@ -161,20 +200,19 @@ func TestLogin(t *testing.T) {
 	password := "testpass"
 	passwordHash := "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
 
-	mainRouter := mux.NewRouter()
 	reqRateLimiter := &testRequestRateLimiter{
 		Limits: map[string]int{},
 	}
-	handler := NewHandler(
-		nil, nil,
-		"dummy", authService, &auth.Admin{
-			Username:     username,
-			PasswordHash: passwordHash,
-		},
+	r := setupNetlogRouterForTests(
+		t,
+		authService,
+		username,
+		passwordHash,
+		rdb,
+		reqRateLimiter,
+		metrics.NewTestManager(),
+		"test",
 	)
-	require.NotNil(t, handler)
-	require.NotNil(t, mainRouter)
-	handler.SetupRoutes(mainRouter, reqRateLimiter, metrics.NewTestManager())
 
 	reqRateLimiter.Limits["login"] = 1
 
@@ -183,14 +221,15 @@ func TestLogin(t *testing.T) {
 	req.PostForm = url.Values{}
 	req.PostForm.Add("username", username)
 	req.PostForm.Add("password", password)
+	req.Header.Set("Origin", "test")
 
-	mainRouter.ServeHTTP(rr, req)
+	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, fmt.Sprintf(`{"token": "%s"}`, testToken), rr.Body.String())
 
 	// next time fails
 	rr = httptest.NewRecorder()
-	mainRouter.ServeHTTP(rr, req)
+	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusTooEarly, rr.Code)
 	assert.True(t, strings.HasPrefix(rr.Body.String(), "retry after"))
 }

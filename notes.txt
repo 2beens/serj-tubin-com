@@ -79,3 +79,6 @@ apr-2021 - DB replication and high availability:
         - overcomplicates the setup of my little hobby sandbox
     - that said, today I returned nameserver entries in my Ionos Domain settings, from Cloudflare ones to Ionos
         and turned off DNS proxying in CloudFlare (will probably remove the account there too)
+
+start postgresql in docker for local testing:
+// docker run --name serj-postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_HOST_AUTH_METHOD=trust -d postgres

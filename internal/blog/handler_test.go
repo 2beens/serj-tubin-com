@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/middleware"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
@@ -37,14 +38,45 @@ func TestMain(m *testing.M) {
 	)
 }
 
+func setupBlogRouterForTests(t *testing.T, blogApi *TestApi, loginChecker *auth.LoginChecker) *mux.Router {
+	t.Helper()
+
+	r := mux.NewRouter()
+	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		"browserRequestsSecret",
+		loginChecker,
+	)
+	r.Use(authMiddleware.AuthCheck())
+
+	NewBlogHandler(blogApi, loginChecker).SetupRoutes(r)
+
+	return r
+}
+
+func getTestBlogApiAndLoginChecker(t *testing.T, redisClient *redis.Client) (*TestApi, *auth.LoginChecker) {
+	t.Helper()
+	now := time.Now()
+
+	blogApi := NewBlogTestApi()
+	for i := 0; i < 5; i++ {
+		require.NoError(t, blogApi.AddBlog(context.Background(), &Blog{
+			Id:        i,
+			Title:     fmt.Sprintf("blog%dtitle", i),
+			CreatedAt: now.Add(time.Minute * time.Duration(i)),
+			Content:   fmt.Sprintf("blog %d content", i),
+		}))
+	}
+
+	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
+
+	return blogApi, loginChecker
+}
+
 func TestNewBlogHandler(t *testing.T) {
 	r := mux.NewRouter()
-	boardRouter := r.PathPrefix("/blog").Subrouter()
 
 	handler := NewBlogHandler(nil, nil)
-	handler.SetupRoutes(boardRouter)
-	require.NotNil(t, handler)
-	require.NotNil(t, boardRouter)
+	handler.SetupRoutes(r)
 
 	for caseName, route := range map[string]struct {
 		name   string
@@ -108,32 +140,10 @@ func TestNewBlogHandler(t *testing.T) {
 	}
 }
 
-func getTestBlogApiAndLoginChecker(t *testing.T, redisClient *redis.Client) (*TestApi, *auth.LoginChecker) {
-	t.Helper()
-	now := time.Now()
-
-	blogApi := NewBlogTestApi()
-	for i := 0; i < 5; i++ {
-		require.NoError(t, blogApi.AddBlog(context.Background(), &Blog{
-			Id:        i,
-			Title:     fmt.Sprintf("blog%dtitle", i),
-			CreatedAt: now.Add(time.Minute * time.Duration(i)),
-			Content:   fmt.Sprintf("blog %d content", i),
-		}))
-	}
-
-	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
-
-	return blogApi, loginChecker
-}
-
 func TestBlogHandler_handleAll(t *testing.T) {
 	redisClient, _ := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
-
-	r := mux.NewRouter()
-	handler := NewBlogHandler(blogApi, loginChecker)
-	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
 	req, err := http.NewRequest("GET", "/blog/all", nil)
 	require.NoError(t, err)
@@ -161,10 +171,7 @@ func TestBlogHandler_handleAll(t *testing.T) {
 func TestBlogHandler_handleGetPage(t *testing.T) {
 	redisClient, _ := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
-
-	r := mux.NewRouter()
-	handler := NewBlogHandler(blogApi, loginChecker)
-	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
 	req, err := http.NewRequest("GET", "/blog/page/2/size/2", nil)
 	require.NoError(t, err)
@@ -182,8 +189,8 @@ func TestBlogHandler_handleGetPage(t *testing.T) {
 func TestBlogHandler_handleDelete(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
-	r := mux.NewRouter()
 	handler := NewBlogHandler(blogApi, loginChecker)
 	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
 
@@ -219,8 +226,8 @@ func TestBlogHandler_handleDelete(t *testing.T) {
 func TestBlogHandler_handleNewBlog_notLoggedIn(t *testing.T) {
 	redisClient, _ := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
-	r := mux.NewRouter()
 	handler := NewBlogHandler(blogApi, loginChecker)
 	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
 
@@ -242,10 +249,7 @@ func TestBlogHandler_handleNewBlog_notLoggedIn(t *testing.T) {
 func TestBlogHandler_handleUpdateBlog_notLoggedIn(t *testing.T) {
 	redisClient, _ := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
-
-	r := mux.NewRouter()
-	handler := NewBlogHandler(blogApi, loginChecker)
-	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
 	require.NoError(t, err)
@@ -269,10 +273,7 @@ func TestBlogHandler_handleUpdateBlog_notLoggedIn(t *testing.T) {
 func TestBlogHandler_handleNewBlog_wrongToken(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
-
-	r := mux.NewRouter()
-	handler := NewBlogHandler(blogApi, loginChecker)
-	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
 	require.NoError(t, err)
@@ -297,10 +298,7 @@ func TestBlogHandler_handleNewBlog_wrongToken(t *testing.T) {
 func TestBlogHandler_handleUpdateBlog_wrongToken(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
-
-	r := mux.NewRouter()
-	handler := NewBlogHandler(blogApi, loginChecker)
-	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
 	require.NoError(t, err)
@@ -329,10 +327,7 @@ func TestBlogHandler_handleUpdateBlog_wrongToken(t *testing.T) {
 func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
-
-	r := mux.NewRouter()
-	handler := NewBlogHandler(blogApi, loginChecker)
-	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
 	req, err := http.NewRequest("POST", "/blog/new", nil)
 	require.NoError(t, err)
@@ -364,8 +359,8 @@ func TestBlogHandler_handleNewBlog_correctToken(t *testing.T) {
 func TestBlogHandler_handleNewBlog_jsonPayload_correctToken(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
-	r := mux.NewRouter()
 	handler := NewBlogHandler(blogApi, loginChecker)
 	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
 
@@ -402,10 +397,7 @@ func TestBlogHandler_handleNewBlog_jsonPayload_correctToken(t *testing.T) {
 func TestBlogHandler_handleUpdateBlog_correctToken(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
-
-	r := mux.NewRouter()
-	handler := NewBlogHandler(blogApi, loginChecker)
-	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
 	req, err := http.NewRequest("POST", "/blog/update", nil)
 	require.NoError(t, err)
@@ -438,10 +430,7 @@ func TestBlogHandler_handleUpdateBlog_correctToken(t *testing.T) {
 func TestBlogHandler_handleBlogClapped_correctToken(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
 	blogApi, loginChecker := getTestBlogApiAndLoginChecker(t, redisClient)
-
-	r := mux.NewRouter()
-	handler := NewBlogHandler(blogApi, loginChecker)
-	handler.SetupRoutes(r.PathPrefix("/blog").Subrouter())
+	r := setupBlogRouterForTests(t, blogApi, loginChecker)
 
 	req, err := http.NewRequest("PATCH", "/blog/clap", nil)
 	require.NoError(t, err)

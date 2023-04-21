@@ -10,8 +10,11 @@ ENV GOOS=linux
 
 WORKDIR /build
 
-# Adding a user and running the service as that user is a security best practice, which helps limit the potential damage in case the service is compromised.
-# When the service runs as a non-root user, it has fewer privileges than the root user, which can mitigate the risk of unauthorized access and restrict the attacker's capabilities within the container.
+# Adding a user and running the service as that user is a security best practice,
+# which helps limit the potential damage in case the service is compromised.
+# When the service runs as a non-root user, it has fewer privileges than the root user,
+# which can mitigate the risk of unauthorized access and restrict the attacker's
+# capabilities within the container.
 RUN adduser -D stservice
 
 COPY go.mod go.sum ./

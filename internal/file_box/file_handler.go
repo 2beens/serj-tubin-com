@@ -47,12 +47,6 @@ func (handler *FileHandler) handleDownloadFolder(w http.ResponseWriter, r *http.
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.downloadFolder")
 	defer span.End()
 
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "GET, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	vars := mux.Vars(r)
 
 	folderIdParam := vars["folderId"]
@@ -88,12 +82,6 @@ func (handler *FileHandler) handleDownloadFile(w http.ResponseWriter, r *http.Re
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.downloadFile")
 	defer span.End()
 
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "GET, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	vars := mux.Vars(r)
 
 	idParam := vars["id"]
@@ -127,12 +115,6 @@ func (handler *FileHandler) handleDownloadFile(w http.ResponseWriter, r *http.Re
 func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.get")
 	defer span.End()
-
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "GET, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
 
 	vars := mux.Vars(r)
 
@@ -187,12 +169,6 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.updateInfo")
 	defer span.End()
 
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "POST, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	vars := mux.Vars(r)
 
 	idParam := vars["id"]
@@ -242,12 +218,6 @@ func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Requ
 func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.delete")
 	defer span.End()
-
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "POST, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
 
 	var deleteReq deleteRequest
 	if r.Header.Get("Content-Type") == "application/json" {
@@ -321,12 +291,6 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 	_, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.getRoot")
 	defer span.End()
 
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "GET, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	root, err := handler.api.GetRootFolder()
 	if err != nil {
 		http.Error(w, "internal error", http.StatusBadRequest)
@@ -347,12 +311,6 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Request) {
 	_, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.newFolder")
 	defer span.End()
-
-	if r.Method == http.MethodOptions {
-		w.Header().Add("Allow", "POST, OPTIONS")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
 
 	vars := mux.Vars(r)
 
@@ -504,7 +462,7 @@ func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handle
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {
-				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Add("Allow", "GET, POST, OPTIONS")
 				w.WriteHeader(http.StatusOK)
 				return
 			}

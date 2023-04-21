@@ -2,7 +2,6 @@ package misc
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -54,7 +53,6 @@ func (handler *Handler) SetupRoutes(
 	mainRouter.HandleFunc("/whereami", handler.handleWhereAmI).Methods("GET").Name("whereami")
 	mainRouter.HandleFunc("/myip", handler.handleGetMyIp).Methods("GET").Name("myip")
 	mainRouter.HandleFunc("/version", handler.handleGetVersionInfo).Methods("GET").Name("version")
-	mainRouter.HandleFunc("/test/err", handler.handleTestErr).Methods("GET").Name("test/error")
 
 	loginSubrouter := mainRouter.PathPrefix("/a").Subrouter()
 	loginSubrouter.
@@ -71,17 +69,6 @@ func (handler *Handler) SetupRoutes(
 
 func (handler *Handler) handleRoot(w http.ResponseWriter, _ *http.Request) {
 	pkg.WriteTextResponseOK(w, "I'm OK, thanks ;)")
-}
-
-// TODO: remove me after sentry tested
-func (handler *Handler) handleTestErr(w http.ResponseWriter, _ *http.Request) {
-	err := errors.New("err msg")
-	log.
-		WithField("test field", "dummy value").
-		WithError(err).
-		Errorln("test error fired")
-	log.Errorln("just a simple test error")
-	http.Error(w, "test error", http.StatusInternalServerError)
 }
 
 func (handler *Handler) handleGetRandomQuote(w http.ResponseWriter, r *http.Request) {
@@ -152,7 +139,7 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	defer span.End()
 
 	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -211,9 +198,7 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// token should probably not be logged, but whatta hell
-	log.Tracef("new login, token: %s", token)
-
+	log.Trace("new login success")
 	pkg.WriteJSONResponseOK(w, fmt.Sprintf(`{"token": "%s"}`, token))
 }
 
@@ -222,7 +207,7 @@ func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	defer span.End()
 
 	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Add("Allow", "POST, OPTIONS")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -245,7 +230,6 @@ func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("logout for [%s] success", authToken)
-
 	pkg.WriteTextResponseOK(w, "logged-out")
 }
 

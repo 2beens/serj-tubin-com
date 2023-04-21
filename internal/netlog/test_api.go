@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 var _ Api = (*TestApi)(nil)
@@ -17,9 +18,29 @@ type TestApi struct {
 }
 
 func NewTestApi() *TestApi {
-	return &TestApi{
+	netlogApi := &TestApi{
 		Visits: map[int]Visit{},
 	}
+
+	now := time.Now()
+	visit0 := Visit{
+		Id:        0,
+		Title:     "test title 0",
+		Source:    "chrome",
+		URL:       "test:url:0",
+		Timestamp: now,
+	}
+	visit1 := Visit{
+		Id:        1,
+		Title:     "test title 1",
+		Source:    "chrome",
+		URL:       "test:url:1",
+		Timestamp: now,
+	}
+	netlogApi.Visits[0] = visit0
+	netlogApi.Visits[1] = visit1
+
+	return netlogApi
 }
 
 func (api *TestApi) AddVisit(_ context.Context, visit *Visit) error {
