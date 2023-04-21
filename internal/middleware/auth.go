@@ -27,8 +27,25 @@ func NewAuthMiddlewareHandler(
 		browserRequestsSecret: browserRequestsSecret,
 		loginChecker:          loginChecker,
 		allowedPaths: map[string]bool{
+			// blog handler:
 			"/blog/all":  true,
 			"/blog/clap": true,
+
+			// misc handler:
+			"/":             true,
+			"/quote/random": true,
+			"/whereami":     true,
+			"/myip":         true,
+			"/version":      true,
+
+			// weather handler:
+			"/weather/current":  true,
+			"/weather/tomorrow": true,
+			"/weather/5days":    true,
+
+			// login-logout:
+			"/a/login":  true,
+			"/a/logout": true,
 		},
 		allowedPathsPrefixes: []string{
 			"/blog/page/",
@@ -78,8 +95,8 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 			authToken := r.Header.Get("X-SERJ-TOKEN")
 
 			// visitor board: only path /messages/delete/ is protected
-			if strings.HasPrefix(r.URL.Path, "/messages/") {
-				if !strings.HasPrefix(r.URL.Path, "/messages/delete/") {
+			if strings.HasPrefix(r.URL.Path, "/board/messages/") {
+				if !strings.HasPrefix(r.URL.Path, "/board/messages/delete/") {
 					span.SetStatus(codes.Ok, "ok")
 					next.ServeHTTP(w, r)
 					return
