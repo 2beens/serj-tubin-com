@@ -8,5 +8,4 @@ updates:
     open-pull-requests-limit: 3
     labels:
       - "dependencies"
-      - "github_actions"
-      - "automerge"
+      - "dependabot"
