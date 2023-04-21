@@ -14,11 +14,13 @@ func RequestMetrics(metricsManager *metrics.Manager) func(next http.Handler) htt
 		return http.HandlerFunc(func(respWriter http.ResponseWriter, req *http.Request) {
 			statusCode := http.StatusOK
 			defer func(begin time.Time) {
-				metricsManager.HistogramRequestDuration.WithLabelValues(
-					req.URL.Path,
-					req.Method,
-					strconv.Itoa(statusCode),
-				).Observe(time.Since(begin).Seconds())
+				if metricsManager == nil {
+					metricsManager.HistogramRequestDuration.WithLabelValues(
+						req.URL.Path,
+						req.Method,
+						strconv.Itoa(statusCode),
+					).Observe(time.Since(begin).Seconds())
+				}
 			}(time.Now())
 
 			resp := &responseWriter{respWriter, statusCode}
@@ -27,12 +29,14 @@ func RequestMetrics(metricsManager *metrics.Manager) func(next http.Handler) htt
 			next.ServeHTTP(resp, req)
 			statusCode = resp.statusCode
 
-			metricsManager.CounterRequests.With(
-				prometheus.Labels{
-					"method": req.Method,
-					"status": strconv.Itoa(resp.statusCode),
-				},
-			).Inc()
+			if metricsManager == nil {
+				metricsManager.CounterRequests.With(
+					prometheus.Labels{
+						"method": req.Method,
+						"status": strconv.Itoa(resp.statusCode),
+					},
+				).Inc()
+			}
 		})
 	}
 }

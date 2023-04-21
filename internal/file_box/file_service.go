@@ -85,13 +85,16 @@ func RouterSetup(handler *FileHandler) *mux.Router {
 	fileServiceRouter.HandleFunc("/{parentId}/new", handler.handleNewFolder).Methods("POST", "OPTIONS")
 	fileServiceRouter.HandleFunc("/download/folder/{folderId}", handler.handleDownloadFolder).Methods("GET", "OPTIONS")
 	fileServiceRouter.HandleFunc("/download/file/{id}", handler.handleDownloadFile).Methods("GET", "OPTIONS")
+
+	fileServiceRouter.Use(handler.authMiddleware())
+
 	// get a file content
 	r.HandleFunc("/link/{id}", handler.handleGet).Methods("GET", "OPTIONS")
 
+	r.Use(middleware.PanicRecovery(nil))
 	r.Use(middleware.LogRequest())
+	r.Use(middleware.RequestMetrics(nil))
 	r.Use(middleware.Cors())
-	fileServiceRouter.Use(handler.authMiddleware())
-
 	r.Use(middleware.DrainAndCloseRequest())
 
 	return r
