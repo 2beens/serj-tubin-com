@@ -104,7 +104,7 @@ func RouterSetup(handler *FileHandler, metricsManager *metrics.Manager) *mux.Rou
 
 func (fs *FileService) SetupAndServe(host string, port int) {
 	promRegistry := metrics.SetupPrometheus()
-	metricsManager := metrics.NewManager("backend", "file-box", promRegistry)
+	metricsManager := metrics.NewManager("backend", "filebox", promRegistry)
 
 	handler := NewFileHandler(fs.api, fs.loginChecker)
 	r := RouterSetup(handler, metricsManager)
