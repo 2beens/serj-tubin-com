@@ -230,15 +230,61 @@ func NewServer(
 	return s, nil
 }
 
-func (s *Server) routerSetup() (*mux.Router, error) {
+// migrateBoardMessagesFromAS2PSQL migrates all messages from aerospike to postgresql
+// TODO: remove this function after migration is done
+func migrateBoardMessagesFromAS2PSQL(
+	ctx context.Context,
+	boardAeroClient *visitorBoard.Client,
+	boardPostgresRepo *visitorBoard.Repo,
+) {
+	psqlCount, err := boardPostgresRepo.AllMessagesCount(ctx)
+	if err != nil {
+		log.Errorf("failed to get all messages count from postgresql: %s", err)
+		return
+	}
+
+	if psqlCount > 0 {
+		log.Infof("found %d messages in postgresql, skipping migration from aerospike", psqlCount)
+		return
+	}
+
+	log.Info("migrating board messages from aerospike to postgresql")
+	messagesFromAero, err := boardAeroClient.AllMessages(ctx, true)
+	if err != nil {
+		log.Errorf("failed to get all messages from aerospike: %s", err)
+		return
+	}
+
+	log.Infof("found %d messages in aerospike, beginning migration ...", len(messagesFromAero))
+	for _, aeroMsg := range messagesFromAero {
+		psqlMsg := visitorBoard.Message{
+			ID:        aeroMsg.ID,
+			Author:    aeroMsg.Author,
+			Timestamp: aeroMsg.Timestamp,
+			Message:   aeroMsg.Message,
+		}
+		if id, err := boardPostgresRepo.Add(ctx, psqlMsg); err != nil {
+			log.Errorf("failed to create message: %s", err)
+			continue
+		} else {
+			log.Infof("migrated message with id: %d", id)
+		}
+	}
+
+	log.Info("aerospike 2 postgres messages migration finished")
+}
+
+func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware("main-router"))
 
 	blogHandler := blog.NewBlogHandler(s.blogApi, s.loginChecker)
 	blogHandler.SetupRoutes(r)
 
+	boardRepo := visitorBoard.NewRepo(s.dbPool)
+	migrateBoardMessagesFromAS2PSQL(ctx, s.boardClient, boardRepo)
 	boardHandler := visitorBoard.NewBoardHandler(
-		visitorBoard.NewRepo(s.dbPool),
+		boardRepo,
 		s.boardClient,
 		s.loginChecker,
 	)
@@ -283,7 +329,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 }
 
 func (s *Server) Serve(ctx context.Context, host string, port int) {
-	router, err := s.routerSetup()
+	router, err := s.routerSetup(ctx)
 	if err != nil {
 		log.Fatalf("failed to setup router: %s", err)
 	}
