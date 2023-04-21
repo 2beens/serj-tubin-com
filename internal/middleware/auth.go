@@ -71,11 +71,6 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 			ctx, span := tracing.GlobalTracer.Start(r.Context(), "middleware.auth")
 			defer span.End()
 
-			log.Tracef(
-				" ====> auth check for request [%s] [path: %s]",
-				r.Method, r.URL.Path,
-			)
-
 			if r.Method == http.MethodOptions {
 				w.Header().Add("Allow", "GET, POST, OPTIONS")
 				w.WriteHeader(http.StatusOK)
