@@ -312,7 +312,12 @@ func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
 		return
 	}
 
-	if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(ctx, s.config.NetlogUnixSocketAddrDir, s.config.NetlogUnixSocketFileName, s.metricsManager); err != nil {
+	if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(
+		ctx,
+		s.config.NetlogUnixSocketAddrDir,
+		s.config.NetlogUnixSocketFileName,
+		s.metricsManager,
+	); err != nil {
 		log.Errorf("failed to create netlog backup unix socket: %s", err)
 	} else {
 		log.Debugf("netlog backup unix socket: %s", addr)

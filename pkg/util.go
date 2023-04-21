@@ -3,12 +3,14 @@ package pkg
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"crypto/rand"
 	"errors"
 	"io"
 	"math/big"
 	"os"
 	"path/filepath"
+	"time"
 	"unsafe"
 )
 
@@ -106,4 +108,14 @@ func Compress(src string, buf io.Writer) error {
 	}
 
 	return nil
+}
+
+// SleepWithContext sleeps for the specified duration or until the context is canceled/done.
+func SleepWithContext(ctx context.Context, duration time.Duration) {
+	select {
+	case <-time.After(duration):
+		return
+	case <-ctx.Done():
+		return
+	}
 }
