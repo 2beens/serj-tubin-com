@@ -9,7 +9,9 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/middleware"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -74,7 +76,7 @@ func NewFileService(
 	}, nil
 }
 
-func RouterSetup(handler *FileHandler) *mux.Router {
+func RouterSetup(handler *FileHandler, metricsManager *metrics.Manager) *mux.Router {
 	r := mux.NewRouter()
 
 	fileServiceRouter := r.PathPrefix("/f").Subrouter()
@@ -91,9 +93,9 @@ func RouterSetup(handler *FileHandler) *mux.Router {
 	// get a file content
 	r.HandleFunc("/link/{id}", handler.handleGet).Methods("GET", "OPTIONS")
 
-	r.Use(middleware.PanicRecovery(nil))
+	r.Use(middleware.PanicRecovery(metricsManager))
 	r.Use(middleware.LogRequest())
-	r.Use(middleware.RequestMetrics(nil))
+	r.Use(middleware.RequestMetrics(metricsManager))
 	r.Use(middleware.Cors())
 	r.Use(middleware.DrainAndCloseRequest())
 
@@ -101,8 +103,11 @@ func RouterSetup(handler *FileHandler) *mux.Router {
 }
 
 func (fs *FileService) SetupAndServe(host string, port int) {
+	promRegistry := metrics.SetupPrometheus()
+	metricsManager := metrics.NewManager("backend", "file-box", promRegistry)
+
 	handler := NewFileHandler(fs.api, fs.loginChecker)
-	r := RouterSetup(handler)
+	r := RouterSetup(handler, metricsManager)
 
 	ipAndPort := fmt.Sprintf("%s:%d", host, port)
 	fs.httpServer = &http.Server{
