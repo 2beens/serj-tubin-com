@@ -13,6 +13,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/config"
+	"github.com/2beens/serjtubincom/internal/db"
 	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/misc"
@@ -25,7 +26,6 @@ import (
 	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 	"github.com/2beens/serjtubincom/internal/weather"
 
-	"github.com/exaring/otelpgx"
 	"github.com/getsentry/sentry-go"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redis_rate/v9"
@@ -93,7 +93,7 @@ func NewServer(
 		return nil, fmt.Errorf("failed to create visitor board aero client: %w", err)
 	}
 
-	dbPool, err := newDBPool(ctx, newDBPoolParams{
+	dbPool, err := db.NewDBPool(ctx, db.NewDBPoolParams{
 		DBHost:         params.Config.PostgresHost,
 		DBPort:         params.Config.PostgresPort,
 		DBName:         params.Config.PostgresDBName,
@@ -131,11 +131,7 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
-	notesBoxApi, err := notes_box.NewPsqlApi(
-		ctx,
-		params.Config.PostgresHost, params.Config.PostgresPort, params.Config.PostgresDBName,
-		true,
-	)
+	notesBoxApi, err := notes_box.NewPsqlApi(dbPool)
 	if err != nil {
 		log.Fatalf("failed to create notes visits api: %s", err)
 	}
@@ -431,35 +427,6 @@ func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
 	case http.StateClosed:
 		s.metricsManager.GaugeRequests.Add(-1)
 	}
-}
-
-type newDBPoolParams struct {
-	DBHost         string
-	DBPort         string
-	DBName         string
-	TracingEnabled bool
-}
-
-func newDBPool(ctx context.Context, params newDBPoolParams) (*pgxpool.Pool, error) {
-	connString := fmt.Sprintf(
-		"postgres://postgres@%s:%s/%s",
-		params.DBHost, params.DBPort, params.DBName,
-	)
-	poolConfig, err := pgxpool.ParseConfig(connString)
-	if err != nil {
-		return nil, fmt.Errorf("parse db config: %w", err)
-	}
-
-	if params.TracingEnabled {
-		poolConfig.ConnConfig.Tracer = otelpgx.NewTracer()
-	}
-
-	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
-	if err != nil {
-		return nil, fmt.Errorf("create connection pool: %w", err)
-	}
-
-	return db, nil
 }
 
 func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
