@@ -59,7 +59,9 @@ func setupVisitorBoardRouterForTests(
 	r.Use(authMiddleware.AuthCheck())
 	r.Use(middleware.DrainAndCloseRequest())
 
-	handler := NewBoardHandler(boardClient, loginChecker)
+	mockRepo := NewMockMessagesRepo()
+
+	handler := NewBoardHandler(mockRepo, boardClient, loginChecker)
 	handler.SetupRoutes(r)
 
 	return r
@@ -68,7 +70,7 @@ func setupVisitorBoardRouterForTests(
 func TestNewBoardHandler(t *testing.T) {
 	r := mux.NewRouter()
 
-	handler := NewBoardHandler(nil, nil)
+	handler := NewBoardHandler(NewMockMessagesRepo(), nil, nil)
 	handler.SetupRoutes(r)
 
 	for caseName, route := range map[string]struct {

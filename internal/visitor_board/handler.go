@@ -1,6 +1,7 @@
 package visitor_board
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,13 +19,21 @@ import (
 )
 
 type Handler struct {
-	repo         *Repo
+	repo         boardMessagesRepo
 	boardClient  *Client
 	loginChecker *auth.LoginChecker
 }
 
+type boardMessagesRepo interface {
+	Add(ctx context.Context, message Message) (int, error)
+	Delete(ctx context.Context, id int) error
+	List(ctx context.Context, options ...func(listOptions *ListOptions)) ([]Message, error)
+	GetMessagesPage(ctx context.Context, page, size int) ([]Message, error)
+	AllMessagesCount(ctx context.Context) (int, error)
+}
+
 func NewBoardHandler(
-	repo *Repo,
+	repo boardMessagesRepo,
 	board *Client,
 	loginChecker *auth.LoginChecker,
 ) *Handler {
