@@ -221,8 +221,8 @@ func (handler *Handler) handleGetAllMessages(w http.ResponseWriter, r *http.Requ
 		messages []Message
 	)
 	if limitStr := vars["limit"]; limitStr != "" {
-		limit, err := strconv.Atoi(limitStr)
-		if err != nil {
+		limit, lErr := strconv.Atoi(limitStr)
+		if lErr != nil {
 			http.Error(w, "invalid limit provided", http.StatusBadRequest)
 			return
 		}

@@ -31,8 +31,8 @@ func NewRepo(db *pgxpool.Pool) *Repo {
 func (r *Repo) Add(ctx context.Context, message Message) (int, error) {
 	rows, err := r.db.Query(
 		ctx,
-		`INSERT INTO visitor_board_message (author, message, timestamp) VALUES ($1, $2, $3) RETURNING id;`,
-		message.Author, message.Message, message.Timestamp,
+		`INSERT INTO visitor_board_message (author, message, created_at) VALUES ($1, $2, $3) RETURNING id;`,
+		message.Author, message.Message, message.CreatedAt,
 	)
 	if err != nil {
 		return -1, err
@@ -95,9 +95,9 @@ func (r *Repo) List(ctx context.Context, options ...func(*ListOptions)) ([]Messa
 
 	query := `
 		SELECT
-			id, author, message, timestamp
+			id, author, message, created_at
 		FROM visitor_board_message
-		ORDER BY timestamp DESC ` + limitClause + ";"
+		ORDER BY created_at DESC ` + limitClause + ";"
 	rows, err := r.db.Query(ctx, query, params...)
 	if err != nil {
 		return nil, err
@@ -187,15 +187,16 @@ func (r *Repo) rows2messages(rows pgx.Rows) ([]Message, error) {
 		var id int
 		var author string
 		var message string
-		var timestamp time.Time
-		if err := rows.Scan(&id, &author, &message, &timestamp); err != nil {
+		var createdAt time.Time
+		if err := rows.Scan(&id, &author, &message, &createdAt); err != nil {
 			return nil, err
 		}
 		messages = append(messages, Message{
 			ID:        id,
 			Author:    author,
 			Message:   message,
-			Timestamp: timestamp.Unix(),
+			CreatedAt: createdAt,
+			Timestamp: createdAt.Unix(),
 		})
 	}
 	return messages, nil

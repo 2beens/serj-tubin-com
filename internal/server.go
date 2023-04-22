@@ -233,41 +233,43 @@ func migrateBoardMessagesFromAS2PSQL(
 	boardAeroClient *visitorBoard.Client,
 	boardPostgresRepo *visitorBoard.Repo,
 ) {
+	log.Debugln(">>>> checking messages migration from aerospike to postgres ...")
 	psqlCount, err := boardPostgresRepo.AllMessagesCount(ctx)
 	if err != nil {
-		log.Errorf("failed to get all messages count from postgresql: %s", err)
+		log.Errorf(">>>> failed to get all messages count from postgresql: %s", err)
 		return
 	}
 
 	if psqlCount > 0 {
-		log.Infof("found %d messages in postgresql, skipping migration from aerospike", psqlCount)
+		log.Debugf(">>>> found %d messages in postgresql, skipping migration from aerospike", psqlCount)
 		return
 	}
 
-	log.Info("migrating board messages from aerospike to postgresql")
+	log.Debugln(">>>> migrating board messages from aerospike to postgresql")
 	messagesFromAero, err := boardAeroClient.AllMessages(ctx, true)
 	if err != nil {
 		log.Errorf("failed to get all messages from aerospike: %s", err)
 		return
 	}
 
-	log.Infof("found %d messages in aerospike, beginning migration ...", len(messagesFromAero))
+	log.Debugf(">>>> found %d messages in aerospike, beginning migration ...", len(messagesFromAero))
 	for _, aeroMsg := range messagesFromAero {
+		createdAt := time.Unix(aeroMsg.Timestamp, 0)
 		psqlMsg := visitorBoard.Message{
 			ID:        aeroMsg.ID,
 			Author:    aeroMsg.Author,
-			Timestamp: aeroMsg.Timestamp,
 			Message:   aeroMsg.Message,
+			CreatedAt: createdAt,
 		}
 		if id, err := boardPostgresRepo.Add(ctx, psqlMsg); err != nil {
-			log.Errorf("failed to create message: %s", err)
+			log.Errorf(">>>> failed to add board message to posgres: %s", err)
 			continue
 		} else {
-			log.Infof("migrated message with id: %d", id)
+			log.Debugf(">>>> migrated message to postgres with id: %d", id)
 		}
 	}
 
-	log.Info("aerospike 2 postgres messages migration finished")
+	log.Debugln(">>>> aerospike 2 postgres messages migration finished")
 }
 
 func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {

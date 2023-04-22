@@ -38,11 +38,11 @@ ALTER TABLE public.note OWNER TO postgres;
 
 CREATE TABLE public.visitor_board_message
 (
-    id        SERIAL PRIMARY KEY,
-    author    VARCHAR,
-    message   VARCHAR NOT NULL,
-    timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL
-)
+    id         SERIAL PRIMARY KEY,
+    author     VARCHAR,
+    message    VARCHAR NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+);
 
 ALTER TABLE public.visitor_board_message OWNER TO postgres;
 CREATE INDEX ix_visitor_board_message_created_at ON public.visitor_board_message (created_at);
