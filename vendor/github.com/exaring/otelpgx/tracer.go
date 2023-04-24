@@ -2,17 +2,20 @@ package otelpgx
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.11.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/exaring/otelpgx/internal"
 )
+
+var RowsAffectedKey = attribute.Key("pgx.rows_affected")
 
 // Tracer is a wrapper around the pgx tracer interfaces which instrument
 // queries.
@@ -21,6 +24,7 @@ type Tracer struct {
 	attrs             []attribute.KeyValue
 	trimQuerySpanName bool
 	logSQLStatement   bool
+	includeParams     bool
 }
 
 type tracerConfig struct {
@@ -28,6 +32,7 @@ type tracerConfig struct {
 	attrs             []attribute.KeyValue
 	trimQuerySpanName bool
 	logSQLStatement   bool
+	includeParams     bool
 }
 
 // NewTracer returns a new Tracer.
@@ -39,6 +44,7 @@ func NewTracer(opts ...Option) *Tracer {
 		},
 		trimQuerySpanName: false,
 		logSQLStatement:   true,
+		includeParams:     false,
 	}
 
 	for _, opt := range opts {
@@ -50,6 +56,7 @@ func NewTracer(opts ...Option) *Tracer {
 		attrs:             cfg.attrs,
 		trimQuerySpanName: cfg.trimQuerySpanName,
 		logSQLStatement:   cfg.logSQLStatement,
+		includeParams:     cfg.includeParams,
 	}
 }
 
@@ -102,6 +109,9 @@ func (t *Tracer) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.T
 
 	if t.logSQLStatement {
 		opts = append(opts, trace.WithAttributes(semconv.DBStatementKey.String(data.SQL)))
+		if t.includeParams {
+			opts = append(opts, trace.WithAttributes(makeParamsAttribute(data.Args)))
+		}
 	}
 
 	spanName := "query " + data.SQL
@@ -118,6 +128,8 @@ func (t *Tracer) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.T
 func (t *Tracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
 	span := trace.SpanFromContext(ctx)
 	recordError(span, data.Err)
+
+	span.SetAttributes(RowsAffectedKey.Int(int(data.CommandTag.RowsAffected())))
 
 	span.End()
 }
@@ -149,6 +161,8 @@ func (t *Tracer) TraceCopyFromStart(ctx context.Context, conn *pgx.Conn, data pg
 func (t *Tracer) TraceCopyFromEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceCopyFromEndData) {
 	span := trace.SpanFromContext(ctx)
 	recordError(span, data.Err)
+
+	span.SetAttributes(RowsAffectedKey.Int(int(data.CommandTag.RowsAffected())))
 
 	span.End()
 }
@@ -194,6 +208,10 @@ func (t *Tracer) TraceBatchQuery(ctx context.Context, conn *pgx.Conn, data pgx.T
 
 	if t.logSQLStatement {
 		opts = append(opts, trace.WithAttributes(semconv.DBStatementKey.String(data.SQL)))
+		if t.includeParams {
+			opts = append(opts, trace.WithAttributes(makeParamsAttribute(data.Args)))
+		}
+
 	}
 
 	spanName := "batch query " + data.SQL
@@ -282,4 +300,14 @@ func (t *Tracer) TracePrepareEnd(ctx context.Context, _ *pgx.Conn, data pgx.Trac
 	recordError(span, data.Err)
 
 	span.End()
+}
+
+func makeParamsAttribute(args []any) attribute.KeyValue {
+	ss := make([]string, len(args))
+	for i := range args {
+		ss[i] = fmt.Sprintf("%+v", args[i])
+	}
+	// Since there doesn't appear to be a standard key for this in semconv, prefix it to avoid
+	// clashing with future standard attributes.
+	return attribute.Key("pgx.query.parameters").StringSlice(ss)
 }
