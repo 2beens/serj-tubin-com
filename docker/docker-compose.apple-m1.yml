@@ -1,26 +1,23 @@
 version: "3.7"
 
 services:
-  aerospike:
-    platform: "linux/amd64"
-
   redis:
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   postgres:
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   adminer:
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   prometheus:
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   grafana:
-      platform: "linux/amd64"
+      platform: "linux/arm64"
 
   alertmanager:
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   cadvisor:
-    platform: "linux/amd64"
+    platform: "linux/arm64"

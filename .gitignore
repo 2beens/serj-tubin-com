@@ -31,7 +31,6 @@ token.json
 
 bin/
 
-docker/docker-data-aerospike
 docker/docker-data-postgres
 docker/docker-data-redis
 docker/docker-data-file-service

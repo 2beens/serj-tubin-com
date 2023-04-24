@@ -13,7 +13,7 @@ services:
       args:
         OPEN_WEATHER_API_KEY: todo
         SERJ_TUBIN_COM_ADMIN_USERNAME: todo
-        SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: $$2a$$14$$gPDY7P8qGduPi.OKoPKzM.N/MTyZpP.q2tmbprdHH.1jyw7fK3KfW
+        SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: '$2a$14$H5aVoE1YSTxBF63MLgBfo.u0W7vNcx5JQb7LUix.DicQv3WESnYuq'
         SERJ_BROWSER_REQ_SECRET: todo
         SERJ_REDIS_PASS: todo
         OTEL_SERVICE_NAME: serj-tubin-com-docker-dev
@@ -22,7 +22,6 @@ services:
         SENTRY_DSN: todo
     depends_on:
       - postgres
-      - aerospike
       - redis
     ports:
       - "9000:9000"
@@ -55,10 +54,9 @@ services:
 
   # https://hub.docker.com/_/postgres
   postgres:
-    platform: linux/amd64
     image: postgres:latest
     volumes:
-      - ./docker-data-postgres:/var/lib/postgresql/data
+      # - ./docker-data-postgres:/var/lib/postgresql/data
       - ../sql:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
@@ -70,21 +68,12 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_HOST_AUTH_METHOD: trust
 
-  # https://hub.docker.com/_/aerospike
-  aerospike:
-    image: aerospike:5.2.0.7
-    volumes:
-      - ./docker-data-aerospike:/opt/aerospike/data
-    networks:
-      - back-tier
-    environment:
-      NAMESPACE: serj-tubin-com
-
   redis:
     image: redis
     command: redis-server --appendonly yes --requirepass todo
-    volumes:
-      - ./docker-data-redis:/data
+    container_name: st-redis
+    # volumes:
+    #  - ./docker-data-redis:/data
     ports:
       - "6379:6379"
     networks:

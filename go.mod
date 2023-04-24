@@ -4,10 +4,8 @@ go 1.20
 
 require (
 	github.com/BurntSushi/toml v1.2.1
-	github.com/aerospike/aerospike-client-go v3.0.0+incompatible
 	github.com/brianvoe/gofakeit/v6 v6.19.0
 	github.com/coocood/freecache v1.1.0
-	github.com/dgraph-io/ristretto v0.0.3
 	github.com/exaring/otelpgx v0.3.1
 	github.com/go-redis/redis/extra/redisotel/v8 v8.11.5
 	github.com/go-redis/redis/v8 v8.11.5
@@ -68,7 +66,6 @@ require (
 	github.com/shirou/gopsutil/v3 v3.22.9 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
-	github.com/yuin/gopher-lua v0.0.0-20200603152657-dc2b0ca8b37e // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/host v0.36.4 // indirect

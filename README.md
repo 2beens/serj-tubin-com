@@ -21,6 +21,7 @@
 * Aerospike to store those visitor board messages 💿
     * there are better choices than Aerospike, I know, just wanted to test Aerospike
     * update: I am thinking to replace it for something else
+    * update apr 2023: aerospike killed, using postgresql for visitor board messages
 * Tried to use Elasticsearch Stack for logging and monitoring on a different server, but it was kinda hungry for memory, and exceeded the needs of this humble project (will try something else lighter)
   * 2023: Honeycomb, Prometheus/Grafana and Sentry are used now
 * Used CloudFlare to put everything behind it, but only paid plans allowed passing of real client ip in the proxied requests

@@ -97,7 +97,7 @@ func (r *Repo) List(ctx context.Context, options ...func(*ListOptions)) ([]Messa
 		SELECT
 			id, author, message, created_at
 		FROM visitor_board_message
-		ORDER BY created_at DESC ` + limitClause + ";"
+		ORDER BY created_at ASC ` + limitClause + ";"
 	rows, err := r.db.Query(ctx, query, params...)
 	if err != nil {
 		return nil, err
@@ -196,7 +196,6 @@ func (r *Repo) rows2messages(rows pgx.Rows) ([]Message, error) {
 			Author:    author,
 			Message:   message,
 			CreatedAt: createdAt,
-			Timestamp: createdAt.Unix(),
 		})
 	}
 	return messages, nil

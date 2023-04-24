@@ -2,9 +2,6 @@ package visitor_board
 
 import (
 	"time"
-
-	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
-	log "github.com/sirupsen/logrus"
 )
 
 type Message struct {
@@ -12,40 +9,4 @@ type Message struct {
 	Author    string    `json:"author"`
 	Message   string    `json:"message"`
 	CreatedAt time.Time `json:"created_at"`
-
-	// TODO: legacy from aerospike, remove it after aerospike is killed
-	Timestamp int64 `json:"timestamp"`
-}
-
-func MessageFromBins(bins aerospike.AeroBinMap) Message {
-	// TODO: maybe better return error on fail or get any of the fields
-
-	id, ok := bins["id"].(int)
-	if !ok {
-		log.Errorln("get all messages, convert id to int failed!")
-	}
-	author, ok := bins["author"].(string)
-	if !ok {
-		log.Errorln("get all messages, convert author to string failed!")
-	}
-	message, ok := bins["message"].(string)
-	if !ok {
-		log.Errorln("get all messages, convert message to string failed!")
-	}
-
-	boardMessage := Message{
-		ID:      id,
-		Author:  author,
-		Message: message,
-	}
-
-	if timestamp, ok := bins["timestamp"].(int); ok {
-		boardMessage.Timestamp = int64(timestamp)
-	} else if timestamp, ok := bins["timestamp"].(int64); ok {
-		boardMessage.Timestamp = timestamp
-	} else {
-		log.Errorln("get all messages, convert timestamp to int/int64 failed!")
-	}
-
-	return boardMessage
 }

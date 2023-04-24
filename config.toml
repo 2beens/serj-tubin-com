@@ -5,11 +5,6 @@ port = 9000
 log_level = "trace"
 logs_path = "" # empty for STDOUT
 log_to_stdout = true # additional logging to STDOUT
-# AEROSPIKE
-aero_host = "aerospike" # hostname of aerospike server
-aero_port = 3000 # aerospike server port number
-aero_namespace = "serj-tubin-com" # aerospike namespace value (used in aerospike server)
-aero_messages_set = "messages" # aerospike set name for visitor_board messages (used in aerospike server)
 # NETLOG BACKUP
 netlog_unix_socket_addr_dir  = "/var/tmp/serj-service"
 netlog_unix_socket_file_name = "netlog-backup.sock"
@@ -21,7 +16,7 @@ postgres_port = "5432"
 postgres_host = "postgres"
 postgres_db_name = "serj_blogs"
 # REDIS
-redis_host = "st-redis"
+redis_host = "redis"
 redis_port = "6379"
 # QUOTES FILE
 quotes_csv_path = "./assets/quotes.csv"
@@ -35,11 +30,6 @@ port = 9000
 log_level = "trace"
 logs_path = "" # empty for STDOUT
 log_to_stdout = true # additional logging to STDOUT
-# AEROSPIKE
-aero_host = "172.28.128.3" # hostname of aerospike server
-aero_port = 3000 # aerospike server port number
-aero_namespace = "test" # aerospike namespace value (used in aerospike server)
-aero_messages_set = "messages" # aerospike set name for visitor_board messages (used in aerospike server)
 # NETLOG BACKUP
 netlog_unix_socket_addr_dir  = "/var/tmp/serj-service"
 netlog_unix_socket_file_name = "netlog-backup.sock"
@@ -65,11 +55,6 @@ port = 1988
 log_level = "trace"
 logs_path = "/var/log/serj-tubin-backend/service.log"
 log_to_stdout = false # additional logging to STDOUT
-# AEROSPIKE
-aero_host = "localhost" # hostname of aerospike server
-aero_port = 3000 # aerospike server port number
-aero_namespace = "serj-tubin-com" # aerospike namespace value (used in aerospike server)
-aero_messages_set = "messages" # aerospike set name for visitor_board messages (used in aerospike server)
 # NETLOG BACKUP
 netlog_unix_socket_addr_dir  = "/var/tmp/serj-service" # TODO: change to use /var/run
 netlog_unix_socket_file_name = "netlog-backup.sock"
