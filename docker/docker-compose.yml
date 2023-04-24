@@ -54,7 +54,6 @@ services:
 
   # https://hub.docker.com/_/postgres
   postgres:
-    platform: linux/amd64
     image: postgres:latest
     volumes:
       - ./docker-data-postgres:/var/lib/postgresql/data
