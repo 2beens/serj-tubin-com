@@ -227,7 +227,7 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
-# go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.36.4
+# go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.40.0
 ## explicit; go 1.18
 go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux
 # go.opentelemetry.io/contrib/instrumentation/host v0.36.4
@@ -245,7 +245,7 @@ go.opentelemetry.io/contrib/propagators/b3
 # go.opentelemetry.io/contrib/propagators/ot v1.11.1
 ## explicit; go 1.18
 go.opentelemetry.io/contrib/propagators/ot
-# go.opentelemetry.io/otel v1.11.1
+# go.opentelemetry.io/otel v1.14.0
 ## explicit; go 1.18
 go.opentelemetry.io/otel
 go.opentelemetry.io/otel/attribute
@@ -259,9 +259,12 @@ go.opentelemetry.io/otel/internal/baggage
 go.opentelemetry.io/otel/internal/global
 go.opentelemetry.io/otel/propagation
 go.opentelemetry.io/otel/semconv/internal
+go.opentelemetry.io/otel/semconv/internal/v2
 go.opentelemetry.io/otel/semconv/v1.10.0
 go.opentelemetry.io/otel/semconv/v1.11.0
 go.opentelemetry.io/otel/semconv/v1.12.0
+go.opentelemetry.io/otel/semconv/v1.17.0
+go.opentelemetry.io/otel/semconv/v1.17.0/httpconv
 go.opentelemetry.io/otel/semconv/v1.7.0
 # go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.11.1
 ## explicit; go 1.18
@@ -317,7 +320,7 @@ go.opentelemetry.io/otel/sdk/metric/aggregation
 go.opentelemetry.io/otel/sdk/metric/internal
 go.opentelemetry.io/otel/sdk/metric/metricdata
 go.opentelemetry.io/otel/sdk/metric/view
-# go.opentelemetry.io/otel/trace v1.11.1
+# go.opentelemetry.io/otel/trace v1.14.0
 ## explicit; go 1.18
 go.opentelemetry.io/otel/trace
 # go.opentelemetry.io/proto/otlp v0.19.0
