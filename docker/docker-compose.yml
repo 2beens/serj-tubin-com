@@ -13,7 +13,7 @@ services:
       args:
         OPEN_WEATHER_API_KEY: todo
         SERJ_TUBIN_COM_ADMIN_USERNAME: todo
-        SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: $$2a$$14$$gPDY7P8qGduPi.OKoPKzM.N/MTyZpP.q2tmbprdHH.1jyw7fK3KfW
+        SERJ_TUBIN_COM_ADMIN_PASSWORD_HASH: '$2a$14$H5aVoE1YSTxBF63MLgBfo.u0W7vNcx5JQb7LUix.DicQv3WESnYuq'
         SERJ_BROWSER_REQ_SECRET: todo
         SERJ_REDIS_PASS: todo
         OTEL_SERVICE_NAME: serj-tubin-com-docker-dev
@@ -56,7 +56,7 @@ services:
   postgres:
     image: postgres:latest
     volumes:
-      - ./docker-data-postgres:/var/lib/postgresql/data
+      # - ./docker-data-postgres:/var/lib/postgresql/data
       - ../sql:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
@@ -71,8 +71,9 @@ services:
   redis:
     image: redis
     command: redis-server --appendonly yes --requirepass todo
-    volumes:
-      - ./docker-data-redis:/data
+    container_name: st-redis
+    # volumes:
+    #  - ./docker-data-redis:/data
     ports:
       - "6379:6379"
     networks:

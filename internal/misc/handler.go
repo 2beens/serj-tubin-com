@@ -179,7 +179,6 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	if !pkg.CheckPasswordHash(loginReq.Password, handler.admin.PasswordHash) {
 		log.Tracef("[password] failed login attempt for user: %s", loginReq.Username)
-		log.Println(handler.admin)
 		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
 		return
 	}
