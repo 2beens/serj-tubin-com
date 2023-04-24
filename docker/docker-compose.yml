@@ -22,7 +22,6 @@ services:
         SENTRY_DSN: todo
     depends_on:
       - postgres
-      - aerospike
       - redis
     ports:
       - "9000:9000"
@@ -69,16 +68,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
       POSTGRES_HOST_AUTH_METHOD: trust
-
-  # https://hub.docker.com/_/aerospike
-  aerospike:
-    image: aerospike:5.2.0.7
-    volumes:
-      - ./docker-data-aerospike:/opt/aerospike/data
-    networks:
-      - back-tier
-    environment:
-      NAMESPACE: serj-tubin-com
 
   redis:
     image: redis

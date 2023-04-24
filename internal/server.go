@@ -23,7 +23,6 @@ import (
 	metricsmiddleware "github.com/2beens/serjtubincom/internal/telemetry/metrics/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	visitorBoard "github.com/2beens/serjtubincom/internal/visitor_board"
-	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 	"github.com/2beens/serjtubincom/internal/weather"
 
 	"github.com/getsentry/sentry-go"
@@ -47,8 +46,6 @@ type Server struct {
 	geoIp           *geoip.Api
 	weatherApi      *weather.Api
 	quotesManager   *misc.QuotesManager
-	boardAeroClient *aerospike.BoardAeroClient
-	boardClient     *visitorBoard.Client
 	netlogVisitsApi *netlog.PsqlApi
 	notesBoxApi     *notes_box.PsqlApi
 
@@ -83,16 +80,6 @@ func NewServer(
 	ctx context.Context,
 	params NewServerParams,
 ) (*Server, error) {
-	boardAeroClient, err := aerospike.NewBoardAeroClient(
-		params.Config.AeroHost,
-		params.Config.AeroPort,
-		params.Config.AeroNamespace,
-		params.Config.AeroMessagesSet,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create visitor board aero client: %w", err)
-	}
-
 	dbPool, err := db.NewDBPool(ctx, db.NewDBPoolParams{
 		DBHost:         params.Config.PostgresHost,
 		DBPort:         params.Config.PostgresPort,
@@ -101,16 +88,6 @@ func NewServer(
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new db pool: %w", err)
-	}
-
-	boardCache, err := visitorBoard.NewBoardCache()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create visitor board cache: %w", err)
-	}
-
-	boardClient, err := visitorBoard.NewClient(ctx, boardAeroClient, boardCache)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
 
 	blogApi, err := blog.NewBlogPsqlApi(
@@ -188,8 +165,6 @@ func NewServer(
 			weatherCitiesData,
 			tracedHttpClient,
 		),
-		boardAeroClient: boardAeroClient,
-		boardClient:     boardClient,
 		netlogVisitsApi: netlogVisitsApi,
 		notesBoxApi:     notesBoxApi,
 		versionInfo:     params.VersionInfo,
@@ -226,52 +201,6 @@ func NewServer(
 	return s, nil
 }
 
-// migrateBoardMessagesFromAS2PSQL migrates all messages from aerospike to postgresql
-// TODO: remove this function after migration is done
-func migrateBoardMessagesFromAS2PSQL(
-	ctx context.Context,
-	boardAeroClient *visitorBoard.Client,
-	boardPostgresRepo *visitorBoard.Repo,
-) {
-	log.Debugln(">>>> checking messages migration from aerospike to postgres ...")
-	psqlCount, err := boardPostgresRepo.AllMessagesCount(ctx)
-	if err != nil {
-		log.Errorf(">>>> failed to get all messages count from postgresql: %s", err)
-		return
-	}
-
-	if psqlCount > 0 {
-		log.Debugf(">>>> found %d messages in postgresql, skipping migration from aerospike", psqlCount)
-		return
-	}
-
-	log.Debugln(">>>> migrating board messages from aerospike to postgresql")
-	messagesFromAero, err := boardAeroClient.AllMessages(ctx, true)
-	if err != nil {
-		log.Errorf("failed to get all messages from aerospike: %s", err)
-		return
-	}
-
-	log.Debugf(">>>> found %d messages in aerospike, beginning migration ...", len(messagesFromAero))
-	for _, aeroMsg := range messagesFromAero {
-		createdAt := time.Unix(aeroMsg.Timestamp, 0)
-		psqlMsg := visitorBoard.Message{
-			ID:        aeroMsg.ID,
-			Author:    aeroMsg.Author,
-			Message:   aeroMsg.Message,
-			CreatedAt: createdAt,
-		}
-		if id, err := boardPostgresRepo.Add(ctx, psqlMsg); err != nil {
-			log.Errorf(">>>> failed to add board message to posgres: %s", err)
-			continue
-		} else {
-			log.Debugf(">>>> migrated message to postgres with id: %d", id)
-		}
-	}
-
-	log.Debugln(">>>> aerospike 2 postgres messages migration finished")
-}
-
 func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware("main-router"))
@@ -280,12 +209,7 @@ func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	blogHandler.SetupRoutes(r)
 
 	boardRepo := visitorBoard.NewRepo(s.dbPool)
-	migrateBoardMessagesFromAS2PSQL(ctx, s.boardClient, boardRepo)
-	boardHandler := visitorBoard.NewBoardHandler(
-		boardRepo,
-		s.boardClient,
-		s.loginChecker,
-	)
+	boardHandler := visitorBoard.NewBoardHandler(boardRepo, s.loginChecker)
 	boardHandler.SetupRoutes(r)
 
 	weatherHandler := weather.NewHandler(s.geoIp, s.weatherApi)
@@ -391,10 +315,6 @@ func (s *Server) GracefulShutdown() {
 		log.Trace("db pool closed")
 	}
 
-	if s.boardAeroClient != nil {
-		s.boardAeroClient.Close()
-		log.Trace("visitor_board aero client closed")
-	}
 	if s.netlogVisitsApi != nil {
 		s.netlogVisitsApi.CloseDB()
 		log.Trace("netlog visits api closed")

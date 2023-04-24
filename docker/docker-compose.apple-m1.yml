@@ -1,9 +1,6 @@
 version: "3.7"
 
 services:
-  aerospike:
-    platform: "linux/amd64"
-
   redis:
     platform: "linux/amd64"
 

@@ -20,7 +20,6 @@ import (
 
 type Handler struct {
 	repo         boardMessagesRepo
-	boardClient  *Client
 	loginChecker *auth.LoginChecker
 }
 
@@ -34,12 +33,10 @@ type boardMessagesRepo interface {
 
 func NewBoardHandler(
 	repo boardMessagesRepo,
-	board *Client,
 	loginChecker *auth.LoginChecker,
 ) *Handler {
 	return &Handler{
 		repo:         repo,
-		boardClient:  board,
 		loginChecker: loginChecker,
 	}
 }
@@ -182,7 +179,9 @@ func (handler *Handler) handleNewMessage(w http.ResponseWriter, r *http.Request)
 		message.Author = "anon"
 	}
 
-	message.Timestamp = time.Now().Unix()
+	if message.CreatedAt.IsZero() {
+		message.CreatedAt = time.Now()
+	}
 
 	id, err := handler.repo.Add(ctx, message)
 	if err != nil {

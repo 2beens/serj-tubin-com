@@ -39,7 +39,6 @@ func TestMain(m *testing.M) {
 func setupVisitorBoardRouterForTests(
 	t *testing.T,
 	mockRepo *mockRepo,
-	boardClient *Client,
 	metricsManager *metrics.Manager,
 	browserReqSecret string,
 	loginChecker *auth.LoginChecker,
@@ -60,7 +59,7 @@ func setupVisitorBoardRouterForTests(
 	r.Use(authMiddleware.AuthCheck())
 	r.Use(middleware.DrainAndCloseRequest())
 
-	handler := NewBoardHandler(mockRepo, boardClient, loginChecker)
+	handler := NewBoardHandler(mockRepo, loginChecker)
 	handler.SetupRoutes(r)
 
 	return r
@@ -69,7 +68,7 @@ func setupVisitorBoardRouterForTests(
 func TestNewBoardHandler(t *testing.T) {
 	r := mux.NewRouter()
 
-	handler := NewBoardHandler(NewMockMessagesRepo(), nil, nil)
+	handler := NewBoardHandler(NewMockMessagesRepo(), nil)
 	handler.SetupRoutes(r)
 
 	for caseName, route := range map[string]struct {
@@ -127,12 +126,11 @@ func TestNewBoardHandler(t *testing.T) {
 }
 
 func TestBoardHandler_handleMessagesCount(t *testing.T) {
-	boardClient, _, _, _ := getTestBoardClient()
 	redisClient, _ := redismock.NewClientMock()
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 	m := metrics.NewTestManager()
 	mockRepo := NewMockMessagesRepo()
-	r := setupVisitorBoardRouterForTests(t, mockRepo, boardClient, m, "", loginChecker)
+	r := setupVisitorBoardRouterForTests(t, mockRepo, m, "", loginChecker)
 
 	req, err := http.NewRequest("GET", "/board/messages/count", nil)
 	require.NoError(t, err)
@@ -146,12 +144,12 @@ func TestBoardHandler_handleMessagesCount(t *testing.T) {
 }
 
 func TestBoardHandler_handleGetAllMessages(t *testing.T) {
-	boardClient, _, _, initialBoardMessages := getTestBoardClient()
 	redisClient, _ := redismock.NewClientMock()
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 	m := metrics.NewTestManager()
 	mockRepo := NewMockMessagesRepo()
-	r := setupVisitorBoardRouterForTests(t, mockRepo, boardClient, m, "", loginChecker)
+	initialBoardMessages := mockRepo.Messages
+	r := setupVisitorBoardRouterForTests(t, mockRepo, m, "", loginChecker)
 
 	req, err := http.NewRequest("GET", "/board/messages/all", nil)
 	require.NoError(t, err)
@@ -175,12 +173,11 @@ func TestBoardHandler_handleGetAllMessages(t *testing.T) {
 }
 
 func TestBoardHandler_handleGetLastMessages(t *testing.T) {
-	boardClient, _, _, _ := getTestBoardClient()
 	redisClient, _ := redismock.NewClientMock()
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 	m := metrics.NewTestManager()
 	mockRepo := NewMockMessagesRepo()
-	r := setupVisitorBoardRouterForTests(t, mockRepo, boardClient, m, "", loginChecker)
+	r := setupVisitorBoardRouterForTests(t, mockRepo, m, "", loginChecker)
 
 	req, err := http.NewRequest("GET", "/board/messages/last/2", nil)
 	require.NoError(t, err)
@@ -203,12 +200,11 @@ func TestBoardHandler_handleGetLastMessages(t *testing.T) {
 }
 
 func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
-	boardClient, _, _, _ := getTestBoardClient()
 	redisClient, _ := redismock.NewClientMock()
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 	m := metrics.NewTestManager()
 	mockRepo := NewMockMessagesRepo()
-	r := setupVisitorBoardRouterForTests(t, mockRepo, boardClient, m, "", loginChecker)
+	r := setupVisitorBoardRouterForTests(t, mockRepo, m, "", loginChecker)
 
 	req, err := http.NewRequest("GET", "/board/messages/page/2/size/2", nil)
 	require.NoError(t, err)
@@ -236,20 +232,6 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 	assert.True(t, found1)
 	assert.True(t, found2)
 
-	// big size
-	//req, err = http.NewRequest("GET", "/board/messages/page/2/size/200", nil)
-	//require.NoError(t, err)
-	//req.Header.Set("Origin", "test")
-	//rr = httptest.NewRecorder()
-	//r.ServeHTTP(rr, req)
-	//assert.Equal(t, http.StatusOK, rr.Code)
-	//assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
-	//
-	//err = json.Unmarshal(rr.Body.Bytes(), &boardMessages)
-	//require.NoError(t, err)
-	//require.NotNil(t, boardMessages)
-	//require.Len(t, boardMessages, len(initialBoardMessages))
-
 	// invalid arguments
 	req, err = http.NewRequest("GET", "/board/messages/page/invalid/size/2", nil)
 	require.NoError(t, err)
@@ -262,13 +244,13 @@ func TestBoardHandler_handleGetMessagesPage(t *testing.T) {
 }
 
 func TestBoardHandler_handleDeleteMessage(t *testing.T) {
-	boardClient, _, _, initialBoardMessages := getTestBoardClient()
 	redisClient, redisMock := redismock.NewClientMock()
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 	m := metrics.NewTestManager()
 	mockRepo := NewMockMessagesRepo()
+	initialBoardMessages := mockRepo.Messages
 	messagesCount := len(mockRepo.Messages)
-	r := setupVisitorBoardRouterForTests(t, mockRepo, boardClient, m, "", loginChecker)
+	r := setupVisitorBoardRouterForTests(t, mockRepo, m, "", loginChecker)
 
 	// wrong session token
 	req, err := http.NewRequest("DELETE", "/board/messages/delete/2", nil)
@@ -353,13 +335,12 @@ func TestBoardHandler_handleDeleteMessage(t *testing.T) {
 }
 
 func TestBoardHandler_handleNewMessage(t *testing.T) {
-	boardClient, _, _, _ := getTestBoardClient()
 	redisClient, _ := redismock.NewClientMock()
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 	m := metrics.NewTestManager()
 	mockRepo := NewMockMessagesRepo()
 	messagesCount := len(mockRepo.Messages)
-	r := setupVisitorBoardRouterForTests(t, mockRepo, boardClient, m, "", loginChecker)
+	r := setupVisitorBoardRouterForTests(t, mockRepo, m, "", loginChecker)
 
 	req, err := http.NewRequest("POST", "/board/messages/new", nil)
 	require.NoError(t, err)
@@ -404,10 +385,10 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 	require.Equal(t, messagesCount+2, len(boardMessages))
 
 	// check messages are there and came after the previously last one
-	lastMsgTime := time.Unix(mockRepo.Messages[messagesCount-1].Timestamp, 0)
+	lastMsgTime := mockRepo.Messages[messagesCount-1].CreatedAt
 	var firstFound, secondFound bool
 	for i := range boardMessages {
-		msgTime := time.Unix(boardMessages[i].Timestamp, 0)
+		msgTime := boardMessages[i].CreatedAt
 		if boardMessages[i].Message == "yaba" && boardMessages[i].Author == "chris" {
 			if msgTime.After(lastMsgTime) || msgTime.Equal(lastMsgTime) {
 				firstFound = true
@@ -424,13 +405,12 @@ func TestBoardHandler_handleNewMessage(t *testing.T) {
 }
 
 func TestBoardHandler_handleNewMessage_jsonPayload(t *testing.T) {
-	boardClient, _, _, _ := getTestBoardClient()
 	redisClient, _ := redismock.NewClientMock()
 	loginChecker := auth.NewLoginChecker(time.Hour, redisClient)
 	m := metrics.NewTestManager()
 	mockRepo := NewMockMessagesRepo()
 	messagesCount := len(mockRepo.Messages)
-	r := setupVisitorBoardRouterForTests(t, mockRepo, boardClient, m, "", loginChecker)
+	r := setupVisitorBoardRouterForTests(t, mockRepo, m, "", loginChecker)
 
 	newMsgParams := Message{
 		Message: "testmsg",
