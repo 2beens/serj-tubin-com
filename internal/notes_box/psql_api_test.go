@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/db"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +22,7 @@ func deleteAll(ctx context.Context, psqlApi *PsqlApi) (int64, error) {
 	return tag.RowsAffected(), nil
 }
 
-func getPsqlApi(t *testing.T) (*PsqlApi, error) {
+func getPsqlApi(t *testing.T) (*PsqlApi, func()) {
 	t.Helper()
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -32,18 +34,25 @@ func getPsqlApi(t *testing.T) (*PsqlApi, error) {
 	}
 	t.Logf("using postres host: %s", host)
 
-	return NewPsqlApi(
-		timeoutCtx,
-		host, "5432", "serj_blogs",
-		false,
-	)
+	dbPool, err := db.NewDBPool(timeoutCtx, db.NewDBPoolParams{
+		DBHost:         host,
+		DBPort:         "5432",
+		DBName:         "serj_blogs",
+		TracingEnabled: false,
+	})
+	require.NoError(t, err)
+
+	psqlApi, err := NewPsqlApi(dbPool)
+	require.NoError(t, err)
+
+	return psqlApi, func() {
+		dbPool.Close()
+	}
 }
 
 func TestPsqlApi_BasicCRUD(t *testing.T) {
-	api, err := getPsqlApi(t)
-	require.NoError(t, err)
-	require.NotNil(t, api)
-	defer api.CloseDB()
+	api, shutdown := getPsqlApi(t)
+	defer shutdown()
 
 	ctx := context.Background()
 	deleted, err := deleteAll(ctx, api)
@@ -120,10 +129,8 @@ func TestPsqlApi_BasicCRUD(t *testing.T) {
 }
 
 func TestPsqlApi_Update(t *testing.T) {
-	api, err := getPsqlApi(t)
-	require.NoError(t, err)
-	require.NotNil(t, api)
-	defer api.CloseDB()
+	api, shutdown := getPsqlApi(t)
+	defer shutdown()
 
 	ctx := context.Background()
 	deleted, err := deleteAll(ctx, api)

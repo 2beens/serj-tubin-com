@@ -13,6 +13,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/config"
+	"github.com/2beens/serjtubincom/internal/db"
 	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/misc"
@@ -21,7 +22,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	metricsmiddleware "github.com/2beens/serjtubincom/internal/telemetry/metrics/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
-	"github.com/2beens/serjtubincom/internal/visitor_board"
+	visitorBoard "github.com/2beens/serjtubincom/internal/visitor_board"
 	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 	"github.com/2beens/serjtubincom/internal/weather"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -40,12 +42,13 @@ type Server struct {
 	httpServer *http.Server
 
 	config          *config.Config
+	dbPool          *pgxpool.Pool
 	blogApi         *blog.PsqlApi
 	geoIp           *geoip.Api
 	weatherApi      *weather.Api
 	quotesManager   *misc.QuotesManager
 	boardAeroClient *aerospike.BoardAeroClient
-	boardClient     *visitor_board.Client
+	boardClient     *visitorBoard.Client
 	netlogVisitsApi *netlog.PsqlApi
 	notesBoxApi     *notes_box.PsqlApi
 
@@ -87,15 +90,25 @@ func NewServer(
 		params.Config.AeroMessagesSet,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create visitor_board aero client: %w", err)
+		return nil, fmt.Errorf("failed to create visitor board aero client: %w", err)
 	}
 
-	boardCache, err := visitor_board.NewBoardCache()
+	dbPool, err := db.NewDBPool(ctx, db.NewDBPoolParams{
+		DBHost:         params.Config.PostgresHost,
+		DBPort:         params.Config.PostgresPort,
+		DBName:         params.Config.PostgresDBName,
+		TracingEnabled: params.HoneycombTracingEnabled,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create visitor_board cache: %w", err)
+		return nil, fmt.Errorf("new db pool: %w", err)
 	}
 
-	boardClient, err := visitor_board.NewClient(ctx, boardAeroClient, boardCache)
+	boardCache, err := visitorBoard.NewBoardCache()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create visitor board cache: %w", err)
+	}
+
+	boardClient, err := visitorBoard.NewClient(ctx, boardAeroClient, boardCache)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create visitor board: %s", err)
 	}
@@ -118,11 +131,7 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
-	notesBoxApi, err := notes_box.NewPsqlApi(
-		ctx,
-		params.Config.PostgresHost, params.Config.PostgresPort, params.Config.PostgresDBName,
-		true,
-	)
+	notesBoxApi, err := notes_box.NewPsqlApi(dbPool)
 	if err != nil {
 		log.Fatalf("failed to create notes visits api: %s", err)
 	}
@@ -169,6 +178,7 @@ func NewServer(
 
 	s := &Server{
 		config:                params.Config,
+		dbPool:                dbPool,
 		blogApi:               blogApi,
 		browserRequestsSecret: params.BrowserRequestsSecret,
 		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, params.IpInfoAPIKey, tracedHttpClient, rdb),
@@ -216,14 +226,66 @@ func NewServer(
 	return s, nil
 }
 
-func (s *Server) routerSetup() (*mux.Router, error) {
+// migrateBoardMessagesFromAS2PSQL migrates all messages from aerospike to postgresql
+// TODO: remove this function after migration is done
+func migrateBoardMessagesFromAS2PSQL(
+	ctx context.Context,
+	boardAeroClient *visitorBoard.Client,
+	boardPostgresRepo *visitorBoard.Repo,
+) {
+	log.Debugln(">>>> checking messages migration from aerospike to postgres ...")
+	psqlCount, err := boardPostgresRepo.AllMessagesCount(ctx)
+	if err != nil {
+		log.Errorf(">>>> failed to get all messages count from postgresql: %s", err)
+		return
+	}
+
+	if psqlCount > 0 {
+		log.Debugf(">>>> found %d messages in postgresql, skipping migration from aerospike", psqlCount)
+		return
+	}
+
+	log.Debugln(">>>> migrating board messages from aerospike to postgresql")
+	messagesFromAero, err := boardAeroClient.AllMessages(ctx, true)
+	if err != nil {
+		log.Errorf("failed to get all messages from aerospike: %s", err)
+		return
+	}
+
+	log.Debugf(">>>> found %d messages in aerospike, beginning migration ...", len(messagesFromAero))
+	for _, aeroMsg := range messagesFromAero {
+		createdAt := time.Unix(aeroMsg.Timestamp, 0)
+		psqlMsg := visitorBoard.Message{
+			ID:        aeroMsg.ID,
+			Author:    aeroMsg.Author,
+			Message:   aeroMsg.Message,
+			CreatedAt: createdAt,
+		}
+		if id, err := boardPostgresRepo.Add(ctx, psqlMsg); err != nil {
+			log.Errorf(">>>> failed to add board message to posgres: %s", err)
+			continue
+		} else {
+			log.Debugf(">>>> migrated message to postgres with id: %d", id)
+		}
+	}
+
+	log.Debugln(">>>> aerospike 2 postgres messages migration finished")
+}
+
+func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware("main-router"))
 
 	blogHandler := blog.NewBlogHandler(s.blogApi, s.loginChecker)
 	blogHandler.SetupRoutes(r)
 
-	boardHandler := visitor_board.NewBoardHandler(s.boardClient, s.loginChecker)
+	boardRepo := visitorBoard.NewRepo(s.dbPool)
+	migrateBoardMessagesFromAS2PSQL(ctx, s.boardClient, boardRepo)
+	boardHandler := visitorBoard.NewBoardHandler(
+		boardRepo,
+		s.boardClient,
+		s.loginChecker,
+	)
 	boardHandler.SetupRoutes(r)
 
 	weatherHandler := weather.NewHandler(s.geoIp, s.weatherApi)
@@ -265,7 +327,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 }
 
 func (s *Server) Serve(ctx context.Context, host string, port int) {
-	router, err := s.routerSetup()
+	router, err := s.routerSetup(ctx)
 	if err != nil {
 		log.Fatalf("failed to setup router: %s", err)
 	}
@@ -306,24 +368,6 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	s.setNetlogBackupUnixSocket(ctx)
 }
 
-func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
-	if err := os.MkdirAll(s.config.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
-		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
-		return
-	}
-
-	if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(
-		ctx,
-		s.config.NetlogUnixSocketAddrDir,
-		s.config.NetlogUnixSocketFileName,
-		s.metricsManager,
-	); err != nil {
-		log.Errorf("failed to create netlog backup unix socket: %s", err)
-	} else {
-		log.Debugf("netlog backup unix socket: %s", addr)
-	}
-}
-
 func (s *Server) GracefulShutdown() {
 	log.Debug("graceful shutdown initiated ...")
 
@@ -339,6 +383,12 @@ func (s *Server) GracefulShutdown() {
 		if err := s.redisClient.Close(); err != nil {
 			log.Errorf("failed to close redis client conn: %s", err)
 		}
+	}
+
+	if s.dbPool != nil {
+		log.Traceln("closing db pool ...")
+		s.dbPool.Close() // blocking operation
+		log.Trace("db pool closed")
 	}
 
 	if s.boardAeroClient != nil {
@@ -378,5 +428,23 @@ func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
 		s.metricsManager.GaugeRequests.Add(1)
 	case http.StateClosed:
 		s.metricsManager.GaugeRequests.Add(-1)
+	}
+}
+
+func (s *Server) setNetlogBackupUnixSocket(ctx context.Context) {
+	if err := os.MkdirAll(s.config.NetlogUnixSocketAddrDir, os.ModePerm); err != nil {
+		log.Errorf("failed to create netlog backup unix socket dir: %s", err)
+		return
+	}
+
+	if addr, err := netlog.VisitsBackupUnixSocketListenerSetup(
+		ctx,
+		s.config.NetlogUnixSocketAddrDir,
+		s.config.NetlogUnixSocketFileName,
+		s.metricsManager,
+	); err != nil {
+		log.Errorf("failed to create netlog backup unix socket: %s", err)
+	} else {
+		log.Debugf("netlog backup unix socket: %s", addr)
 	}
 }

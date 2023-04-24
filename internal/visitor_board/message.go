@@ -1,15 +1,20 @@
 package visitor_board
 
 import (
+	"time"
+
 	"github.com/2beens/serjtubincom/internal/visitor_board/aerospike"
 	log "github.com/sirupsen/logrus"
 )
 
 type Message struct {
-	ID        int    `json:"id"`
-	Author    string `json:"author"`
-	Timestamp int64  `json:"timestamp"`
-	Message   string `json:"message"`
+	ID        int       `json:"id"`
+	Author    string    `json:"author"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"created_at"`
+
+	// TODO: legacy from aerospike, remove it after aerospike is killed
+	Timestamp int64 `json:"timestamp"`
 }
 
 func MessageFromBins(bins aerospike.AeroBinMap) Message {
