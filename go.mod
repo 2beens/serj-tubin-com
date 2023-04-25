@@ -14,7 +14,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/honeycombio/honeycomb-opentelemetry-go v0.5.4
 	github.com/honeycombio/otel-config-go v1.8.0
-	github.com/ipinfo/go/v2 v2.9.1
+	github.com/ipinfo/go/v2 v2.9.2
 	github.com/jackc/pgx/v5 v5.2.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
