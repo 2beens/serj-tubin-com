@@ -57,7 +57,6 @@ if [[ "$service" = "main" ]] ; then
   /usr/local/go/bin/go build -o /home/serj/serj-tubin-com/netlog-backup cmd/netlog_gd_backup/main.go
 else
   echo "--> restarting file box service ..."
-  echo "--> TODO: file service is in misc server, need to add the script there"
   echo "${SERJ_PASS}\n" | sudo /bin/systemctl restart serj-tubin-file-box.service
   echo "--> file box service restarted"
 fi
