@@ -16,7 +16,7 @@ jobs:
           port: ${{ secrets.SSR2_PORT }}
           username: ${{ secrets.SSR2_USERNAME }}
           key: ${{ secrets.SSR2_KEY_RSA }}
-          script: sh ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }}
+          script: bash ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }} mainservice
 
   deploy-file-service:
     name: File Service - run remote build and deploy script
@@ -29,4 +29,4 @@ jobs:
           port: ${{ secrets.MISC_PORT }}
           username: ${{ secrets.MISC_USERNAME }}
           key: ${{ secrets.MISC_KEY_RSA }}
-          script: bash ${{ secrets.MISC_REDEPLOY_SERVICE_SCRIPT }} master
+          script: bash ${{ secrets.MISC_REDEPLOY_SERVICE_SCRIPT }} filebox
