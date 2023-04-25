@@ -1,14 +1,12 @@
 name: Run remote server build/deploy script
 
-# TODO: be aware that file box service is running on another machine (misc), and still has to be deployed manually
-
 on:
   release:
     types: [published]
 
 jobs:
-  build:
-    name: Run remote build script 
+  deploy-main-service:
+    name: Main Service - run remote build and deploy script
     runs-on: ubuntu-latest
     steps:
       - name: executing remote ssh commands using ssh key
@@ -19,3 +17,16 @@ jobs:
           username: ${{ secrets.SSR2_USERNAME }}
           key: ${{ secrets.SSR2_KEY_RSA }}
           script: sh ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }}
+
+  deploy-file-service:
+    name: File Service - run remote build and deploy script
+    runs-on: ubuntu-latest
+    steps:
+      - name: executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.MISC_HOST }}
+          port: ${{ secrets.MISC_PORT }}
+          username: ${{ secrets.MISC_USERNAME }}
+          key: ${{ secrets.MISC_KEY_RSA }}
+          script: bash ${{ secrets.MISC_REDEPLOY_SERVICE_SCRIPT }} master
