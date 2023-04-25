@@ -27,7 +27,7 @@ require (
 	go.uber.org/multierr v1.8.0
 	golang.org/x/crypto v0.7.0
 	google.golang.org/api v0.100.0
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require github.com/rogpeppe/go-internal v1.10.0 // indirect
