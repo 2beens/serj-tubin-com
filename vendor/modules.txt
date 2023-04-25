@@ -115,10 +115,6 @@ github.com/grpc-ecosystem/grpc-gateway/v2/utilities
 # github.com/honeycombio/honeycomb-opentelemetry-go v0.5.4
 ## explicit; go 1.18
 github.com/honeycombio/honeycomb-opentelemetry-go
-# github.com/honeycombio/opentelemetry-go-contrib/launcher v0.0.0-20221031150637-a3c60ed98d54
-## explicit; go 1.17
-github.com/honeycombio/opentelemetry-go-contrib/launcher
-github.com/honeycombio/opentelemetry-go-contrib/launcher/pipelines
 # github.com/honeycombio/otel-config-go v1.8.0
 ## explicit; go 1.17
 github.com/honeycombio/otel-config-go/otelconfig
@@ -267,7 +263,6 @@ go.opentelemetry.io/otel/internal/global
 go.opentelemetry.io/otel/propagation
 go.opentelemetry.io/otel/semconv/internal
 go.opentelemetry.io/otel/semconv/internal/v2
-go.opentelemetry.io/otel/semconv/v1.10.0
 go.opentelemetry.io/otel/semconv/v1.12.0
 go.opentelemetry.io/otel/semconv/v1.17.0
 go.opentelemetry.io/otel/semconv/v1.17.0/httpconv

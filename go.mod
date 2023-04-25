@@ -13,7 +13,7 @@ require (
 	github.com/go-redis/redismock/v8 v8.0.6
 	github.com/gorilla/mux v1.8.0
 	github.com/honeycombio/honeycomb-opentelemetry-go v0.5.4
-	github.com/honeycombio/opentelemetry-go-contrib/launcher v0.0.0-20221031150637-a3c60ed98d54
+	github.com/honeycombio/otel-config-go v1.8.0
 	github.com/ipinfo/go/v2 v2.9.1
 	github.com/jackc/pgx/v5 v5.2.0
 	github.com/prometheus/client_golang v1.14.0
@@ -32,7 +32,6 @@ require (
 
 require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	github.com/honeycombio/otel-config-go v1.8.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 )
 
