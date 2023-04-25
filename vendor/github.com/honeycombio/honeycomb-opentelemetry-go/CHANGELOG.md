@@ -1,5 +1,75 @@
 # Honeycomb OpenTelemetry Distro Changelog
 
+## v0.5.4 (2023-04-20)
+
+### Maintenance
+
+- maint: Update launcher & set default endpoint (#135) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+
+## v0.5.3 (2023-04-12)
+
+### Maintenance
+
+- Update launcher & set default endpoint (#135) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Add go 1.20 to ci (#133) | [@vreynolds](https://github.com/vreynolds)
+
+## v0.5.2 (2023-04-05)
+
+### Maintenance
+
+- maint: update launcher to 1.6.0 (#130) | [@JamieDanielson](https://github.com/jamiedanielson)
+
+## v0.5.1 (2023-03-28)
+
+### Maintenance
+
+- maint: update launcher to v0.3.1 (#128) | [@JamieDanielson](https://github.com/jamiedanielson)
+
+## v0.5.0 (2023-03-02)
+
+### Maintenance
+
+- chore: Rename webapp example to baggage, give it a module (#116) | [@cartermp](https://github.com/cartermp)
+- maint: Add go.work to manage multiple modules (#117) | [@cartermp](https://github.com/cartermp)
+- maint(deps): update otel deps to 1.14.0, launcher to 0.3.0 (#125) | [@JamieDanielson](https://github.com/jamiedanielson)
+- maint(deps): bump github.com/stretchr/testify from 1.8.1 to 1.8.2 (#123)
+- build(deps): bump golang.org/x/net from 0.4.0 to 0.7.0 in /examples/webhook-listener-triggers (#120)
+- build(deps): bump golang.org/x/net from 0.4.0 to 0.7.0 in /examples/baggage (#119)
+- maint(deps): bump golang.org/x/net from 0.4.0 to 0.7.0 (#118)
+
+## v0.4.2 (2023-02-01)
+
+### Maintenance
+
+- chore: update to latest launcher and otel pkgs (#114) | [@cartermp](https://github.com/cartermp)
+
+## v0.4.1 (2023-01-19)
+
+### Fixes
+
+- Use configured logger to print messages (#103) | [@martin308](https://github.com/martin308)
+
+### Maintenance
+
+- Add smoke test to circle (#107) | [@JamieDanielson](https://github.com/jamiedanielson)
+- Add smoke tests for traces (#102) | [@JamieDanielson](https://github.com/jamiedanielson)
+- Update launcher to use new repo (#109) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+
+## v0.4.0 (2023-01-04)
+
+### Fixes
+
+- Don't error on misconfiguration; warn instead (#98) | [@cartermp](https://github.com/cartermp)
+
+### Maintenance
+
+- Update Launcher and OTel packages (#100) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Fix typo in test file (#99) | [@JamieDanielson](https://github.com/jamiedanielson)
+- Update readme with latest otel version (#88) | [@vreynolds](https://github.com/vreynolds)
+- Update validate PR title workflow (#91) | [@pkanal](https://github.com/pkanal)
+- Validate PR title (#90) | [@pkanal](https://github.com/pkanal)
+- Give dependabot PRs a better title (#93) | [@kentquirk](https://github.com/kentquirk)
+
 ## v0.3.0 (2022-10-31)
 
 ### Changes
