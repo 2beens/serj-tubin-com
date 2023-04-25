@@ -1,5 +1,7 @@
 name: Run remote server build/deploy script
 
+# related script that runs on the remote machines: scripts/github_action_ci_on_release.sh
+
 on:
   release:
     types: [published]
