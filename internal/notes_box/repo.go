@@ -15,10 +15,10 @@ type Repo struct {
 	db *pgxpool.Pool
 }
 
-func NewRepo(db *pgxpool.Pool) (*Repo, error) {
+func NewRepo(db *pgxpool.Pool) *Repo {
 	return &Repo{
 		db: db,
-	}, nil
+	}
 }
 
 func (r *Repo) Add(ctx context.Context, note *Note) (*Note, error) {

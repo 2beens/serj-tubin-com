@@ -41,14 +41,12 @@ import (
 type Server struct {
 	httpServer *http.Server
 
-	config          *config.Config
-	dbPool          *pgxpool.Pool
-	blogApi         *blog.PsqlApi
-	geoIp           *geoip.Api
-	weatherApi      *weather.Api
-	quotesManager   *misc.QuotesManager
-	netlogVisitsApi *netlog.PsqlApi
-	notesBoxApi     *notesBox.Repo
+	config        *config.Config
+	dbPool        *pgxpool.Pool
+	blogApi       *blog.PsqlApi
+	geoIp         *geoip.Api
+	weatherApi    *weather.Api
+	quotesManager *misc.QuotesManager
 
 	browserRequestsSecret string // used in netlog, when posting new visit
 
@@ -98,20 +96,6 @@ func NewServer(
 	)
 	if err != nil {
 		log.Fatalf("failed to create blog api: %s", err)
-	}
-
-	netlogVisitsApi, err := netlog.NewNetlogPsqlApi(
-		ctx,
-		params.Config.PostgresHost, params.Config.PostgresPort, params.Config.PostgresDBName,
-		true,
-	)
-	if err != nil {
-		log.Fatalf("failed to create netlog visits api: %s", err)
-	}
-
-	notesBoxApi, err := notesBox.NewRepo(dbPool)
-	if err != nil {
-		log.Fatalf("failed to create notes visits api: %s", err)
 	}
 
 	pgxpoolCollector := pgxpoolprometheus.NewCollector(
@@ -170,9 +154,7 @@ func NewServer(
 			weatherCitiesData,
 			tracedHttpClient,
 		),
-		netlogVisitsApi: netlogVisitsApi,
-		notesBoxApi:     notesBoxApi,
-		versionInfo:     params.VersionInfo,
+		versionInfo: params.VersionInfo,
 
 		redisClient:  rdb,
 		authService:  authService,
@@ -226,10 +208,12 @@ func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	miscHandler := misc.NewHandler(s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin)
 	miscHandler.SetupRoutes(r, reqRateLimiter, s.metricsManager)
 
-	netlogHandler := netlog.NewHandler(s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker)
+	netlogVisitsRepo := netlog.NewRepo(s.dbPool)
+	netlogHandler := netlog.NewHandler(netlogVisitsRepo, s.metricsManager, s.browserRequestsSecret, s.loginChecker)
 	netlogHandler.SetupRoutes(r)
 
-	notesHandler := notesBox.NewHandler(s.notesBoxApi, s.loginChecker, s.metricsManager)
+	notesBoxRepo := notesBox.NewRepo(s.dbPool)
+	notesHandler := notesBox.NewHandler(notesBoxRepo, s.loginChecker, s.metricsManager)
 	r.HandleFunc("/notes", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
 	r.HandleFunc("/notes", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
 	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
@@ -320,10 +304,6 @@ func (s *Server) GracefulShutdown() {
 		log.Trace("db pool closed")
 	}
 
-	if s.netlogVisitsApi != nil {
-		s.netlogVisitsApi.CloseDB()
-		log.Trace("netlog visits api closed")
-	}
 	if s.blogApi != nil {
 		s.blogApi.CloseDB()
 		log.Trace("blog api closed")

@@ -9,7 +9,6 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
-	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
@@ -17,47 +16,28 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
-var _ Api = (*PsqlApi)(nil)
+type Visit struct {
+	Id        int       `json:"id"`
+	Title     string    `json:"title"`
+	Source    string    `json:"source"`
+	Device    string    `json:"device"`
+	URL       string    `json:"url"`       // mandatory
+	Timestamp time.Time `json:"timestamp"` // mandatory
+}
 
-type PsqlApi struct {
+var _ netlogRepo = (*Repo)(nil)
+
+type Repo struct {
 	db *pgxpool.Pool
 }
 
-func NewNetlogPsqlApi(
-	ctx context.Context,
-	dbHost, dbPort, dbName string,
-	tracingEnabled bool,
-) (*PsqlApi, error) {
-	connString := fmt.Sprintf("postgres://postgres@%s:%s/%s", dbHost, dbPort, dbName)
-	poolConfig, err := pgxpool.ParseConfig(connString)
-	if err != nil {
-		return nil, fmt.Errorf("parse netlog db config: %w", err)
-	}
-
-	// TODO: disable tracing via NoopTracer...
-	if tracingEnabled {
-		poolConfig.ConnConfig.Tracer = otelpgx.NewTracer()
-	}
-
-	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
-	if err != nil {
-		return nil, fmt.Errorf("create connection pool: %w", err)
-	}
-
-	log.Debugf("netlog api connected to: %s", connString)
-
-	return &PsqlApi{
+func NewRepo(db *pgxpool.Pool) *Repo {
+	return &Repo{
 		db: db,
-	}, nil
-}
-
-func (api *PsqlApi) CloseDB() {
-	if api.db != nil {
-		api.db.Close()
 	}
 }
 
-func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) (err error) {
+func (r *Repo) AddVisit(ctx context.Context, visit *Visit) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.add")
 	span.SetAttributes(attribute.String("visit.source", visit.Source))
 	span.SetAttributes(attribute.String("visit.device", visit.Device))
@@ -76,7 +56,7 @@ func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) (err error) {
 		return errors.New("visit url or timestamp empty")
 	}
 
-	rows, err := api.db.Query(
+	rows, err := r.db.Query(
 		ctx,
 		`INSERT INTO netlog.visit (title, source, device, url, timestamp) VALUES ($1, $2, $3, $4, $5) RETURNING id;`,
 		visit.Title, visit.Source, visit.Device, visit.URL, visit.Timestamp,
@@ -101,7 +81,7 @@ func (api *PsqlApi) AddVisit(ctx context.Context, visit *Visit) (err error) {
 	return errors.New("unexpected error, failed to insert visit")
 }
 
-func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) ([]*Visit, error) {
+func (r *Repo) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) ([]*Visit, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.all")
 	if fromTimestamp != nil {
 		span.SetAttributes(attribute.String("visit.from-time", fromTimestamp.String()))
@@ -113,7 +93,7 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 	var rows pgx.Rows
 	var err error
 	if fromTimestamp != nil {
-		rows, err = api.db.Query(
+		rows, err = r.db.Query(
 			ctx,
 			`
 			SELECT
@@ -123,7 +103,7 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 			fromTimestamp,
 		)
 	} else {
-		rows, err = api.db.Query(
+		rows, err = r.db.Query(
 			ctx,
 			`
 			SELECT
@@ -145,7 +125,7 @@ func (api *PsqlApi) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) 
 	return visits, nil
 }
 
-func (api *PsqlApi) GetVisits(ctx context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error) {
+func (r *Repo) GetVisits(ctx context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.getVisits")
 	span.SetAttributes(attribute.String("visit.source", source))
 	span.SetAttributes(attribute.String("visit.field", field))
@@ -162,7 +142,7 @@ func (api *PsqlApi) GetVisits(ctx context.Context, keywords []string, field stri
 		LIMIT $1;
 	`, sbQueryLike)
 
-	rows, err := api.db.Query(
+	rows, err := r.db.Query(
 		ctx,
 		query,
 		limit,
@@ -181,11 +161,11 @@ func (api *PsqlApi) GetVisits(ctx context.Context, keywords []string, field stri
 	return visits, nil
 }
 
-func (api *PsqlApi) CountAll(ctx context.Context) (int, error) {
-	return api.Count(ctx, []string{}, "url", "all")
+func (r *Repo) CountAll(ctx context.Context) (int, error) {
+	return r.Count(ctx, []string{}, "url", "all")
 }
 
-func (api *PsqlApi) Count(ctx context.Context, keywords []string, field string, source string) (int, error) {
+func (r *Repo) Count(ctx context.Context, keywords []string, field string, source string) (int, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.count")
 	span.SetAttributes(attribute.String("visit.source", source))
 	span.SetAttributes(attribute.String("visit.field", field))
@@ -199,7 +179,7 @@ func (api *PsqlApi) Count(ctx context.Context, keywords []string, field string, 
 		;
 	`, sbQueryLike)
 
-	rows, err := api.db.Query(
+	rows, err := r.db.Query(
 		ctx,
 		query,
 	)
@@ -222,7 +202,7 @@ func (api *PsqlApi) Count(ctx context.Context, keywords []string, field string, 
 	return -1, errors.New("unexpected error, failed to get netlog visits count")
 }
 
-func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
+func (r *Repo) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.getVisitsPage")
 	span.SetAttributes(attribute.String("visit.source", source))
 	span.SetAttributes(attribute.String("visit.field", field))
@@ -232,13 +212,13 @@ func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field 
 
 	limit := size
 	offset := (page - 1) * size
-	allVisitsCount, err := api.CountAll(ctx)
+	allVisitsCount, err := r.CountAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if allVisitsCount <= limit {
-		return api.GetVisits(ctx, []string{}, field, source, size)
+		return r.GetVisits(ctx, []string{}, field, source, size)
 	}
 
 	if allVisitsCount-offset < limit {
@@ -258,7 +238,7 @@ func (api *PsqlApi) GetVisitsPage(ctx context.Context, keywords []string, field 
 		OFFSET $2;
 	`, sbQueryLike)
 
-	rows, err := api.db.Query(
+	rows, err := r.db.Query(
 		ctx,
 		query,
 		limit,

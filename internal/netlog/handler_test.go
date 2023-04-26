@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 
 func setupNetlogRouterForTests(
 	t *testing.T,
-	netlogApi Api,
+	repo netlogRepo,
 	metricsManager *metrics.Manager,
 	loginChecker *auth.LoginChecker,
 	browserReqSecret string,
@@ -63,7 +63,7 @@ func setupNetlogRouterForTests(
 	r.Use(authMiddleware.AuthCheck())
 	r.Use(middleware.DrainAndCloseRequest())
 
-	handler := NewHandler(netlogApi, metricsManager, browserReqSecret, loginChecker)
+	handler := NewHandler(repo, metricsManager, browserReqSecret, loginChecker)
 	handler.SetupRoutes(r)
 
 	return r
@@ -71,9 +71,9 @@ func setupNetlogRouterForTests(
 
 func TestNewNetlogHandler(t *testing.T) {
 	r := mux.NewRouter()
-	netlogApi := NewTestApi()
+	repo := NewRepoMock()
 	m := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, m, "", nil)
+	handler := NewHandler(repo, m, "", nil)
 	handler.SetupRoutes(r)
 
 	for caseName, route := range map[string]struct {
@@ -136,12 +136,12 @@ func TestNetlogHandler_handleGetAll_Empty(t *testing.T) {
 
 	browserReqSecret := "beer"
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
-	netlogApi := NewTestApi()
-	netlogApi.Visits = make(map[int]Visit, 0)
+	repo := NewRepoMock()
+	repo.Visits = make(map[int]Visit, 0)
 
 	r := mux.NewRouter()
 	m := metrics.NewTestManager()
-	handler := NewHandler(netlogApi, m, browserReqSecret, loginChecker)
+	handler := NewHandler(repo, m, browserReqSecret, loginChecker)
 	handler.SetupRoutes(r)
 	require.NotNil(t, handler)
 	require.NotNil(t, r)
@@ -166,11 +166,11 @@ func TestNetlogHandler_handleGetAll_Unauthorized(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
-	netlogApi := NewTestApi()
+	repo := NewRepoMock()
 	m := metrics.NewTestManager()
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	browserReqSecret := "beer"
-	r := setupNetlogRouterForTests(t, netlogApi, m, loginChecker, browserReqSecret)
+	r := setupNetlogRouterForTests(t, repo, m, loginChecker, browserReqSecret)
 
 	req, err := http.NewRequest("GET", "/netlog/", nil)
 	require.NoError(t, err)
@@ -188,11 +188,11 @@ func TestNetlogHandler_handleGetAll(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
-	netlogApi := NewTestApi()
+	repo := NewRepoMock()
 	m := metrics.NewTestManager()
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	browserReqSecret := "beer"
-	r := setupNetlogRouterForTests(t, netlogApi, m, loginChecker, browserReqSecret)
+	r := setupNetlogRouterForTests(t, repo, m, loginChecker, browserReqSecret)
 
 	req, err := http.NewRequest("GET", "/netlog/", nil)
 	require.NoError(t, err)
@@ -257,11 +257,11 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, _ := redismock.NewClientMock()
 
-			netlogApi := NewTestApi()
+			repo := NewRepoMock()
 			m := metrics.NewTestManager()
 			loginChecker := auth.NewLoginChecker(time.Hour, db)
 			browserReqSecret := "rakija"
-			r := setupNetlogRouterForTests(t, netlogApi, m, loginChecker, browserReqSecret)
+			r := setupNetlogRouterForTests(t, repo, m, loginChecker, browserReqSecret)
 
 			newVisitReq := newVisitRequest{
 				Title:     "Nonsense Title",
@@ -281,7 +281,7 @@ func TestNetlogHandler_handleNewVisit_invalidToken(t *testing.T) {
 			assert.Equal(t, "added", string(resp)) // this is a false positive "added"
 
 			// visits len is unchanged
-			assert.Len(t, netlogApi.Visits, 2)
+			assert.Len(t, repo.Visits, 2)
 			assert.Equal(t, float64(0), testutil.ToFloat64(m.CounterNetlogVisits))
 		})
 	}
@@ -334,11 +334,11 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// TODO: add integration tests instead of this approach
 			db, _ := redismock.NewClientMock()
-			netlogApi := NewTestApi()
+			repo := NewRepoMock()
 			m := metrics.NewTestManager()
 			loginChecker := auth.NewLoginChecker(time.Hour, db)
 			browserReqSecret := "beer"
-			r := setupNetlogRouterForTests(t, netlogApi, m, loginChecker, browserReqSecret)
+			r := setupNetlogRouterForTests(t, repo, m, loginChecker, browserReqSecret)
 
 			newVisitReq := newVisitRequest{
 				Title:     "Nonsense Title",
@@ -357,8 +357,8 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 			resp := rr.Body.Bytes()
 			assert.Equal(t, "added", string(resp))
 
-			assert.Len(t, netlogApi.Visits, 3)
-			addedVisit, ok := netlogApi.Visits[2]
+			assert.Len(t, repo.Visits, 3)
+			addedVisit, ok := repo.Visits[2]
 			require.True(t, ok)
 			require.NotNil(t, addedVisit)
 			assert.Equal(t, newVisitReq.Title, addedVisit.Title)
@@ -374,11 +374,11 @@ func TestNetlogHandler_handleNewVisit_validToken(t *testing.T) {
 
 func TestNetlogHandler_handleNewVisit_options_validToken(t *testing.T) {
 	db, _ := redismock.NewClientMock()
-	netlogApi := NewTestApi()
+	repo := NewRepoMock()
 	m := metrics.NewTestManager()
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	browserReqSecret := "beer"
-	r := setupNetlogRouterForTests(t, netlogApi, m, loginChecker, browserReqSecret)
+	r := setupNetlogRouterForTests(t, repo, m, loginChecker, browserReqSecret)
 
 	req, err := http.NewRequest("OPTIONS", "/netlog/new", nil)
 	require.NoError(t, err)
@@ -389,7 +389,7 @@ func TestNetlogHandler_handleNewVisit_options_validToken(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code)
 
 	assert.Equal(t, "", rr.Body.String())
-	assert.Len(t, netlogApi.Visits, 2)
+	assert.Len(t, repo.Visits, 2)
 	assert.Equal(t, float64(0), testutil.ToFloat64(m.CounterNetlogVisits))
 }
 
@@ -397,15 +397,15 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	mock.ExpectGet("serj-service-session||tokenAbc123").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 
-	netlogApi := NewTestApi()
+	repo := NewRepoMock()
 	m := metrics.NewTestManager()
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 	browserReqSecret := "beer"
-	r := setupNetlogRouterForTests(t, netlogApi, m, loginChecker, browserReqSecret)
+	r := setupNetlogRouterForTests(t, repo, m, loginChecker, browserReqSecret)
 
 	now := time.Now()
 	for id := 2; id <= 8; id++ {
-		netlogApi.Visits[id] = Visit{
+		repo.Visits[id] = Visit{
 			Id:        id,
 			Title:     fmt.Sprintf("test title %d", id),
 			Source:    "safari",
@@ -415,7 +415,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	}
 
 	for id := 9; id <= 12; id++ {
-		netlogApi.Visits[id] = Visit{
+		repo.Visits[id] = Visit{
 			Id:        id,
 			Title:     fmt.Sprintf("other title %d", id),
 			Source:    "safari",
@@ -425,7 +425,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	}
 
 	for id := 12; id <= 15; id++ {
-		netlogApi.Visits[id] = Visit{
+		repo.Visits[id] = Visit{
 			Id:        id,
 			Title:     fmt.Sprintf("test title %d", id),
 			Source:    "pc",
@@ -434,7 +434,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 		}
 	}
 
-	assert.Len(t, netlogApi.Visits, 16)
+	assert.Len(t, repo.Visits, 16)
 
 	req, err := http.NewRequest("GET", "/netlog/s/safari/f/url/search/test:url/page/2/size/3", nil)
 	require.NoError(t, err)

@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/config"
+	"github.com/2beens/serjtubincom/internal/db"
 	"github.com/2beens/serjtubincom/internal/logging"
 	"github.com/2beens/serjtubincom/internal/netlog"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -87,12 +89,32 @@ func main() {
 		return
 	}
 
+	// TODO: enable tracing here
+
+	honeycombEnabled := os.Getenv("HONEYCOMB_ENABLED") == "true"
+	if honeycombEnabled {
+		if honeycombApiKey := os.Getenv("HONEYCOMB_API_KEY"); honeycombApiKey == "" {
+			log.Warnln("HONEYCOMB_API_KEY env var not set")
+		}
+	} else {
+		log.Debugln("honeycomb tracing disabled")
+	}
+
+	dbPool, err := db.NewDBPool(ctx, db.NewDBPoolParams{
+		DBHost:         cfg.PostgresHost,
+		DBPort:         cfg.PostgresPort,
+		DBName:         cfg.PostgresDBName,
+		TracingEnabled: honeycombEnabled,
+	})
+	if err != nil {
+		log.Fatalf("new db pool: %s", err)
+	}
+	defer dbPool.Close()
+
 	s, err := netlog.NewGoogleDriveBackupService(
 		ctx,
 		credentialsFileBytes,
-		cfg.PostgresHost,
-		cfg.PostgresPort,
-		cfg.PostgresDBName,
+		dbPool,
 		cfg.NetlogUnixSocketAddrDir,
 		cfg.NetlogUnixSocketFileName,
 	)

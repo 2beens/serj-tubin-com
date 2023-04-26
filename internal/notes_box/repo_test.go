@@ -25,7 +25,7 @@ func deleteAll(ctx context.Context, repo *Repo) (int64, error) {
 func testRepoSetup(t *testing.T) (*Repo, func()) {
 	t.Helper()
 
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	host := os.Getenv("POSTGRES_HOST")
@@ -42,10 +42,7 @@ func testRepoSetup(t *testing.T) (*Repo, func()) {
 	})
 	require.NoError(t, err)
 
-	r, err := NewRepo(dbPool)
-	require.NoError(t, err)
-
-	return r, func() {
+	return NewRepo(dbPool), func() {
 		dbPool.Close()
 	}
 }

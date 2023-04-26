@@ -1,6 +1,7 @@
 package netlog
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,6 +21,14 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
+type netlogRepo interface {
+	AddVisit(ctx context.Context, visit *Visit) error
+	GetVisits(ctx context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error)
+	CountAll(ctx context.Context) (int, error)
+	Count(ctx context.Context, keywords []string, field string, source string) (int, error)
+	GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error)
+}
+
 type newVisitRequest struct {
 	Title     string `json:"title"`
 	Source    string `json:"source"`
@@ -30,19 +39,19 @@ type newVisitRequest struct {
 
 type Handler struct {
 	browserRequestsSecret string
-	netlogApi             Api
+	repo                  netlogRepo
 	loginChecker          *auth.LoginChecker
 	metrics               *metrics.Manager
 }
 
 func NewHandler(
-	netlogApi Api,
+	repo netlogRepo,
 	instrumentation *metrics.Manager,
 	browserRequestsSecret string,
 	loginChecker *auth.LoginChecker,
 ) *Handler {
 	return &Handler{
-		netlogApi:             netlogApi,
+		repo:                  repo,
 		metrics:               instrumentation,
 		browserRequestsSecret: browserRequestsSecret,
 		loginChecker:          loginChecker,
@@ -98,7 +107,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	visits, err := handler.netlogApi.GetVisitsPage(ctx, keywords, field, source, page, size)
+	visits, err := handler.repo.GetVisitsPage(ctx, keywords, field, source, page, size)
 	if err != nil {
 		log.Errorf("get visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -118,7 +127,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allVisitsCount, err := handler.netlogApi.Count(ctx, keywords, field, source)
+	allVisitsCount, err := handler.repo.Count(ctx, keywords, field, source)
 	if err != nil {
 		log.Errorf("get netlog visits error: %s", err)
 		http.Error(w, "failed to get netlog visits", http.StatusInternalServerError)
@@ -206,7 +215,7 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 		Device:    reqData.Device,
 		Timestamp: time.Unix(reqData.Timestamp/1000, 0),
 	}
-	if err := handler.netlogApi.AddVisit(ctx, visit); err != nil {
+	if err := handler.repo.AddVisit(ctx, visit); err != nil {
 		log.Errorf("add new visit [%d], [%s] [%s]: %s", reqData.Timestamp, reqData.Source, reqData.Device, err)
 		http.Error(w, "error, failed to add new visit", http.StatusInternalServerError)
 		span.RecordError(err)
@@ -240,7 +249,7 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("getting last %d netlog visits ... ", limit)
 
-	visits, err := handler.netlogApi.GetVisits(ctx, []string{}, "url", "all", limit)
+	visits, err := handler.repo.GetVisits(ctx, []string{}, "url", "all", limit)
 	if err != nil {
 		log.Errorf("get all visits error: %s", err)
 		http.Error(w, "failed to get all visits", http.StatusInternalServerError)
