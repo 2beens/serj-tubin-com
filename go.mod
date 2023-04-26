@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/BurntSushi/toml v1.2.1
+	github.com/IBM/pgxpoolprometheus v1.1.1
 	github.com/brianvoe/gofakeit/v6 v6.19.0
 	github.com/coocood/freecache v1.1.0
 	github.com/exaring/otelpgx v0.4.1

@@ -25,6 +25,7 @@ import (
 	visitorBoard "github.com/2beens/serjtubincom/internal/visitor_board"
 	"github.com/2beens/serjtubincom/internal/weather"
 
+	"github.com/IBM/pgxpoolprometheus"
 	"github.com/getsentry/sentry-go"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redis_rate/v9"
@@ -113,7 +114,11 @@ func NewServer(
 		log.Fatalf("failed to create notes visits api: %s", err)
 	}
 
-	promRegistry := metrics.SetupPrometheus()
+	pgxpoolCollector := pgxpoolprometheus.NewCollector(
+		dbPool,
+		map[string]string{"db_name": "serj_tubin_com_db"},
+	)
+	promRegistry := metrics.SetupPrometheus(pgxpoolCollector)
 	metricsManager := metrics.NewManager("backend", "main", promRegistry)
 	metricsManager.GaugeLifeSignal.Set(0) // will be set to 1 when all is set and ran (I think this is probably not needed)
 
