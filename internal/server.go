@@ -272,7 +272,7 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 					s.promRegistry,
 					promhttp.HandlerOpts{}),
 				))
-		log.Println(http.ListenAndServe(metricsAddr, nil))
+		log.Errorln(http.ListenAndServe(metricsAddr, nil))
 	}()
 
 	s.metricsManager.GaugeLifeSignal.Set(1)
