@@ -1,6 +1,7 @@
 package notes_box
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,19 +16,30 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var _ notesRepo = (*Repo)(nil)
+var _ notesRepo = (*repoMock)(nil)
+
+type notesRepo interface {
+	Add(ctx context.Context, note *Note) (*Note, error)
+	Update(ctx context.Context, note *Note) error
+	Get(ctx context.Context, id int) (*Note, error)
+	Delete(ctx context.Context, id int) error
+	List(ctx context.Context) ([]Note, error)
+}
+
 type Handler struct {
-	api          Api
+	repo         notesRepo
 	loginChecker *auth.LoginChecker
 	metrics      *metrics.Manager
 }
 
 func NewHandler(
-	api Api,
+	repo notesRepo,
 	loginChecker *auth.LoginChecker,
 	metrics *metrics.Manager,
 ) *Handler {
 	return &Handler{
-		api:          api,
+		repo:         repo,
 		loginChecker: loginChecker,
 		metrics:      metrics,
 	}
@@ -69,7 +81,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now(),
 	}
 
-	addedNote, err := handler.api.Add(r.Context(), note)
+	addedNote, err := handler.repo.Add(r.Context(), note)
 	if err != nil {
 		log.Printf("failed to add new note [%s], [%s]: %s", note.CreatedAt, note.Title, err)
 		http.Error(w, "error, failed to add new note", http.StatusInternalServerError)
@@ -132,7 +144,7 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		Content: updateNoteReq.Content,
 	}
 
-	if err := handler.api.Update(r.Context(), note); err != nil {
+	if err := handler.repo.Update(r.Context(), note); err != nil {
 		log.Printf("failed to update note [%d], [%s]: %s", note.Id, note.Title, err)
 		http.Error(w, "error, failed to update note", http.StatusInternalServerError)
 		return
@@ -156,7 +168,7 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.api.Delete(r.Context(), id); err != nil {
+	if err := handler.repo.Delete(r.Context(), id); err != nil {
 		log.Printf("failed to delete note %d: %s", id, err)
 		http.Error(w, "error, note not deleted, internal server error", http.StatusInternalServerError)
 		return
@@ -166,7 +178,7 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
-	notes, err := handler.api.List(r.Context())
+	notes, err := handler.repo.List(r.Context())
 	if err != nil {
 		log.Errorf("list notes error: %s", err)
 		http.Error(w, "failed to get notes", http.StatusInternalServerError)

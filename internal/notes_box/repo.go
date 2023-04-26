@@ -11,22 +11,22 @@ import (
 
 var ErrNoteNotFound = errors.New("note not found")
 
-type PsqlApi struct {
+type Repo struct {
 	db *pgxpool.Pool
 }
 
-func NewPsqlApi(db *pgxpool.Pool) (*PsqlApi, error) {
-	return &PsqlApi{
+func NewRepo(db *pgxpool.Pool) (*Repo, error) {
+	return &Repo{
 		db: db,
 	}, nil
 }
 
-func (api *PsqlApi) Add(ctx context.Context, note *Note) (*Note, error) {
+func (r *Repo) Add(ctx context.Context, note *Note) (*Note, error) {
 	if note.Content == "" || note.CreatedAt.IsZero() {
 		return nil, errors.New("note content or timestamp empty")
 	}
 
-	rows, err := api.db.Query(
+	rows, err := r.db.Query(
 		ctx,
 		`INSERT INTO note (title, created_at, content) VALUES ($1, $2, $3) RETURNING id;`,
 		note.Title, note.CreatedAt, note.Content,
@@ -53,8 +53,8 @@ func (api *PsqlApi) Add(ctx context.Context, note *Note) (*Note, error) {
 	return note, nil
 }
 
-func (api *PsqlApi) Get(ctx context.Context, noteId int) (*Note, error) {
-	rows, err := api.db.Query(
+func (r *Repo) Get(ctx context.Context, noteId int) (*Note, error) {
+	rows, err := r.db.Query(
 		ctx,
 		`SELECT * FROM note WHERE id = $1;`,
 		noteId,
@@ -87,12 +87,12 @@ func (api *PsqlApi) Get(ctx context.Context, noteId int) (*Note, error) {
 	}, nil
 }
 
-func (api *PsqlApi) Update(ctx context.Context, note *Note) error {
+func (r *Repo) Update(ctx context.Context, note *Note) error {
 	if note.Content == "" {
 		return errors.New("note content empty")
 	}
 
-	tag, err := api.db.Exec(
+	tag, err := r.db.Exec(
 		ctx,
 		`UPDATE note SET title = $1, content = $2 WHERE id = $3;`,
 		note.Title, note.Content, note.Id,
@@ -108,8 +108,8 @@ func (api *PsqlApi) Update(ctx context.Context, note *Note) error {
 	return nil
 }
 
-func (api *PsqlApi) Delete(ctx context.Context, id int) error {
-	tag, err := api.db.Exec(
+func (r *Repo) Delete(ctx context.Context, id int) error {
+	tag, err := r.db.Exec(
 		ctx,
 		`DELETE FROM note WHERE id = $1`,
 		id,
@@ -123,8 +123,8 @@ func (api *PsqlApi) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (api *PsqlApi) List(ctx context.Context) ([]Note, error) {
-	rows, err := api.db.Query(
+func (r *Repo) List(ctx context.Context) ([]Note, error) {
+	rows, err := r.db.Query(
 		ctx,
 		`
 			SELECT

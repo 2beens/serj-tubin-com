@@ -18,7 +18,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/netlog"
-	"github.com/2beens/serjtubincom/internal/notes_box"
+	notesBox "github.com/2beens/serjtubincom/internal/notes_box"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	metricsmiddleware "github.com/2beens/serjtubincom/internal/telemetry/metrics/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
@@ -48,7 +48,7 @@ type Server struct {
 	weatherApi      *weather.Api
 	quotesManager   *misc.QuotesManager
 	netlogVisitsApi *netlog.PsqlApi
-	notesBoxApi     *notes_box.PsqlApi
+	notesBoxApi     *notesBox.Repo
 
 	browserRequestsSecret string // used in netlog, when posting new visit
 
@@ -109,7 +109,7 @@ func NewServer(
 		log.Fatalf("failed to create netlog visits api: %s", err)
 	}
 
-	notesBoxApi, err := notes_box.NewPsqlApi(dbPool)
+	notesBoxApi, err := notesBox.NewRepo(dbPool)
 	if err != nil {
 		log.Fatalf("failed to create notes visits api: %s", err)
 	}
@@ -229,7 +229,7 @@ func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	netlogHandler := netlog.NewHandler(s.netlogVisitsApi, s.metricsManager, s.browserRequestsSecret, s.loginChecker)
 	netlogHandler.SetupRoutes(r)
 
-	notesHandler := notes_box.NewHandler(s.notesBoxApi, s.loginChecker, s.metricsManager)
+	notesHandler := notesBox.NewHandler(s.notesBoxApi, s.loginChecker, s.metricsManager)
 	r.HandleFunc("/notes", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
 	r.HandleFunc("/notes", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
 	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")

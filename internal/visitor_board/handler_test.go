@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 
 func setupVisitorBoardRouterForTests(
 	t *testing.T,
-	mockRepo *mockRepo,
+	mockRepo *repoMock,
 	metricsManager *metrics.Manager,
 	browserReqSecret string,
 	loginChecker *auth.LoginChecker,
