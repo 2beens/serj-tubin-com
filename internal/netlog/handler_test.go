@@ -27,10 +27,6 @@ import (
 // global set-up/tear-down for all the tests in a package (enough to place it in one of the test
 // files of the package)
 func TestMain(m *testing.M) {
-	// Do stuff BEFORE the tests
-	m.Run()
-
-	// do stuff AFTER the tests
 	goleak.VerifyTestMain(m,
 		// INFO: https://github.com/go-redis/redis/issues/1029
 		goleak.IgnoreTopFunction(
