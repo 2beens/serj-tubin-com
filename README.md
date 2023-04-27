@@ -2,9 +2,10 @@
 
   # serj-tubin.com
   ### experimentation sandbox app
-  [![Actions Status](https://github.com/2beens/serj-tubin-com/workflows/CI/badge.svg)](https://github.com/2beens/serj-tubin-com/actions)
-  [![Actions Status](https://github.com/2beens/serj-tubin-com/workflows/CodeQL/badge.svg)](https://github.com/2beens/serj-tubin-com/actions)
-  [![Go Report Card](https://goreportcard.com/badge/github.com/2beens/serj-tubin-com)](https://goreportcard.com/report/github.com/2beens/serj-tubin-com)
+  ![Actions Status](https://github.com/2beens/serj-tubin-com/workflows/CI/badge.svg)
+  ![Actions Status](https://github.com/2beens/serj-tubin-com/workflows/CodeQL/badge.svg)
+  ![Go Report Card](https://goreportcard.com/badge/github.com/2beens/serj-tubin-com)
+  ![Go VulnCheck](https://github.com/2beens/serj-tubin-com/workflows/VulnCheck/badge.svg?branch=master)
   
   Personal tech sandbox and testing site 🕵️‍♀️
   
