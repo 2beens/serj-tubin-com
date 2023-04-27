@@ -9,7 +9,7 @@ type repoMock struct {
 	notes map[int]*Note
 }
 
-func NewMockNotesRepo() *repoMock {
+func newRepoMock() *repoMock {
 	return &repoMock{
 		notes: make(map[int]*Note),
 	}

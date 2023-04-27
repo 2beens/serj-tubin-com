@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -28,17 +29,27 @@ type updateBlogRequest struct {
 	Content string `json:"content"`
 }
 
+type blogRepo interface {
+	AddBlog(ctx context.Context, blog *Blog) error
+	UpdateBlog(ctx context.Context, id int, title, content string) error
+	BlogClapped(ctx context.Context, id int) error
+	DeleteBlog(ctx context.Context, id int) error
+	All(ctx context.Context) ([]*Blog, error)
+	BlogsCount(ctx context.Context) (int, error)
+	GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error)
+}
+
 type Handler struct {
-	blogApi      Api
+	repo         blogRepo
 	loginChecker auth.Checker
 }
 
 func NewBlogHandler(
-	blogApi Api,
+	repo blogRepo,
 	loginChecker auth.Checker,
 ) *Handler {
 	return &Handler{
-		blogApi:      blogApi,
+		repo:         repo,
 		loginChecker: loginChecker,
 	}
 }
@@ -87,7 +98,7 @@ func (handler *Handler) handleNewBlog(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now(),
 	}
 
-	if err := handler.blogApi.AddBlog(r.Context(), newBlog); err != nil {
+	if err := handler.repo.AddBlog(r.Context(), newBlog); err != nil {
 		log.Errorf("add new blog failed: %s", err)
 		http.Error(w, "add new blog failed", http.StatusInternalServerError)
 		return
@@ -143,7 +154,7 @@ func (handler *Handler) handleUpdateBlog(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := handler.blogApi.UpdateBlog(r.Context(), updateBlogReq.ID, updateBlogReq.Title, updateBlogReq.Content); err != nil {
+	if err := handler.repo.UpdateBlog(r.Context(), updateBlogReq.ID, updateBlogReq.Title, updateBlogReq.Content); err != nil {
 		log.Errorf("update blog failed: %s", err)
 		http.Error(w, "update blog failed", http.StatusInternalServerError)
 		return
@@ -182,7 +193,7 @@ func (handler *Handler) handleBlogClapped(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	if err := handler.blogApi.BlogClapped(r.Context(), clapBlogReq.ID); err != nil {
+	if err := handler.repo.BlogClapped(r.Context(), clapBlogReq.ID); err != nil {
 		log.Errorf("update blog failed: %s", err)
 		http.Error(w, "update blog failed", http.StatusInternalServerError)
 		return
@@ -205,7 +216,7 @@ func (handler *Handler) handleDeleteBlog(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := handler.blogApi.DeleteBlog(r.Context(), id); err != nil {
+	if err := handler.repo.DeleteBlog(r.Context(), id); err != nil {
 		log.Printf("failed to delete blog %d: %s", id, err)
 		http.Error(w, "error, blog not deleted, internal server error", http.StatusInternalServerError)
 		return
@@ -215,7 +226,7 @@ func (handler *Handler) handleDeleteBlog(w http.ResponseWriter, r *http.Request)
 }
 
 func (handler *Handler) handleAll(w http.ResponseWriter, r *http.Request) {
-	allBlogs, err := handler.blogApi.All(r.Context())
+	allBlogs, err := handler.repo.All(r.Context())
 
 	if err != nil {
 		log.Errorf("get all blogs error: %s", err)
@@ -262,7 +273,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blogPosts, err := handler.blogApi.GetBlogsPage(r.Context(), page, size)
+	blogPosts, err := handler.repo.GetBlogsPage(r.Context(), page, size)
 	if err != nil {
 		log.Errorf("get blogs error: %s", err)
 		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
@@ -282,7 +293,7 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalBlogsCount, err := handler.blogApi.BlogsCount(r.Context())
+	totalBlogsCount, err := handler.repo.BlogsCount(r.Context())
 	if err != nil {
 		log.Errorf("get blogs error: %s", err)
 		http.Error(w, "failed to get blog posts", http.StatusInternalServerError)
