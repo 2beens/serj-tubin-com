@@ -1,4 +1,4 @@
-# cloud.google.com/go/compute v1.15.1
+# cloud.google.com/go/compute v1.18.0
 ## explicit; go 1.19
 cloud.google.com/go/compute/internal
 # cloud.google.com/go/compute/metadata v0.2.3
@@ -94,8 +94,8 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
-# github.com/googleapis/enterprise-certificate-proxy v0.2.0
-## explicit; go 1.18
+# github.com/googleapis/enterprise-certificate-proxy v0.2.3
+## explicit; go 1.19
 github.com/googleapis/enterprise-certificate-proxy/client
 github.com/googleapis/enterprise-certificate-proxy/client/util
 # github.com/googleapis/gax-go/v2 v2.7.0
@@ -386,7 +386,7 @@ golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
-# google.golang.org/api v0.103.0
+# google.golang.org/api v0.110.0
 ## explicit; go 1.19
 google.golang.org/api/drive/v3
 google.golang.org/api/googleapi
@@ -413,7 +413,7 @@ google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f
+# google.golang.org/genproto v0.0.0-20230209215440-0dfe4f8abfcc
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/code
