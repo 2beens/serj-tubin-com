@@ -60,7 +60,7 @@ func getRepoMockAndLoginChecker(t *testing.T, redisClient *redis.Client) (*repoM
 	repoMock := newRepoMock()
 	for i := 0; i < 5; i++ {
 		require.NoError(t, repoMock.AddBlog(context.Background(), &Blog{
-			Id:        i,
+			ID:        i,
 			Title:     fmt.Sprintf("blog%dtitle", i),
 			CreatedAt: now.Add(time.Minute * time.Duration(i)),
 			Content:   fmt.Sprintf("blog %d content", i),
@@ -161,7 +161,7 @@ func TestBlogHandler_handleAll(t *testing.T) {
 	// check all posts received
 	require.Len(t, blogPosts, repoMock.PostsCount())
 	for i := range blogPosts {
-		assert.True(t, blogPosts[i].Id >= 0)
+		assert.True(t, blogPosts[i].ID >= 0)
 		assert.NotEmpty(t, blogPosts[i].Title)
 		assert.NotEmpty(t, blogPosts[i].Content)
 		assert.False(t, blogPosts[i].CreatedAt.IsZero())
@@ -439,7 +439,7 @@ func TestBlogHandler_handleBlogClapped_correctToken(t *testing.T) {
 	assert.Equal(t, 0, blog0.Claps)
 
 	req.PostForm = url.Values{}
-	req.PostForm.Add("id", fmt.Sprintf("%d", blog0.Id))
+	req.PostForm.Add("id", fmt.Sprintf("%d", blog0.ID))
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
 	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 	rr := httptest.NewRecorder()
@@ -448,21 +448,21 @@ func TestBlogHandler_handleBlogClapped_correctToken(t *testing.T) {
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	require.Equal(t, fmt.Sprintf("updated:%d", blog0.Id), rr.Body.String())
-	assert.Equal(t, 1, repoMock.Posts[blog0.Id].Claps)
+	require.Equal(t, fmt.Sprintf("updated:%d", blog0.ID), rr.Body.String())
+	assert.Equal(t, 1, repoMock.Posts[blog0.ID].Claps)
 	assert.Equal(t, currentPostsCount, repoMock.PostsCount())
 
 	req, err = http.NewRequest("PATCH", "/blog/clap", nil)
 	require.NoError(t, err)
 	req.PostForm = url.Values{}
-	req.PostForm.Add("id", fmt.Sprintf("%d", blog0.Id))
+	req.PostForm.Add("id", fmt.Sprintf("%d", blog0.ID))
 	req.Header.Set("X-SERJ-TOKEN", "mylittlesecret")
 	redisMock.ExpectGet("serj-service-session||mylittlesecret").SetVal(fmt.Sprintf("%d", time.Now().Unix()))
 	rr = httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	require.Equal(t, fmt.Sprintf("updated:%d", blog0.Id), rr.Body.String())
-	assert.Equal(t, 2, repoMock.Posts[blog0.Id].Claps)
+	require.Equal(t, fmt.Sprintf("updated:%d", blog0.ID), rr.Body.String())
+	assert.Equal(t, 2, repoMock.Posts[blog0.ID].Claps)
 	assert.Equal(t, currentPostsCount, repoMock.PostsCount())
 }

@@ -104,12 +104,12 @@ func (handler *Handler) handleNewBlog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Tracef("new blog %d: [%s] added", newBlog.Id, newBlog.Title)
+	log.Tracef("new blog %d: [%s] added", newBlog.ID, newBlog.Title)
 
 	pkg.WriteResponse(
 		w,
 		pkg.ContentType.Text,
-		fmt.Sprintf("added:%d", newBlog.Id),
+		fmt.Sprintf("added:%d", newBlog.ID),
 		http.StatusCreated,
 	)
 }

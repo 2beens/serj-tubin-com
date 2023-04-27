@@ -7,6 +7,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
@@ -21,7 +22,7 @@ var (
 )
 
 type Blog struct {
-	Id        int       `json:"id"`
+	ID        int       `json:"id"`
 	Title     string    `json:"title"`
 	CreatedAt time.Time `json:"created_at"`
 	Content   string    `json:"content"`
@@ -66,7 +67,7 @@ func (r *Repo) AddBlog(ctx context.Context, blog *Blog) error {
 	if rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err == nil {
-			blog.Id = id
+			blog.ID = id
 			return nil
 		}
 	}
@@ -136,26 +137,7 @@ func (r *Repo) All(ctx context.Context) ([]*Blog, error) {
 		return nil, err
 	}
 
-	var blogs []*Blog
-	for rows.Next() {
-		var id int
-		var title string
-		var createdAt time.Time
-		var content string
-		var claps int
-		if err := rows.Scan(&id, &title, &createdAt, &content, &claps); err != nil {
-			return nil, err
-		}
-		blogs = append(blogs, &Blog{
-			Id:        id,
-			Title:     title,
-			CreatedAt: createdAt,
-			Content:   content,
-			Claps:     claps,
-		})
-	}
-
-	return blogs, nil
+	return r.rows2blogs(rows)
 }
 
 func (r *Repo) BlogsCount(ctx context.Context) (int, error) {
@@ -225,26 +207,7 @@ func (r *Repo) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error
 		return nil, err
 	}
 
-	var blogs []*Blog
-	for rows.Next() {
-		var id int
-		var title string
-		var createdAt time.Time
-		var content string
-		var claps int
-		if err := rows.Scan(&id, &title, &createdAt, &content, &claps); err != nil {
-			return nil, err
-		}
-		blogs = append(blogs, &Blog{
-			Id:        id,
-			Title:     title,
-			CreatedAt: createdAt,
-			Content:   content,
-			Claps:     claps,
-		})
-	}
-
-	return blogs, nil
+	return r.rows2blogs(rows)
 }
 
 func (r *Repo) GetBlog(ctx context.Context, id int) (*Blog, error) {
@@ -284,10 +247,32 @@ func (r *Repo) GetBlog(ctx context.Context, id int) (*Blog, error) {
 		return nil, err
 	}
 	return &Blog{
-		Id:        blogId,
+		ID:        blogId,
 		Title:     title,
 		CreatedAt: createdAt,
 		Content:   content,
 		Claps:     claps,
 	}, nil
+}
+
+func (r *Repo) rows2blogs(rows pgx.Rows) ([]*Blog, error) {
+	var blogs []*Blog
+	for rows.Next() {
+		var id int
+		var title string
+		var createdAt time.Time
+		var content string
+		var claps int
+		if err := rows.Scan(&id, &title, &createdAt, &content, &claps); err != nil {
+			return nil, err
+		}
+		blogs = append(blogs, &Blog{
+			ID:        id,
+			Title:     title,
+			CreatedAt: createdAt,
+			Content:   content,
+			Claps:     claps,
+		})
+	}
+	return blogs, nil
 }

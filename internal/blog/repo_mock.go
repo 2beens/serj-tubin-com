@@ -28,15 +28,15 @@ func (r *repoMock) AddBlog(_ context.Context, blog *Blog) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	if blog.Id == 0 {
-		blog.Id = len(r.Posts)
+	if blog.ID == 0 {
+		blog.ID = len(r.Posts)
 	}
 
-	if _, ok := r.Posts[blog.Id]; ok {
+	if _, ok := r.Posts[blog.ID]; ok {
 		return errors.New("blog exists already")
 	}
 
-	r.Posts[blog.Id] = blog
+	r.Posts[blog.ID] = blog
 	return nil
 }
 

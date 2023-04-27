@@ -69,9 +69,9 @@ func TestRepo_AddBlog_DeleteBlog(t *testing.T) {
 	err = repo.AddBlog(ctx, b3)
 	require.NoError(t, err)
 
-	assert.NotEqual(t, b1.Id, b2.Id)
-	assert.NotEqual(t, b1.Id, b3.Id)
-	assert.NotEqual(t, b2.Id, b3.Id)
+	assert.NotEqual(t, b1.ID, b2.ID)
+	assert.NotEqual(t, b1.ID, b3.ID)
+	assert.NotEqual(t, b2.ID, b3.ID)
 	assert.True(t, now.Before(b1.CreatedAt), "%v should be before %v", now, b1.CreatedAt)
 	assert.True(t, now.Before(b2.CreatedAt), "%v should be before %v", now, b2.CreatedAt)
 	assert.True(t, now.Before(b2.CreatedAt), "%v should be before %v", now, b3.CreatedAt)
@@ -82,8 +82,8 @@ func TestRepo_AddBlog_DeleteBlog(t *testing.T) {
 
 	// now delete b2
 	assert.ErrorIs(t, repo.DeleteBlog(ctx, 25342523), ErrBlogNotFound)
-	require.NoError(t, repo.DeleteBlog(ctx, b2.Id))
-	_, err = repo.GetBlog(ctx, b2.Id)
+	require.NoError(t, repo.DeleteBlog(ctx, b2.ID))
+	_, err = repo.GetBlog(ctx, b2.ID)
 	assert.ErrorIs(t, err, ErrBlogNotFound)
 }
 
@@ -101,9 +101,9 @@ func TestRepo_UpdateBlog_BlogClapped(t *testing.T) {
 	err := repo.AddBlog(ctx, blog)
 	require.NoError(t, err)
 
-	require.NoError(t, repo.UpdateBlog(ctx, blog.Id, "newtitle", "newcontent"))
+	require.NoError(t, repo.UpdateBlog(ctx, blog.ID, "newtitle", "newcontent"))
 
-	updatedBlog, err := repo.GetBlog(ctx, blog.Id)
+	updatedBlog, err := repo.GetBlog(ctx, blog.ID)
 	require.NoError(t, err)
 	require.NotNil(t, updatedBlog)
 	assert.Equal(t, "newcontent", updatedBlog.Content)
@@ -112,11 +112,11 @@ func TestRepo_UpdateBlog_BlogClapped(t *testing.T) {
 
 	// assert claps
 	assert.ErrorIs(t, repo.BlogClapped(ctx, 25342523), ErrBlogNotFound)
-	require.NoError(t, repo.BlogClapped(ctx, blog.Id))
-	require.NoError(t, repo.BlogClapped(ctx, blog.Id))
-	require.NoError(t, repo.BlogClapped(ctx, blog.Id))
+	require.NoError(t, repo.BlogClapped(ctx, blog.ID))
+	require.NoError(t, repo.BlogClapped(ctx, blog.ID))
+	require.NoError(t, repo.BlogClapped(ctx, blog.ID))
 
-	updatedBlog, err = repo.GetBlog(ctx, blog.Id)
+	updatedBlog, err = repo.GetBlog(ctx, blog.ID)
 	require.NoError(t, err)
 	require.NotNil(t, updatedBlog)
 	assert.Equal(t, "newcontent", updatedBlog.Content)
