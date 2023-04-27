@@ -23,6 +23,9 @@ type Handler struct {
 	loginChecker *auth.LoginChecker
 }
 
+var _ boardMessagesRepo = (*Repo)(nil)
+var _ boardMessagesRepo = (*repoMock)(nil)
+
 type boardMessagesRepo interface {
 	Add(ctx context.Context, message Message) (int, error)
 	Delete(ctx context.Context, id int) error

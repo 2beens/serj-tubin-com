@@ -9,16 +9,16 @@ import (
 	"time"
 )
 
-var _ Api = (*TestApi)(nil)
+var _ netlogRepo = (*repoMock)(nil)
 
-type TestApi struct {
+type repoMock struct {
 	// visit ID to Visit
 	Visits map[int]Visit
 	mutex  sync.Mutex
 }
 
-func NewTestApi() *TestApi {
-	netlogApi := &TestApi{
+func NewRepoMock() *repoMock {
+	repo := &repoMock{
 		Visits: map[int]Visit{},
 	}
 
@@ -37,37 +37,37 @@ func NewTestApi() *TestApi {
 		URL:       "test:url:1",
 		Timestamp: now,
 	}
-	netlogApi.Visits[0] = visit0
-	netlogApi.Visits[1] = visit1
+	repo.Visits[0] = visit0
+	repo.Visits[1] = visit1
 
-	return netlogApi
+	return repo
 }
 
-func (api *TestApi) AddVisit(_ context.Context, visit *Visit) error {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
+func (r *repoMock) AddVisit(_ context.Context, visit *Visit) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
-	nextId := len(api.Visits)
+	nextId := len(r.Visits)
 
-	api.Visits[nextId] = *visit
+	r.Visits[nextId] = *visit
 	return nil
 }
 
-func (api *TestApi) GetAllVisits(ctx context.Context) ([]*Visit, error) {
-	return api.GetVisits(ctx, []string{}, "url", "all", -1)
+func (r *repoMock) GetAllVisits(ctx context.Context) ([]*Visit, error) {
+	return r.GetVisits(ctx, []string{}, "url", "all", -1)
 }
 
-func (api *TestApi) GetVisits(_ context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error) {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
+func (r *repoMock) GetVisits(_ context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	if field != "url" && field != "title" {
 		return nil, errors.New("unknown field name")
 	}
 
 	var foundVisits []*Visit
-	for k := range api.Visits {
-		visit := api.Visits[k]
+	for k := range r.Visits {
+		visit := r.Visits[k]
 		if len(keywords) > 0 {
 			for _, keyword := range keywords {
 				field := visit.URL
@@ -93,23 +93,23 @@ func (api *TestApi) GetVisits(_ context.Context, keywords []string, field string
 	return foundVisits, nil
 }
 
-func (api *TestApi) CountAll(_ context.Context) (int, error) {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
+func (r *repoMock) CountAll(_ context.Context) (int, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
-	return len(api.Visits), nil
+	return len(r.Visits), nil
 }
 
-func (api *TestApi) Count(_ context.Context, keywords []string, field string, source string) (int, error) {
-	api.mutex.Lock()
-	defer api.mutex.Unlock()
+func (r *repoMock) Count(_ context.Context, keywords []string, field string, source string) (int, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	if field != "url" && field != "title" {
 		return -1, errors.New("unknown field name")
 	}
 
 	count := 0
-	for _, visit := range api.Visits {
+	for _, visit := range r.Visits {
 		for _, keyword := range keywords {
 			field := visit.URL
 			if field == "title" {
@@ -128,12 +128,12 @@ func (api *TestApi) Count(_ context.Context, keywords []string, field string, so
 	return count, nil
 }
 
-func (api *TestApi) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
-	if len(api.Visits) <= size {
-		return api.GetAllVisits(ctx)
+func (r *repoMock) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
+	if len(r.Visits) <= size {
+		return r.GetAllVisits(ctx)
 	}
 
-	foundVisits, err := api.GetVisits(ctx, keywords, field, source, -1)
+	foundVisits, err := r.GetVisits(ctx, keywords, field, source, -1)
 	if err != nil {
 		return nil, err
 	}

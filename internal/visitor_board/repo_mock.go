@@ -7,13 +7,13 @@ import (
 	"time"
 )
 
-type mockRepo struct {
+type repoMock struct {
 	Messages []Message
 }
 
-func NewMockMessagesRepo() *mockRepo {
+func NewMockMessagesRepo() *repoMock {
 	now := time.Now()
-	return &mockRepo{
+	return &repoMock{
 		Messages: []Message{
 			{
 				ID:        0,
@@ -49,13 +49,13 @@ func NewMockMessagesRepo() *mockRepo {
 	}
 }
 
-func (mr *mockRepo) Add(_ context.Context, message Message) (int, error) {
+func (mr *repoMock) Add(_ context.Context, message Message) (int, error) {
 	message.ID = len(mr.Messages) + 1
 	mr.Messages = append(mr.Messages, message)
 	return message.ID, nil
 }
 
-func (mr *mockRepo) Delete(_ context.Context, id int) error {
+func (mr *repoMock) Delete(_ context.Context, id int) error {
 	for i, msg := range mr.Messages {
 		if msg.ID == id {
 			mr.Messages = append(mr.Messages[:i], mr.Messages[i+1:]...)
@@ -66,7 +66,7 @@ func (mr *mockRepo) Delete(_ context.Context, id int) error {
 }
 
 // List returns last n messages, determined by the limit option.
-func (mr *mockRepo) List(_ context.Context, options ...func(listOptions *ListOptions)) ([]Message, error) {
+func (mr *repoMock) List(_ context.Context, options ...func(listOptions *ListOptions)) ([]Message, error) {
 	opts := &ListOptions{}
 	for _, option := range options {
 		option(opts)
@@ -83,7 +83,7 @@ func (mr *mockRepo) List(_ context.Context, options ...func(listOptions *ListOpt
 	return mr.Messages[len(mr.Messages)-opts.Limit:], nil
 }
 
-func (mr *mockRepo) GetMessagesPage(_ context.Context, page, size int) ([]Message, error) {
+func (mr *repoMock) GetMessagesPage(_ context.Context, page, size int) ([]Message, error) {
 	if size <= 0 {
 		return nil, errors.New("invalid page size")
 	}
@@ -102,6 +102,6 @@ func (mr *mockRepo) GetMessagesPage(_ context.Context, page, size int) ([]Messag
 	return mr.Messages[start:end], nil
 }
 
-func (mr *mockRepo) AllMessagesCount(_ context.Context) (int, error) {
+func (mr *repoMock) AllMessagesCount(_ context.Context) (int, error) {
 	return len(mr.Messages), nil
 }

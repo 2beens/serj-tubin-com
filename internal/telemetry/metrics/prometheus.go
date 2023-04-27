@@ -5,15 +5,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
-func SetupPrometheus() *prometheus.Registry {
+func SetupPrometheus(additionalCollectors ...prometheus.Collector) *prometheus.Registry {
 	promRegistry := prometheus.NewRegistry()
 
 	// Add Go module build info, runtime metrics and process collectors.
-	promRegistry.MustRegister(
-		collectors.NewBuildInfoCollector(),
+	allCollectors := []prometheus.Collector{
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-	)
+		collectors.NewBuildInfoCollector(),
+	}
+
+	promRegistry.MustRegister(append(allCollectors, additionalCollectors...)...)
 
 	return promRegistry
 }

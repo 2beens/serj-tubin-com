@@ -15,6 +15,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
@@ -30,7 +31,7 @@ var (
 )
 
 type GoogleDriveBackupService struct {
-	psqlApi                  *PsqlApi
+	repo                     *Repo
 	service                  *drive.Service
 	backupsFolderId          string
 	lazarDusanPermission     *drive.Permission
@@ -41,9 +42,7 @@ type GoogleDriveBackupService struct {
 func NewGoogleDriveBackupService(
 	ctx context.Context,
 	credentialsJson []byte,
-	dbHost string,
-	dbPort string,
-	dbName string,
+	dbPool *pgxpool.Pool,
 	netlogUnixSocketAddrDir string,
 	netlogUnixSocketFileName string,
 ) (*GoogleDriveBackupService, error) {
@@ -80,17 +79,9 @@ func NewGoogleDriveBackupService(
 		backupsFolderId = rbf.Id
 	}
 
-	psqlApi, err := NewNetlogPsqlApi(
-		ctx,
-		dbHost, dbPort, dbName,
-		true,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create PSQL api client: %w", err)
-	}
-
+	repo := NewRepo(dbPool)
 	s := &GoogleDriveBackupService{
-		psqlApi:                  psqlApi,
+		repo:                     repo,
 		service:                  driveService,
 		netlogUnixSocketAddrDir:  netlogUnixSocketAddrDir,
 		netlogUnixSocketFileName: netlogUnixSocketFileName,
@@ -273,7 +264,7 @@ func (s *GoogleDriveBackupService) DoBackup(ctx context.Context, baseTime time.T
 		log.Printf("!! warning, last saved file [%s] is empty", lastFile.Name)
 	}
 
-	visitsToBackup, err := s.psqlApi.GetAllVisits(ctx, &lastCreatedAt)
+	visitsToBackup, err := s.repo.GetAllVisits(ctx, &lastCreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to get next backup visits: %w", err)
 	}
@@ -362,7 +353,7 @@ func (s *GoogleDriveBackupService) createInitialBackupFile(ctx context.Context, 
 	ctx, span := tracing.GlobalNetlogBackupTracer.Start(ctx, "netlogService.createInitialBackupFile")
 	defer span.End()
 
-	visits, err := s.psqlApi.GetAllVisits(ctx, nil)
+	visits, err := s.repo.GetAllVisits(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to get netlog visits from db: %w", err)
 	}

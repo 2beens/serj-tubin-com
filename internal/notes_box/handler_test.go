@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestNotesBoxHandler_AllNotes(t *testing.T) {
-	api := NewTestApi()
+	repo := NewMockNotesRepo()
 	now := time.Now()
 	n1 := &Note{
 		Id:        1,
@@ -45,16 +45,16 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	_, err := api.Add(ctx, n1)
+	_, err := repo.Add(ctx, n1)
 	require.NoError(t, err)
-	_, err = api.Add(ctx, n2)
+	_, err = repo.Add(ctx, n2)
 	require.NoError(t, err)
 
 	db, _ := redismock.NewClientMock()
 	loginChecker := auth.NewLoginChecker(time.Hour, db)
 
 	metrics := metrics.NewTestManager()
-	handler := NewHandler(api, loginChecker, metrics)
+	handler := NewHandler(repo, loginChecker, metrics)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "", nil)
