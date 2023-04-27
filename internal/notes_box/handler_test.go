@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestNotesBoxHandler_AllNotes(t *testing.T) {
-	repo := NewMockNotesRepo()
+	repo := newRepoMock()
 	now := time.Now()
 	n1 := &Note{
 		Id:        1,

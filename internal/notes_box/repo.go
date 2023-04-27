@@ -11,6 +11,13 @@ import (
 
 var ErrNoteNotFound = errors.New("note not found")
 
+type Note struct {
+	Id        int       `json:"id"`
+	Title     string    `json:"title"`
+	CreatedAt time.Time `json:"created_at"`
+	Content   string    `json:"content"`
+}
+
 type Repo struct {
 	db *pgxpool.Pool
 }

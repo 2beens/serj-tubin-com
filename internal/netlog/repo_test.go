@@ -50,10 +50,10 @@ func deleteAllVisits(ctx context.Context, repo *Repo) (int64, error) {
 	return tag.RowsAffected(), nil
 }
 
-func cleanupAndAddTestVisits(ctx context.Context, t *testing.T, psqlApi *Repo) []*Visit {
+func cleanupAndAddTestVisits(ctx context.Context, t *testing.T, repo *Repo) []*Visit {
 	t.Helper()
 
-	_, err := deleteAllVisits(ctx, psqlApi)
+	_, err := deleteAllVisits(ctx, repo)
 	require.NoError(t, err)
 
 	now := time.Now()
@@ -93,11 +93,11 @@ func cleanupAndAddTestVisits(ctx context.Context, t *testing.T, psqlApi *Repo) [
 		Timestamp: now.Add(-4 * time.Minute),
 	}
 
-	require.NoError(t, psqlApi.AddVisit(ctx, v1))
-	require.NoError(t, psqlApi.AddVisit(ctx, v2))
-	require.NoError(t, psqlApi.AddVisit(ctx, v3))
-	require.NoError(t, psqlApi.AddVisit(ctx, v4))
-	require.NoError(t, psqlApi.AddVisit(ctx, v4b))
+	require.NoError(t, repo.AddVisit(ctx, v1))
+	require.NoError(t, repo.AddVisit(ctx, v2))
+	require.NoError(t, repo.AddVisit(ctx, v3))
+	require.NoError(t, repo.AddVisit(ctx, v4))
+	require.NoError(t, repo.AddVisit(ctx, v4b))
 
 	return []*Visit{v1, v2, v3, v4, v4b}
 }

@@ -39,18 +39,15 @@ import (
 )
 
 type Server struct {
-	httpServer *http.Server
+	httpServer            *http.Server
+	browserRequestsSecret string // used in netlog, when posting new visit
+	versionInfo           string
 
 	config        *config.Config
 	dbPool        *pgxpool.Pool
-	blogApi       *blog.PsqlApi
 	geoIp         *geoip.Api
 	weatherApi    *weather.Api
 	quotesManager *misc.QuotesManager
-
-	browserRequestsSecret string // used in netlog, when posting new visit
-
-	versionInfo string
 
 	redisClient  *redis.Client
 	loginChecker *auth.LoginChecker
@@ -87,15 +84,6 @@ func NewServer(
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new db pool: %w", err)
-	}
-
-	blogApi, err := blog.NewBlogPsqlApi(
-		ctx,
-		params.Config.PostgresHost, params.Config.PostgresPort, params.Config.PostgresDBName,
-		true,
-	)
-	if err != nil {
-		log.Fatalf("failed to create blog api: %s", err)
 	}
 
 	pgxpoolCollector := pgxpoolprometheus.NewCollector(
@@ -145,7 +133,6 @@ func NewServer(
 	s := &Server{
 		config:                params.Config,
 		dbPool:                dbPool,
-		blogApi:               blogApi,
 		browserRequestsSecret: params.BrowserRequestsSecret,
 		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, params.IpInfoAPIKey, tracedHttpClient, rdb),
 		weatherApi: weather.NewApi(
@@ -192,11 +179,16 @@ func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware("main-router"))
 
-	blogHandler := blog.NewBlogHandler(s.blogApi, s.loginChecker)
+	blogHandler := blog.NewBlogHandler(
+		blog.NewRepo(s.dbPool),
+		s.loginChecker,
+	)
 	blogHandler.SetupRoutes(r)
 
-	boardRepo := visitorBoard.NewRepo(s.dbPool)
-	boardHandler := visitorBoard.NewBoardHandler(boardRepo, s.loginChecker)
+	boardHandler := visitorBoard.NewBoardHandler(
+		visitorBoard.NewRepo(s.dbPool),
+		s.loginChecker,
+	)
 	boardHandler.SetupRoutes(r)
 
 	weatherHandler := weather.NewHandler(s.geoIp, s.weatherApi)
@@ -208,12 +200,19 @@ func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	miscHandler := misc.NewHandler(s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin)
 	miscHandler.SetupRoutes(r, reqRateLimiter, s.metricsManager)
 
-	netlogVisitsRepo := netlog.NewRepo(s.dbPool)
-	netlogHandler := netlog.NewHandler(netlogVisitsRepo, s.metricsManager, s.browserRequestsSecret, s.loginChecker)
+	netlogHandler := netlog.NewHandler(
+		netlog.NewRepo(s.dbPool),
+		s.metricsManager,
+		s.browserRequestsSecret,
+		s.loginChecker,
+	)
 	netlogHandler.SetupRoutes(r)
 
-	notesBoxRepo := notesBox.NewRepo(s.dbPool)
-	notesHandler := notesBox.NewHandler(notesBoxRepo, s.loginChecker, s.metricsManager)
+	notesHandler := notesBox.NewHandler(
+		notesBox.NewRepo(s.dbPool),
+		s.loginChecker,
+		s.metricsManager,
+	)
 	r.HandleFunc("/notes", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
 	r.HandleFunc("/notes", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
 	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
@@ -299,14 +298,9 @@ func (s *Server) GracefulShutdown() {
 	}
 
 	if s.dbPool != nil {
-		log.Traceln("closing db pool ...")
+		log.Debugln("closing db pool ...")
 		s.dbPool.Close() // blocking operation
-		log.Trace("db pool closed")
-	}
-
-	if s.blogApi != nil {
-		s.blogApi.CloseDB()
-		log.Trace("blog api closed")
+		log.Debugln("db pool closed")
 	}
 
 	log.Debugln("removing netlog backup unix socket ...")
