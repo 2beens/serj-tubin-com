@@ -29,9 +29,9 @@ run-fs: run-file-service
 
 .PHONY: test test-all
 test:
-	go test -race ./...
+	go test -v -race ./...
 test-all:
-	go test -race ./... -tags=all_tests
+	go test -v -race ./... -tags=all_tests
 
 .PHONY: deploy deploy-c
 deploy:
