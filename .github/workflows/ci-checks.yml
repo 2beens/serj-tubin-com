@@ -57,7 +57,7 @@ jobs:
       - name: Initialize DB
         run: psql -f sql/db_schema.sql postgresql://postgres:postgres@postgres:5432/serj_blogs
       - name: Run tests
-        run: go mod tidy && go mod vendor && make test-all
+        run: make test-all
         env:
           # The hostname used to communicate with the PostgreSQL service container
           POSTGRES_HOST: postgres
