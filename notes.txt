@@ -82,3 +82,11 @@ apr-2021 - DB replication and high availability:
 
 start postgresql in docker for local testing:
 // docker run --name serj-postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_HOST_AUTH_METHOD=trust -d postgres
+
+April 2023 - Grafana Loki logs
+1 - loki was installed: https://loki.serj-tubin.com/ready
+2 - loki plugin was set up in grafana: https://grafana.serj-tubin.com/datasources/edit/Hvjxu4yVz
+3 - promtail set up on ssr2 server to scrape logs and send them to loki server
+
+Influenced by:
+ - https://grafana.com/docs/loki/latest/installation/docker/

@@ -224,9 +224,12 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 
 	handler.metrics.CounterNetlogVisits.Inc()
 
-	log.Printf("new visit added: [%s] [%s][%s]", visit.Timestamp, visit.Source, visit.Device)
+	log.WithFields(log.Fields{
+		"timestamp": visit.Timestamp,
+		"source":    visit.Source,
+		"device":    visit.Device,
+	}).Print("new visit added")
 
-	// TODO: no need to return any response data, status code should be enough
 	pkg.WriteResponse(w, pkg.ContentType.Text, "added", http.StatusCreated)
 }
 

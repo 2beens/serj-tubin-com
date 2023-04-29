@@ -11,9 +11,14 @@ func LogRequest() func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userAgent := r.Header.Get("User-Agent")
 			contentType := r.Header.Get("Content-Type")
-			log.Tracef(
-				" ====> request [%s] [path: %s] [content-type: %s] [UA: %s]",
-				r.Method, r.URL.Path, contentType, userAgent,
+			log.WithFields(log.Fields{
+				"method":       r.Method,
+				"path":         r.URL.Path,
+				"content_type": contentType,
+				"user_agent":   userAgent,
+			}).Tracef(
+				" ====> request [%s %s]",
+				r.Method, r.URL.Path,
 			)
 			next.ServeHTTP(w, r)
 		})
