@@ -302,7 +302,7 @@ func (da *DiskApi) NewFolder(parentId int64, name string) (*Folder, error) {
 	if err := os.Mkdir(newPath, 0755); err != nil {
 		return nil, fmt.Errorf("create child folder [%s]: %s", name, err)
 	} else {
-		log.Printf("new folder created: %s", name)
+		log.Debugf("new folder created: %s", name)
 	}
 
 	newFolder := &Folder{

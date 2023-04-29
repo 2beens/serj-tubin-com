@@ -83,14 +83,14 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 
 	addedNote, err := handler.repo.Add(r.Context(), note)
 	if err != nil {
-		log.Printf("failed to add new note [%s], [%s]: %s", note.CreatedAt, note.Title, err)
+		log.Errorf("failed to add new note [%s], [%s]: %s", note.CreatedAt, note.Title, err)
 		http.Error(w, "error, failed to add new note", http.StatusInternalServerError)
 		return
 	}
 
 	handler.metrics.CounterNotes.Inc()
 
-	log.Printf("new note added: [%s] [%s]: %d", addedNote.Title, addedNote.CreatedAt, addedNote.Id)
+	log.Debugf("new note added: [%s] [%s]: %d", addedNote.Title, addedNote.CreatedAt, addedNote.Id)
 	pkg.WriteResponse(w, pkg.ContentType.Text, fmt.Sprintf("added:%d", addedNote.Id), http.StatusCreated)
 }
 
@@ -145,12 +145,12 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := handler.repo.Update(r.Context(), note); err != nil {
-		log.Printf("failed to update note [%d], [%s]: %s", note.Id, note.Title, err)
+		log.Errorf("failed to update note [%d], [%s]: %s", note.Id, note.Title, err)
 		http.Error(w, "error, failed to update note", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("note updated: [%s] [%s]: %d", note.Title, note.CreatedAt, note.Id)
+	log.Debugf("note updated: [%s] [%s]: %d", note.Title, note.CreatedAt, note.Id)
 	pkg.WriteTextResponseOK(w, fmt.Sprintf("updated:%d", note.Id))
 }
 
@@ -169,7 +169,7 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := handler.repo.Delete(r.Context(), id); err != nil {
-		log.Printf("failed to delete note %d: %s", id, err)
+		log.Errorf("failed to delete note %d: %s", id, err)
 		http.Error(w, "error, note not deleted, internal server error", http.StatusInternalServerError)
 		return
 	}

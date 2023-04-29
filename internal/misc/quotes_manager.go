@@ -26,7 +26,7 @@ func NewQuoteManager(quotesCsvReader *csv.Reader) (*QuotesManager, error) {
 	qm.AuthorsQuotes = make(map[string][]*Quote)
 	qm.GenresQuotes = make(map[string][]*Quote)
 
-	log.Println("reading quotes CSV ...")
+	log.Traceln("reading quotes CSV ...")
 
 	quotesCsvReader.Comma = ';'
 	for {
@@ -58,7 +58,7 @@ func NewQuoteManager(quotesCsvReader *csv.Reader) (*QuotesManager, error) {
 		qm.GenresQuotes[genre] = append(qm.GenresQuotes[genre], quote)
 	}
 
-	log.Printf("quotes CSV read %d quotes", len(qm.Quotes))
+	log.Tracef("quotes CSV read %d quotes", len(qm.Quotes))
 
 	return qm, nil
 }

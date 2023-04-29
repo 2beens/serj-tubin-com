@@ -51,7 +51,7 @@ func NewFileService(
 	if err := rdbStatus.Err(); err != nil {
 		log.Errorf("--> failed to ping redis: %s", err)
 	} else {
-		log.Printf("redis ping: %s", rdbStatus.Val())
+		log.Debugf("redis ping: %s", rdbStatus.Val())
 	}
 
 	// use honeycomb distro to setup OpenTelemetry SDK

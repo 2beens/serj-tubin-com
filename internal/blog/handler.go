@@ -217,7 +217,7 @@ func (handler *Handler) handleDeleteBlog(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := handler.repo.DeleteBlog(r.Context(), id); err != nil {
-		log.Printf("failed to delete blog %d: %s", id, err)
+		log.Errorf("delete blog %d: %s", id, err)
 		http.Error(w, "error, blog not deleted, internal server error", http.StatusInternalServerError)
 		return
 	}

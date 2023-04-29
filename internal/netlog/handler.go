@@ -224,9 +224,12 @@ func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {
 
 	handler.metrics.CounterNetlogVisits.Inc()
 
-	log.Printf("new visit added: [%s] [%s][%s]", visit.Timestamp, visit.Source, visit.Device)
+	log.WithFields(log.Fields{
+		"timestamp": visit.Timestamp,
+		"source":    visit.Source,
+		"device":    visit.Device,
+	}).Print("new visit added")
 
-	// TODO: no need to return any response data, status code should be enough
 	pkg.WriteResponse(w, pkg.ContentType.Text, "added", http.StatusCreated)
 }
 
@@ -247,7 +250,7 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Printf("getting last %d netlog visits ... ", limit)
+	log.Debugf("getting last %d netlog visits ... ", limit)
 
 	visits, err := handler.repo.GetVisits(ctx, []string{}, "url", "all", limit)
 	if err != nil {
