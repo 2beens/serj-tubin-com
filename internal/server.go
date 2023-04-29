@@ -104,7 +104,7 @@ func NewServer(
 	if err := rdbStatus.Err(); err != nil {
 		log.Errorf("--> failed to ping redis: %s", err)
 	} else {
-		log.Printf("redis ping: %s", rdbStatus.Val())
+		log.Debugf("redis ping: %s", rdbStatus.Val())
 	}
 
 	authService := auth.NewAuthService(auth.DefaultTTL, rdb)
@@ -260,7 +260,7 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 
 	go func() {
 		metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
-		log.Printf(" > metrics listening on: [%s]", metricsAddr)
+		log.Debugf(" > metrics listening on: [%s]", metricsAddr)
 
 		// Expose the registered metrics via HTTP.
 		http.Handle(

@@ -348,13 +348,13 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	log.Printf("creating child folder [%s] for folder [%d]", newFolderReq.Name, parentId)
+	log.Debugf("creating child folder [%s] for folder [%d]", newFolderReq.Name, parentId)
 
 	if f, err := handler.api.NewFolder(parentId, newFolderReq.Name); err != nil {
 		log.Errorf("create child folder for %d: %s", parentId, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	} else {
-		log.Printf("child folder [%d][%s] for folder [%d] created", f.Id, f.Name, parentId)
+		log.Debugf("child folder [%d][%s] for folder [%d] created", f.Id, f.Name, parentId)
 		pkg.WriteResponse(w, pkg.ContentType.Text, fmt.Sprintf("created:%d", f.Id), http.StatusCreated)
 	}
 }
@@ -395,7 +395,7 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 	var addedFileIds []string
 	files := r.MultipartForm.File["files"]
 	for _, fileHeader := range files {
-		log.Printf("trying to save file: %s", fileHeader.Filename)
+		log.Debugf("trying to save file: %s", fileHeader.Filename)
 		file, err := fileHeader.Open()
 		if err != nil {
 			log.Errorf("upload file: %s", err)
@@ -403,9 +403,9 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		log.Printf("File Size: %+v\n", fileHeader.Size)
-		log.Printf("MIME Header: %+v\n", fileHeader.Header)
-		log.Printf("Content-Type: %+v\n", fileHeader.Header["Content-Type"])
+		log.Debugf("File Size: %+v\n", fileHeader.Size)
+		log.Debugf("MIME Header: %+v\n", fileHeader.Header)
+		log.Debugf("Content-Type: %+v\n", fileHeader.Header["Content-Type"])
 
 		fileType := "unknown"
 		if t, ok := fileHeader.Header["Content-Type"]; ok {

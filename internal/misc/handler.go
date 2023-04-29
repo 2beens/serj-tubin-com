@@ -185,7 +185,6 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	if loginReq.Username != handler.admin.Username {
 		log.Tracef("[username] failed login attempt for user: %s", loginReq.Username)
-		log.Println(handler.admin)
 		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
 		return
 	}
@@ -228,7 +227,7 @@ func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("logout for [%s] success", authToken)
+	log.Debugf("logout for [%s] success", authToken)
 	pkg.WriteTextResponseOK(w, "logged-out")
 }
 

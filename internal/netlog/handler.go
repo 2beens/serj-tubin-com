@@ -250,7 +250,7 @@ func (handler *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Printf("getting last %d netlog visits ... ", limit)
+	log.Debugf("getting last %d netlog visits ... ", limit)
 
 	visits, err := handler.repo.GetVisits(ctx, []string{}, "url", "all", limit)
 	if err != nil {
