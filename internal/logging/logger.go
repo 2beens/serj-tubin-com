@@ -27,9 +27,8 @@ func Setup(params LoggerSetupParams) {
 
 	if params.SentryEnabled {
 		err := sentry.Init(sentry.ClientOptions{
-			Environment: params.Environment,
-			Dsn:         params.SentryDSN,
-			// TODO: check if needed
+			Environment:      params.Environment,
+			Dsn:              params.SentryDSN,
 			TracesSampleRate: 1.0,
 		})
 		if err != nil {

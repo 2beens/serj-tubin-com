@@ -383,7 +383,7 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log.Printf("new file upload incoming for folder [%d]", folderId)
+	log.Tracef("new file upload incoming for folder [%d]", folderId)
 
 	const maxFileSize = 1024 * 1024 * 999 // 999 MB
 	if err := r.ParseMultipartForm(maxFileSize); err != nil {
