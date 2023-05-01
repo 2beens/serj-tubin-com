@@ -32,10 +32,10 @@ if [[ "$service" = "unknown" ]] ; then
 fi
 
 #   2 checkout branch
-echo "--> git: checkout ${branch} ..."
-git checkout "${branch}"
 echo "--> git: fetching ..."
 git fetch --all
+echo "--> git: checkout ${branch} ..."
+git checkout "${branch}"
 echo "--> git: rebase ..."
 git rebase
 
