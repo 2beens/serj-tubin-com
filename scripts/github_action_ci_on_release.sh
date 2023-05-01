@@ -18,18 +18,22 @@ case $1 in
   "filebox")
     service="filebox"
     ;;
-  *)
-    branch=$1
 esac
+
+branch="master"
+# check if second argument (branch name) is present
+if [[ -n "$2" ]] ; then
+  branch="$2"
+fi
 
 if [[ "$service" = "unknown" ]] ; then
   echo "unknown service: $1"
   exit 1
 fi
 
-#   2 checkout master branch
-echo "--> git: checkout master ..."
-git checkout master
+#   2 checkout branch
+echo "--> git: checkout ${branch} ..."
+git checkout "${branch}"
 echo "--> git: fetching ..."
 git fetch --all
 echo "--> git: rebase ..."
