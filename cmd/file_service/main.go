@@ -66,8 +66,7 @@ func main() {
 		LogLevel:      *logLevel,
 		LogFormatJSON: false,
 		Environment:   *env,
-		// TODO:
-		SentryEnabled: false,
+		SentryEnabled: true,
 		SentryDSN:     sentryDSN,
 	})
 
