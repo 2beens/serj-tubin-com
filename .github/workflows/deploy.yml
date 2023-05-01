@@ -1,10 +1,12 @@
-name: Run remote server build/deploy script
-
-# related script that runs on the remote machines: scripts/github_action_ci_on_release.sh
+name: Manual Deploy
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Deployed branch
+        default: master
+        required: true
 
 jobs:
   deploy-main-service:
@@ -18,7 +20,7 @@ jobs:
           port: ${{ secrets.SSR2_PORT }}
           username: ${{ secrets.SSR2_USERNAME }}
           key: ${{ secrets.SSR2_KEY_RSA }}
-          script: bash ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }} mainservice master
+          script: bash ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }} mainservice ${{ github.event.inputs.branch }}
 
   deploy-file-service:
     name: File Service - run remote build and deploy script
@@ -31,4 +33,4 @@ jobs:
           port: ${{ secrets.MISC_PORT }}
           username: ${{ secrets.MISC_USERNAME }}
           key: ${{ secrets.MISC_KEY_RSA }}
-          script: bash ${{ secrets.MISC_REDEPLOY_SERVICE_SCRIPT }} filebox master
+          script: bash ${{ secrets.MISC_REDEPLOY_SERVICE_SCRIPT }} filebox ${{ github.event.inputs.branch }}
