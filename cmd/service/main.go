@@ -32,13 +32,14 @@ func main() {
 
 	sentryDSN := os.Getenv("SENTRY_DSN")
 	logging.Setup(logging.LoggerSetupParams{
-		LogFileName:   cfg.LogsPath,
-		LogToStdout:   cfg.LogToStdout,
-		LogLevel:      cfg.LogLevel,
-		LogFormatJSON: false,
-		Environment:   cfg.Environment,
-		SentryEnabled: cfg.SentryEnabled,
-		SentryDSN:     sentryDSN,
+		LogFileName:      cfg.LogsPath,
+		LogToStdout:      cfg.LogToStdout,
+		LogLevel:         cfg.LogLevel,
+		LogFormatJSON:    false,
+		Environment:      cfg.Environment,
+		SentryEnabled:    cfg.SentryEnabled,
+		SentryDSN:        sentryDSN,
+		SentryServerName: "main-service",
 	})
 
 	log.Debugf("using port: %d", cfg.Port)

@@ -44,13 +44,14 @@ func main() {
 
 	sentryDSN := os.Getenv("SENTRY_DSN")
 	logging.Setup(logging.LoggerSetupParams{
-		LogFileName:   *logsPath,
-		LogToStdout:   *logToStdout,
-		LogLevel:      "trace",
-		LogFormatJSON: false,
-		Environment:   cfg.Environment,
-		SentryEnabled: cfg.SentryEnabled,
-		SentryDSN:     sentryDSN,
+		LogFileName:      *logsPath,
+		LogToStdout:      *logToStdout,
+		LogLevel:         "trace",
+		LogFormatJSON:    false,
+		Environment:      cfg.Environment,
+		SentryEnabled:    cfg.SentryEnabled,
+		SentryDSN:        sentryDSN,
+		SentryServerName: "netlog-gd-backup",
 	})
 
 	log.Println("staring netlog backup ...")
