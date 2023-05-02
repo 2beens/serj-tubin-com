@@ -61,13 +61,14 @@ func main() {
 
 	sentryDSN := os.Getenv("SENTRY_DSN")
 	logging.Setup(logging.LoggerSetupParams{
-		LogFileName:   *logFilePath,
-		LogToStdout:   *logToStdout,
-		LogLevel:      *logLevel,
-		LogFormatJSON: false,
-		Environment:   *env,
-		SentryEnabled: true,
-		SentryDSN:     sentryDSN,
+		LogFileName:      *logFilePath,
+		LogToStdout:      *logToStdout,
+		LogLevel:         *logLevel,
+		LogFormatJSON:    false,
+		Environment:      *env,
+		SentryEnabled:    true,
+		SentryDSN:        sentryDSN,
+		SentryServerName: "filebox",
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -11,13 +11,14 @@ import (
 )
 
 type LoggerSetupParams struct {
-	LogFileName   string
-	LogToStdout   bool
-	LogLevel      string
-	LogFormatJSON bool
-	Environment   string
-	SentryEnabled bool
-	SentryDSN     string
+	LogFileName      string
+	LogToStdout      bool
+	LogLevel         string
+	LogFormatJSON    bool
+	Environment      string
+	SentryEnabled    bool
+	SentryDSN        string
+	SentryServerName string
 }
 
 func Setup(params LoggerSetupParams) {
@@ -30,6 +31,7 @@ func Setup(params LoggerSetupParams) {
 			Environment:      params.Environment,
 			Dsn:              params.SentryDSN,
 			TracesSampleRate: 1.0,
+			ServerName:       params.SentryServerName,
 		})
 		if err != nil {
 			logrus.Errorf("sentry.Init: %s", err)
