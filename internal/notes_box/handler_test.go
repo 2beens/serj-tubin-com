@@ -8,10 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 
-	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 )
@@ -49,11 +47,8 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	_, err = repo.Add(ctx, n2)
 	require.NoError(t, err)
 
-	db, _ := redismock.NewClientMock()
-	loginChecker := auth.NewLoginChecker(time.Hour, db)
-
 	metrics := metrics.NewTestManager()
-	handler := NewHandler(repo, loginChecker, metrics)
+	handler := NewHandler(repo, metrics)
 	require.NotNil(t, handler)
 
 	req, err := http.NewRequest("GET", "", nil)

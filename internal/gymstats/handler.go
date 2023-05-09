@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
@@ -18,8 +17,7 @@ type exercisesRepo interface {
 }
 
 type Handler struct {
-	repo         exercisesRepo
-	loginChecker *auth.LoginChecker
+	repo exercisesRepo
 }
 
 func NewHandler(repo exercisesRepo) *Handler {

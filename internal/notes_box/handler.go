@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/pkg"
 
@@ -28,9 +27,8 @@ type notesRepo interface {
 }
 
 type Handler struct {
-	repo         notesRepo
-	loginChecker *auth.LoginChecker
-	metrics      *metrics.Manager
+	repo    notesRepo
+	metrics *metrics.Manager
 }
 
 func NewHandler(
