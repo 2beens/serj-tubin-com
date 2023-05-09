@@ -35,13 +35,11 @@ type Handler struct {
 
 func NewHandler(
 	repo notesRepo,
-	loginChecker *auth.LoginChecker,
 	metrics *metrics.Manager,
 ) *Handler {
 	return &Handler{
-		repo:         repo,
-		loginChecker: loginChecker,
-		metrics:      metrics,
+		repo:    repo,
+		metrics: metrics,
 	}
 }
 

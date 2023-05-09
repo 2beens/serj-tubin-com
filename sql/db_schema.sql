@@ -36,6 +36,18 @@ CREATE TABLE public.note
 
 ALTER TABLE public.note OWNER TO postgres;
 
+CREATE TABLE public.exercise
+(
+    id           SERIAL PRIMARY KEY,
+    exercise_id  VARCHAR NOT NULL,
+    muscle_group VARCHAR NOT NULL,
+    kilos        INTEGER NOT NULL,
+    reps         INTEGER NOT NULL,
+    created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL
+);
+
+ALTER TABLE public.exercise OWNER TO postgres;
+
 CREATE TABLE public.visitor_board_message
 (
     id         SERIAL PRIMARY KEY,
