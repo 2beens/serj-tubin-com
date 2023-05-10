@@ -2,6 +2,7 @@ package gymstats
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -10,12 +11,13 @@ import (
 )
 
 type Exercise struct {
-	ID          int       `json:"id"`
-	ExerciseID  string    `json:"exerciseId"`
-	MuscleGroup string    `json:"muscleGroup"`
-	Kilos       int       `json:"kilos"`
-	Reps        int       `json:"reps"`
-	CreatedAt   time.Time `json:"createdAt"`
+	ID          int               `json:"id"`
+	ExerciseID  string            `json:"exerciseId"`
+	MuscleGroup string            `json:"muscleGroup"`
+	Kilos       int               `json:"kilos"`
+	Reps        int               `json:"reps"`
+	CreatedAt   time.Time         `json:"createdAt"`
+	Metadata    map[string]string `json:"metadata"`
 }
 
 type Repo struct {
@@ -29,13 +31,18 @@ func NewRepo(db *pgxpool.Pool) *Repo {
 }
 
 func (r *Repo) Add(ctx context.Context, exercise *Exercise) (*Exercise, error) {
+	metadataJson, err := json.Marshal(exercise.Metadata)
+	if err != nil {
+		return nil, fmt.Errorf("marshal metadata: %w", err)
+	}
+
 	rows, err := r.db.Query(
 		ctx,
 		`INSERT INTO exercise 
-    			(exercise_id, muscle_group, kilos, reps, created_at) 
-				VALUES ($1, $2, $3, $4, $5) 
+				(exercise_id, muscle_group, kilos, reps, metadata, created_at)
+				VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id;`,
-		exercise.ExerciseID, exercise.MuscleGroup, exercise.Kilos, exercise.Reps, exercise.CreatedAt,
+		exercise.ExerciseID, exercise.MuscleGroup, exercise.Kilos, exercise.Reps, metadataJson, exercise.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -64,7 +71,7 @@ func (r *Repo) List(ctx context.Context) ([]Exercise, error) {
 		ctx,
 		`
 			SELECT
-				id, exercise_id, muscle_group, kilos, reps, created_at
+				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
 			FROM exercise
 			ORDER BY created_at DESC;`,
 	)
@@ -84,18 +91,37 @@ func (r *Repo) List(ctx context.Context) ([]Exercise, error) {
 		var muscleGroup string
 		var kilos int
 		var reps int
+		var metadataBytes []byte
 		var createdAt time.Time
-		if err := rows.Scan(&id, &exerciseID, &muscleGroup, &kilos, &reps, &createdAt); err != nil {
+		if err := rows.Scan(&id, &exerciseID, &muscleGroup, &kilos, &reps, &metadataBytes, &createdAt); err != nil {
 			return nil, err
 		}
-		notes = append(notes, Exercise{
+
+		e := Exercise{
 			ID:          id,
 			ExerciseID:  exerciseID,
 			MuscleGroup: muscleGroup,
 			Kilos:       kilos,
 			Reps:        reps,
 			CreatedAt:   createdAt,
-		})
+		}
+
+		// parse metadata field from JSON to map[string]string
+		if len(metadataBytes) > 0 {
+			var metadataMap map[string]interface{}
+			if err = json.Unmarshal(metadataBytes, &metadataMap); err != nil {
+				return nil, err
+			}
+
+			e.Metadata = make(map[string]string)
+			for k, v := range metadataMap {
+				e.Metadata[k] = v.(string)
+			}
+		} else {
+			e.Metadata = make(map[string]string)
+		}
+
+		notes = append(notes, e)
 	}
 
 	return notes, nil

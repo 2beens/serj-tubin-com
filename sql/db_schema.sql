@@ -43,6 +43,7 @@ CREATE TABLE public.exercise
     muscle_group VARCHAR NOT NULL,
     kilos        INTEGER NOT NULL,
     reps         INTEGER NOT NULL,
+    metadata     JSONB NOT NULL DEFAULT '{}',
     created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL
 );
 
