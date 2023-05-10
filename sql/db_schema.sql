@@ -47,6 +47,7 @@ CREATE TABLE public.exercise
 );
 
 ALTER TABLE public.exercise OWNER TO postgres;
+CREATE INDEX ix_exercise_created_at ON public.exercise (created_at);
 
 CREATE TABLE public.visitor_board_message
 (
