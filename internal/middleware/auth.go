@@ -31,6 +31,9 @@ func NewAuthMiddlewareHandler(
 			"/blog/all":  true,
 			"/blog/clap": true,
 
+			"/gymstats":      true,
+			"/gymstats/list": true,
+
 			// misc handler:
 			"/":             true,
 			"/quote/random": true,
