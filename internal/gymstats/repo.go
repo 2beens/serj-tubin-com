@@ -66,7 +66,7 @@ func (r *Repo) List(ctx context.Context) ([]Exercise, error) {
 			SELECT
 				id, exercise_id, muscle_group, kilos, reps, created_at
 			FROM exercise
-			ORDER BY createdAt DESC;`,
+			ORDER BY created_at DESC;`,
 	)
 	if err != nil {
 		return nil, err
