@@ -83,14 +83,20 @@ func (r *Repo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *Repo) List(ctx context.Context) ([]Exercise, error) {
+type ListParams struct {
+	Limit int
+}
+
+func (r *Repo) List(ctx context.Context, params ListParams) ([]Exercise, error) {
 	rows, err := r.db.Query(
 		ctx,
 		`
 			SELECT
 				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
 			FROM exercise
-			ORDER BY created_at DESC;`,
+			ORDER BY created_at DESC
+			LIMIT $1;`,
+		params.Limit,
 	)
 	if err != nil {
 		return nil, err

@@ -16,7 +16,7 @@ import (
 
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise *Exercise) (*Exercise, error)
-	List(ctx context.Context) ([]Exercise, error)
+	List(ctx context.Context, params ListParams) ([]Exercise, error)
 	Delete(ctx context.Context, id int) error
 }
 
@@ -46,7 +46,10 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: validate exercise
+	if exercise.ExerciseID == "" || exercise.MuscleGroup == "" {
+		http.Error(w, "error, exercise id or muscle group empty", http.StatusBadRequest)
+		return
+	}
 
 	addedExercise, err := handler.repo.Add(ctx, &exercise)
 	if err != nil {
@@ -93,7 +96,9 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "gymStatsHandler.list")
 	defer span.End()
 
-	exercises, err := handler.repo.List(ctx)
+	exercises, err := handler.repo.List(ctx, ListParams{
+		Limit: 50,
+	})
 	if err != nil {
 		log.Errorf("list exercises error: %s", err)
 		http.Error(w, "failed to get exercises", http.StatusInternalServerError)
