@@ -219,8 +219,9 @@ func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	r.HandleFunc("/notes/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
 
 	gymStatsHandler := gymstats.NewHandler(gymstats.NewRepo(s.dbPool))
-	r.HandleFunc("/gymstats", gymStatsHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-gymstat")
-	r.HandleFunc("/gymstats/list", gymStatsHandler.HandleList).Methods("GET", "OPTIONS").Name("list-gymstats")
+	r.HandleFunc("/gymstats", gymStatsHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise")
+	r.HandleFunc("/gymstats/{id}", gymStatsHandler.HandleDelete).Methods("POST", "OPTIONS").Name("delete-exercise")
+	r.HandleFunc("/gymstats/list", gymStatsHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {

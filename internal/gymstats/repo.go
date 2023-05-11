@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var ErrExerciseNotFound = errors.New("exercise not found")
+
 type Exercise struct {
 	ID          int               `json:"id"`
 	ExerciseID  string            `json:"exerciseId"`
@@ -64,6 +66,21 @@ func (r *Repo) Add(ctx context.Context, exercise *Exercise) (*Exercise, error) {
 
 	exercise.ID = id
 	return exercise, nil
+}
+
+func (r *Repo) Delete(ctx context.Context, id int) error {
+	tag, err := r.db.Exec(
+		ctx,
+		`DELETE FROM exercise WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrExerciseNotFound
+	}
+	return nil
 }
 
 func (r *Repo) List(ctx context.Context) ([]Exercise, error) {

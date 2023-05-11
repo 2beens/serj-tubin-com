@@ -3,17 +3,21 @@ package gymstats
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
+	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise *Exercise) (*Exercise, error)
 	List(ctx context.Context) ([]Exercise, error)
+	Delete(ctx context.Context, id int) error
 }
 
 type Handler struct {
@@ -60,6 +64,29 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, addedExJson, http.StatusCreated)
+}
+
+func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	idStr := vars["id"]
+	if idStr == "" {
+		http.Error(w, "error, id empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "error, id NaN", http.StatusBadRequest)
+		return
+	}
+
+	if err := handler.repo.Delete(r.Context(), id); err != nil {
+		log.Errorf("failed to delete exercise %d: %s", id, err)
+		http.Error(w, "exercise not deleted", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteJSONResponseOK(w, fmt.Sprintf(`{"deleted":%d}`, id))
 }
 
 func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
