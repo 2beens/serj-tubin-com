@@ -39,6 +39,7 @@ func setupBlogRouterForTests(t *testing.T, repo *repoMock, loginChecker *auth.Lo
 
 	r := mux.NewRouter()
 	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		"n/a",
 		"browserRequestsSecret",
 		loginChecker,
 	)

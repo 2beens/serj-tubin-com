@@ -43,6 +43,7 @@ func setupVisitorBoardRouterForTests(
 
 	r := mux.NewRouter()
 	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		"n/a",
 		browserReqSecret,
 		loginChecker,
 	)

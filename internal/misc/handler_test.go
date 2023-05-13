@@ -71,12 +71,14 @@ func setupNetlogRouterForTests(
 	redisClient *redis.Client,
 	reqRateLimiter *testRequestRateLimiter,
 	metricsManager *metrics.Manager,
+	gymstatsIOSAppSecret,
 	browserReqSecret string,
 ) *mux.Router {
 	t.Helper()
 
 	r := mux.NewRouter()
 	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		gymstatsIOSAppSecret,
 		browserReqSecret,
 		auth.NewLoginChecker(time.Hour, redisClient),
 	)
@@ -208,6 +210,7 @@ func TestLogin(t *testing.T) {
 		reqRateLimiter,
 		metrics.NewTestManager(),
 		"test",
+		"test",
 	)
 
 	reqRateLimiter.Limits["login"] = 1
@@ -217,7 +220,7 @@ func TestLogin(t *testing.T) {
 	req.PostForm = url.Values{}
 	req.PostForm.Add("username", username)
 	req.PostForm.Add("password", password)
-	req.Header.Set("Origin", "test")
+	req.Header.Set("User-Agent", "test-agent")
 
 	r.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)

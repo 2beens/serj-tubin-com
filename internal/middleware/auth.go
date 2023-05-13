@@ -13,6 +13,7 @@ import (
 )
 
 type AuthMiddlewareHandler struct {
+	gymstatsIOSAppSecret  string
 	browserRequestsSecret string
 	loginChecker          *auth.LoginChecker
 	allowedPaths          map[string]bool
@@ -20,10 +21,12 @@ type AuthMiddlewareHandler struct {
 }
 
 func NewAuthMiddlewareHandler(
+	gymstatsIOSAppSecret string,
 	browserRequestsSecret string,
 	loginChecker *auth.LoginChecker,
 ) *AuthMiddlewareHandler {
 	return &AuthMiddlewareHandler{
+		gymstatsIOSAppSecret:  gymstatsIOSAppSecret,
 		browserRequestsSecret: browserRequestsSecret,
 		loginChecker:          loginChecker,
 		allowedPaths: map[string]bool{
@@ -106,6 +109,18 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 					// fool the "attacker" by a fake positive response
 					pkg.WriteTextResponseOK(w, "added")
 					span.SetStatus(codes.Error, "decoy-sent")
+					return
+				}
+				span.SetStatus(codes.Ok, "ok")
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if strings.HasPrefix(r.URL.Path, "/gymstats") {
+				receivedAuthToken := r.Header.Get("Authorization")
+				if h.gymstatsIOSAppSecret != receivedAuthToken {
+					http.Error(w, "no can do", http.StatusUnauthorized)
+					span.SetStatus(codes.Error, "missing-auth-token")
 					return
 				}
 				span.SetStatus(codes.Ok, "ok")

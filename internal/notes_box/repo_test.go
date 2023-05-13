@@ -89,7 +89,7 @@ func TestRepo_BasicCRUD(t *testing.T) {
 	require.NotNil(t, notes)
 	assert.Len(t, notes, 2)
 
-	retrievedNote1, err := repo.Get(ctx, addedNote1.Id)
+	retrievedNote1, err := repo.Get(ctx, addedNote1.ID)
 	require.NoError(t, err)
 	assert.Equal(t, note1.Content, retrievedNote1.Content)
 	assert.Equal(t, note1.Title, retrievedNote1.Title)
@@ -105,9 +105,9 @@ func TestRepo_BasicCRUD(t *testing.T) {
 	assert.Equal(t, note3.Content, addedNote3.Content)
 	assert.Equal(t, note3.Title, addedNote3.Title)
 
-	require.NoError(t, repo.Delete(ctx, note3.Id))
+	require.NoError(t, repo.Delete(ctx, note3.ID))
 
-	retrievedNote3, err := repo.Get(ctx, addedNote3.Id)
+	retrievedNote3, err := repo.Get(ctx, addedNote3.ID)
 	assert.Error(t, err)
 	assert.Nil(t, retrievedNote3)
 	assert.Contains(t, err.Error(), "note not found")
@@ -116,8 +116,8 @@ func TestRepo_BasicCRUD(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNoteNotFound)
 	assert.Nil(t, nonExisting)
 
-	require.NoError(t, repo.Delete(ctx, note1.Id))
-	require.NoError(t, repo.Delete(ctx, note2.Id))
+	require.NoError(t, repo.Delete(ctx, note1.ID))
+	require.NoError(t, repo.Delete(ctx, note2.ID))
 	assert.ErrorIs(t, repo.Delete(ctx, 12341234), ErrNoteNotFound)
 
 	notes, err = repo.List(ctx)
@@ -155,14 +155,14 @@ func TestRepo_Update(t *testing.T) {
 
 	addedNote1.Content = "new-content"
 	require.NoError(t, repo.Update(ctx, addedNote1))
-	retrievedNote1, err := repo.Get(ctx, addedNote1.Id)
+	retrievedNote1, err := repo.Get(ctx, addedNote1.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "new-content", retrievedNote1.Content)
 	assert.Equal(t, note1.Title, retrievedNote1.Title)
 
 	addedNote1.Title = "new-title"
 	require.NoError(t, repo.Update(ctx, addedNote1))
-	retrievedNote1, err = repo.Get(ctx, addedNote1.Id)
+	retrievedNote1, err = repo.Get(ctx, addedNote1.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "new-content", retrievedNote1.Content)
 	assert.Equal(t, "new-title", retrievedNote1.Title)
@@ -170,12 +170,12 @@ func TestRepo_Update(t *testing.T) {
 	addedNote1.Title = "new-title-2"
 	addedNote1.Content = "new-content-2"
 	require.NoError(t, repo.Update(ctx, addedNote1))
-	retrievedNote1, err = repo.Get(ctx, addedNote1.Id)
+	retrievedNote1, err = repo.Get(ctx, addedNote1.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "new-content-2", retrievedNote1.Content)
 	assert.Equal(t, "new-title-2", retrievedNote1.Title)
 
-	retrievedNote2, err := repo.Get(ctx, addedNote2.Id)
+	retrievedNote2, err := repo.Get(ctx, addedNote2.ID)
 	require.NoError(t, err)
 	assert.Equal(t, note2.Content, retrievedNote2.Content)
 	assert.Equal(t, note2.Title, retrievedNote2.Title)

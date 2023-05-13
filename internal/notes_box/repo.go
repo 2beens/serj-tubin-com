@@ -12,7 +12,7 @@ import (
 var ErrNoteNotFound = errors.New("note not found")
 
 type Note struct {
-	Id        int       `json:"id"`
+	ID        int       `json:"id"`
 	Title     string    `json:"title"`
 	CreatedAt time.Time `json:"created_at"`
 	Content   string    `json:"content"`
@@ -56,7 +56,7 @@ func (r *Repo) Add(ctx context.Context, note *Note) (*Note, error) {
 		return nil, fmt.Errorf("rows scan: %w", err)
 	}
 
-	note.Id = id
+	note.ID = id
 	return note, nil
 }
 
@@ -87,7 +87,7 @@ func (r *Repo) Get(ctx context.Context, noteId int) (*Note, error) {
 		return nil, err
 	}
 	return &Note{
-		Id:        id,
+		ID:        id,
 		Title:     title,
 		CreatedAt: createdAt,
 		Content:   content,
@@ -102,7 +102,7 @@ func (r *Repo) Update(ctx context.Context, note *Note) error {
 	tag, err := r.db.Exec(
 		ctx,
 		`UPDATE note SET title = $1, content = $2 WHERE id = $3;`,
-		note.Title, note.Content, note.Id,
+		note.Title, note.Content, note.ID,
 	)
 	if err != nil {
 		return err
@@ -158,7 +158,7 @@ func (r *Repo) List(ctx context.Context) ([]Note, error) {
 			return nil, err
 		}
 		notes = append(notes, Note{
-			Id:        id,
+			ID:        id,
 			Title:     title,
 			CreatedAt: createdAt,
 			Content:   content,

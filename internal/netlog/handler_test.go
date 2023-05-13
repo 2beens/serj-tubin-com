@@ -47,6 +47,7 @@ func setupNetlogRouterForTests(
 
 	r := mux.NewRouter()
 	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		"n/a",
 		browserReqSecret,
 		loginChecker,
 	)

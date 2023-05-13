@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/pkg"
 
@@ -28,20 +27,17 @@ type notesRepo interface {
 }
 
 type Handler struct {
-	repo         notesRepo
-	loginChecker *auth.LoginChecker
-	metrics      *metrics.Manager
+	repo    notesRepo
+	metrics *metrics.Manager
 }
 
 func NewHandler(
 	repo notesRepo,
-	loginChecker *auth.LoginChecker,
 	metrics *metrics.Manager,
 ) *Handler {
 	return &Handler{
-		repo:         repo,
-		loginChecker: loginChecker,
-		metrics:      metrics,
+		repo:    repo,
+		metrics: metrics,
 	}
 }
 
@@ -90,8 +86,8 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 
 	handler.metrics.CounterNotes.Inc()
 
-	log.Debugf("new note added: [%s] [%s]: %d", addedNote.Title, addedNote.CreatedAt, addedNote.Id)
-	pkg.WriteResponse(w, pkg.ContentType.Text, fmt.Sprintf("added:%d", addedNote.Id), http.StatusCreated)
+	log.Debugf("new note added: [%s] [%s]: %d", addedNote.Title, addedNote.CreatedAt, addedNote.ID)
+	pkg.WriteResponse(w, pkg.ContentType.Text, fmt.Sprintf("added:%d", addedNote.ID), http.StatusCreated)
 }
 
 func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -139,19 +135,19 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	note := &Note{
-		Id:      updateNoteReq.ID,
+		ID:      updateNoteReq.ID,
 		Title:   updateNoteReq.Title,
 		Content: updateNoteReq.Content,
 	}
 
 	if err := handler.repo.Update(r.Context(), note); err != nil {
-		log.Errorf("failed to update note [%d], [%s]: %s", note.Id, note.Title, err)
+		log.Errorf("failed to update note [%d], [%s]: %s", note.ID, note.Title, err)
 		http.Error(w, "error, failed to update note", http.StatusInternalServerError)
 		return
 	}
 
-	log.Debugf("note updated: [%s] [%s]: %d", note.Title, note.CreatedAt, note.Id)
-	pkg.WriteTextResponseOK(w, fmt.Sprintf("updated:%d", note.Id))
+	log.Debugf("note updated: [%s] [%s]: %d", note.Title, note.CreatedAt, note.ID)
+	pkg.WriteTextResponseOK(w, fmt.Sprintf("updated:%d", note.ID))
 }
 
 func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
