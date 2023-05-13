@@ -169,8 +169,10 @@ func (s *Suite) postgresSetup(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("create connection pool: %w", err)
 	}
 
-	if err := db.Ping(ctx); err != nil {
-		return "", fmt.Errorf("ping db: %s", err)
+	if err := s.dockerPool.Retry(func() error {
+		return db.Ping(ctx)
+	}); err != nil {
+		panic(fmt.Errorf("connect to db: %s", err))
 	}
 
 	res, err := db.Exec(ctx, initSQL)
