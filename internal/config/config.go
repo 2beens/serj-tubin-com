@@ -8,7 +8,6 @@ import (
 )
 
 type Config struct {
-	IsDev       bool
 	Host        string
 	Port        int
 	Environment string
@@ -73,11 +72,6 @@ func Load(env, path string) (*Config, error) {
 	cfg, err := tomlConfig.Get(env)
 	if err != nil {
 		return nil, err
-	}
-
-	cfg.IsDev = false
-	if env == "development" {
-		cfg.IsDev = true
 	}
 
 	cfg.Environment = env

@@ -103,7 +103,7 @@ func NewServer(
 		DB:       0, // use default DB
 	})
 
-	rdbStatus := rdb.Ping(context.Background())
+	rdbStatus := rdb.Ping(ctx)
 	if err := rdbStatus.Err(); err != nil {
 		log.Errorf("--> failed to ping redis: %s", err)
 	} else {
@@ -138,7 +138,12 @@ func NewServer(
 		dbPool:                dbPool,
 		gymstatsIOSAppSecret:  params.GymstatsIOSAppSecret,
 		browserRequestsSecret: params.BrowserRequestsSecret,
-		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, params.IpInfoAPIKey, tracedHttpClient, rdb),
+		geoIp: geoip.NewApi(
+			geoip.DefaultIpInfoBaseURL,
+			params.IpInfoAPIKey,
+			tracedHttpClient,
+			rdb,
+		),
 		weatherApi: weather.NewApi(
 			"http://api.openweathermap.org/data/2.5",
 			params.OpenWeatherApiKey,
