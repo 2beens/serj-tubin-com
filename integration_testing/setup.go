@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
 
@@ -52,7 +54,7 @@ func newSuite(ctx context.Context) (_ *Suite) {
 		log.Fatalf("failed to setup redis: %s", err.Error())
 	}
 
-	pgPort, err := suite.postgresSetup()
+	pgPort, err := suite.postgresSetup(ctx)
 	if err != nil {
 		suite.cleanup()
 		log.Fatalf("failed to setup postgres: %s", err)
@@ -132,7 +134,7 @@ func (s *Suite) redisSetup() (string, error) {
 	return redisPort, nil
 }
 
-func (s *Suite) postgresSetup() (string, error) {
+func (s *Suite) postgresSetup(ctx context.Context) (string, error) {
 	pgResource, err := s.dockerPool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
 		Tag:        "12",
@@ -157,27 +159,26 @@ func (s *Suite) postgresSetup() (string, error) {
 
 	pgPort := pgResource.GetPort("5432/tcp")
 	dsn := fmt.Sprintf("postgres://postgres:postgres@localhost:%s/serj_blogs?sslmode=disable", pgPort)
-	db, err := sql.Open("postgres", dsn)
+	poolConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return "", fmt.Errorf("open db conn: %s", err)
+		return "", fmt.Errorf("parse db config: %w", err)
 	}
-	s.DB = db
 
-	res, err := db.Exec(initSQL)
+	db, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return "", fmt.Errorf("create connection pool: %w", err)
+	}
+
+	if err := db.Ping(ctx); err != nil {
+		return "", fmt.Errorf("ping db: %s", err)
+	}
+
+	res, err := db.Exec(ctx, initSQL)
 	if err != nil {
 		return "", fmt.Errorf("run init script: %s", err)
 	}
 
-	numRows, err := res.RowsAffected()
-	if err != nil {
-		return "", fmt.Errorf("get rows affected: %s", err)
-	}
-
-	log.Printf("postgres setup result: %d\n", numRows)
-
-	if db.Ping() != nil {
-		return "", fmt.Errorf("ping db: %s", err)
-	}
+	log.Printf("postgres setup result: %d\n", res.RowsAffected())
 
 	return pgPort, nil
 }
