@@ -9,12 +9,12 @@ import (
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
 
+	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func getTestConfig() *config.Config {
+func getTestConfig(redisPort string) *config.Config {
 	tempDir := os.TempDir()
 	return &config.Config{
 		Host:                     "localhost",
@@ -22,47 +22,47 @@ func getTestConfig() *config.Config {
 		QuotesCsvPath:            "../assets/quotes.csv",
 		NetlogUnixSocketAddrDir:  tempDir,
 		NetlogUnixSocketFileName: "netlog-test.sock",
+		RedisHost:                "localhost",
+		RedisPort:                redisPort,
 	}
 }
 
-func redisSetup(ctx context.Context) (func(), error) {
-	req := testcontainers.ContainerRequest{
-		Image:        "redis:latest",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForLog("Ready to accept connections"),
-	}
-	redisC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
+func redisSetup(pool *dockertest.Pool) (string, func(), error) {
+	redisResource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "redis",
+		Name:       "redis",
+		Tag:        "6.2",
+	}, func(config *docker.HostConfig) {
+		config.AutoRemove = true
 	})
 	if err != nil {
-		return nil, err
+		return "", nil, fmt.Errorf("run redis: %s", err)
 	}
 
-	endpoint, err := redisC.Endpoint(ctx, "")
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("redis endpoint: ", endpoint)
-
-	return func() {
-		if redisC == nil {
-			return
-		}
-		fmt.Println("terminating redis container...")
-		if err := redisC.Terminate(ctx); err != nil {
-			fmt.Printf("failed to terminate redis container: %s", err.Error())
-		}
+	redisPort := redisResource.GetPort("6379/tcp")
+	return redisPort, func() {
+		redisResource.Close()
 	}, nil
 }
 
 func serverSetup(ctx context.Context) (*internal.Server, func(), error) {
-	redisCleanup, err := redisSetup(ctx)
+	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create new dockertest pool: %s", err)
+	}
+
+	// uses pool to try to connect to Docker
+	if err = pool.Client.Ping(); err != nil {
+		return nil, nil, fmt.Errorf("could not ping dockertest pool: %s", err)
+	}
+
+	redisPort, redisCleanup, err := redisSetup(pool)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to setup redis: %s", err.Error())
 	}
 
-	cfg := getTestConfig()
+	cfg := getTestConfig(redisPort)
 	server, err := internal.NewServer(
 		ctx,
 		internal.NewServerParams{
