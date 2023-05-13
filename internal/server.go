@@ -255,7 +255,10 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 
 	go func() {
 		log.Infof(" > server listening on: [%s]", ipAndPort)
-		log.Fatal(s.httpServer.ListenAndServe())
+		err := s.httpServer.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("main service, listen and serve: %s", err)
+		}
 	}()
 
 	go func() {

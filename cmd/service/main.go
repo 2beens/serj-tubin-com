@@ -113,7 +113,7 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("new server: %s", err)
 	}
 
 	server.Serve(ctx, cfg.Host, cfg.Port)

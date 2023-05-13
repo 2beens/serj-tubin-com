@@ -118,7 +118,10 @@ func (fs *FileService) SetupAndServe(host string, port int) {
 	}
 
 	log.Infof(" > server listening on: [%s]", ipAndPort)
-	log.Fatal(fs.httpServer.ListenAndServe())
+	err := fs.httpServer.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatalf("file service, listen and serve: %s", err)
+	}
 }
 
 func (fs *FileService) GracefulShutdown() {
