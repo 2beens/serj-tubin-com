@@ -29,13 +29,13 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	repo := newRepoMock()
 	now := time.Now()
 	n1 := &Note{
-		Id:        1,
+		ID:        1,
 		Title:     "title1",
 		Content:   "content1",
 		CreatedAt: now,
 	}
 	n2 := &Note{
-		Id:        2,
+		ID:        2,
 		Title:     "title2",
 		Content:   "content2",
 		CreatedAt: now,

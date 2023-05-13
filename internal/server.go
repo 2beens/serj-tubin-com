@@ -223,7 +223,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	gymStatsHandler := gymstats.NewHandler(gymstats.NewRepo(s.dbPool))
 	r.HandleFunc("/gymstats", gymStatsHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise")
-	r.HandleFunc("/gymstats/{id}", gymStatsHandler.HandleDelete).Methods("POST", "OPTIONS").Name("delete-exercise")
+	r.HandleFunc("/gymstats/{id}", gymStatsHandler.HandleUpdate).Methods("POST", "OPTIONS").Name("update-exercise")
+	r.HandleFunc("/gymstats/{id}", gymStatsHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise")
 	r.HandleFunc("/gymstats/list", gymStatsHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
 
 	// all the rest - unhandled paths

@@ -16,15 +16,15 @@ func newRepoMock() *repoMock {
 }
 
 func (r *repoMock) Add(_ context.Context, note *Note) (*Note, error) {
-	r.notes[note.Id] = note
+	r.notes[note.ID] = note
 	return note, nil
 }
 
 func (r *repoMock) Update(ctx context.Context, note *Note) error {
-	if _, err := r.Get(ctx, note.Id); err != nil {
+	if _, err := r.Get(ctx, note.ID); err != nil {
 		return err
 	}
-	r.notes[note.Id] = note
+	r.notes[note.ID] = note
 	return nil
 }
 
@@ -41,7 +41,7 @@ func (r *repoMock) Delete(_ context.Context, id int) error {
 	if !ok {
 		return ErrNoteNotFound
 	}
-	delete(r.notes, note.Id)
+	delete(r.notes, note.ID)
 	return nil
 }
 

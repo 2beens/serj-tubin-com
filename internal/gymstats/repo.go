@@ -68,6 +68,23 @@ func (r *Repo) Add(ctx context.Context, exercise *Exercise) (*Exercise, error) {
 	return exercise, nil
 }
 
+func (r *Repo) Update(ctx context.Context, exercise *Exercise) error {
+	tag, err := r.db.Exec(
+		ctx,
+		`UPDATE exercise SET exercise_id = $1, muscle_group = $2, kilos = $3, reps = $4, metadata = $5, created_at = $6 WHERE id = $7;`,
+		exercise.ExerciseID, exercise.MuscleGroup, exercise.Kilos, exercise.Reps, exercise.Metadata, exercise.CreatedAt, exercise.ID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return ErrExerciseNotFound
+	}
+
+	return nil
+}
+
 func (r *Repo) Delete(ctx context.Context, id int) error {
 	tag, err := r.db.Exec(
 		ctx,
