@@ -9,18 +9,21 @@ var allowedOrigins = map[string]bool{
 	"https://www.serj-tubin.com": true,
 	"http://localhost:8080":      true,
 	"test":                       true,
-	"":                           true,
 }
 
 func Cors() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
+			userAgent := r.Header.Get("User-Agent")
 
 			switch {
 			case
 				allowedOrigins[origin],
 				strings.HasPrefix(origin, "chrome-extension://"),
+				strings.HasPrefix(userAgent, "GymStats/1"),
+				strings.HasPrefix(userAgent, "curl/"),
+				strings.HasPrefix(userAgent, "test-agent"),
 				// allow CORS to the files-box /link endpoint from anywhere
 				strings.HasPrefix(r.URL.Path, "/link/"):
 				{

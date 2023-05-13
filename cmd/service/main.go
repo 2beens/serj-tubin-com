@@ -75,6 +75,11 @@ func main() {
 		log.Errorf("browser secret not set. use SERJ_BROWSER_REQ_SECRET")
 	}
 
+	gymstatsIOSAppSecret := os.Getenv("SERJ_GYMSTATS_IOS_APP_SECRET")
+	if gymstatsIOSAppSecret == "" {
+		log.Errorf("gymstats ios app secret not set. use GYMSTATS_IOS_APP_SECRET")
+	}
+
 	redisPassword := os.Getenv("SERJ_REDIS_PASS")
 	if redisPassword == "" {
 		log.Errorf("redis password not set. use SERJ_REDIS_PASS")
@@ -104,6 +109,7 @@ func main() {
 			Config:                  cfg,
 			OpenWeatherApiKey:       openWeatherApiKey,
 			IpInfoAPIKey:            ipInfoAPIKey,
+			GymstatsIOSAppSecret:    gymstatsIOSAppSecret,
 			BrowserRequestsSecret:   browserRequestsSecret,
 			VersionInfo:             versionInfo,
 			AdminUsername:           adminUsername,

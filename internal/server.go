@@ -41,6 +41,7 @@ import (
 
 type Server struct {
 	httpServer            *http.Server
+	gymstatsIOSAppSecret  string // used with my gym tracking ios app
 	browserRequestsSecret string // used in netlog, when posting new visit
 	versionInfo           string
 
@@ -65,6 +66,7 @@ type NewServerParams struct {
 	Config                  *config.Config
 	OpenWeatherApiKey       string
 	IpInfoAPIKey            string
+	GymstatsIOSAppSecret    string
 	BrowserRequestsSecret   string
 	VersionInfo             string
 	AdminUsername           string
@@ -134,6 +136,7 @@ func NewServer(
 	s := &Server{
 		config:                params.Config,
 		dbPool:                dbPool,
+		gymstatsIOSAppSecret:  params.GymstatsIOSAppSecret,
 		browserRequestsSecret: params.BrowserRequestsSecret,
 		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, params.IpInfoAPIKey, tracedHttpClient, rdb),
 		weatherApi: weather.NewApi(
@@ -176,7 +179,7 @@ func NewServer(
 	return s, nil
 }
 
-func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
+func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware("main-router"))
 
@@ -229,6 +232,7 @@ func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 	}).Methods("GET", "POST", "PUT", "OPTIONS").Name("unknown")
 
 	authMiddleware := middleware.NewAuthMiddlewareHandler(
+		s.gymstatsIOSAppSecret,
 		s.browserRequestsSecret,
 		s.loginChecker,
 	)
@@ -244,7 +248,7 @@ func (s *Server) routerSetup(ctx context.Context) (*mux.Router, error) {
 }
 
 func (s *Server) Serve(ctx context.Context, host string, port int) {
-	router, err := s.routerSetup(ctx)
+	router, err := s.routerSetup()
 	if err != nil {
 		log.Fatalf("failed to setup router: %s", err)
 	}
