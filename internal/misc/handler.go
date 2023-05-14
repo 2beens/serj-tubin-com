@@ -24,7 +24,6 @@ type Handler struct {
 	quotesManager *QuotesManager
 	versionInfo   string
 	authService   *auth.Service
-	admin         *auth.Admin
 }
 
 func NewHandler(
@@ -32,14 +31,12 @@ func NewHandler(
 	quotesManager *QuotesManager,
 	versionInfo string,
 	authService *auth.Service,
-	admin *auth.Admin,
 ) *Handler {
 	return &Handler{
 		geoIp:         geoIp,
 		quotesManager: quotesManager,
 		versionInfo:   versionInfo,
 		authService:   authService,
-		admin:         admin,
 	}
 }
 
@@ -135,7 +132,7 @@ func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-	_, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.login")
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.login")
 	defer span.End()
 
 	if r.Method == http.MethodOptions {
@@ -177,22 +174,13 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !pkg.CheckPasswordHash(loginReq.Password, handler.admin.PasswordHash) {
-		log.Tracef("[password] failed login attempt for user: %s", loginReq.Username)
-		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
-		return
-	}
-
-	if loginReq.Username != handler.admin.Username {
-		log.Tracef("[username] failed login attempt for user: %s", loginReq.Username)
-		http.Error(w, "error, wrong credentials", http.StatusBadRequest)
-		return
-	}
-
-	token, err := handler.authService.Login(r.Context(), time.Now())
+	token, err := handler.authService.Login(ctx, auth.Credentials{
+		Username: loginReq.Username,
+		Password: loginReq.Password,
+	}, time.Now())
 	if err != nil {
-		log.Errorf("login failed, generate token error: %s", err)
-		http.Error(w, "generate token error", http.StatusInternalServerError)
+		log.Tracef("auth service login: %s", err)
+		http.Error(w, "login failed", http.StatusBadRequest)
 		return
 	}
 
