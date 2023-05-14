@@ -15,7 +15,11 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-var ErrLoginSessionNotFound = errors.New("login session not found")
+var (
+	ErrLoginSessionNotFound = errors.New("login session not found")
+	ErrWrongUsername        = errors.New("wrong username")
+	ErrWrongPassword        = errors.New("wrong password")
+)
 
 const (
 	DefaultTTL       = 24 * 7 * time.Hour
@@ -28,12 +32,18 @@ type Admin struct {
 	PasswordHash string
 }
 
+type Credentials struct {
+	Username string
+	Password string
+}
+
 type LoginSession struct {
 	Token     string
 	CreatedAt time.Time
 }
 
 type Service struct {
+	admin       *Admin
 	redisClient *redis.Client
 	ttl         time.Duration
 	// ability to inject random string generator func for tokens (for unit and dev testing)
@@ -41,19 +51,29 @@ type Service struct {
 }
 
 func NewAuthService(
+	admin *Admin,
 	ttl time.Duration,
 	redisClient *redis.Client,
 ) *Service {
 	return &Service{
+		admin:          admin,
 		ttl:            ttl,
 		redisClient:    redisClient,
 		RandStringFunc: pkg.GenerateRandomString,
 	}
 }
 
-func (as *Service) Login(ctx context.Context, createdAt time.Time) (string, error) {
+func (as *Service) Login(ctx context.Context, creds Credentials, createdAt time.Time) (string, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "authService.login")
 	defer span.End()
+
+	if creds.Username != as.admin.Username {
+		return "", ErrWrongUsername
+	}
+
+	if !pkg.CheckPasswordHash(creds.Password, as.admin.PasswordHash) {
+		return "", ErrWrongPassword
+	}
 
 	token, err := as.RandStringFunc(35)
 	if err != nil {

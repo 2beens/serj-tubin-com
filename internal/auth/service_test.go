@@ -15,6 +15,20 @@ import (
 	"go.uber.org/goleak"
 )
 
+var (
+	testUsername     = "testuser"
+	testPassword     = "testpass"
+	testPasswordHash = "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
+	testAdmin        = &Admin{
+		Username:     testUsername,
+		PasswordHash: testPasswordHash,
+	}
+	testCredentials = Credentials{
+		Username: testUsername,
+		Password: testPassword,
+	}
+)
+
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m,
 		// INFO: https://github.com/go-redis/redis/issues/1029
@@ -28,7 +42,7 @@ func TestAuthService_NewAuthService(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	defer db.Close()
 
-	authService := NewAuthService(time.Hour, db)
+	authService := NewAuthService(testAdmin, time.Hour, db)
 	require.NotNil(t, authService)
 	assert.NotNil(t, authService.redisClient)
 	assert.Equal(t, time.Hour, authService.ttl)
@@ -43,9 +57,17 @@ func TestAuthService_NewAuthService(t *testing.T) {
 	sessionKey := sessionKeyPrefix + testToken
 	mock.ExpectSet(sessionKey, now.Unix(), 0).SetVal(fmt.Sprintf("%d", now.Unix()))
 	mock.ExpectSAdd(tokensSetKey, testToken).SetVal(1)
-	token, err := authService.Login(context.Background(), now)
+	token, err := authService.Login(context.Background(), testCredentials, now)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
+
+	// test failed login again
+	token, err = authService.Login(context.Background(), Credentials{
+		Username: testUsername,
+		Password: "invalid_pass",
+	}, now)
+	assert.ErrorIs(t, err, ErrWrongPassword)
+	assert.Empty(t, token)
 }
 
 func TestAuthService_ScanAndClean(t *testing.T) {
@@ -53,9 +75,9 @@ func TestAuthService_ScanAndClean(t *testing.T) {
 	now := time.Now()
 	then := now.Add(-2 * time.Hour)
 
-	db, mock := redismock.NewClientMock()
+	rdb, mock := redismock.NewClientMock()
 
-	authService := NewAuthService(ttl, db)
+	authService := NewAuthService(testAdmin, ttl, rdb)
 	require.NotNil(t, authService)
 
 	// expected calls
@@ -77,7 +99,7 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	authService := NewAuthService(time.Hour, rdb)
+	authService := NewAuthService(testAdmin, time.Hour, rdb)
 	require.NotNil(t, authService)
 	loginChecker := NewLoginChecker(time.Hour, rdb)
 	require.NotNil(t, loginChecker)
@@ -89,9 +111,9 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 
 	newTokensChan := make(chan string)
 	for i := 0; i < loginsCount; i++ {
-		// simluate many logins comming at once
+		// simulate many logins coming at once
 		go func() {
-			newToken, err := authService.Login(ctx, time.Now())
+			newToken, err := authService.Login(ctx, testCredentials, time.Now())
 			require.NoError(t, err)
 			newTokensChan <- newToken
 			wg.Done()
@@ -146,19 +168,19 @@ func TestAuthService_Login_Logout(t *testing.T) {
 
 	now := time.Now()
 
-	authService := NewAuthService(time.Hour, rdb)
+	authService := NewAuthService(testAdmin, time.Hour, rdb)
 	require.NotNil(t, authService)
 	loginChecker := NewLoginChecker(time.Hour, rdb)
 	require.NotNil(t, loginChecker)
 
-	token1, err := authService.Login(ctx, now)
+	token1, err := authService.Login(ctx, testCredentials, now)
 	require.NoError(t, err)
 	require.NotEmpty(t, token1)
 	isLogged1, err := loginChecker.IsLogged(ctx, token1)
 	require.NoError(t, err)
 	assert.True(t, isLogged1)
 
-	token2, err := authService.Login(ctx, now)
+	token2, err := authService.Login(ctx, testCredentials, now)
 	require.NoError(t, err)
 	require.NotEmpty(t, token2)
 	isLogged2, err := loginChecker.IsLogged(ctx, token1)
