@@ -67,7 +67,6 @@ func (l *testRequestRateLimiter) Allow(_ context.Context, key string, limit redi
 func setupNetlogRouterForTests(
 	t *testing.T,
 	authService *auth.Service,
-	adminUsername, adminPassHash string,
 	redisClient *redis.Client,
 	reqRateLimiter *testRequestRateLimiter,
 	metricsManager *metrics.Manager,
@@ -93,10 +92,7 @@ func setupNetlogRouterForTests(
 
 	handler := NewHandler(
 		nil, nil,
-		"dummy", authService, &auth.Admin{
-			Username:     adminUsername,
-			PasswordHash: adminPassHash,
-		},
+		"dummy", authService,
 	)
 	handler.SetupRoutes(r, reqRateLimiter, metrics.NewTestManager())
 
@@ -105,7 +101,7 @@ func setupNetlogRouterForTests(
 
 func TestNewMiscHandler(t *testing.T) {
 	mainRouter := mux.NewRouter()
-	handler := NewHandler(nil, nil, "dummy", &auth.Service{}, &auth.Admin{})
+	handler := NewHandler(nil, nil, "dummy", &auth.Service{})
 	handler.SetupRoutes(mainRouter, nil, metrics.NewTestManager())
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
@@ -186,7 +182,14 @@ func TestLogin(t *testing.T) {
 		assert.NoError(t, rdb.Close())
 	}()
 
-	authService := auth.NewAuthService(time.Hour, rdb)
+	username := "testuser"
+	password := "testpass"
+	passwordHash := "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
+
+	authService := auth.NewAuthService(&auth.Admin{
+		Username:     username,
+		PasswordHash: passwordHash,
+	}, time.Hour, rdb)
 	require.NotNil(t, authService)
 	testToken := "test_token"
 	randStringFunc := func(s int) (string, error) {
@@ -194,18 +197,12 @@ func TestLogin(t *testing.T) {
 	}
 	authService.RandStringFunc = randStringFunc
 
-	username := "testuser"
-	password := "testpass"
-	passwordHash := "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
-
 	reqRateLimiter := &testRequestRateLimiter{
 		Limits: map[string]int{},
 	}
 	r := setupNetlogRouterForTests(
 		t,
 		authService,
-		username,
-		passwordHash,
 		rdb,
 		reqRateLimiter,
 		metrics.NewTestManager(),

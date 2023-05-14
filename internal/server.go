@@ -54,7 +54,6 @@ type Server struct {
 	redisClient  *redis.Client
 	loginChecker *auth.LoginChecker
 	authService  *auth.Service
-	admin        *auth.Admin
 
 	// metrics
 	metricsManager *metrics.Manager
@@ -110,7 +109,10 @@ func NewServer(
 		log.Debugf("redis ping: %s", rdbStatus.Val())
 	}
 
-	authService := auth.NewAuthService(auth.DefaultTTL, rdb)
+	authService := auth.NewAuthService(&auth.Admin{
+		Username:     params.AdminUsername,
+		PasswordHash: params.AdminPasswordHash,
+	}, auth.DefaultTTL, rdb)
 	go func() {
 		for range time.Tick(time.Hour * 8) {
 			authService.ScanAndClean(ctx)
@@ -155,10 +157,6 @@ func NewServer(
 		redisClient:  rdb,
 		authService:  authService,
 		loginChecker: auth.NewLoginChecker(auth.DefaultTTL, rdb),
-		admin: &auth.Admin{
-			Username:     params.AdminUsername,
-			PasswordHash: params.AdminPasswordHash,
-		},
 
 		// telemetry
 		metricsManager: metricsManager,
@@ -206,7 +204,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/weather/5days", weatherHandler.Handle5Days).Methods("GET")
 
 	reqRateLimiter := redis_rate.NewLimiter(s.redisClient)
-	miscHandler := misc.NewHandler(s.geoIp, s.quotesManager, s.versionInfo, s.authService, s.admin)
+	miscHandler := misc.NewHandler(s.geoIp, s.quotesManager, s.versionInfo, s.authService)
 	miscHandler.SetupRoutes(r, reqRateLimiter, s.metricsManager)
 
 	netlogHandler := netlog.NewHandler(
