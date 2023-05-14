@@ -7,11 +7,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/2beens/serjtubincom/internal"
+	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/config"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
@@ -23,6 +23,20 @@ const (
 )
 
 var serverEndpoint = fmt.Sprintf("http://%s:%d", serverHost, serverPort)
+
+var (
+	testUsername     = "testuser"
+	testPassword     = "testpass"
+	testPasswordHash = "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
+	testAdmin        = &auth.Admin{
+		Username:     testUsername,
+		PasswordHash: testPasswordHash,
+	}
+	testCredentials = auth.Credentials{
+		Username: testUsername,
+		Password: testPassword,
+	}
+)
 
 type Suite struct {
 	DB         *sql.DB
@@ -70,8 +84,8 @@ func newSuite(ctx context.Context) (_ *Suite) {
 			GymstatsIOSAppSecret:    "test",
 			BrowserRequestsSecret:   "test",
 			VersionInfo:             "test-version-info",
-			AdminUsername:           "adminUsername",
-			AdminPasswordHash:       "adminPasswordHash",
+			AdminUsername:           testUsername,
+			AdminPasswordHash:       testPasswordHash,
 			RedisPassword:           "",
 			HoneycombTracingEnabled: false,
 		},

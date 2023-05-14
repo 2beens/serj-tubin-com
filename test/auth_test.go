@@ -9,24 +9,17 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_GymStats_HappyPaths(t *testing.T) {
+func Test_Login(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	suite := newSuite(ctx)
 	defer suite.cleanup()
-
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/gymstats/list", serverEndpoint), nil)
-	require.NoError(t, err)
-	req.Header.Set("User-Agent", "test-agent")
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	defer resp.Body.Close()
 
 	loginRequest := struct {
 		Username string `json:"username"`
@@ -38,16 +31,20 @@ func Test_GymStats_HappyPaths(t *testing.T) {
 	loginReqJson, err := json.Marshal(loginRequest)
 	require.NoError(t, err)
 
-	req, err = http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/a/login", serverEndpoint), bytes.NewBuffer(loginReqJson))
+	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/a/login", serverEndpoint), bytes.NewBuffer(loginReqJson))
 	require.NoError(t, err)
 	req.Header.Set("User-Agent", "test-agent")
-	loginResp, err := http.DefaultClient.Do(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, loginResp.StatusCode)
-	defer loginResp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	assert.Equal(t, "test-version-info", string(respBytes))
+	var loginResp misc.LoginResponse
+	require.NoError(t, json.Unmarshal(respBytes, &loginResp))
+	assert.NotEmpty(t, loginResp.Token)
 }
