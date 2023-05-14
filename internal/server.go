@@ -88,6 +88,10 @@ func NewServer(
 		return nil, fmt.Errorf("new db pool: %w", err)
 	}
 
+	if err := dbPool.Ping(ctx); err != nil {
+		log.Warnf("failed to ping db: %s", err)
+	}
+
 	pgxpoolCollector := pgxpoolprometheus.NewCollector(
 		dbPool,
 		map[string]string{"db_name": "serj_tubin_com_db"},

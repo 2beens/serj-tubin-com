@@ -155,8 +155,8 @@ func (s *Suite) postgresSetup(ctx context.Context) (string, error) {
 		Tag:        "12",
 		Env: []string{
 			"POSTGRES_USER=postgres",
-			"POSTGRES_PASSWORD=postgres",
 			"POSTGRES_DB=serj_blogs",
+			"POSTGRES_HOST_AUTH_METHOD=trust",
 		},
 	}, func(config *docker.HostConfig) {
 		config.AutoRemove = true
@@ -173,7 +173,10 @@ func (s *Suite) postgresSetup(ctx context.Context) (string, error) {
 	})
 
 	pgPort := pgResource.GetPort("5432/tcp")
-	dsn := fmt.Sprintf("postgres://postgres:postgres@localhost:%s/serj_blogs?sslmode=disable", pgPort)
+	dsn := fmt.Sprintf(
+		"postgres://postgres:admin@localhost:%s/serj_blogs?sslmode=disable",
+		pgPort,
+	)
 	poolConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return "", fmt.Errorf("parse db config: %w", err)

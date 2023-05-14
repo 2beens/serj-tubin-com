@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +30,5 @@ func Test_GymStats_HappyPaths(t *testing.T) {
 
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	require.NotEmpty(t, respBytes)
-
-	fmt.Println(string(respBytes))
+	assert.Equal(t, "[]", string(respBytes))
 }
