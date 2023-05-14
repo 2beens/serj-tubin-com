@@ -25,10 +25,11 @@ const (
 var serverEndpoint = fmt.Sprintf("http://%s:%d", serverHost, serverPort)
 
 var (
-	testUsername     = "testuser"
-	testPassword     = "testpass"
-	testPasswordHash = "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
-	testAdmin        = &auth.Admin{
+	testGymStatsIOSAppSecret = "ios-app-secret"
+	testUsername             = "testuser"
+	testPassword             = "testpass"
+	testPasswordHash         = "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
+	testAdmin                = &auth.Admin{
 		Username:     testUsername,
 		PasswordHash: testPasswordHash,
 	}
@@ -81,7 +82,7 @@ func newSuite(ctx context.Context) (_ *Suite) {
 			Config:                  cfg,
 			OpenWeatherApiKey:       "test",
 			IpInfoAPIKey:            "test",
-			GymstatsIOSAppSecret:    "test",
+			GymstatsIOSAppSecret:    testGymStatsIOSAppSecret,
 			BrowserRequestsSecret:   "test",
 			VersionInfo:             "test-version-info",
 			AdminUsername:           testUsername,
@@ -104,11 +105,11 @@ func (s *Suite) cleanup() {
 	if s.DB != nil {
 		s.DB.Close()
 	}
-	for _, teardown := range s.teardown {
-		teardown()
-	}
 	if s.server != nil {
 		s.server.GracefulShutdown()
+	}
+	for _, teardown := range s.teardown {
+		teardown()
 	}
 }
 

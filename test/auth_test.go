@@ -15,11 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 func Test_Login(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
