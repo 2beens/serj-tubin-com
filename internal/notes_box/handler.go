@@ -173,6 +173,11 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	pkg.WriteTextResponseOK(w, fmt.Sprintf("deleted:%d", id))
 }
 
+type NotesListResponse struct {
+	Notes []Note `json:"notes"`
+	Total int    `json:"total"`
+}
+
 func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	notes, err := handler.repo.List(r.Context())
 	if err != nil {
@@ -185,13 +190,17 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		notes = []Note{}
 	}
 
-	notesJson, err := json.Marshal(notes)
+	notesListRes := NotesListResponse{
+		Notes: notes,
+		Total: len(notes),
+	}
+
+	notesListResJson, err := json.Marshal(notesListRes)
 	if err != nil {
 		log.Errorf("marshal notes error: %s", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	resJson := fmt.Sprintf(`{"notes": %s, "total": %d}`, notesJson, len(notes))
-	pkg.WriteTextResponseOK(w, resJson)
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, notesListResJson, http.StatusOK)
 }
