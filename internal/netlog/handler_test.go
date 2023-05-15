@@ -443,12 +443,7 @@ func TestNetlogHandler_handleGetPage(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-	type getVisitPageResp struct {
-		Visits []Visit `json:"visits"`
-		Total  int     `json:"total"`
-	}
-
-	var resp *getVisitPageResp
+	var resp *VisitsResponse
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Visits)

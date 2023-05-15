@@ -3,7 +3,6 @@ package netlog
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	netUrl "net/url"
@@ -27,6 +26,11 @@ type netlogRepo interface {
 	CountAll(ctx context.Context) (int, error)
 	Count(ctx context.Context, keywords []string, field string, source string) (int, error)
 	GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error)
+}
+
+type VisitsResponse struct {
+	Visits []*Visit `json:"visits"`
+	Total  int      `json:"total"`
 }
 
 type newVisitRequest struct {
@@ -114,19 +118,6 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(visits) == 0 {
-		resJson := fmt.Sprintf(`{"visits": %s, "total": 0}`, "[]")
-		pkg.WriteJSONResponseOK(w, resJson)
-		return
-	}
-
-	visitsJson, err := json.Marshal(visits)
-	if err != nil {
-		log.Errorf("marshal netlog visits error: %s", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	allVisitsCount, err := handler.repo.Count(ctx, keywords, field, source)
 	if err != nil {
 		log.Errorf("get netlog visits error: %s", err)
@@ -134,8 +125,19 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resJson := fmt.Sprintf(`{"visits": %s, "total": %d}`, visitsJson, allVisitsCount)
-	pkg.WriteJSONResponseOK(w, resJson)
+	visitsResp := VisitsResponse{
+		Visits: visits,
+		Total:  allVisitsCount,
+	}
+
+	visitsRespJson, err := json.Marshal(visitsResp)
+	if err != nil {
+		log.Errorf("marshal netlog visits error: %s", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, visitsRespJson, http.StatusOK)
 }
 
 func (handler *Handler) handleNewVisit(w http.ResponseWriter, r *http.Request) {

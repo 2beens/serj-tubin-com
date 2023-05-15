@@ -1,8 +1,8 @@
 package notes_box
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 )
@@ -58,13 +59,17 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	handler.HandleList(rr, req)
 	require.NotNil(t, rr)
 
-	var body []byte
-	_, err = rr.Body.Read(body)
+	var notesListRes NotesListResponse
+	err = json.Unmarshal(rr.Body.Bytes(), &notesListRes)
 	require.NoError(t, err)
 
-	// TODO: i'm too lazy ...
-	bytes.Contains(body, []byte("title1"))
-	bytes.Contains(body, []byte("title2"))
+	require.Len(t, notesListRes.Notes, 2)
+	assert.Equal(t, n1.ID, notesListRes.Notes[0].ID)
+	assert.Equal(t, n1.Title, notesListRes.Notes[0].Title)
+	assert.Equal(t, n1.Content, notesListRes.Notes[0].Content)
+	assert.Equal(t, n2.ID, notesListRes.Notes[1].ID)
+	assert.Equal(t, n2.Title, notesListRes.Notes[1].Title)
+	assert.Equal(t, n2.Content, notesListRes.Notes[1].Content)
 }
 
 // TODO: others

@@ -15,6 +15,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type NotesListResponse struct {
+	Notes []Note `json:"notes"`
+	Total int    `json:"total"` // TODO: check needed
+}
+
 var _ notesRepo = (*Repo)(nil)
 var _ notesRepo = (*repoMock)(nil)
 
@@ -185,13 +190,17 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		notes = []Note{}
 	}
 
-	notesJson, err := json.Marshal(notes)
+	notesListRes := NotesListResponse{
+		Notes: notes,
+		Total: len(notes),
+	}
+
+	notesListResJson, err := json.Marshal(notesListRes)
 	if err != nil {
 		log.Errorf("marshal notes error: %s", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	resJson := fmt.Sprintf(`{"notes": %s, "total": %d}`, notesJson, len(notes))
-	pkg.WriteTextResponseOK(w, resJson)
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, notesListResJson, http.StatusOK)
 }
