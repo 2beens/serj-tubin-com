@@ -175,7 +175,7 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 
 type NotesListResponse struct {
 	Notes []Note `json:"notes"`
-	Total int    `json:"total"`
+	Total int    `json:"total"` // TODO: check needed
 }
 
 func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
