@@ -29,9 +29,13 @@ run-fs: run-file-service
 
 .PHONY: test test-all
 test:
-	go test -v -race ./...
+	go test -v -race $(shell go list ./... | grep -v /serjtubincom/test)
 test-all:
-	go test -v -race ./... -tags=all_tests
+	go test -v -race -tags=all_tests $(shell go list ./... | grep -v /serjtubincom/test) -tags=all_tests
+
+.PHONY: integration-tests
+integration-tests:
+	go test -v -race github.com/2beens/serjtubincom/test
 
 .PHONY: deploy deploy-c
 deploy:
