@@ -282,6 +282,8 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 		metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
 		log.Debugf(" > metrics listening on: [%s]", metricsAddr)
 
+		// TODO: gracefully shutdown metrics server like http server above
+
 		// Expose the registered metrics via HTTP.
 		http.Handle(
 			"/metrics",
