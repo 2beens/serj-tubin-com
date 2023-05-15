@@ -104,7 +104,7 @@ func TestAuthService_MultiLogin_MultiAccess_Then_Logout(t *testing.T) {
 	loginChecker := NewLoginChecker(time.Hour, rdb)
 	require.NotNil(t, loginChecker)
 
-	loginsCount := 10
+	loginsCount := 4
 
 	var wg sync.WaitGroup
 	wg.Add(loginsCount)

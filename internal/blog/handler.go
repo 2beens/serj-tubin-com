@@ -14,6 +14,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type PostsResponse struct {
+	Posts []*Blog `json:"posts"`
+	Total int     `json:"total"`
+}
+
 type clapBlogRequest struct {
 	ID int `json:"id"`
 }
@@ -282,17 +287,6 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 
-	if len(blogPosts) == 0 {
-		blogPosts = []*Blog{}
-	}
-
-	blogPostsJson, err := json.Marshal(blogPosts)
-	if err != nil {
-		log.Errorf("marshal blogs error: %s", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	totalBlogsCount, err := handler.repo.BlogsCount(r.Context())
 	if err != nil {
 		log.Errorf("get blogs error: %s", err)
@@ -300,7 +294,17 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resJson := fmt.Sprintf(`{"posts": %s, "total": %d}`, blogPostsJson, totalBlogsCount)
+	postsResp := PostsResponse{
+		Posts: blogPosts,
+		Total: totalBlogsCount,
+	}
 
-	pkg.WriteJSONResponseOK(w, resJson)
+	blogPostsRespJson, err := json.Marshal(postsResp)
+	if err != nil {
+		log.Errorf("marshal blogs error: %s", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, blogPostsRespJson, http.StatusOK)
 }

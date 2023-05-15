@@ -15,6 +15,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type NotesListResponse struct {
+	Notes []Note `json:"notes"`
+	Total int    `json:"total"` // TODO: check needed
+}
+
 var _ notesRepo = (*Repo)(nil)
 var _ notesRepo = (*repoMock)(nil)
 
@@ -171,11 +176,6 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pkg.WriteTextResponseOK(w, fmt.Sprintf("deleted:%d", id))
-}
-
-type NotesListResponse struct {
-	Notes []Note `json:"notes"`
-	Total int    `json:"total"` // TODO: check needed
 }
 
 func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
