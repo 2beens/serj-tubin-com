@@ -19,7 +19,6 @@ func TestGenerateRandomString(t *testing.T) {
 
 	for i := 1; i <= 8; i++ {
 		s, err := GenerateRandomString(i * 5)
-		t.Log(s)
 		require.NoError(t, err)
 		assert.Len(t, s, i*5)
 	}

@@ -47,6 +47,8 @@ type Suite struct {
 }
 
 func newSuite(ctx context.Context) (_ *Suite) {
+	fmt.Println("setting up test suite...")
+
 	var err error
 	suite := &Suite{
 		teardown: make([]func(), 0),
@@ -57,23 +59,27 @@ func newSuite(ctx context.Context) (_ *Suite) {
 	if err != nil {
 		log.Fatalf("could not create new dockertest pool: %s", err)
 	}
+	fmt.Println("dockertest poool created")
 
 	// uses pool to try to connect to Docker
 	if err = suite.dockerPool.Client.Ping(); err != nil {
 		log.Fatalf("could not ping dockertest pool: %s", err)
 	}
+	fmt.Println("dockertest pool ping successful")
 
 	redisPort, err := suite.redisSetup()
 	if err != nil {
 		suite.cleanup()
 		log.Fatalf("failed to setup redis: %s", err.Error())
 	}
+	fmt.Println("redis setup successful")
 
 	pgPort, err := suite.postgresSetup(ctx)
 	if err != nil {
 		suite.cleanup()
 		log.Fatalf("failed to setup postgres: %s", err)
 	}
+	fmt.Println("postgres setup successful")
 
 	cfg := getTestConfig(redisPort, pgPort)
 	suite.server, err = internal.NewServer(
@@ -95,22 +101,28 @@ func newSuite(ctx context.Context) (_ *Suite) {
 		suite.cleanup()
 		log.Fatalf("new server: %s", err)
 	}
+	fmt.Println("server created")
 
 	suite.server.Serve(ctx, cfg.Host, cfg.Port)
+	fmt.Println("server started")
 
 	return suite
 }
 
 func (s *Suite) cleanup() {
+	fmt.Println(" --> cleaning up test suite...")
 	if s.DB != nil {
 		s.DB.Close()
 	}
+	fmt.Println(" --> test suite db closed")
 	if s.server != nil {
 		s.server.GracefulShutdown()
 	}
+	fmt.Println(" --> test suite server shut down")
 	for _, teardown := range s.teardown {
 		teardown()
 	}
+	fmt.Println(" --> test suite cleanup done")
 }
 
 func getTestConfig(redisPort, postgresPort string) *config.Config {
