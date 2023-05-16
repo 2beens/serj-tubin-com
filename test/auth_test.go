@@ -27,7 +27,7 @@ func (s *IntegrationTestSuite) doLogin(ctx context.Context) string {
 	req.Header.Set("User-Agent", "test-agent")
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.httpClient.Do(req)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	defer resp.Body.Close()

@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
@@ -42,6 +44,8 @@ type IntegrationTestSuite struct {
 	dockerPool *dockertest.Pool
 	server     *internal.Server
 	teardown   []func()
+
+	httpClient *http.Client
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -55,6 +59,10 @@ func TestExampleTestSuite(t *testing.T) {
 func (s *IntegrationTestSuite) SetupSuite() {
 	ctx := context.Background()
 	fmt.Println("setting up test suite...")
+
+	s.httpClient = &http.Client{
+		Timeout: time.Minute,
+	}
 
 	s.teardown = make([]func(), 0)
 

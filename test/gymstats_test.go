@@ -21,7 +21,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 	req.Header.Set("User-Agent", "test-agent")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.httpClient.Do(req)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	defer resp.Body.Close()

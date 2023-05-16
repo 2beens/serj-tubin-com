@@ -266,8 +266,8 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	s.httpServer = &http.Server{
 		Handler:      router,
 		Addr:         ipAndPort,
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+		WriteTimeout: time.Minute,
+		ReadTimeout:  time.Minute,
 		ConnState:    s.connStateMetrics,
 	}
 
