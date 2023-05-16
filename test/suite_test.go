@@ -51,7 +51,8 @@ func TestExampleTestSuite(t *testing.T) {
 }
 
 // runs before all tests are executed
-func (s *IntegrationTestSuite) SetupTest() {
+// func (s *IntegrationTestSuite) SetupTest() {
+func (s *IntegrationTestSuite) SetupSuite() {
 	ctx := context.Background()
 	fmt.Println("setting up test suite...")
 
@@ -111,7 +112,8 @@ func (s *IntegrationTestSuite) SetupTest() {
 	fmt.Println("server started")
 }
 
-func (s *IntegrationTestSuite) TearDownTest() {
+// func (s *IntegrationTestSuite) TearDownTest() {
+func (s *IntegrationTestSuite) TearDownSuite() {
 	s.cleanup()
 }
 
