@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"testing"
 
 	notesBox "github.com/2beens/serjtubincom/internal/notes_box"
 
@@ -16,13 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNotesBox_List(t *testing.T) {
+func (s *IntegrationTestSuite) TestNotesBox() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	suite := newSuite(ctx)
-	defer suite.cleanup()
-
+	t := s.T()
 	token := doLogin(ctx, t)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/notes", serverEndpoint), nil)

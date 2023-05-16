@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"testing"
 
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
@@ -14,6 +15,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/stretchr/testify/suite"
 )
 
 const (
@@ -30,50 +32,61 @@ var (
 	testPasswordHash         = "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
 )
 
-type Suite struct {
+// Define the suite, and absorb the built-in basic suite
+// functionality from testify - including a T() method which
+// returns the current testing context
+type IntegrationTestSuite struct {
+	suite.Suite
+
 	DB         *sql.DB
 	dockerPool *dockertest.Pool
 	server     *internal.Server
 	teardown   []func()
 }
 
-func newSuite(ctx context.Context) (_ *Suite) {
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestExampleTestSuite(t *testing.T) {
+	suite.Run(t, new(IntegrationTestSuite))
+}
+
+// runs before all tests are executed
+func (s *IntegrationTestSuite) SetupTest() {
+	ctx := context.Background()
 	fmt.Println("setting up test suite...")
 
-	var err error
-	suite := &Suite{
-		teardown: make([]func(), 0),
-	}
+	s.teardown = make([]func(), 0)
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	suite.dockerPool, err = dockertest.NewPool("")
+	var err error
+	s.dockerPool, err = dockertest.NewPool("")
 	if err != nil {
 		log.Fatalf("could not create new dockertest pool: %s", err)
 	}
 	fmt.Println("dockertest poool created")
 
 	// uses pool to try to connect to Docker
-	if err = suite.dockerPool.Client.Ping(); err != nil {
+	if err = s.dockerPool.Client.Ping(); err != nil {
 		log.Fatalf("could not ping dockertest pool: %s", err)
 	}
 	fmt.Println("dockertest pool ping successful")
 
-	redisPort, err := suite.redisSetup()
+	redisPort, err := s.redisSetup()
 	if err != nil {
-		suite.cleanup()
+		s.cleanup()
 		log.Fatalf("failed to setup redis: %s", err.Error())
 	}
 	fmt.Println("redis setup successful")
 
-	pgPort, err := suite.postgresSetup(ctx)
+	pgPort, err := s.postgresSetup(ctx)
 	if err != nil {
-		suite.cleanup()
+		s.cleanup()
 		log.Fatalf("failed to setup postgres: %s", err)
 	}
 	fmt.Println("postgres setup successful")
 
 	cfg := getTestConfig(redisPort, pgPort)
-	suite.server, err = internal.NewServer(
+	s.server, err = internal.NewServer(
 		ctx,
 		internal.NewServerParams{
 			Config:                  cfg,
@@ -89,21 +102,25 @@ func newSuite(ctx context.Context) (_ *Suite) {
 		},
 	)
 	if err != nil {
-		suite.cleanup()
+		s.cleanup()
 		log.Fatalf("new server: %s", err)
 	}
 	fmt.Println("server created")
 
-	suite.server.Serve(ctx, cfg.Host, cfg.Port)
+	s.server.Serve(ctx, cfg.Host, cfg.Port)
 	fmt.Println("server started")
-
-	return suite
 }
 
-func (s *Suite) cleanup() {
+func (s *IntegrationTestSuite) TearDownTest() {
+	s.cleanup()
+}
+
+func (s *IntegrationTestSuite) cleanup() {
 	fmt.Println(" --> cleaning up test suite...")
 	if s.DB != nil {
-		s.DB.Close()
+		if err := s.DB.Close(); err != nil {
+			fmt.Printf(" --> test suite db close error: %s\n", err)
+		}
 	}
 	fmt.Println(" --> test suite db closed")
 	if s.server != nil {
@@ -132,7 +149,7 @@ func getTestConfig(redisPort, postgresPort string) *config.Config {
 	}
 }
 
-func (s *Suite) redisSetup() (string, error) {
+func (s *IntegrationTestSuite) redisSetup() (string, error) {
 	redisResource, err := s.dockerPool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "redis",
 		Name:       "redis",
@@ -145,14 +162,16 @@ func (s *Suite) redisSetup() (string, error) {
 	}
 
 	s.teardown = append(s.teardown, func() {
-		redisResource.Close()
+		if err := redisResource.Close(); err != nil {
+			fmt.Printf("redis teardown: %s\n", err)
+		}
 	})
 
 	redisPort := redisResource.GetPort("6379/tcp")
 	return redisPort, nil
 }
 
-func (s *Suite) postgresSetup(ctx context.Context) (string, error) {
+func (s *IntegrationTestSuite) postgresSetup(ctx context.Context) (string, error) {
 	pgResource, err := s.dockerPool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
 		Tag:        "12",
@@ -172,7 +191,9 @@ func (s *Suite) postgresSetup(ctx context.Context) (string, error) {
 	}
 
 	s.teardown = append(s.teardown, func() {
-		pgResource.Close()
+		if err := pgResource.Close(); err != nil {
+			fmt.Printf("postgres teardown: %s\n", err)
+		}
 	})
 
 	pgPort := pgResource.GetPort("5432/tcp")
