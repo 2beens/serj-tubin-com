@@ -20,7 +20,7 @@ import (
 
 const (
 	serverPort = 9000
-	serverHost = "localhost"
+	serverHost = "127.0.0.1"
 )
 
 var serverEndpoint = fmt.Sprintf("http://%s:%d", serverHost, serverPort)
