@@ -23,12 +23,12 @@ func (s *IntegrationTestSuite) TestLogin() {
 	defer cancel()
 
 	cases := map[string]struct {
-		loginReq           loginRequest
+		loginReq           misc.LoginRequest
 		expectedStatusCode int
 		assertFunc         func(resp *http.Response)
 	}{
 		"good creds": {
-			loginReq: loginRequest{
+			loginReq: misc.LoginRequest{
 				Username: testUsername,
 				Password: testPassword,
 			},
@@ -43,7 +43,7 @@ func (s *IntegrationTestSuite) TestLogin() {
 			},
 		},
 		"bad password": {
-			loginReq: loginRequest{
+			loginReq: misc.LoginRequest{
 				Username: testUsername,
 				Password: "bad-password",
 			},
@@ -56,7 +56,7 @@ func (s *IntegrationTestSuite) TestLogin() {
 			},
 		},
 		"bad username": {
-			loginReq: loginRequest{
+			loginReq: misc.LoginRequest{
 				Username: "bad-username",
 				Password: testPassword,
 			},
@@ -72,7 +72,7 @@ func (s *IntegrationTestSuite) TestLogin() {
 
 	for tn, tc := range cases {
 		t.Run(tn, func(t *testing.T) {
-			loginRequest := loginRequest{
+			loginRequest := misc.LoginRequest{
 				Username: tc.loginReq.Username,
 				Password: tc.loginReq.Password,
 			}

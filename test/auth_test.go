@@ -7,20 +7,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"testing"
 
 	"github.com/2beens/serjtubincom/internal/misc"
 
 	"github.com/stretchr/testify/require"
 )
 
-type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-func doLogin(ctx context.Context, t *testing.T) string {
-	loginRequest := loginRequest{
+func (s *IntegrationTestSuite) doLogin(ctx context.Context) string {
+	t := s.T()
+	loginRequest := misc.LoginRequest{
 		Username: testUsername,
 		Password: testPassword,
 	}

@@ -20,7 +20,7 @@ func (s *IntegrationTestSuite) TestNotesBox() {
 	defer cancel()
 
 	t := s.T()
-	token := doLogin(ctx, t)
+	token := s.doLogin(ctx)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/notes", serverEndpoint), nil)
 	require.NoError(t, err)
