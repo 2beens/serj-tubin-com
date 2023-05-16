@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -34,9 +35,6 @@ var (
 	testPasswordHash         = "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
 )
 
-// Define the suite, and absorb the built-in basic suite
-// functionality from testify - including a T() method which
-// returns the current testing context
 type IntegrationTestSuite struct {
 	suite.Suite
 
@@ -50,12 +48,15 @@ type IntegrationTestSuite struct {
 
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
-func TestExampleTestSuite(t *testing.T) {
+func TestIntegrationTestSuite(t *testing.T) {
+	if ok, _ := strconv.ParseBool(os.Getenv("ST_INT_TESTS")); !ok {
+		t.Skip("Skip running integration tests, set `ST_INT_TESTS=1` to run enable.")
+		return
+	}
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
 // runs before all tests are executed
-// func (s *IntegrationTestSuite) SetupTest() {
 func (s *IntegrationTestSuite) SetupSuite() {
 	ctx := context.Background()
 	fmt.Println("setting up test suite...")
@@ -120,7 +121,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	fmt.Println("server started")
 }
 
-// func (s *IntegrationTestSuite) TearDownTest() {
+// runs after all tests are executed
 func (s *IntegrationTestSuite) TearDownSuite() {
 	s.cleanup()
 }
@@ -227,77 +228,16 @@ func (s *IntegrationTestSuite) postgresSetup(ctx context.Context) (string, error
 		panic(fmt.Errorf("connect to db: %s", err))
 	}
 
-	res, err := db.Exec(ctx, initSQL)
+	// read content of ../sql/db_schema.sql
+	initSchemaSQL, err := os.ReadFile("../sql/db_schema.sql")
+	if err != nil {
+		panic(fmt.Errorf("read db schema sql: %s", err))
+	}
+
+	_, err = db.Exec(ctx, string(initSchemaSQL))
 	if err != nil {
 		return "", fmt.Errorf("run init script: %s", err)
 	}
 
-	log.Printf("postgres setup result: %d\n", res.RowsAffected())
-
 	return pgPort, nil
 }
-
-const initSQL = `
-CREATE TABLE public.blog
-(
-    id         SERIAL PRIMARY KEY,
-    title      VARCHAR NOT NULL,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    content    TEXT    NOT NULL,
-    claps      INTEGER NOT NULL DEFAULT 0
-);
-
-ALTER TABLE public.blog OWNER TO postgres;
-CREATE INDEX ix_blog_created_at ON public.blog USING btree (created_at);
-
--- NETLOG DB SETUP
-CREATE SCHEMA netlog;
-CREATE TABLE netlog.visit
-(
-    id        SERIAL PRIMARY KEY,
-    title     VARCHAR,
-    source    VARCHAR,
-    device    VARCHAR,
-    url       VARCHAR     NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL
-);
-
-ALTER TABLE netlog.visit OWNER TO postgres;
-CREATE INDEX ix_visit_created_at ON netlog.visit USING btree (timestamp);
-CREATE INDEX ix_visit_url ON netlog.visit (url);
-
-CREATE TABLE public.note
-(
-    id         SERIAL PRIMARY KEY,
-    title      VARCHAR,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    content    TEXT NOT NULL
-);
-
-ALTER TABLE public.note OWNER TO postgres;
-
-CREATE TABLE public.exercise
-(
-    id           SERIAL PRIMARY KEY,
-    exercise_id  VARCHAR NOT NULL,
-    muscle_group VARCHAR NOT NULL,
-    kilos        INTEGER NOT NULL,
-    reps         INTEGER NOT NULL,
-    metadata     JSONB NOT NULL DEFAULT '{}',
-    created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL
-);
-
-ALTER TABLE public.exercise OWNER TO postgres;
-CREATE INDEX ix_exercise_created_at ON public.exercise (created_at);
-
-CREATE TABLE public.visitor_board_message
-(
-    id         SERIAL PRIMARY KEY,
-    author     VARCHAR,
-    message    VARCHAR NOT NULL,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
-);
-
-ALTER TABLE public.visitor_board_message OWNER TO postgres;
-CREATE INDEX ix_visitor_board_message_created_at ON public.visitor_board_message (created_at);
-`
