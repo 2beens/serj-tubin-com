@@ -35,7 +35,7 @@ test-all:
 
 .PHONY: integration-tests
 integration-tests:
-	ST_INT_TESTS=1 go test -v -race github.com/2beens/serjtubincom/test -tags=integration_tests
+	ST_INT_TESTS=1 go test -v -race github.com/2beens/serjtubincom/test
 
 .PHONY: deploy deploy-c
 deploy:
