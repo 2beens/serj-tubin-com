@@ -147,7 +147,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	now := time.Now()
+	now := time.Now().In(time.Local)
 
 	e1 := gymstats.Exercise{
 		ExerciseID:  "ex1",
@@ -244,9 +244,9 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		addedE3 := s.newExerciseRequest(ctx, e3Json)
 		e1.ID, e2.ID, e3.ID = 1, 2, 3
 
-		assert.Equal(t, e1.CreatedAt.Truncate(time.Second).In(time.UTC), addedE1.CreatedAt.Truncate(time.Second))
-		assert.Equal(t, e2.CreatedAt.Truncate(time.Second).In(time.UTC), addedE2.CreatedAt.Truncate(time.Second))
-		assert.Equal(t, e3.CreatedAt.Truncate(time.Second).In(time.UTC), addedE3.CreatedAt.Truncate(time.Second))
+		assert.Equal(t, e1.CreatedAt.Truncate(time.Second).In(time.UTC), addedE1.CreatedAt.Truncate(time.Second).In(time.UTC))
+		assert.Equal(t, e2.CreatedAt.Truncate(time.Second).In(time.UTC), addedE2.CreatedAt.Truncate(time.Second).In(time.UTC))
+		assert.Equal(t, e3.CreatedAt.Truncate(time.Second).In(time.UTC), addedE3.CreatedAt.Truncate(time.Second).In(time.UTC))
 		addedE1.CreatedAt = e1.CreatedAt
 		addedE2.CreatedAt = e2.CreatedAt
 		addedE3.CreatedAt = e3.CreatedAt
@@ -289,7 +289,10 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		assert.Equal(t, "legs", updatedEx3.MuscleGroup)
 		assert.Equal(t, 220, updatedEx3.Kilos)
 		assert.Equal(t, 15, updatedEx3.Reps)
-		assert.Equal(t, newCreatedAt.Truncate(time.Second), updatedEx3.CreatedAt.Truncate(time.Second))
+		assert.Equal(t,
+			newCreatedAt.Truncate(time.Second),
+			updatedEx3.CreatedAt.Truncate(time.Second),
+		)
 		assert.Equal(t, map[string]string{
 			"test": "false",
 			"env":  "stage",
