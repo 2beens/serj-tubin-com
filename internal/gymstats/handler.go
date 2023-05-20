@@ -3,7 +3,6 @@ package gymstats
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -16,9 +15,18 @@ import (
 
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise *Exercise) (*Exercise, error)
+	Get(ctx context.Context, id int) (*Exercise, error)
 	List(ctx context.Context, params ListParams) ([]Exercise, error)
 	Update(ctx context.Context, exercise *Exercise) error
 	Delete(ctx context.Context, id int) error
+}
+
+type DeleteExerciseResponse struct {
+	DeletedID int `json:"deletedId"`
+}
+
+type UpdateExerciseResponse struct {
+	UpdatedID int `json:"updatedId"`
 }
 
 type Handler struct {
@@ -70,6 +78,38 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, addedExJson, http.StatusCreated)
 }
 
+func (handler *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "gymStatsHandler.get")
+	defer span.End()
+
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	if idStr == "" {
+		http.Error(w, "error, id empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "error, id NaN", http.StatusBadRequest)
+		return
+	}
+
+	e, err := handler.repo.Get(ctx, id)
+	if err != nil {
+		log.Errorf("failed to get exercise %d: %s", id, err)
+		http.Error(w, "exercise not found", http.StatusBadRequest)
+		return
+	}
+
+	exJson, err := json.Marshal(e)
+	if err != nil {
+		log.Errorf("failed to marshal exercise: %s", err)
+		http.Error(w, "failed to marshal exercise", http.StatusInternalServerError)
+		return
+	}
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, exJson, http.StatusOK)
+}
+
 func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "gymStatsHandler.delete")
 	defer span.End()
@@ -92,7 +132,16 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pkg.WriteJSONResponseOK(w, fmt.Sprintf(`{"deleted":%d}`, id))
+	deleteRespJson, err := json.Marshal(DeleteExerciseResponse{
+		DeletedID: id,
+	})
+	if err != nil {
+		log.Errorf("failed to marshal delete response: %s", err)
+		http.Error(w, "failed to marshal delete response", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteJSONResponseOK(w, string(deleteRespJson))
 }
 
 func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
@@ -106,10 +155,6 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("list exercises error: %s", err)
 		http.Error(w, "failed to get exercises", http.StatusInternalServerError)
 		return
-	}
-
-	if len(exercises) == 0 {
-		exercises = []Exercise{}
 	}
 
 	exercisesJson, err := json.Marshal(exercises)
@@ -149,7 +194,15 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	updateRespJson, err := json.Marshal(UpdateExerciseResponse{
+		UpdatedID: exercise.ID,
+	})
+	if err != nil {
+		log.Errorf("failed to marshal update response: %s", err)
+		http.Error(w, "failed to marshal update response", http.StatusInternalServerError)
+		return
+	}
+
 	log.Debugf("exercise updated: [%s] [%s]: %d", exercise.MuscleGroup, exercise.ExerciseID, exercise.ID)
-	pkg.WriteTextResponseOK(w, fmt.Sprintf("updated:%d", exercise.ID))
-	pkg.WriteResponse(w, pkg.ContentType.Text, fmt.Sprintf("updated:%d", exercise.ID), http.StatusCreated)
+	pkg.WriteJSONResponseOK(w, string(updateRespJson))
 }
