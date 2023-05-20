@@ -41,6 +41,7 @@ import (
 
 type Server struct {
 	httpServer            *http.Server
+	metricsHttpServer     *http.Server
 	gymstatsIOSAppSecret  string // used with my gym tracking ios app
 	browserRequestsSecret string // used in netlog, when posting new visit
 	versionInfo           string
@@ -88,6 +89,10 @@ func NewServer(
 		return nil, fmt.Errorf("new db pool: %w", err)
 	}
 
+	if err := dbPool.Ping(ctx); err != nil {
+		log.Warnf("failed to ping db: %s", err)
+	}
+
 	pgxpoolCollector := pgxpoolprometheus.NewCollector(
 		dbPool,
 		map[string]string{"db_name": "serj_tubin_com_db"},
@@ -102,7 +107,7 @@ func NewServer(
 		DB:       0, // use default DB
 	})
 
-	rdbStatus := rdb.Ping(context.Background())
+	rdbStatus := rdb.Ping(ctx)
 	if err := rdbStatus.Err(); err != nil {
 		log.Errorf("--> failed to ping redis: %s", err)
 	} else {
@@ -140,7 +145,12 @@ func NewServer(
 		dbPool:                dbPool,
 		gymstatsIOSAppSecret:  params.GymstatsIOSAppSecret,
 		browserRequestsSecret: params.BrowserRequestsSecret,
-		geoIp:                 geoip.NewApi(geoip.DefaultIpInfoBaseURL, params.IpInfoAPIKey, tracedHttpClient, rdb),
+		geoIp: geoip.NewApi(
+			geoip.DefaultIpInfoBaseURL,
+			params.IpInfoAPIKey,
+			tracedHttpClient,
+			rdb,
+		),
 		weatherApi: weather.NewApi(
 			"http://api.openweathermap.org/data/2.5",
 			params.OpenWeatherApiKey,
@@ -221,6 +231,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	gymStatsHandler := gymstats.NewHandler(gymstats.NewRepo(s.dbPool))
 	r.HandleFunc("/gymstats", gymStatsHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise")
+	r.HandleFunc("/gymstats/exercise/{id}", gymStatsHandler.HandleGet).Methods("GET", "OPTIONS").Name("get-exercise")
 	r.HandleFunc("/gymstats/{id}", gymStatsHandler.HandleUpdate).Methods("POST", "OPTIONS").Name("update-exercise")
 	r.HandleFunc("/gymstats/{id}", gymStatsHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise")
 	r.HandleFunc("/gymstats/list", gymStatsHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
@@ -256,9 +267,22 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	s.httpServer = &http.Server{
 		Handler:      router,
 		Addr:         ipAndPort,
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+		WriteTimeout: time.Minute,
+		ReadTimeout:  time.Minute,
 		ConnState:    s.connStateMetrics,
+	}
+
+	metricsRouter := mux.NewRouter()
+	metricsRouter.Handle("/metrics", metricsmiddleware.
+		New(s.promRegistry, nil).
+		WrapHandler("/metrics", promhttp.HandlerFor(
+			s.promRegistry,
+			promhttp.HandlerOpts{}),
+		))
+	metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
+	s.metricsHttpServer = &http.Server{
+		Addr:    metricsAddr,
+		Handler: metricsRouter,
 	}
 
 	go func() {
@@ -270,19 +294,11 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	}()
 
 	go func() {
-		metricsAddr := net.JoinHostPort(s.config.PrometheusMetricsHost, s.config.PrometheusMetricsPort)
 		log.Debugf(" > metrics listening on: [%s]", metricsAddr)
-
-		// Expose the registered metrics via HTTP.
-		http.Handle(
-			"/metrics",
-			metricsmiddleware.
-				New(s.promRegistry, nil).
-				WrapHandler("/metrics", promhttp.HandlerFor(
-					s.promRegistry,
-					promhttp.HandlerOpts{}),
-				))
-		log.Errorln(http.ListenAndServe(metricsAddr, nil))
+		err := s.metricsHttpServer.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("metrics service, listen and serve: %s", err)
+		}
 	}()
 
 	s.metricsManager.GaugeLifeSignal.Set(1)
@@ -326,10 +342,16 @@ func (s *Server) GracefulShutdown() {
 	maxWaitDuration := time.Second * 15
 	ctx, timeoutCancel := context.WithTimeout(context.Background(), maxWaitDuration)
 	defer timeoutCancel()
+
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		log.Error(" >>> failed to gracefully shutdown http server")
 	}
 	log.Warnln("server shut down")
+
+	if err := s.metricsHttpServer.Shutdown(ctx); err != nil {
+		log.Error(" >>> failed to gracefully shutdown metrics http server")
+	}
+	log.Warnln("metrics server shut down")
 }
 
 func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {

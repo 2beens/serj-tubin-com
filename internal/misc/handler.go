@@ -19,6 +19,11 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type Handler struct {
 	geoIp         *geoip.Api
 	quotesManager *QuotesManager
@@ -131,6 +136,10 @@ func (handler *Handler) handleGetMyIp(w http.ResponseWriter, r *http.Request) {
 	pkg.WriteTextResponseOK(w, ip)
 }
 
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
 func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "miscHandler.login")
 	defer span.End()
@@ -141,12 +150,7 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type loginRequest struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-
-	var loginReq loginRequest
+	var loginReq LoginRequest
 	if r.Header.Get("Content-Type") == "application/json" {
 		if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
 			log.Errorf("login, unmarshal json params: %s", err)
@@ -159,7 +163,7 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "parse form error", http.StatusInternalServerError)
 			return
 		}
-		loginReq = loginRequest{
+		loginReq = LoginRequest{
 			Username: r.Form.Get("username"),
 			Password: r.Form.Get("password"),
 		}
@@ -184,8 +188,16 @@ func (handler *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tokenResp := LoginResponse{Token: token}
+	tokenRespBytes, err := json.Marshal(tokenResp)
+	if err != nil {
+		log.Errorf("login, marshal token response: %s", err)
+		http.Error(w, "login failed", http.StatusInternalServerError)
+		return
+	}
+
 	log.Trace("new login success")
-	pkg.WriteJSONResponseOK(w, fmt.Sprintf(`{"token": "%s"}`, token))
+	pkg.WriteJSONResponseOK(w, string(tokenRespBytes))
 }
 
 func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {

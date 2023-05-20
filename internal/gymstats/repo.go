@@ -7,10 +7,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrExerciseNotFound = errors.New("exercise not found")
+
+type ListParams struct {
+	Limit int
+}
 
 type Exercise struct {
 	ID          int               `json:"id"`
@@ -100,31 +105,8 @@ func (r *Repo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-type ListParams struct {
-	Limit int
-}
-
-func (r *Repo) List(ctx context.Context, params ListParams) ([]Exercise, error) {
-	rows, err := r.db.Query(
-		ctx,
-		`
-			SELECT
-				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
-			FROM exercise
-			ORDER BY created_at DESC
-			LIMIT $1;`,
-		params.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	var notes []Exercise
+func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
+	var exercises []Exercise
 	for rows.Next() {
 		var id int
 		var exerciseID string
@@ -149,8 +131,8 @@ func (r *Repo) List(ctx context.Context, params ListParams) ([]Exercise, error) 
 		// parse metadata field from JSON to map[string]string
 		if len(metadataBytes) > 0 {
 			var metadataMap map[string]interface{}
-			if err = json.Unmarshal(metadataBytes, &metadataMap); err != nil {
-				return nil, err
+			if err := json.Unmarshal(metadataBytes, &metadataMap); err != nil {
+				return nil, fmt.Errorf("unmarshal metadata for exercise %d: %w", id, err)
 			}
 
 			e.Metadata = make(map[string]string)
@@ -161,8 +143,62 @@ func (r *Repo) List(ctx context.Context, params ListParams) ([]Exercise, error) 
 			e.Metadata = make(map[string]string)
 		}
 
-		notes = append(notes, e)
+		exercises = append(exercises, e)
 	}
 
-	return notes, nil
+	return exercises, nil
+}
+
+func (r *Repo) Get(ctx context.Context, id int) (*Exercise, error) {
+	rows, err := r.db.Query(
+		ctx,
+		`
+			SELECT
+				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
+			FROM exercise
+			WHERE id = $1;`,
+		id,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	exercises, err := r.rows2exercises(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(exercises) != 1 {
+		return nil, ErrExerciseNotFound
+	}
+
+	return &exercises[0], nil
+}
+
+func (r *Repo) List(ctx context.Context, params ListParams) ([]Exercise, error) {
+	rows, err := r.db.Query(
+		ctx,
+		`
+			SELECT
+				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
+			FROM exercise
+			ORDER BY created_at DESC
+			LIMIT $1;`,
+		params.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return r.rows2exercises(rows)
 }

@@ -1,4 +1,4 @@
-//go:build integration_test || all_tests
+//go:build all_tests
 
 package netlog
 

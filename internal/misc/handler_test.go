@@ -2,7 +2,7 @@ package misc
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -220,8 +220,11 @@ func TestLogin(t *testing.T) {
 	req.Header.Set("User-Agent", "test-agent")
 
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, fmt.Sprintf(`{"token": "%s"}`, testToken), rr.Body.String())
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var loginResponse LoginResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &loginResponse))
+	assert.Equal(t, testToken, loginResponse.Token)
 
 	// next time fails
 	rr = httptest.NewRecorder()
