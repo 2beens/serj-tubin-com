@@ -68,6 +68,14 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	s.teardown = make([]func(), 0)
 
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("test suite panic: %s", r)
+			s.TearDownSuite()
+			s.T().FailNow()
+		}
+	}()
+
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	var err error
 	s.dockerPool, err = dockertest.NewPool("")

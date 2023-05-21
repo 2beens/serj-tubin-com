@@ -270,11 +270,11 @@ func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	log.Tracef("get blogs - page %s size %s", pageStr, sizeStr)
 
 	if page < 1 {
-		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusInternalServerError)
+		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusBadRequest)
 		return
 	}
 	if size < 1 {
-		http.Error(w, "invalid size (has to be non-zero value)", http.StatusInternalServerError)
+		http.Error(w, "invalid size (has to be non-zero value)", http.StatusBadRequest)
 		return
 	}
 

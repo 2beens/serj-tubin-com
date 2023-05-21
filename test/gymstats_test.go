@@ -156,7 +156,7 @@ func (s *IntegrationTestSuite) getExercisesPageRequest(ctx context.Context, page
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"GET",
-		fmt.Sprintf("%s//gymstats/page/%d/size/%d",
+		fmt.Sprintf("%s/gymstats/page/%d/size/%d",
 			serverEndpoint, page, size,
 		),
 		nil,
@@ -357,7 +357,41 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		}
 
 		// get exercises page
-		exercises := s.getExercisesPageRequest(ctx, 0, 10)
-		require.Len(t, exercises, 10)
+		exercisesPageResp := s.getExercisesPageRequest(ctx, 1, 10)
+		require.Len(t, exercisesPageResp.Exercises, 10)
+		assert.Equal(t, total, exercisesPageResp.Total)
+		for i := 0; i < 10; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"test": "false",
+				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
+
+		// will move the offset from 10 to 5, and get last 10
+		exercisesPageResp = s.getExercisesPageRequest(ctx, 2, 10)
+		require.Len(t, exercisesPageResp.Exercises, 10)
+		assert.Equal(t, total, exercisesPageResp.Total)
+		for i := 0; i < 10; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i+5), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"test": "false",
+				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
+
+		exercisesPageResp = s.getExercisesPageRequest(ctx, 2, 3)
+		require.Len(t, exercisesPageResp.Exercises, 3)
+		assert.Equal(t, total, exercisesPageResp.Total)
+		for i := 0; i < 3; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i+3), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"test": "false",
+				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
 	})
 }

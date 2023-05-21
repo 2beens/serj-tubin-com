@@ -231,18 +231,18 @@ func (handler *Handler) HandleGetPage(w http.ResponseWriter, r *http.Request) {
 	size, err := strconv.Atoi(sizeStr)
 	if err != nil {
 		log.Errorf("handle get exercises page, from <size> param: %s", err)
-		http.Error(w, "parse form error, parameter <size>", http.StatusInternalServerError)
+		http.Error(w, "parse form error, parameter <size>", http.StatusBadRequest)
 		return
 	}
 
 	log.Tracef("get exercises - page %s size %s", pageStr, sizeStr)
 
 	if page < 1 {
-		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusInternalServerError)
+		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusBadRequest)
 		return
 	}
 	if size < 1 {
-		http.Error(w, "invalid size (has to be non-zero value)", http.StatusInternalServerError)
+		http.Error(w, "invalid size (has to be non-zero value)", http.StatusBadRequest)
 		return
 	}
 

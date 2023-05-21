@@ -117,9 +117,10 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 			}
 
 			userAgent := r.Header.Get("User-Agent")
-			isCurlOrIOS := strings.HasPrefix(userAgent, "curl/") ||
-				strings.HasPrefix(userAgent, "GymStats/1")
-			if isCurlOrIOS && strings.HasPrefix(r.URL.Path, "/gymstats") {
+			isGymstatsAllowedAgent := strings.HasPrefix(userAgent, "curl/") ||
+				strings.HasPrefix(userAgent, "GymStats/1") ||
+				strings.HasPrefix(userAgent, "test-agent")
+			if isGymstatsAllowedAgent && strings.HasPrefix(r.URL.Path, "/gymstats") {
 				// requests coming from GymStats iOS app or curl
 				receivedAuthToken := r.Header.Get("Authorization")
 				if h.gymstatsIOSAppSecret != receivedAuthToken {
