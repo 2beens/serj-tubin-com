@@ -116,7 +116,10 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 				return
 			}
 
-			if strings.HasPrefix(r.URL.Path, "/gymstats") {
+			userAgent := r.Header.Get("User-Agent")
+			if strings.HasPrefix(userAgent, "GymStats/1") &&
+				strings.HasPrefix(r.URL.Path, "/gymstats") {
+				// requests coming from GymStats iOS app
 				receivedAuthToken := r.Header.Get("Authorization")
 				if h.gymstatsIOSAppSecret != receivedAuthToken {
 					http.Error(w, "no can do", http.StatusUnauthorized)
