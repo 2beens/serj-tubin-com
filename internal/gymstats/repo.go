@@ -7,6 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -105,50 +110,6 @@ func (r *Repo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
-	var exercises []Exercise
-	for rows.Next() {
-		var id int
-		var exerciseID string
-		var muscleGroup string
-		var kilos int
-		var reps int
-		var metadataBytes []byte
-		var createdAt time.Time
-		if err := rows.Scan(&id, &exerciseID, &muscleGroup, &kilos, &reps, &metadataBytes, &createdAt); err != nil {
-			return nil, err
-		}
-
-		e := Exercise{
-			ID:          id,
-			ExerciseID:  exerciseID,
-			MuscleGroup: muscleGroup,
-			Kilos:       kilos,
-			Reps:        reps,
-			CreatedAt:   createdAt,
-		}
-
-		// parse metadata field from JSON to map[string]string
-		if len(metadataBytes) > 0 {
-			var metadataMap map[string]interface{}
-			if err := json.Unmarshal(metadataBytes, &metadataMap); err != nil {
-				return nil, fmt.Errorf("unmarshal metadata for exercise %d: %w", id, err)
-			}
-
-			e.Metadata = make(map[string]string)
-			for k, v := range metadataMap {
-				e.Metadata[k] = v.(string)
-			}
-		} else {
-			e.Metadata = make(map[string]string)
-		}
-
-		exercises = append(exercises, e)
-	}
-
-	return exercises, nil
-}
-
 func (r *Repo) Get(ctx context.Context, id int) (*Exercise, error) {
 	rows, err := r.db.Query(
 		ctx,
@@ -201,4 +162,129 @@ func (r *Repo) List(ctx context.Context, params ListParams) ([]Exercise, error) 
 	}
 
 	return r.rows2exercises(rows)
+}
+
+func (r *Repo) ListPage(ctx context.Context, page, size int) (_ []Exercise, total int, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.page")
+	span.SetAttributes(attribute.Int("page", page))
+	span.SetAttributes(attribute.Int("size", size))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+
+	limit := size
+	offset := (page - 1) * size
+	countAll, err := r.ExercisesCount(ctx)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	if countAll <= limit {
+		all, err := r.List(ctx, ListParams{Limit: limit})
+		return all, len(all), err
+	}
+
+	if countAll-offset < limit {
+		offset = countAll - limit
+	}
+
+	log.Tracef("getting exercises, total count %d, limit %d, offset %d", countAll, limit, offset)
+
+	rows, err := r.db.Query(
+		ctx,
+		`
+			SELECT * FROM exercise
+			ORDER BY created_at DESC
+			LIMIT $1
+			OFFSET $2;
+		`,
+		limit,
+		offset,
+	)
+	if err != nil {
+		return nil, -1, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, -1, err
+	}
+
+	exercises, err := r.rows2exercises(rows)
+	if err != nil {
+		return nil, -1, err
+	}
+	return exercises, countAll, nil
+}
+
+func (r *Repo) ExercisesCount(ctx context.Context) (int, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.count")
+	defer span.End()
+
+	rows, err := r.db.Query(ctx, `SELECT COUNT(*) FROM exercise`)
+	if err != nil {
+		return -1, err
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return -1, err
+	}
+
+	if rows.Next() {
+		var count int
+		if err := rows.Scan(&count); err == nil {
+			return count, nil
+		}
+	}
+
+	return -1, errors.New("unexpected error, failed to get exercises count")
+}
+
+func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
+	var exercises []Exercise
+	for rows.Next() {
+		var id int
+		var exerciseID string
+		var muscleGroup string
+		var kilos int
+		var reps int
+		var metadataBytes []byte
+		var createdAt time.Time
+		if err := rows.Scan(&id, &exerciseID, &muscleGroup, &kilos, &reps, &metadataBytes, &createdAt); err != nil {
+			return nil, err
+		}
+
+		e := Exercise{
+			ID:          id,
+			ExerciseID:  exerciseID,
+			MuscleGroup: muscleGroup,
+			Kilos:       kilos,
+			Reps:        reps,
+			CreatedAt:   createdAt,
+		}
+
+		// parse metadata field from JSON to map[string]string
+		if len(metadataBytes) > 0 {
+			var metadataMap map[string]interface{}
+			if err := json.Unmarshal(metadataBytes, &metadataMap); err != nil {
+				return nil, fmt.Errorf("unmarshal metadata for exercise %d: %w", id, err)
+			}
+
+			e.Metadata = make(map[string]string)
+			for k, v := range metadataMap {
+				e.Metadata[k] = v.(string)
+			}
+		} else {
+			e.Metadata = make(map[string]string)
+		}
+
+		exercises = append(exercises, e)
+	}
+
+	return exercises, nil
 }
