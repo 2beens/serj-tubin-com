@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"testing"
 	"time"
@@ -16,10 +17,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func (s *IntegrationTestSuite) deleteAllExercises(ctx context.Context) {
+	_, err := s.dbPool.Exec(ctx, "DELETE FROM exercise")
+	require.NoError(s.T(), err)
+}
+
 func (s *IntegrationTestSuite) newExerciseRequest(
 	ctx context.Context,
-	exerciseJson []byte,
+	exercise gymstats.Exercise,
 ) gymstats.Exercise {
+	exerciseJson, err := json.Marshal(exercise)
+	require.NoError(s.T(), err)
+
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST", fmt.Sprintf("%s/gymstats", serverEndpoint),
@@ -143,6 +152,34 @@ func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context) []gymst
 	return exercises
 }
 
+func (s *IntegrationTestSuite) getExercisesPageRequest(ctx context.Context, page, size int) gymstats.ExercisesPageResponse {
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"GET",
+		fmt.Sprintf("%s/gymstats/page/%d/size/%d",
+			serverEndpoint, page, size,
+		),
+		nil,
+	)
+	require.NoError(s.T(), err)
+	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
+
+	resp, err := s.httpClient.Do(req)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+
+	var exercisesPageResponse gymstats.ExercisesPageResponse
+	err = json.Unmarshal(respBytes, &exercisesPageResponse)
+	require.NoError(s.T(), err)
+
+	return exercisesPageResponse
+}
+
 func (s *IntegrationTestSuite) TestGymStats() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -156,8 +193,6 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		Reps:        10,
 		CreatedAt:   now.Add(-time.Minute * 10),
 	}
-	e1Json, err := json.Marshal(e1)
-	require.NoError(s.T(), err)
 	e2 := gymstats.Exercise{
 		ExerciseID:  "ex2",
 		MuscleGroup: "legs",
@@ -168,8 +203,6 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			"test": "true",
 		},
 	}
-	e2Json, err := json.Marshal(e2)
-	require.NoError(s.T(), err)
 	e3 := gymstats.Exercise{
 		ExerciseID:  "ex3",
 		MuscleGroup: "legs",
@@ -181,10 +214,10 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			"env":  "stage",
 		},
 	}
-	e3Json, err := json.Marshal(e3)
-	require.NoError(s.T(), err)
 
 	s.T().Run("authorization missing", func(t *testing.T) {
+		e1Json, err := json.Marshal(e1)
+		require.NoError(t, err)
 		req, err := http.NewRequestWithContext(
 			ctx,
 			"POST", fmt.Sprintf("%s/gymstats", serverEndpoint),
@@ -209,6 +242,8 @@ func (s *IntegrationTestSuite) TestGymStats() {
 	})
 
 	s.T().Run("authorization present, but invalid", func(t *testing.T) {
+		e1Json, err := json.Marshal(e1)
+		require.NoError(t, err)
 		req, err := http.NewRequestWithContext(
 			ctx,
 			"POST", fmt.Sprintf("%s/gymstats", serverEndpoint),
@@ -235,13 +270,14 @@ func (s *IntegrationTestSuite) TestGymStats() {
 	})
 
 	s.T().Run("authorization present", func(t *testing.T) {
+		s.deleteAllExercises(context.Background())
 		// before we add anything, no exercises should be returned
 		require.Len(t, s.listExercisesRequest(ctx), 0)
 
 		//// now add some exercises
-		addedE1 := s.newExerciseRequest(ctx, e1Json)
-		addedE2 := s.newExerciseRequest(ctx, e2Json)
-		addedE3 := s.newExerciseRequest(ctx, e3Json)
+		addedE1 := s.newExerciseRequest(ctx, e1)
+		addedE2 := s.newExerciseRequest(ctx, e2)
+		addedE3 := s.newExerciseRequest(ctx, e3)
 		e1.ID, e2.ID, e3.ID = 1, 2, 3
 
 		assert.Equal(t, e1.CreatedAt.Truncate(time.Second).In(time.UTC), addedE1.CreatedAt.Truncate(time.Second).In(time.UTC))
@@ -297,5 +333,65 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			"test": "false",
 			"env":  "stage",
 		}, updatedEx3.Metadata)
+	})
+
+	s.T().Run("exercises page with authorization present", func(t *testing.T) {
+		s.deleteAllExercises(context.Background())
+		require.Len(t, s.listExercisesRequest(ctx), 0)
+
+		// add some exercises
+		total := 15
+		now := time.Now()
+		for i := 0; i < total; i++ {
+			s.newExerciseRequest(ctx, gymstats.Exercise{
+				ExerciseID:  fmt.Sprintf("exercise-%d", i),
+				MuscleGroup: "legs",
+				Kilos:       rand.Intn(100),
+				Reps:        rand.Intn(20),
+				CreatedAt:   now.Add(-time.Minute * time.Duration(i)),
+				Metadata: map[string]string{
+					"test": "false",
+					"env":  "stage",
+				},
+			})
+		}
+
+		// get exercises page
+		exercisesPageResp := s.getExercisesPageRequest(ctx, 1, 10)
+		require.Len(t, exercisesPageResp.Exercises, 10)
+		assert.Equal(t, total, exercisesPageResp.Total)
+		for i := 0; i < 10; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"test": "false",
+				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
+
+		// will move the offset from 10 to 5, and get last 10
+		exercisesPageResp = s.getExercisesPageRequest(ctx, 2, 10)
+		require.Len(t, exercisesPageResp.Exercises, 10)
+		assert.Equal(t, total, exercisesPageResp.Total)
+		for i := 0; i < 10; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i+5), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"test": "false",
+				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
+
+		exercisesPageResp = s.getExercisesPageRequest(ctx, 2, 3)
+		require.Len(t, exercisesPageResp.Exercises, 3)
+		assert.Equal(t, total, exercisesPageResp.Total)
+		for i := 0; i < 3; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i+3), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"test": "false",
+				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
 	})
 }

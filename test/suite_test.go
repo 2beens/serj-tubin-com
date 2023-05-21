@@ -2,7 +2,6 @@ package test
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +9,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/2beens/serjtubincom/internal/db"
 
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
@@ -38,7 +39,7 @@ var (
 type IntegrationTestSuite struct {
 	suite.Suite
 
-	DB         *sql.DB
+	dbPool     *pgxpool.Pool
 	dockerPool *dockertest.Pool
 	server     *internal.Server
 	teardown   []func()
@@ -66,6 +67,14 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	}
 
 	s.teardown = make([]func(), 0)
+
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("test suite panic: %s", r)
+			s.TearDownSuite()
+			s.T().FailNow()
+		}
+	}()
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	var err error
@@ -117,6 +126,17 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	}
 	fmt.Println("server created")
 
+	// initialize the database
+	s.dbPool, err = db.NewDBPool(ctx, db.NewDBPoolParams{
+		DBHost:         "localhost",
+		DBPort:         pgPort,
+		DBName:         "serj_blogs",
+		TracingEnabled: false,
+	})
+	if err != nil {
+		log.Fatalf("create new db pool: %s", err)
+	}
+
 	s.server.Serve(ctx, cfg.Host, cfg.Port)
 	fmt.Println("server started")
 }
@@ -128,10 +148,8 @@ func (s *IntegrationTestSuite) TearDownSuite() {
 
 func (s *IntegrationTestSuite) cleanup() {
 	fmt.Println(" --> cleaning up test suite...")
-	if s.DB != nil {
-		if err := s.DB.Close(); err != nil {
-			fmt.Printf(" --> test suite db close error: %s\n", err)
-		}
+	if s.dbPool != nil {
+		s.dbPool.Close()
 	}
 	fmt.Println(" --> test suite db closed")
 	if s.server != nil {
