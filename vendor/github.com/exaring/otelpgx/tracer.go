@@ -23,6 +23,7 @@ type Tracer struct {
 	tracer            trace.Tracer
 	attrs             []attribute.KeyValue
 	trimQuerySpanName bool
+	spanNameFunc      SpanNameFunc
 	logSQLStatement   bool
 	includeParams     bool
 }
@@ -31,6 +32,7 @@ type tracerConfig struct {
 	tp                trace.TracerProvider
 	attrs             []attribute.KeyValue
 	trimQuerySpanName bool
+	spanNameFunc      SpanNameFunc
 	logSQLStatement   bool
 	includeParams     bool
 }
@@ -43,6 +45,7 @@ func NewTracer(opts ...Option) *Tracer {
 			semconv.DBSystemPostgreSQL,
 		},
 		trimQuerySpanName: false,
+		spanNameFunc:      nil,
 		logSQLStatement:   true,
 		includeParams:     false,
 	}
@@ -55,6 +58,7 @@ func NewTracer(opts ...Option) *Tracer {
 		tracer:            cfg.tp.Tracer(internal.TracerName, trace.WithInstrumentationVersion(internal.InstrumentationVersion)),
 		attrs:             cfg.attrs,
 		trimQuerySpanName: cfg.trimQuerySpanName,
+		spanNameFunc:      cfg.spanNameFunc,
 		logSQLStatement:   cfg.logSQLStatement,
 		includeParams:     cfg.includeParams,
 	}
@@ -71,8 +75,15 @@ const sqlOperationUnknkown = "UNKNOWN"
 
 // sqlOperationName attempts to get the first 'word' from a given SQL query, which usually
 // is the operation name (e.g. 'SELECT').
-func sqlOperationName(query string) string {
-	parts := strings.Fields(query)
+func (t *Tracer) sqlOperationName(stmt string) string {
+	// If a custom function is provided, use that. Otherwise, fall back to the
+	// default implementation. This allows users to override the default
+	// behavior without having to reimplement it.
+	if t.spanNameFunc != nil {
+		return t.spanNameFunc(stmt)
+	}
+
+	parts := strings.Fields(stmt)
 	if len(parts) == 0 {
 		// Fall back to a fixed value to prevent creating lots of tracing operations
 		// differing only by the amount of whitespace in them (in case we'd fall back
@@ -82,13 +93,17 @@ func sqlOperationName(query string) string {
 	return strings.ToUpper(parts[0])
 }
 
-func appendConnectionAttributes(config *pgx.ConnConfig, opts []trace.SpanStartOption) {
+// connectionAttributesFromConfig returns a slice of SpanStartOptions that contain
+// attributes from the given connection config.
+func connectionAttributesFromConfig(config *pgx.ConnConfig) []trace.SpanStartOption {
 	if config != nil {
-		opts = append(opts,
+		return []trace.SpanStartOption{
 			trace.WithAttributes(attribute.String(string(semconv.NetPeerNameKey), config.Host)),
 			trace.WithAttributes(attribute.Int(string(semconv.NetPeerPortKey), int(config.Port))),
-			trace.WithAttributes(attribute.String(string(semconv.DBUserKey), config.User)))
+			trace.WithAttributes(attribute.String(string(semconv.DBUserKey), config.User)),
+		}
 	}
+	return nil
 }
 
 // TraceQueryStart is called at the beginning of Query, QueryRow, and Exec calls.
@@ -104,7 +119,7 @@ func (t *Tracer) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.T
 	}
 
 	if conn != nil {
-		appendConnectionAttributes(conn.Config(), opts)
+		opts = append(opts, connectionAttributesFromConfig(conn.Config())...)
 	}
 
 	if t.logSQLStatement {
@@ -116,7 +131,7 @@ func (t *Tracer) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.T
 
 	spanName := "query " + data.SQL
 	if t.trimQuerySpanName {
-		spanName = "query " + sqlOperationName(data.SQL)
+		spanName = "query " + t.sqlOperationName(data.SQL)
 	}
 
 	ctx, _ = t.tracer.Start(ctx, spanName, opts...)
@@ -149,7 +164,7 @@ func (t *Tracer) TraceCopyFromStart(ctx context.Context, conn *pgx.Conn, data pg
 	}
 
 	if conn != nil {
-		appendConnectionAttributes(conn.Config(), opts)
+		opts = append(opts, connectionAttributesFromConfig(conn.Config())...)
 	}
 
 	ctx, _ = t.tracer.Start(ctx, "copy_from "+data.TableName.Sanitize(), opts...)
@@ -187,7 +202,7 @@ func (t *Tracer) TraceBatchStart(ctx context.Context, conn *pgx.Conn, data pgx.T
 	}
 
 	if conn != nil {
-		appendConnectionAttributes(conn.Config(), opts)
+		opts = append(opts, connectionAttributesFromConfig(conn.Config())...)
 	}
 
 	ctx, _ = t.tracer.Start(ctx, "batch start", opts...)
@@ -203,7 +218,7 @@ func (t *Tracer) TraceBatchQuery(ctx context.Context, conn *pgx.Conn, data pgx.T
 	}
 
 	if conn != nil {
-		appendConnectionAttributes(conn.Config(), opts)
+		opts = append(opts, connectionAttributesFromConfig(conn.Config())...)
 	}
 
 	if t.logSQLStatement {
@@ -216,7 +231,7 @@ func (t *Tracer) TraceBatchQuery(ctx context.Context, conn *pgx.Conn, data pgx.T
 
 	spanName := "batch query " + data.SQL
 	if t.trimQuerySpanName {
-		spanName = "query " + sqlOperationName(data.SQL)
+		spanName = "query " + t.sqlOperationName(data.SQL)
 	}
 
 	_, span := t.tracer.Start(ctx, spanName, opts...)
@@ -247,7 +262,7 @@ func (t *Tracer) TraceConnectStart(ctx context.Context, data pgx.TraceConnectSta
 	}
 
 	if data.ConnConfig != nil {
-		appendConnectionAttributes(data.ConnConfig, opts)
+		opts = append(opts, connectionAttributesFromConfig(data.ConnConfig)...)
 	}
 
 	ctx, _ = t.tracer.Start(ctx, "connect", opts...)
@@ -277,7 +292,7 @@ func (t *Tracer) TracePrepareStart(ctx context.Context, conn *pgx.Conn, data pgx
 	}
 
 	if conn != nil {
-		appendConnectionAttributes(conn.Config(), opts)
+		opts = append(opts, connectionAttributesFromConfig(conn.Config())...)
 	}
 
 	if t.logSQLStatement {
@@ -286,7 +301,7 @@ func (t *Tracer) TracePrepareStart(ctx context.Context, conn *pgx.Conn, data pgx
 
 	spanName := "prepare " + data.SQL
 	if t.trimQuerySpanName {
-		spanName = "prepare " + sqlOperationName(data.SQL)
+		spanName = "prepare " + t.sqlOperationName(data.SQL)
 	}
 
 	ctx, _ = t.tracer.Start(ctx, spanName, opts...)

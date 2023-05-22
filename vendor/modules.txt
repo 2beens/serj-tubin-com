@@ -75,7 +75,7 @@ github.com/docker/go-connections/nat
 # github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
-# github.com/exaring/otelpgx v0.4.1
+# github.com/exaring/otelpgx v0.5.0
 ## explicit; go 1.18
 github.com/exaring/otelpgx
 github.com/exaring/otelpgx/internal
