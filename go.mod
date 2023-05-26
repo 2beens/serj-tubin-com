@@ -17,7 +17,7 @@ require (
 	github.com/honeycombio/otel-config-go v1.9.0
 	github.com/ipinfo/go/v2 v2.9.2
 	github.com/jackc/pgx/v5 v5.3.1
-	github.com/lib/pq v0.0.0-20180327071824-d34b9ff171c2
+	github.com/lib/pq v1.10.9
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/prometheus/client_golang v1.15.1
 	github.com/prometheus/client_model v0.3.0
