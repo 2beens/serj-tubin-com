@@ -40,6 +40,32 @@ func (s *IntegrationTestSuite) TestLogin() {
 				assert.NotEmpty(t, loginResp.Token)
 			},
 		},
+		"good creds, then logout": {
+			loginReq: misc.LoginRequest{
+				Username: testUsername,
+				Password: testPassword,
+			},
+			expectedStatusCode: http.StatusOK,
+			assertFunc: func(resp *http.Response) {
+				respBytes, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+
+				var loginResp misc.LoginResponse
+				require.NoError(t, json.Unmarshal(respBytes, &loginResp))
+				assert.NotEmpty(t, loginResp.Token)
+
+				req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/a/logout", serverEndpoint), nil)
+				require.NoError(t, err)
+				req.Header.Set("User-Agent", "test-agent")
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("X-SERJ-TOKEN", loginResp.Token)
+
+				logoutResp, err := s.httpClient.Do(req)
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusOK, logoutResp.StatusCode)
+				resp.Body.Close()
+			},
+		},
 		"bad password": {
 			loginReq: misc.LoginRequest{
 				Username: testUsername,

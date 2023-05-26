@@ -147,10 +147,6 @@ func (s *IntegrationTestSuite) TearDownSuite() {
 }
 
 func (s *IntegrationTestSuite) cleanup() {
-	fmt.Println(" --> cleaning up test suite...")
-	if s.dbPool != nil {
-		s.dbPool.Close()
-	}
 	fmt.Println(" --> test suite db closed")
 	if s.server != nil {
 		s.server.GracefulShutdown()
@@ -158,6 +154,10 @@ func (s *IntegrationTestSuite) cleanup() {
 	fmt.Println(" --> test suite server shut down")
 	for _, teardown := range s.teardown {
 		teardown()
+	}
+	fmt.Println(" --> cleaning up test suite...")
+	if s.dbPool != nil {
+		s.dbPool.Close()
 	}
 	fmt.Println(" --> test suite cleanup done")
 }
