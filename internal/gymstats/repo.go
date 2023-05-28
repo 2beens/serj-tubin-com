@@ -290,5 +290,9 @@ func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
 		exercises = append(exercises, e)
 	}
 
+	if exercises == nil {
+		exercises = make([]Exercise, 0)
+	}
+
 	return exercises, nil
 }
