@@ -155,9 +155,29 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.list")
 	defer span.End()
 
-	exercises, err := handler.repo.List(ctx, ListParams{
-		Limit: 50,
-	})
+	limitParam := r.URL.Query().Get("limit")
+	limit, err := strconv.Atoi(limitParam)
+	if err != nil {
+		http.Error(w, "error, limit NaN", http.StatusBadRequest)
+		return
+	}
+
+	listParams := ListParams{
+		Limit: limit,
+	}
+	if muscleGroup := r.URL.Query().Get("group"); muscleGroup != "" {
+		listParams.MuscleGroup = &muscleGroup
+	}
+	if exerciseID := r.URL.Query().Get("exercise_id"); exerciseID != "" {
+		listParams.ExerciseID = &exerciseID
+	}
+
+	if limit > 1000 {
+		http.Error(w, "error, limit too high, use pagination instead in that case", http.StatusBadRequest)
+		return
+	}
+
+	exercises, err := handler.repo.List(ctx, listParams)
 	if err != nil {
 		log.Errorf("list exercises error: %s", err)
 		http.Error(w, "failed to get exercises", http.StatusInternalServerError)
