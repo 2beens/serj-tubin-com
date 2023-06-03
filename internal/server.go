@@ -234,8 +234,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/exercise/{id}", gymStatsHandler.HandleGet).Methods("GET", "OPTIONS").Name("get-exercise")
 	r.HandleFunc("/gymstats/{id}", gymStatsHandler.HandleUpdate).Methods("POST", "OPTIONS").Name("update-exercise")
 	r.HandleFunc("/gymstats/{id}", gymStatsHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise")
-	r.HandleFunc("/gymstats/list", gymStatsHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
-	r.HandleFunc("/gymstats/page/{page}/size/{size}", gymStatsHandler.HandleGetPage).Methods("GET").Name("exercises-page")
+	r.HandleFunc("/gymstats/list/page/{page}/size/{size}", gymStatsHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {

@@ -33,13 +33,13 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 		ID:        1,
 		Title:     "title1",
 		Content:   "content1",
-		CreatedAt: now,
+		CreatedAt: now.Add(-time.Hour),
 	}
 	n2 := &Note{
 		ID:        2,
 		Title:     "title2",
 		Content:   "content2",
-		CreatedAt: now,
+		CreatedAt: now.Add(-time.Hour * 2),
 	}
 
 	ctx := context.Background()
