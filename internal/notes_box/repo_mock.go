@@ -3,6 +3,7 @@ package notes_box
 import (
 	"context"
 	"errors"
+	"sort"
 )
 
 type repoMock struct {
@@ -50,5 +51,8 @@ func (r *repoMock) List(context.Context) ([]Note, error) {
 	for _, n := range r.notes {
 		notes = append(notes, *n)
 	}
+	sort.Slice(notes, func(i, j int) bool {
+		return notes[i].CreatedAt.After(notes[j].CreatedAt)
+	})
 	return notes, nil
 }

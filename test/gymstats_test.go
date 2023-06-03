@@ -8,10 +8,13 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/gymstats"
+	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -131,8 +134,19 @@ func (s *IntegrationTestSuite) deleteExerciseRequest(ctx context.Context, id int
 	return deleteResp
 }
 
-func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context) []gymstats.Exercise {
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/gymstats/list", serverEndpoint), nil)
+func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params gymstats.ListParams) []gymstats.Exercise {
+	urlVals := url.Values{}
+	if params.Limit > 0 {
+		urlVals.Add("limit", strconv.Itoa(params.Limit))
+	}
+	if params.MuscleGroup != nil {
+		urlVals.Add("group", *params.MuscleGroup)
+	}
+	if params.ExerciseID != nil {
+		urlVals.Add("exercise_id", *params.ExerciseID)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/gymstats/list?%s", serverEndpoint, urlVals.Encode()), nil)
 	require.NoError(s.T(), err)
 	req.Header.Set("User-Agent", "test-agent")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
@@ -204,6 +218,16 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		},
 	}
 	e3 := gymstats.Exercise{
+		ExerciseID:  "ex2",
+		MuscleGroup: "legs",
+		Kilos:       220,
+		Reps:        8,
+		CreatedAt:   now.Add(-time.Minute * 4),
+		Metadata: map[string]string{
+			"test": "true",
+		},
+	}
+	e4 := gymstats.Exercise{
 		ExerciseID:  "ex3",
 		MuscleGroup: "legs",
 		Kilos:       210,
@@ -272,36 +296,62 @@ func (s *IntegrationTestSuite) TestGymStats() {
 	s.T().Run("authorization present", func(t *testing.T) {
 		s.deleteAllExercises(context.Background())
 		// before we add anything, no exercises should be returned
-		require.Len(t, s.listExercisesRequest(ctx), 0)
+		require.Len(t, s.listExercisesRequest(ctx, gymstats.ListParams{Limit: 50}), 0)
 
 		//// now add some exercises
 		addedE1 := s.newExerciseRequest(ctx, e1)
 		addedE2 := s.newExerciseRequest(ctx, e2)
 		addedE3 := s.newExerciseRequest(ctx, e3)
-		e1.ID, e2.ID, e3.ID = 1, 2, 3
+		addedE4 := s.newExerciseRequest(ctx, e4)
+		e1.ID, e2.ID, e3.ID, e4.ID = 1, 2, 3, 4
 
 		assert.Equal(t, e1.CreatedAt.Truncate(time.Second).In(time.UTC), addedE1.CreatedAt.Truncate(time.Second).In(time.UTC))
 		assert.Equal(t, e2.CreatedAt.Truncate(time.Second).In(time.UTC), addedE2.CreatedAt.Truncate(time.Second).In(time.UTC))
 		assert.Equal(t, e3.CreatedAt.Truncate(time.Second).In(time.UTC), addedE3.CreatedAt.Truncate(time.Second).In(time.UTC))
+		assert.Equal(t, e4.CreatedAt.Truncate(time.Second).In(time.UTC), addedE4.CreatedAt.Truncate(time.Second).In(time.UTC))
 		addedE1.CreatedAt = e1.CreatedAt
 		addedE2.CreatedAt = e2.CreatedAt
 		addedE3.CreatedAt = e3.CreatedAt
+		addedE4.CreatedAt = e4.CreatedAt
 
 		assert.Equal(t, e1, addedE1)
 		assert.Equal(t, e2, addedE2)
 		assert.Equal(t, e3, addedE3)
+		assert.Equal(t, e4, addedE4)
 
-		assert.Len(t, s.listExercisesRequest(ctx), 3)
+		assert.Len(t, s.listExercisesRequest(ctx, gymstats.ListParams{Limit: 50}), 4)
+
+		exercises := s.listExercisesRequest(ctx,
+			gymstats.ListParams{
+				Limit:       50,
+				MuscleGroup: pkg.ToPtr("legs"),
+				ExerciseID:  pkg.ToPtr("ex2"),
+			},
+		)
+		assert.Len(t, exercises, 2)
+		assert.Equal(t, e3.ID, exercises[0].ID)
+		assert.Equal(t, e2.ID, exercises[1].ID)
 
 		// now delete one
 		deleteResp := s.deleteExerciseRequest(ctx, addedE2.ID)
 		require.Equal(t, addedE2.ID, deleteResp.DeletedID)
 
 		// now list again
-		exercises := s.listExercisesRequest(ctx)
-		require.Len(t, exercises, 2) // sorted by created_at desc
-		assert.Equal(t, e3.ID, exercises[0].ID)
-		assert.Equal(t, e1.ID, exercises[1].ID)
+		exercises = s.listExercisesRequest(ctx, gymstats.ListParams{Limit: 50})
+		require.Len(t, exercises, 3) // sorted by created_at desc
+		assert.Equal(t, e4.ID, exercises[0].ID)
+		assert.Equal(t, e3.ID, exercises[1].ID)
+		assert.Equal(t, e1.ID, exercises[2].ID)
+
+		exercises = s.listExercisesRequest(ctx,
+			gymstats.ListParams{
+				Limit:       50,
+				MuscleGroup: pkg.ToPtr("legs"),
+			},
+		)
+		assert.Len(t, exercises, 2)
+		assert.Equal(t, e4.ID, exercises[0].ID)
+		assert.Equal(t, e3.ID, exercises[1].ID)
 
 		// lastly, try update
 		newCreatedAt := e3.CreatedAt.Add(-time.Minute * 10).In(time.UTC)
@@ -337,7 +387,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 
 	s.T().Run("exercises page with authorization present", func(t *testing.T) {
 		s.deleteAllExercises(context.Background())
-		require.Len(t, s.listExercisesRequest(ctx), 0)
+		require.Len(t, s.listExercisesRequest(ctx, gymstats.ListParams{Limit: 50}), 0)
 
 		// add some exercises
 		total := 15

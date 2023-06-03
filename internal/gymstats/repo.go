@@ -19,7 +19,9 @@ import (
 var ErrExerciseNotFound = errors.New("exercise not found")
 
 type ListParams struct {
-	Limit int
+	ExerciseID  *string
+	MuscleGroup *string
+	Limit       int
 }
 
 type Exercise struct {
@@ -148,9 +150,11 @@ func (r *Repo) List(ctx context.Context, params ListParams) ([]Exercise, error) 
 			SELECT
 				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
 			FROM exercise
+				WHERE ($1::text IS NULL OR exercise_id = $1)
+				AND ($2::text IS NULL OR muscle_group = $2)
 			ORDER BY created_at DESC
-			LIMIT $1;`,
-		params.Limit,
+			LIMIT $3;`,
+		params.ExerciseID, params.MuscleGroup, params.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -284,6 +288,10 @@ func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
 		}
 
 		exercises = append(exercises, e)
+	}
+
+	if exercises == nil {
+		exercises = make([]Exercise, 0)
 	}
 
 	return exercises, nil
