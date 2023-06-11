@@ -19,9 +19,10 @@ import (
 var ErrExerciseNotFound = errors.New("exercise not found")
 
 type ListParams struct {
-	ExerciseID  *string
-	MuscleGroup *string
-	Limit       int
+	ExerciseID  string
+	MuscleGroup string
+	Page        int
+	Size        int
 }
 
 type Exercise struct {
@@ -44,7 +45,16 @@ func NewRepo(db *pgxpool.Pool) *Repo {
 	}
 }
 
-func (r *Repo) Add(ctx context.Context, exercise *Exercise) (*Exercise, error) {
+func (r *Repo) Add(ctx context.Context, exercise *Exercise) (_ *Exercise, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.add")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+
 	metadataJson, err := json.Marshal(exercise.Metadata)
 	if err != nil {
 		return nil, fmt.Errorf("marshal metadata: %w", err)
@@ -76,11 +86,23 @@ func (r *Repo) Add(ctx context.Context, exercise *Exercise) (*Exercise, error) {
 		return nil, fmt.Errorf("rows scan: %w", err)
 	}
 
+	span.SetAttributes(attribute.Int("exercise.id", id))
+
 	exercise.ID = id
 	return exercise, nil
 }
 
-func (r *Repo) Update(ctx context.Context, exercise *Exercise) error {
+func (r *Repo) Update(ctx context.Context, exercise *Exercise) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.update")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+	span.SetAttributes(attribute.Int("id", exercise.ID))
+
 	tag, err := r.db.Exec(
 		ctx,
 		`UPDATE exercise SET exercise_id = $1, muscle_group = $2, kilos = $3, reps = $4, metadata = $5, created_at = $6 WHERE id = $7;`,
@@ -97,7 +119,17 @@ func (r *Repo) Update(ctx context.Context, exercise *Exercise) error {
 	return nil
 }
 
-func (r *Repo) Delete(ctx context.Context, id int) error {
+func (r *Repo) Delete(ctx context.Context, id int) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.delete")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+	span.SetAttributes(attribute.Int("id", id))
+
 	tag, err := r.db.Exec(
 		ctx,
 		`DELETE FROM exercise WHERE id = $1`,
@@ -112,7 +144,17 @@ func (r *Repo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *Repo) Get(ctx context.Context, id int) (*Exercise, error) {
+func (r *Repo) Get(ctx context.Context, id int) (_ *Exercise, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.get")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+	span.SetAttributes(attribute.Int("id", id))
+
 	rows, err := r.db.Query(
 		ctx,
 		`
@@ -143,35 +185,8 @@ func (r *Repo) Get(ctx context.Context, id int) (*Exercise, error) {
 	return &exercises[0], nil
 }
 
-func (r *Repo) List(ctx context.Context, params ListParams) ([]Exercise, error) {
-	rows, err := r.db.Query(
-		ctx,
-		`
-			SELECT
-				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
-			FROM exercise
-				WHERE ($1::text IS NULL OR exercise_id = $1)
-				AND ($2::text IS NULL OR muscle_group = $2)
-			ORDER BY created_at DESC
-			LIMIT $3;`,
-		params.ExerciseID, params.MuscleGroup, params.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return r.rows2exercises(rows)
-}
-
-func (r *Repo) ListPage(ctx context.Context, page, size int) (_ []Exercise, total int, err error) {
-	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.page")
-	span.SetAttributes(attribute.Int("page", page))
-	span.SetAttributes(attribute.Int("size", size))
+func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total int, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.list")
 	defer func() {
 		if err != nil {
 			span.RecordError(err)
@@ -179,17 +194,28 @@ func (r *Repo) ListPage(ctx context.Context, page, size int) (_ []Exercise, tota
 		}
 		span.End()
 	}()
+	span.SetAttributes(attribute.Int("page", params.Page))
+	span.SetAttributes(attribute.Int("size", params.Size))
+	span.SetAttributes(attribute.String("exercise_id", params.ExerciseID))
+	span.SetAttributes(attribute.String("muscle_group", params.MuscleGroup))
 
-	limit := size
-	offset := (page - 1) * size
-	countAll, err := r.ExercisesCount(ctx)
+	if params.Page < 1 {
+		return nil, -1, errors.New("page must be greater than 0")
+	}
+	if params.Size < 1 {
+		return nil, -1, errors.New("size must be greater than 0")
+	}
+
+	limit := params.Size
+	offset := (params.Page - 1) * params.Size
+	countAll, err := r.ExercisesCount(ctx, params)
 	if err != nil {
 		return nil, -1, err
 	}
 
 	if countAll <= limit {
-		all, err := r.List(ctx, ListParams{Limit: limit})
-		return all, len(all), err
+		limit = countAll
+		offset = 0
 	}
 
 	if countAll-offset < limit {
@@ -197,17 +223,22 @@ func (r *Repo) ListPage(ctx context.Context, page, size int) (_ []Exercise, tota
 	}
 
 	log.Tracef("getting exercises, total count %d, limit %d, offset %d", countAll, limit, offset)
+	span.SetAttributes(attribute.Int("count_all", countAll))
+	span.SetAttributes(attribute.Int("limit", limit))
+	span.SetAttributes(attribute.Int("offset", offset))
 
 	rows, err := r.db.Query(
 		ctx,
 		`
-			SELECT * FROM exercise
+			SELECT
+				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
+			FROM exercise
+				WHERE ($1::text = '' OR exercise_id = $1)
+				AND ($2::text = '' OR muscle_group = $2)
 			ORDER BY created_at DESC
-			LIMIT $1
-			OFFSET $2;
-		`,
-		limit,
-		offset,
+			LIMIT $3
+			OFFSET $4;`,
+		params.ExerciseID, params.MuscleGroup, limit, offset,
 	)
 	if err != nil {
 		return nil, -1, err
@@ -225,11 +256,15 @@ func (r *Repo) ListPage(ctx context.Context, page, size int) (_ []Exercise, tota
 	return exercises, countAll, nil
 }
 
-func (r *Repo) ExercisesCount(ctx context.Context) (int, error) {
+func (r *Repo) ExercisesCount(ctx context.Context, params ListParams) (int, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.count")
 	defer span.End()
 
-	rows, err := r.db.Query(ctx, `SELECT COUNT(*) FROM exercise`)
+	rows, err := r.db.Query(ctx, `
+		SELECT COUNT(*) FROM exercise
+			WHERE ($1::text = '' OR exercise_id = $1)
+			AND ($2::text = '' OR muscle_group = $2);
+	`, params.ExerciseID, params.MuscleGroup)
 	if err != nil {
 		return -1, err
 	}

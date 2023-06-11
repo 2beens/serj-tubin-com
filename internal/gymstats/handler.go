@@ -16,11 +16,10 @@ import (
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise *Exercise) (*Exercise, error)
 	Get(ctx context.Context, id int) (*Exercise, error)
-	List(ctx context.Context, params ListParams) ([]Exercise, error)
-	ListPage(ctx context.Context, page, size int) ([]Exercise, int, error)
+	List(ctx context.Context, params ListParams) (_ []Exercise, total int, err error)
 	Update(ctx context.Context, exercise *Exercise) error
 	Delete(ctx context.Context, id int) error
-	ExercisesCount(ctx context.Context) (int, error)
+	ExercisesCount(ctx context.Context, params ListParams) (int, error)
 }
 
 type DeleteExerciseResponse struct {
@@ -31,7 +30,7 @@ type UpdateExerciseResponse struct {
 	UpdatedID int `json:"updatedId"`
 }
 
-type ExercisesPageResponse struct {
+type ExercisesListResponse struct {
 	Exercises []Exercise `json:"exercises"`
 	Total     int        `json:"total"`
 }
@@ -155,43 +154,64 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.list")
 	defer span.End()
 
-	limitParam := r.URL.Query().Get("limit")
-	limit, err := strconv.Atoi(limitParam)
+	vars := mux.Vars(r)
+
+	pageStr := vars["page"]
+	page, err := strconv.Atoi(pageStr)
 	if err != nil {
-		http.Error(w, "error, limit NaN", http.StatusBadRequest)
+		log.Errorf("handle get exercises page, from <page> param: %s", err)
+		http.Error(w, "parse form error, parameter <page>", http.StatusBadRequest)
+		return
+	}
+	sizeStr := vars["size"]
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+		log.Errorf("handle get exercises page, from <size> param: %s", err)
+		http.Error(w, "parse form error, parameter <size>", http.StatusBadRequest)
+		return
+	}
+
+	if page < 1 {
+		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusBadRequest)
+		return
+	}
+	if size < 1 {
+		http.Error(w, "invalid size (has to be non-zero value)", http.StatusBadRequest)
 		return
 	}
 
 	listParams := ListParams{
-		Limit: limit,
-	}
-	if muscleGroup := r.URL.Query().Get("group"); muscleGroup != "" {
-		listParams.MuscleGroup = &muscleGroup
-	}
-	if exerciseID := r.URL.Query().Get("exercise_id"); exerciseID != "" {
-		listParams.ExerciseID = &exerciseID
+		Page:        page,
+		Size:        size,
+		MuscleGroup: r.URL.Query().Get("group"),
+		ExerciseID:  r.URL.Query().Get("exercise_id"),
 	}
 
-	if limit > 1000 {
-		http.Error(w, "error, limit too high, use pagination instead in that case", http.StatusBadRequest)
-		return
-	}
+	log.Tracef(
+		"list exercises - page %s size %s, muscle group [%s], exercise id [%s]",
+		pageStr, sizeStr, listParams.MuscleGroup, listParams.ExerciseID,
+	)
 
-	exercises, err := handler.repo.List(ctx, listParams)
+	exercises, total, err := handler.repo.List(ctx, listParams)
 	if err != nil {
 		log.Errorf("list exercises error: %s", err)
 		http.Error(w, "failed to get exercises", http.StatusInternalServerError)
 		return
 	}
 
-	exercisesJson, err := json.Marshal(exercises)
+	exercisesPageResponse := ExercisesListResponse{
+		Exercises: exercises,
+		Total:     total,
+	}
+
+	exercisesPageResponseJson, err := json.Marshal(exercisesPageResponse)
 	if err != nil {
 		log.Errorf("marshal exercises error: %s", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	pkg.WriteJSONResponseOK(w, string(exercisesJson))
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, exercisesPageResponseJson, http.StatusOK)
 }
 
 func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -232,58 +252,4 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	log.Debugf("exercise updated: [%s] [%s]: %d", exercise.MuscleGroup, exercise.ExerciseID, exercise.ID)
 	pkg.WriteJSONResponseOK(w, string(updateRespJson))
-}
-
-func (handler *Handler) HandleGetPage(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.page")
-	defer span.End()
-
-	vars := mux.Vars(r)
-
-	pageStr := vars["page"]
-	page, err := strconv.Atoi(pageStr)
-	if err != nil {
-		log.Errorf("handle get exercises page, from <page> param: %s", err)
-		http.Error(w, "parse form error, parameter <page>", http.StatusBadRequest)
-		return
-	}
-	sizeStr := vars["size"]
-	size, err := strconv.Atoi(sizeStr)
-	if err != nil {
-		log.Errorf("handle get exercises page, from <size> param: %s", err)
-		http.Error(w, "parse form error, parameter <size>", http.StatusBadRequest)
-		return
-	}
-
-	log.Tracef("get exercises - page %s size %s", pageStr, sizeStr)
-
-	if page < 1 {
-		http.Error(w, "invalid page size (has to be non-zero value)", http.StatusBadRequest)
-		return
-	}
-	if size < 1 {
-		http.Error(w, "invalid size (has to be non-zero value)", http.StatusBadRequest)
-		return
-	}
-
-	exercises, total, err := handler.repo.ListPage(ctx, page, size)
-	if err != nil {
-		log.Errorf("get exercises error: %s", err)
-		http.Error(w, "failed to get exercises", http.StatusInternalServerError)
-		return
-	}
-
-	exercisesPageResponse := ExercisesPageResponse{
-		Exercises: exercises,
-		Total:     total,
-	}
-
-	exercisesPageResponseJson, err := json.Marshal(exercisesPageResponse)
-	if err != nil {
-		log.Errorf("marshal exercises error: %s", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, exercisesPageResponseJson, http.StatusOK)
 }
