@@ -208,7 +208,7 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 
 	limit := params.Size
 	offset := (params.Page - 1) * params.Size
-	countAll, err := r.ExercisesCount(ctx)
+	countAll, err := r.ExercisesCount(ctx, params)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -256,11 +256,15 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 	return exercises, countAll, nil
 }
 
-func (r *Repo) ExercisesCount(ctx context.Context) (int, error) {
+func (r *Repo) ExercisesCount(ctx context.Context, params ListParams) (int, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.count")
 	defer span.End()
 
-	rows, err := r.db.Query(ctx, `SELECT COUNT(*) FROM exercise`)
+	rows, err := r.db.Query(ctx, `
+		SELECT COUNT(*) FROM exercise
+			WHERE ($1::text = '' OR exercise_id = $1)
+			AND ($2::text = '' OR muscle_group = $2);
+	`, params.ExerciseID, params.MuscleGroup)
 	if err != nil {
 		return -1, err
 	}

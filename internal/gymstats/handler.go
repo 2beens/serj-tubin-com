@@ -19,7 +19,7 @@ type exercisesRepo interface {
 	List(ctx context.Context, params ListParams) (_ []Exercise, total int, err error)
 	Update(ctx context.Context, exercise *Exercise) error
 	Delete(ctx context.Context, id int) error
-	ExercisesCount(ctx context.Context) (int, error)
+	ExercisesCount(ctx context.Context, params ListParams) (int, error)
 }
 
 type DeleteExerciseResponse struct {

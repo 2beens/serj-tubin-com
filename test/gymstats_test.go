@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"testing"
@@ -276,7 +277,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		addedE2 := s.newExerciseRequest(ctx, e2)
 		addedE3 := s.newExerciseRequest(ctx, e3)
 		addedE4 := s.newExerciseRequest(ctx, e4)
-		e1.ID, e2.ID, e3.ID, e4.ID = 1, 2, 3, 4
+		e1.ID, e2.ID, e3.ID, e4.ID = addedE1.ID, addedE2.ID, addedE3.ID, addedE4.ID
 
 		assert.Equal(t, e1.CreatedAt.Truncate(time.Second).In(time.UTC), addedE1.CreatedAt.Truncate(time.Second).In(time.UTC))
 		assert.Equal(t, e2.CreatedAt.Truncate(time.Second).In(time.UTC), addedE2.CreatedAt.Truncate(time.Second).In(time.UTC))
@@ -305,9 +306,19 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			},
 		)
 		assert.Len(t, legsEx2Resp.Exercises, 2)
-		assert.Equal(t, 3, legsEx2Resp.Total)
+		assert.Equal(t, 2, legsEx2Resp.Total)
 		assert.Equal(t, e3.ID, legsEx2Resp.Exercises[0].ID)
 		assert.Equal(t, e2.ID, legsEx2Resp.Exercises[1].ID)
+
+		legsResp := s.listExercisesRequest(ctx,
+			gymstats.ListParams{
+				Page:        1,
+				Size:        3,
+				MuscleGroup: "legs",
+			},
+		)
+		assert.Len(t, legsResp.Exercises, 3)
+		assert.Equal(t, 3, legsResp.Total)
 
 		// now delete one
 		deleteResp := s.deleteExerciseRequest(ctx, addedE2.ID)
@@ -365,63 +376,72 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		}, updatedEx3.Metadata)
 	})
 
-	//s.T().Run("exercises page with authorization present", func(t *testing.T) {
-	//	s.deleteAllExercises(context.Background())
-	//	require.Len(t, s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10}), 0)
-	//
-	//	// add some exercises
-	//	total := 15
-	//	now := time.Now()
-	//	for i := 0; i < total; i++ {
-	//		s.newExerciseRequest(ctx, gymstats.Exercise{
-	//			ExerciseID:  fmt.Sprintf("exercise-%d", i),
-	//			MuscleGroup: "legs",
-	//			Kilos:       rand.Intn(100),
-	//			Reps:        rand.Intn(20),
-	//			CreatedAt:   now.Add(-time.Minute * time.Duration(i)),
-	//			Metadata: map[string]string{
-	//				"test": "false",
-	//				"env":  "stage",
-	//			},
-	//		})
-	//	}
-	//
-	//	// get exercises page
-	//	exercisesPageResp := s.getExercisesPageRequest(ctx, 1, 10)
-	//	require.Len(t, exercisesPageResp.Exercises, 10)
-	//	assert.Equal(t, total, exercisesPageResp.Total)
-	//	for i := 0; i < 10; i++ {
-	//		assert.Equal(t, fmt.Sprintf("exercise-%d", i), exercisesPageResp.Exercises[i].ExerciseID)
-	//		assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
-	//		assert.Equal(t, map[string]string{
-	//			"test": "false",
-	//			"env":  "stage",
-	//		}, exercisesPageResp.Exercises[i].Metadata)
-	//	}
-	//
-	//	// will move the offset from 10 to 5, and get last 10
-	//	exercisesPageResp = s.getExercisesPageRequest(ctx, 2, 10)
-	//	require.Len(t, exercisesPageResp.Exercises, 10)
-	//	assert.Equal(t, total, exercisesPageResp.Total)
-	//	for i := 0; i < 10; i++ {
-	//		assert.Equal(t, fmt.Sprintf("exercise-%d", i+5), exercisesPageResp.Exercises[i].ExerciseID)
-	//		assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
-	//		assert.Equal(t, map[string]string{
-	//			"test": "false",
-	//			"env":  "stage",
-	//		}, exercisesPageResp.Exercises[i].Metadata)
-	//	}
-	//
-	//	exercisesPageResp = s.getExercisesPageRequest(ctx, 2, 3)
-	//	require.Len(t, exercisesPageResp.Exercises, 3)
-	//	assert.Equal(t, total, exercisesPageResp.Total)
-	//	for i := 0; i < 3; i++ {
-	//		assert.Equal(t, fmt.Sprintf("exercise-%d", i+3), exercisesPageResp.Exercises[i].ExerciseID)
-	//		assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
-	//		assert.Equal(t, map[string]string{
-	//			"test": "false",
-	//			"env":  "stage",
-	//		}, exercisesPageResp.Exercises[i].Metadata)
-	//	}
-	//})
+	s.T().Run("exercises page with authorization present", func(t *testing.T) {
+		s.deleteAllExercises(context.Background())
+		require.Equal(t, 0, s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10}).Total)
+
+		// add some exercises
+		total := 15
+		now := time.Now()
+		for i := 0; i < total; i++ {
+			s.newExerciseRequest(ctx, gymstats.Exercise{
+				ExerciseID:  fmt.Sprintf("exercise-%d", i),
+				MuscleGroup: "legs",
+				Kilos:       rand.Intn(100),
+				Reps:        rand.Intn(20),
+				CreatedAt:   now.Add(-time.Minute * time.Duration(i)),
+				Metadata: map[string]string{
+					"test": "false",
+					"env":  "stage",
+				},
+			})
+		}
+
+		// get exercises page
+		exercisesPageResp := s.listExercisesRequest(ctx, gymstats.ListParams{
+			Page: 1,
+			Size: 10,
+		})
+		require.Len(t, exercisesPageResp.Exercises, 10)
+		assert.Equal(t, total, exercisesPageResp.Total)
+		for i := 0; i < 10; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"test": "false",
+				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
+
+		// will move the offset from 10 to 5, and get last 10
+		exercisesPageResp = s.listExercisesRequest(ctx, gymstats.ListParams{
+			Page: 2,
+			Size: 10,
+		})
+		require.Len(t, exercisesPageResp.Exercises, 10)
+		assert.Equal(t, total, exercisesPageResp.Total)
+		for i := 0; i < 10; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i+5), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"test": "false",
+				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
+
+		exercisesPageResp = s.listExercisesRequest(ctx, gymstats.ListParams{
+			Page: 2,
+			Size: 3,
+		})
+		require.Len(t, exercisesPageResp.Exercises, 3)
+		assert.Equal(t, total, exercisesPageResp.Total)
+		for i := 0; i < 3; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i+3), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"test": "false",
+				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
+	})
 }
