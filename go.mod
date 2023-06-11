@@ -28,7 +28,7 @@ require (
 	go.opentelemetry.io/otel v1.15.1
 	go.uber.org/goleak v1.2.1
 	go.uber.org/multierr v1.11.0
-	golang.org/x/crypto v0.8.0
+	golang.org/x/crypto v0.9.0
 	google.golang.org/api v0.110.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
