@@ -28,7 +28,7 @@ github.com/Nvveen/Gotty
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
-# github.com/brianvoe/gofakeit/v6 v6.21.0
+# github.com/brianvoe/gofakeit/v6 v6.22.0
 ## explicit; go 1.17
 github.com/brianvoe/gofakeit/v6
 github.com/brianvoe/gofakeit/v6/data
