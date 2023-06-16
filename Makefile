@@ -10,6 +10,10 @@ db-setup:
 clean:
 	rm -rf ./bin
 
+.PHONY: generate
+generate: ## Updated generated files
+	go generate ./...
+
 .PHONY: build build-fs build-netlog-backup build-all
 build:
 	go build -o bin/service cmd/service/main.go

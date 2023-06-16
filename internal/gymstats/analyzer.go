@@ -51,15 +51,24 @@ func (a *Analyzer) ExerciseHistory(
 		Stats:       make(map[time.Time]ExerciseStats),
 	}
 
+	day2exercises := make(map[time.Time][]Exercise)
 	for _, ex := range exercises {
 		day := ex.CreatedAt.Truncate(24 * time.Hour)
-		stats, ok := history.Stats[day]
-		if !ok {
-			stats = ExerciseStats{}
+		day2exercises[day] = append(day2exercises[day], ex)
+	}
+
+	for day, dayExercises := range day2exercises {
+		var avgKilos, avgReps int
+		for _, ex := range dayExercises {
+			avgKilos += ex.Kilos
+			avgReps += ex.Reps
 		}
-		stats.AvgKilos = (stats.AvgKilos + ex.Kilos) / 2
-		stats.AvgReps = (stats.AvgReps + ex.Reps) / 2
-		history.Stats[day] = stats
+		avgKilos /= len(dayExercises)
+		avgReps /= len(dayExercises)
+		history.Stats[day] = ExerciseStats{
+			AvgKilos: avgKilos,
+			AvgReps:  avgReps,
+		}
 	}
 
 	return history, nil

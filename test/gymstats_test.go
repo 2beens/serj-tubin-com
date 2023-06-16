@@ -323,6 +323,10 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		assert.Len(t, ex2history.Stats, 1)
 		assert.Equal(t, "ex2", ex2history.ExerciseID)
 		assert.Equal(t, "legs", ex2history.MuscleGroup)
+		for _, histStats := range ex2history.Stats {
+			assert.Equal(t, 235, histStats.AvgKilos)
+			assert.Equal(t, 10, histStats.AvgReps)
+		}
 
 		listExercisesResp := s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10})
 		assert.Len(t, listExercisesResp.Exercises, 4)

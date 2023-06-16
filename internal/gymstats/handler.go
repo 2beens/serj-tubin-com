@@ -13,6 +13,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=gymstats_test
+
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise *Exercise) (*Exercise, error)
 	Get(ctx context.Context, id int) (*Exercise, error)
