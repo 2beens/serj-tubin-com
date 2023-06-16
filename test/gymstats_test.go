@@ -83,6 +83,33 @@ func (s *IntegrationTestSuite) updateExerciseRequest(
 	return updateResp
 }
 
+func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, exID, muscleGroup string) *gymstats.ExerciseHistory {
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"GET", fmt.Sprintf(
+			"%s/gymstats/exercise/%s/group/%s/history",
+			serverEndpoint, exID, muscleGroup,
+		),
+		nil,
+	)
+	require.NoError(s.T(), err)
+	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
+
+	resp, err := s.httpClient.Do(req)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+
+	var history gymstats.ExerciseHistory
+	require.NoError(s.T(), json.Unmarshal(respBytes, &history))
+
+	return &history
+}
+
 func (s *IntegrationTestSuite) getExerciseRequest(ctx context.Context, id int) gymstats.Exercise {
 	req, err := http.NewRequestWithContext(
 		ctx,
@@ -162,8 +189,7 @@ func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params 
 	require.NoError(s.T(), err)
 
 	var exercisesPageResponse gymstats.ExercisesListResponse
-	err = json.Unmarshal(respBytes, &exercisesPageResponse)
-	require.NoError(s.T(), err)
+	require.NoError(s.T(), json.Unmarshal(respBytes, &exercisesPageResponse))
 
 	return exercisesPageResponse
 }
@@ -184,8 +210,8 @@ func (s *IntegrationTestSuite) TestGymStats() {
 	e2 := gymstats.Exercise{
 		ExerciseID:  "ex2",
 		MuscleGroup: "legs",
-		Kilos:       210,
-		Reps:        10,
+		Kilos:       250,
+		Reps:        8,
 		CreatedAt:   now.Add(-time.Minute * 5),
 		Metadata: map[string]string{
 			"test": "true",
@@ -195,7 +221,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		ExerciseID:  "ex2",
 		MuscleGroup: "legs",
 		Kilos:       220,
-		Reps:        8,
+		Reps:        12,
 		CreatedAt:   now.Add(-time.Minute * 4),
 		Metadata: map[string]string{
 			"test": "true",
@@ -293,16 +319,23 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		assert.Equal(t, e3, addedE3)
 		assert.Equal(t, e4, addedE4)
 
+		ex2history := s.getExerciseHistory(ctx, "ex2", "legs")
+		assert.Len(t, ex2history.Stats, 1)
+		assert.Equal(t, "ex2", ex2history.ExerciseID)
+		assert.Equal(t, "legs", ex2history.MuscleGroup)
+
 		listExercisesResp := s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10})
 		assert.Len(t, listExercisesResp.Exercises, 4)
 		assert.Equal(t, 4, listExercisesResp.Total)
 
 		legsEx2Resp := s.listExercisesRequest(ctx,
 			gymstats.ListParams{
-				Page:        1,
-				Size:        2,
-				MuscleGroup: "legs",
-				ExerciseID:  "ex2",
+				ExerciseParams: gymstats.ExerciseParams{
+					MuscleGroup: "legs",
+					ExerciseID:  "ex2",
+				},
+				Page: 1,
+				Size: 2,
 			},
 		)
 		assert.Len(t, legsEx2Resp.Exercises, 2)
@@ -312,9 +345,11 @@ func (s *IntegrationTestSuite) TestGymStats() {
 
 		legsResp := s.listExercisesRequest(ctx,
 			gymstats.ListParams{
-				Page:        1,
-				Size:        3,
-				MuscleGroup: "legs",
+				ExerciseParams: gymstats.ExerciseParams{
+					MuscleGroup: "legs",
+				},
+				Page: 1,
+				Size: 3,
 			},
 		)
 		assert.Len(t, legsResp.Exercises, 3)
@@ -334,9 +369,11 @@ func (s *IntegrationTestSuite) TestGymStats() {
 
 		exercisesListResp = s.listExercisesRequest(ctx,
 			gymstats.ListParams{
-				Page:        1,
-				Size:        10,
-				MuscleGroup: "legs",
+				ExerciseParams: gymstats.ExerciseParams{
+					MuscleGroup: "legs",
+				},
+				Page: 1,
+				Size: 10,
 			},
 		)
 		assert.Len(t, exercisesListResp.Exercises, 2)

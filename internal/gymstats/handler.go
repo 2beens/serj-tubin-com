@@ -17,6 +17,7 @@ type exercisesRepo interface {
 	Add(ctx context.Context, exercise *Exercise) (*Exercise, error)
 	Get(ctx context.Context, id int) (*Exercise, error)
 	List(ctx context.Context, params ListParams) (_ []Exercise, total int, err error)
+	ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise, err error)
 	Update(ctx context.Context, exercise *Exercise) error
 	Delete(ctx context.Context, id int) error
 	ExercisesCount(ctx context.Context, params ListParams) (int, error)
@@ -36,12 +37,14 @@ type ExercisesListResponse struct {
 }
 
 type Handler struct {
-	repo exercisesRepo
+	repo     exercisesRepo
+	analyzer *Analyzer
 }
 
 func NewHandler(repo exercisesRepo) *Handler {
 	return &Handler{
-		repo: repo,
+		repo:     repo,
+		analyzer: NewAnalyzer(repo),
 	}
 }
 
@@ -116,6 +119,39 @@ func (handler *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, exJson, http.StatusOK)
 }
 
+func (handler *Handler) HandleExerciseHistory(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.new")
+	defer span.End()
+
+	vars := mux.Vars(r)
+	exerciseID := vars["exid"]
+	if exerciseID == "" {
+		http.Error(w, "error, exercise id empty", http.StatusBadRequest)
+		return
+	}
+	muscleGroup := vars["mgroup"]
+	if muscleGroup == "" {
+		http.Error(w, "error, muscle group empty", http.StatusBadRequest)
+		return
+	}
+
+	exHistory, err := handler.analyzer.ExerciseHistory(ctx, exerciseID, muscleGroup)
+	if err != nil {
+		log.Errorf("failed to get exercise history [%s] [%s]: %s", exerciseID, muscleGroup, err)
+		http.Error(w, "exercise history not found", http.StatusBadRequest)
+		return
+	}
+
+	exHistoryJson, err := json.Marshal(exHistory)
+	if err != nil {
+		log.Errorf("failed to marshal exercise history: %s", err)
+		http.Error(w, "failed to marshal exercise history", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, exHistoryJson, http.StatusOK)
+}
+
 func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.delete")
 	defer span.End()
@@ -181,10 +217,12 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	listParams := ListParams{
-		Page:        page,
-		Size:        size,
-		MuscleGroup: r.URL.Query().Get("group"),
-		ExerciseID:  r.URL.Query().Get("exercise_id"),
+		ExerciseParams: ExerciseParams{
+			MuscleGroup: r.URL.Query().Get("group"),
+			ExerciseID:  r.URL.Query().Get("exercise_id"),
+		},
+		Page: page,
+		Size: size,
 	}
 
 	log.Tracef(
