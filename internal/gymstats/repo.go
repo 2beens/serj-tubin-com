@@ -18,11 +18,15 @@ import (
 
 var ErrExerciseNotFound = errors.New("exercise not found")
 
-type ListParams struct {
+type ExerciseParams struct {
 	ExerciseID  string
 	MuscleGroup string
-	Page        int
-	Size        int
+}
+
+type ListParams struct {
+	ExerciseParams
+	Page int
+	Size int
 }
 
 type Exercise struct {
@@ -183,6 +187,47 @@ func (r *Repo) Get(ctx context.Context, id int) (_ *Exercise, err error) {
 	}
 
 	return &exercises[0], nil
+}
+
+func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.listall")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+	span.SetAttributes(attribute.String("exercise_id", params.ExerciseID))
+	span.SetAttributes(attribute.String("muscle_group", params.MuscleGroup))
+
+	log.Tracef("getting all exercises: %+v", params)
+
+	rows, err := r.db.Query(
+		ctx,
+		`
+			SELECT
+				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
+			FROM exercise
+				WHERE exercise_id = $1
+				AND muscle_group = $2
+			ORDER BY created_at DESC;`,
+		params.ExerciseID, params.MuscleGroup,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer rows.Close()
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows: %w", err)
+	}
+
+	exercises, err := r.rows2exercises(rows)
+	if err != nil {
+		return nil, fmt.Errorf("rows2exercises: %w", err)
+	}
+	return exercises, nil
 }
 
 func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total int, err error) {
