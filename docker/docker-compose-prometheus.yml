@@ -22,6 +22,7 @@ version: "3.7"
 # TODO / Changes (june 2023):
 # - add node_exporter to all 3 servers: https://prometheus.io/docs/guides/node-exporter/
 #   - added to misc server (check executed commands with: history | grep node_exporter)
+#   - check ./docker/prometheus-for-misc-server/prometheus.yml !!
 # - configure them to export metrics to prometheus
 # - add alarms/triggers that will send emails when disk space is low
 
