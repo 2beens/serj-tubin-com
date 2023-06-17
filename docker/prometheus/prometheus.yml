@@ -22,11 +22,7 @@ alerting:
     - targets:
       - "alertmanager:9093"
 
-# A scrape configuration containing exactly one endpoint to scrape:
-# Here it's Prometheus itself.
 scrape_configs:
-  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
-
   - job_name: 'prometheus'
     # Override the global default and scrape targets from this job every 5 seconds.
     scrape_interval: 5s
@@ -45,9 +41,10 @@ scrape_configs:
       - targets: [ 'mainservice:2112' ]
 
   # job to scrape node exporter metrics from the local machine.
-  - job_name: node
+  - job_name: node_exporter_misc_server
+    scrape_interval: 20s
     static_configs:
-      - targets: [ 'localhost:9100' ]
+      - targets: ['host.docker.internal:9100']
 
 # TODO: check metrics with push gateway
 #  - job_name: 'pushgateway'
