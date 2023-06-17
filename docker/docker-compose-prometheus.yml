@@ -19,6 +19,11 @@ version: "3.7"
 # TODO:
 # - alertmanager has been added, but not configured
 
+# TODO (june 2023):
+# - add node_exporter to all 3 servers: https://prometheus.io/docs/guides/node-exporter/
+# - configure them to export metrics to prometheus
+# - add alarms/triggers that will send emails when disk space is low
+
 networks:
   prometheus-network:
 
