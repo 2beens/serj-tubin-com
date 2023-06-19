@@ -25,6 +25,8 @@ version: "3.7"
 #   - check ./docker/prometheus-for-misc-server/prometheus.yml !!
 # - configure them to export metrics to prometheus
 # - add alarms/triggers that will send emails when disk space is low
+# - node exporter added to all nodes (ssr, ssr2, misc) and boards created in grafana
+# - prometheus scrape targets visible at: https://prometheus.serj-tubin.com/targets?search=
 
 networks:
   prometheus-network:
