@@ -75,6 +75,7 @@ var _ = errors.New
 var _ = strings.Replace
 var _ = context.Canceled
 var _ = internaloption.WithDefaultEndpoint
+var _ = internal.Version
 
 const apiId = "drive:v3"
 const apiName = "drive"
@@ -854,7 +855,7 @@ func (s *ContentRestriction) MarshalJSON() ([]byte, error) {
 // Drive: Representation of a shared drive.
 type Drive struct {
 	// BackgroundImageFile: An image file and cropping parameters from which
-	// a background image for this shared drive is set. This is a write only
+	// a background image for this shared drive is set. This is a write-only
 	// field; it can only be set on drive.drives.update requests that don't
 	// set themeId. When specified, all fields of the backgroundImageFile
 	// must be set.
@@ -868,8 +869,7 @@ type Drive struct {
 	Capabilities *DriveCapabilities `json:"capabilities,omitempty"`
 
 	// ColorRgb: The color of this shared drive as an RGB hex string. It can
-	// only be set on a drive.drives.update request that does not set
-	// themeId.
+	// only be set on drive.drives.update requests that don't set themeId.
 	ColorRgb string `json:"colorRgb,omitempty"`
 
 	// CreatedTime: The time at which the shared drive was created (RFC 3339
@@ -900,8 +900,8 @@ type Drive struct {
 	Restrictions *DriveRestrictions `json:"restrictions,omitempty"`
 
 	// ThemeId: The ID of the theme from which the background image and
-	// color will be set. The set of possible driveThemes can be retrieved
-	// from a drive.about.get response. When not specified on a
+	// color are set. The set of possible driveThemes can be retrieved from
+	// a drive.about.get response. When not specified on a
 	// drive.drives.create request, a random theme is chosen from which the
 	// background image and color are set. This is a write-only field; it
 	// can only be set on requests that don't set colorRgb or
@@ -938,7 +938,7 @@ func (s *Drive) MarshalJSON() ([]byte, error) {
 
 // DriveBackgroundImageFile: An image file and cropping parameters from
 // which a background image for this shared drive is set. This is a
-// write only field; it can only be set on drive.drives.update requests
+// write-only field; it can only be set on drive.drives.update requests
 // that don't set themeId. When specified, all fields of the
 // backgroundImageFile must be set.
 type DriveBackgroundImageFile struct {
@@ -1031,6 +1031,12 @@ type DriveCapabilities struct {
 	// CanChangeDriveMembersOnlyRestriction: Whether the current user can
 	// change the driveMembersOnly restriction of this shared drive.
 	CanChangeDriveMembersOnlyRestriction bool `json:"canChangeDriveMembersOnlyRestriction,omitempty"`
+
+	// CanChangeSharingFoldersRequiresOrganizerPermissionRestriction:
+	// Whether the current user can change the
+	// sharingFoldersRequiresOrganizerPermission restriction of this shared
+	// drive.
+	CanChangeSharingFoldersRequiresOrganizerPermissionRestriction bool `json:"canChangeSharingFoldersRequiresOrganizerPermissionRestriction,omitempty"`
 
 	// CanComment: Whether the current user can comment on files in this
 	// shared drive.
@@ -1136,6 +1142,11 @@ type DriveRestrictions struct {
 	// restricted to its members.
 	DriveMembersOnly bool `json:"driveMembersOnly,omitempty"`
 
+	// SharingFoldersRequiresOrganizerPermission: If true, only users with
+	// the organizer role can share folders. If false, users with either the
+	// organizer role or the file organizer role can share folders.
+	SharingFoldersRequiresOrganizerPermission bool `json:"sharingFoldersRequiresOrganizerPermission,omitempty"`
+
 	// ForceSendFields is a list of field names (e.g.
 	// "AdminManagedRestrictions") to unconditionally include in API
 	// requests. By default, fields with empty or default values are omitted
@@ -1207,17 +1218,17 @@ func (s *DriveList) MarshalJSON() ([]byte, error) {
 
 // File: The metadata for a file.
 type File struct {
-	// AppProperties: A collection of arbitrary key-value pairs which are
+	// AppProperties: A collection of arbitrary key-value pairs that are
 	// private to the requesting app.
 	// Entries with null values are cleared in update and copy requests.
 	// These properties can only be retrieved using an authenticated
 	// request. An authenticated request uses an access token obtained with
-	// a OAuth 2 client ID. You cannot use an API key to retrieve private
+	// an OAuth 2 client ID. You cannot use an API key to retrieve private
 	// properties.
 	AppProperties map[string]string `json:"appProperties,omitempty"`
 
 	// Capabilities: Capabilities the current user has on this file. Each
-	// capability corresponds to a fine-grained action that a user may take.
+	// capability corresponds to a fine-grained action that a user can take.
 	Capabilities *FileCapabilities `json:"capabilities,omitempty"`
 
 	// ContentHints: Additional information about the content of the file.
@@ -1263,11 +1274,11 @@ type File struct {
 	FolderColorRgb string `json:"folderColorRgb,omitempty"`
 
 	// FullFileExtension: The full file extension extracted from the name
-	// field. May contain multiple concatenated extensions, such as
+	// field. Can contain multiple concatenated extensions, such as
 	// "tar.gz". This is only available for files with binary content in
 	// Google Drive.
-	// This is automatically updated when the name field changes, however it
-	// isn't cleared if the new name does not contain a valid extension.
+	// This is automatically updated when the name field changes, however
+	// it's not cleared if the new name does not contain a valid extension.
 	FullFileExtension string `json:"fullFileExtension,omitempty"`
 
 	// HasAugmentedPermissions: Whether there are permissions directly on
@@ -1279,8 +1290,8 @@ type File struct {
 	// check access, look for the presence of the thumbnailLink field.
 	HasThumbnail bool `json:"hasThumbnail,omitempty"`
 
-	// HeadRevisionId: The ID of the file's head revision. This is currently
-	// only available for files with binary content in Google Drive.
+	// HeadRevisionId: The ID of the file's head revision. This is only
+	// available for files with binary content in Google Drive.
 	HeadRevisionId string `json:"headRevisionId,omitempty"`
 
 	// IconLink: A static, unauthenticated link to the file's icon.
@@ -1293,8 +1304,8 @@ type File struct {
 	// available.
 	ImageMediaMetadata *FileImageMediaMetadata `json:"imageMediaMetadata,omitempty"`
 
-	// IsAppAuthorized: Whether the file was created or opened by the
-	// requesting app.
+	// IsAppAuthorized: Whether the requesting app created or opened the
+	// file.
 	IsAppAuthorized bool `json:"isAppAuthorized,omitempty"`
 
 	// Kind: Identifies what kind of resource this is. Value: the fixed
@@ -1324,21 +1335,21 @@ type File struct {
 	// are published in the About resource.
 	MimeType string `json:"mimeType,omitempty"`
 
-	// ModifiedByMe: Whether the file has been modified by this user.
+	// ModifiedByMe: Whether this user has modified the file.
 	ModifiedByMe bool `json:"modifiedByMe,omitempty"`
 
-	// ModifiedByMeTime: The last time the file was modified by the user
-	// (RFC 3339 date-time).
+	// ModifiedByMeTime: The last time the user modified the file (RFC 3339
+	// date-time).
 	ModifiedByMeTime string `json:"modifiedByMeTime,omitempty"`
 
-	// ModifiedTime: The last time the file was modified by anyone (RFC 3339
+	// ModifiedTime: The last time anyone modified the file (RFC 3339
 	// date-time).
 	// Note that setting modifiedTime will also update modifiedByMeTime for
 	// the user.
 	ModifiedTime string `json:"modifiedTime,omitempty"`
 
-	// Name: The name of the file. This is not necessarily unique within a
-	// folder. Note that for immutable items such as the top level folders
+	// Name: The name of the file. This isn't necessarily unique within a
+	// folder. Note that for immutable items such as the top-level folders
 	// of shared drives, My Drive root folder, and Application Data folder
 	// the name is constant.
 	Name string `json:"name,omitempty"`
@@ -1352,12 +1363,12 @@ type File struct {
 	// shared drives.
 	OwnedByMe bool `json:"ownedByMe,omitempty"`
 
-	// Owners: The owner of this file. Only certain legacy files may have
+	// Owners: The owner of this file. Only certain legacy files might have
 	// more than one owner. This field isn't populated for items in shared
 	// drives.
 	Owners []*User `json:"owners,omitempty"`
 
-	// Parents: The IDs of the parent folders which contain the file.
+	// Parents: The IDs of the parent folders that contain the file.
 	// If not specified as part of a create request, the file will be placed
 	// directly in the user's My Drive folder. If not specified as part of a
 	// copy request, the file will inherit any discoverable parents of the
@@ -1374,7 +1385,7 @@ type File struct {
 	// for items in shared drives.
 	Permissions []*Permission `json:"permissions,omitempty"`
 
-	// Properties: A collection of arbitrary key-value pairs which are
+	// Properties: A collection of arbitrary key-value pairs that are
 	// visible to all apps.
 	// Entries with null values are cleared in update and copy requests.
 	Properties map[string]string `json:"properties,omitempty"`
@@ -1389,13 +1400,13 @@ type File struct {
 
 	// Sha1Checksum: The SHA1 checksum associated with this file, if
 	// available. This field is only populated for files with content stored
-	// in Google Drive; it isn't populated for Docs Editors or shortcut
+	// in Google Drive; it's not populated for Docs Editors or shortcut
 	// files.
 	Sha1Checksum string `json:"sha1Checksum,omitempty"`
 
 	// Sha256Checksum: The SHA256 checksum associated with this file, if
 	// available. This field is only populated for files with content stored
-	// in Google Drive; it isn't populated for Docs Editors or shortcut
+	// in Google Drive; it's not populated for Docs Editors or shortcut
 	// files.
 	Sha256Checksum string `json:"sha256Checksum,omitempty"`
 
@@ -1418,10 +1429,10 @@ type File struct {
 
 	// Size: The size of the file's content in bytes. This field is
 	// populated for files with binary content stored in Google Drive and
-	// for Docs Editors files; it is not populated for shortcuts or folders.
+	// for Docs Editors files; it's not populated for shortcuts or folders.
 	Size int64 `json:"size,omitempty,string"`
 
-	// Spaces: The list of spaces which contain the file. The currently
+	// Spaces: The list of spaces that contain the file. The currently
 	// supported values are 'drive', 'appDataFolder' and 'photos'.
 	Spaces []string `json:"spaces,omitempty"`
 
@@ -1443,7 +1454,7 @@ type File struct {
 	ThumbnailVersion int64 `json:"thumbnailVersion,omitempty,string"`
 
 	// Trashed: Whether the file has been trashed, either explicitly or from
-	// a trashed parent folder. Only the owner may trash a file. The trashed
+	// a trashed parent folder. Only the owner can trash a file. The trashed
 	// item is excluded from all files.list responses returned for any user
 	// who does not own the file. However, all users with access to the file
 	// can see the trashed item metadata in an API response. All users with
@@ -1463,15 +1474,15 @@ type File struct {
 	// visible to the user.
 	Version int64 `json:"version,omitempty,string"`
 
-	// VideoMediaMetadata: Additional metadata about video media. This may
+	// VideoMediaMetadata: Additional metadata about video media. This might
 	// not be available immediately upon upload.
 	VideoMediaMetadata *FileVideoMediaMetadata `json:"videoMediaMetadata,omitempty"`
 
-	// ViewedByMe: Whether the file has been viewed by this user.
+	// ViewedByMe: Whether this user has viewed the file.
 	ViewedByMe bool `json:"viewedByMe,omitempty"`
 
-	// ViewedByMeTime: The last time the file was viewed by the user (RFC
-	// 3339 date-time).
+	// ViewedByMeTime: The last time the user viewed the file (RFC 3339
+	// date-time).
 	ViewedByMeTime string `json:"viewedByMeTime,omitempty"`
 
 	// ViewersCanCopyContent: Deprecated - use copyRequiresWriterPermission
@@ -1519,7 +1530,7 @@ func (s *File) MarshalJSON() ([]byte, error) {
 }
 
 // FileCapabilities: Capabilities the current user has on this file.
-// Each capability corresponds to a fine-grained action that a user may
+// Each capability corresponds to a fine-grained action that a user can
 // take.
 type FileCapabilities struct {
 	// CanAcceptOwnership: Whether the current user is the pending owner of
@@ -1527,12 +1538,12 @@ type FileCapabilities struct {
 	CanAcceptOwnership bool `json:"canAcceptOwnership,omitempty"`
 
 	// CanAddChildren: Whether the current user can add children to this
-	// folder. This is always false when the item is not a folder.
+	// folder. This is always false when the item isn't a folder.
 	CanAddChildren bool `json:"canAddChildren,omitempty"`
 
 	// CanAddFolderFromAnotherDrive: Whether the current user can add a
 	// folder from another drive (different shared drive or My Drive) to
-	// this folder. This is false when the item is not a folder. Only
+	// this folder. This is false when the item isn't a folder. Only
 	// populated for items in shared drives.
 	CanAddFolderFromAnotherDrive bool `json:"canAddFolderFromAnotherDrive,omitempty"`
 
@@ -1557,14 +1568,14 @@ type FileCapabilities struct {
 
 	// CanCopy: Whether the current user can copy this file. For an item in
 	// a shared drive, whether the current user can copy non-folder
-	// descendants of this item, or this item itself if it is not a folder.
+	// descendants of this item, or this item itself if it's not a folder.
 	CanCopy bool `json:"canCopy,omitempty"`
 
 	// CanDelete: Whether the current user can delete this file.
 	CanDelete bool `json:"canDelete,omitempty"`
 
 	// CanDeleteChildren: Whether the current user can delete children of
-	// this folder. This is false when the item is not a folder. Only
+	// this folder. This is false when the item isn't a folder. Only
 	// populated for items in shared drives.
 	CanDeleteChildren bool `json:"canDeleteChildren,omitempty"`
 
@@ -1572,12 +1583,13 @@ type FileCapabilities struct {
 	CanDownload bool `json:"canDownload,omitempty"`
 
 	// CanEdit: Whether the current user can edit this file. Other factors
-	// may limit the type of changes a user can make to a file. For example,
-	// see canChangeCopyRequiresWriterPermission or canModifyContent.
+	// might limit the type of changes a user can make to a file. For
+	// example, see canChangeCopyRequiresWriterPermission or
+	// canModifyContent.
 	CanEdit bool `json:"canEdit,omitempty"`
 
 	// CanListChildren: Whether the current user can list the children of
-	// this folder. This is always false when the item is not a folder.
+	// this folder. This is always false when the item isn't a folder.
 	CanListChildren bool `json:"canListChildren,omitempty"`
 
 	// CanModifyContent: Whether the current user can modify the content of
@@ -1594,7 +1606,7 @@ type FileCapabilities struct {
 
 	// CanMoveChildrenOutOfDrive: Whether the current user can move children
 	// of this folder outside of the shared drive. This is false when the
-	// item is not a folder. Only populated for items in shared drives.
+	// item isn't a folder. Only populated for items in shared drives.
 	CanMoveChildrenOutOfDrive bool `json:"canMoveChildrenOutOfDrive,omitempty"`
 
 	// CanMoveChildrenOutOfTeamDrive: Deprecated - use
@@ -1602,10 +1614,10 @@ type FileCapabilities struct {
 	CanMoveChildrenOutOfTeamDrive bool `json:"canMoveChildrenOutOfTeamDrive,omitempty"`
 
 	// CanMoveChildrenWithinDrive: Whether the current user can move
-	// children of this folder within this drive. This is false when the
-	// item is not a folder. Note that a request to move the child may still
-	// fail depending on the current user's access to the child and to the
-	// destination folder.
+	// children of this folder within this shared drive or My Drive. This is
+	// false when the item isn't a folder. Note that a request to move the
+	// child might still fail depending on the current user's access to the
+	// child and to the destination folder.
 	CanMoveChildrenWithinDrive bool `json:"canMoveChildrenWithinDrive,omitempty"`
 
 	// CanMoveChildrenWithinTeamDrive: Deprecated - use
@@ -1617,9 +1629,9 @@ type FileCapabilities struct {
 	CanMoveItemIntoTeamDrive bool `json:"canMoveItemIntoTeamDrive,omitempty"`
 
 	// CanMoveItemOutOfDrive: Whether the current user can move this item
-	// outside of this drive by changing its parent. Note that a request to
-	// change the parent of the item may still fail depending on the new
-	// parent that is being added.
+	// outside of this shared drive or My Drive by changing its parent. Note
+	// that a request to change the parent of the item might still fail
+	// depending on the new parent that's being added.
 	CanMoveItemOutOfDrive bool `json:"canMoveItemOutOfDrive,omitempty"`
 
 	// CanMoveItemOutOfTeamDrive: Deprecated - use canMoveItemOutOfDrive
@@ -1627,9 +1639,9 @@ type FileCapabilities struct {
 	CanMoveItemOutOfTeamDrive bool `json:"canMoveItemOutOfTeamDrive,omitempty"`
 
 	// CanMoveItemWithinDrive: Whether the current user can move this item
-	// within this drive. Note that a request to change the parent of the
-	// item may still fail depending on the new parent that is being added
-	// and the parent that is being removed.
+	// within this shared drive or My Drive. Note that a request to change
+	// the parent of the item might still fail depending on the new parent
+	// that's being added and the parent that's being removed.
 	CanMoveItemWithinDrive bool `json:"canMoveItemWithinDrive,omitempty"`
 
 	// CanMoveItemWithinTeamDrive: Deprecated - use canMoveItemWithinDrive
@@ -1650,7 +1662,7 @@ type FileCapabilities struct {
 
 	// CanReadRevisions: Whether the current user can read the revisions
 	// resource of this file. For a shared drive item, whether revisions of
-	// non-folder descendants of this item, or this item itself if it isn't
+	// non-folder descendants of this item, or this item itself if it's not
 	// a folder, can be read.
 	CanReadRevisions bool `json:"canReadRevisions,omitempty"`
 
@@ -1658,8 +1670,8 @@ type FileCapabilities struct {
 	CanReadTeamDrive bool `json:"canReadTeamDrive,omitempty"`
 
 	// CanRemoveChildren: Whether the current user can remove children from
-	// this folder. This is always false when the item is not a folder. For
-	// a folder in a shared drive, use canDeleteChildren or canTrashChildren
+	// this folder. This is always false when the item isn't a folder. For a
+	// folder in a shared drive, use canDeleteChildren or canTrashChildren
 	// instead.
 	CanRemoveChildren bool `json:"canRemoveChildren,omitempty"`
 
@@ -1679,7 +1691,7 @@ type FileCapabilities struct {
 	CanTrash bool `json:"canTrash,omitempty"`
 
 	// CanTrashChildren: Whether the current user can trash children of this
-	// folder. This is false when the item is not a folder. Only populated
+	// folder. This is false when the item isn't a folder. Only populated
 	// for items in shared drives.
 	CanTrashChildren bool `json:"canTrashChildren,omitempty"`
 
@@ -1715,7 +1727,7 @@ func (s *FileCapabilities) MarshalJSON() ([]byte, error) {
 // file. These fields are never populated in responses.
 type FileContentHints struct {
 	// IndexableText: Text to be indexed for the file to improve fullText
-	// queries. This is limited to 128 KB in length and may contain HTML
+	// queries. This is limited to 128 KB in length and might contain HTML
 	// elements. For more information, see Manage file metadata.
 	IndexableText string `json:"indexableText,omitempty"`
 
@@ -1829,7 +1841,7 @@ type FileImageMediaMetadata struct {
 	// MeteringMode: The metering mode used to create the photo.
 	MeteringMode string `json:"meteringMode,omitempty"`
 
-	// Rotation: The number of clockwise 90 degree rotations applied from
+	// Rotation: The number of clockwise 90-degree rotations applied from
 	// the image's original orientation.
 	Rotation int64 `json:"rotation,omitempty"`
 
@@ -2050,7 +2062,7 @@ func (s *FileShortcutDetails) MarshalJSON() ([]byte, error) {
 }
 
 // FileVideoMediaMetadata: Additional metadata about video media. This
-// may not be available immediately upon upload.
+// might not be available immediately upon upload.
 type FileVideoMediaMetadata struct {
 	// DurationMillis: The duration of the video in milliseconds.
 	DurationMillis int64 `json:"durationMillis,omitempty,string"`
@@ -2476,7 +2488,7 @@ func (s *ModifyLabelsResponse) MarshalJSON() ([]byte, error) {
 }
 
 // Permission: A permission for a file. A permission grants a user,
-// group, domain or the world access to a file or a folder hierarchy.
+// group, domain, or the world access to a file or a folder hierarchy.
 type Permission struct {
 	// AllowFileDiscovery: Whether the permission allows the file to be
 	// discovered through search. This is only applicable for permissions of
@@ -2489,15 +2501,18 @@ type Permission struct {
 
 	// DisplayName: The "pretty" name of the value of the permission. The
 	// following is a list of examples for each type of permission:
-	// - user - User's full name, as defined for their Google account, such
+	// - user - User's full name, as defined for their Google Account, such
 	// as "Joe Smith."
 	// - group - Name of the Google Group, such as "The Company
 	// Administrators."
-	// - domain - String domain name, such as "thecompany.com."
+	// - domain - String domain name, such as "your-company.com."
 	// - anyone - No displayName is present.
 	DisplayName string `json:"displayName,omitempty"`
 
-	// Domain: The domain to which this permission refers.
+	// Domain: The domain to which this permission refers. The following
+	// options are currently allowed:
+	// - The entire domain, such as "your-company.com."
+	// - A target audience, such as "ID.audience.googledomains.com."
 	Domain string `json:"domain,omitempty"`
 
 	// EmailAddress: The email address of the user or group to which this
@@ -2507,10 +2522,10 @@ type Permission struct {
 	// ExpirationTime: The time at which this permission will expire (RFC
 	// 3339 date-time). Expiration times have the following restrictions:
 	//
-	// - They cannot be set on shared drive items
-	// - They can only be set on user and group permissions
-	// - The time must be in the future
-	// - The time cannot be more than a year in the future
+	// - They cannot be set on shared drive items.
+	// - They can only be set on user and group permissions.
+	// - The time must be in the future.
+	// - The time cannot be more than one year in the future.
 	ExpirationTime string `json:"expirationTime,omitempty"`
 
 	// Id: The ID of this permission. This is a unique identifier for the
@@ -2524,12 +2539,12 @@ type Permission struct {
 
 	// PendingOwner: Whether the account associated with this permission is
 	// a pending owner. Only populated for user type permissions for files
-	// that are not in a shared drive.
+	// that aren't in a shared drive.
 	PendingOwner bool `json:"pendingOwner,omitempty"`
 
 	// PermissionDetails: Details of whether the permissions on this shared
-	// drive item are inherited or directly on this item. This is an
-	// output-only field which is present only for shared drive items.
+	// drive item are inherited or are directly on this item. This is an
+	// output-only field that's present only for shared drive items.
 	PermissionDetails []*PermissionPermissionDetails `json:"permissionDetails,omitempty"`
 
 	// PhotoLink: A link to the user's profile photo, if available.
@@ -2556,7 +2571,7 @@ type Permission struct {
 	// - anyone  When creating a permission, if type is user or group, you
 	// must provide an emailAddress for the user or group. When type is
 	// domain, you must provide a domain. There isn't extra information
-	// required for a anyone type.
+	// required for the anyone type.
 	Type string `json:"type,omitempty"`
 
 	// View: Indicates the view for this permission. Only populated for
@@ -2602,13 +2617,13 @@ type PermissionPermissionDetails struct {
 	InheritedFrom string `json:"inheritedFrom,omitempty"`
 
 	// PermissionType: The permission type for this user. While new values
-	// may be added in future, the following are currently possible:
+	// may be added in future, the following are currently allowed:
 	// - file
 	// - member
 	PermissionType string `json:"permissionType,omitempty"`
 
 	// Role: The primary role for this user. While new values may be added
-	// in the future, the following are currently possible:
+	// in the future, the following are currently allowed:
 	// - organizer
 	// - fileOrganizer
 	// - writer
@@ -3165,6 +3180,12 @@ type TeamDriveCapabilities struct {
 	// change the domainUsersOnly restriction of this Team Drive.
 	CanChangeDomainUsersOnlyRestriction bool `json:"canChangeDomainUsersOnlyRestriction,omitempty"`
 
+	// CanChangeSharingFoldersRequiresOrganizerPermissionRestriction:
+	// Whether the current user can change the
+	// sharingFoldersRequiresOrganizerPermission restriction of this Team
+	// Drive.
+	CanChangeSharingFoldersRequiresOrganizerPermissionRestriction bool `json:"canChangeSharingFoldersRequiresOrganizerPermissionRestriction,omitempty"`
+
 	// CanChangeTeamDriveBackground: Whether the current user can change the
 	// background of this Team Drive.
 	CanChangeTeamDriveBackground bool `json:"canChangeTeamDriveBackground,omitempty"`
@@ -3275,6 +3296,11 @@ type TeamDriveRestrictions struct {
 	// Team Drive belongs. This restriction may be overridden by other
 	// sharing policies controlled outside of this Team Drive.
 	DomainUsersOnly bool `json:"domainUsersOnly,omitempty"`
+
+	// SharingFoldersRequiresOrganizerPermission: If true, only users with
+	// the organizer role can share folders. If false, users with either the
+	// organizer role or the file organizer role can share folders.
+	SharingFoldersRequiresOrganizerPermission bool `json:"sharingFoldersRequiresOrganizerPermission,omitempty"`
 
 	// TeamMembersOnly: Whether access to items inside this Team Drive is
 	// restricted to members of this Team Drive.
@@ -4059,7 +4085,8 @@ type ChangesWatchCall struct {
 	header_    http.Header
 }
 
-// Watch: Subscribes to changes for a user.
+// Watch: Subscribes to changes for a user. To use this method, you must
+// include the pageToken query parameter.
 //
 //   - pageToken: The token for continuing a previous list request on the
 //     next page. This should be set to the value of 'nextPageToken' from
@@ -4267,7 +4294,7 @@ func (c *ChangesWatchCall) Do(opts ...googleapi.CallOption) (*Channel, error) {
 	}
 	return ret, nil
 	// {
-	//   "description": "Subscribes to changes for a user.",
+	//   "description": "Subscribes to changes for a user. To use this method, you must include the pageToken query parameter.",
 	//   "httpMethod": "POST",
 	//   "id": "drive.changes.watch",
 	//   "parameterOrder": [
@@ -6192,7 +6219,7 @@ type DrivesUpdateCall struct {
 	header_    http.Header
 }
 
-// Update: Updates the metadate for a shared drive.
+// Update: Updates the metadata for a shared drive.
 //
 // - driveId: The ID of the shared drive.
 func (r *DrivesService) Update(driveId string, drive *Drive) *DrivesUpdateCall {
@@ -6203,9 +6230,9 @@ func (r *DrivesService) Update(driveId string, drive *Drive) *DrivesUpdateCall {
 }
 
 // UseDomainAdminAccess sets the optional parameter
-// "useDomainAdminAccess": Issue the request as a domain administrator;
-// if set to true, then the requester will be granted access if they are
-// an administrator of the domain to which the shared drive belongs.
+// "useDomainAdminAccess": Issue the request as a domain administrator.
+// If set to true, then the requester is granted access if they're an
+// administrator of the domain to which the shared drive belongs.
 func (c *DrivesUpdateCall) UseDomainAdminAccess(useDomainAdminAccess bool) *DrivesUpdateCall {
 	c.urlParams_.Set("useDomainAdminAccess", fmt.Sprint(useDomainAdminAccess))
 	return c
@@ -6302,7 +6329,7 @@ func (c *DrivesUpdateCall) Do(opts ...googleapi.CallOption) (*Drive, error) {
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates the metadate for a shared drive.",
+	//   "description": "Updates the metadata for a shared drive.",
 	//   "httpMethod": "PATCH",
 	//   "id": "drive.drives.update",
 	//   "parameterOrder": [
@@ -6317,7 +6344,7 @@ func (c *DrivesUpdateCall) Do(opts ...googleapi.CallOption) (*Drive, error) {
 	//     },
 	//     "useDomainAdminAccess": {
 	//       "default": "false",
-	//       "description": "Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs.",
+	//       "description": "Issue the request as a domain administrator. If set to true, then the requester is granted access if they're an administrator of the domain to which the shared drive belongs.",
 	//       "location": "query",
 	//       "type": "boolean"
 	//     }
@@ -7096,6 +7123,13 @@ func (r *FilesService) EmptyTrash() *FilesEmptyTrashCall {
 	return c
 }
 
+// DriveId sets the optional parameter "driveId": If set, empties the
+// trash of the provided shared drive.
+func (c *FilesEmptyTrashCall) DriveId(driveId string) *FilesEmptyTrashCall {
+	c.urlParams_.Set("driveId", driveId)
+	return c
+}
+
 // EnforceSingleParent sets the optional parameter
 // "enforceSingleParent": Deprecated. If an item is not in a shared
 // drive and its last parent is deleted but the item itself is not, the
@@ -7167,6 +7201,11 @@ func (c *FilesEmptyTrashCall) Do(opts ...googleapi.CallOption) error {
 	//   "httpMethod": "DELETE",
 	//   "id": "drive.files.emptyTrash",
 	//   "parameters": {
+	//     "driveId": {
+	//       "description": "If set, empties the trash of the provided shared drive.",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
 	//     "enforceSingleParent": {
 	//       "default": "false",
 	//       "description": "Deprecated. If an item is not in a shared drive and its last parent is deleted but the item itself is not, the item will be placed under its owner's root.",
@@ -8842,9 +8881,7 @@ type FilesWatchCall struct {
 	header_    http.Header
 }
 
-// Watch: Subscribes to changes to a file. While you can establish a
-// channel for changes to a file on a shared drive, a change to a shared
-// drive file won't create a notification.
+// Watch: Subscribes to changes to a file.
 //
 // - fileId: The ID of the file.
 func (r *FilesService) Watch(fileId string, channel *Channel) *FilesWatchCall {
@@ -9002,7 +9039,7 @@ func (c *FilesWatchCall) Do(opts ...googleapi.CallOption) (*Channel, error) {
 	}
 	return ret, nil
 	// {
-	//   "description": "Subscribes to changes to a file. While you can establish a channel for changes to a file on a shared drive, a change to a shared drive file won't create a notification.",
+	//   "description": "Subscribes to changes to a file.",
 	//   "httpMethod": "POST",
 	//   "id": "drive.files.watch",
 	//   "parameterOrder": [
@@ -9079,7 +9116,9 @@ type PermissionsCreateCall struct {
 	header_    http.Header
 }
 
-// Create: Creates a permission for a file or shared drive.
+// Create: Creates a permission for a file or shared drive. For more
+// information on creating permissions, see Share files, folders &
+// drives.
 //
 // - fileId: The ID of the file or shared drive.
 func (r *PermissionsService) Create(fileId string, permission *Permission) *PermissionsCreateCall {
@@ -9255,7 +9294,7 @@ func (c *PermissionsCreateCall) Do(opts ...googleapi.CallOption) (*Permission, e
 	}
 	return ret, nil
 	// {
-	//   "description": "Creates a permission for a file or shared drive.",
+	//   "description": "Creates a permission for a file or shared drive. For more information on creating permissions, see Share files, folders \u0026 drives.",
 	//   "httpMethod": "POST",
 	//   "id": "drive.permissions.create",
 	//   "parameterOrder": [
