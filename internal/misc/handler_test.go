@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 func TestNewMiscHandler(t *testing.T) {
 	mainRouter := mux.NewRouter()
 	handler := misc.NewHandler(nil, nil, "dummy", &auth.Service{})
-	handler.SetupRoutes(mainRouter, nil, metrics.NewTestManager())
+	handler.SetupRoutes(mainRouter, nil, metrics.NewTestManager(), 1)
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
 
@@ -117,7 +117,7 @@ func TestHandler_VersionAndRoot(t *testing.T) {
 	)
 
 	r := mux.NewRouter()
-	handler.SetupRoutes(r, nil, metrics.NewTestManager())
+	handler.SetupRoutes(r, nil, metrics.NewTestManager(), 1)
 
 	req, err := http.NewRequest("GET", "/version", nil)
 	require.NoError(t, err)
@@ -151,6 +151,7 @@ func TestHandler_Login(t *testing.T) {
 		r,
 		rateLimiterMock,
 		metrics.NewTestManager(),
+		1,
 	)
 
 	loginRequest := auth.Credentials{

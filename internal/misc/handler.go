@@ -58,6 +58,7 @@ func (handler *Handler) SetupRoutes(
 	mainRouter *mux.Router,
 	rateLimiter middleware.RequestRateLimiter,
 	metricsManager *metrics.Manager,
+	loginRateLimitAllowedPerMin int,
 ) {
 	mainRouter.HandleFunc("/", handler.handleRoot).Methods("GET", "POST", "OPTIONS").Name("root")
 	mainRouter.HandleFunc("/quote/random", handler.handleGetRandomQuote).Methods("GET").Name("quote")
@@ -74,7 +75,12 @@ func (handler *Handler) SetupRoutes(
 		Methods("GET", "OPTIONS").Name("logout")
 
 	// rate limit the /login and /logout endpoints to prevent abuse
-	loginSubrouter.Use(middleware.RateLimit(rateLimiter, "login", 15, metricsManager))
+	loginSubrouter.Use(middleware.RateLimit(
+		rateLimiter,
+		"login",
+		loginRateLimitAllowedPerMin,
+		metricsManager,
+	))
 	loginSubrouter.Use(middleware.Cors())
 }
 

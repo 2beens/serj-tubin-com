@@ -22,6 +22,8 @@ redis_port = "6379"
 quotes_csv_path = "./assets/quotes.csv"
 # SENTRY
 sentry_enabled = false
+# OTHER
+login_rate_limit_allowed_per_min = 15
 
 [development]
 host = "localhost"
@@ -47,6 +49,8 @@ redis_port = "6379"
 quotes_csv_path = "./assets/quotes.csv"
 # SENTRY
 sentry_enabled = false
+# OTHER
+login_rate_limit_allowed_per_min = 15
 
 [production]
 host = "localhost"
@@ -72,3 +76,5 @@ redis_port = "6379"
 quotes_csv_path = "./assets/quotes.csv"
 # SENTRY
 sentry_enabled = true
+# OTHER
+login_rate_limit_allowed_per_min = 15
