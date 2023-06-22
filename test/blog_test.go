@@ -13,6 +13,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/blog"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,7 +47,7 @@ func (s *IntegrationTestSuite) deleteBlogPostRequest(
 	ctx context.Context,
 	authToken string,
 	postID int,
-) {
+) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"DELETE", fmt.Sprintf("%s/blog/delete/%d", serverEndpoint, postID),
@@ -56,10 +57,7 @@ func (s *IntegrationTestSuite) deleteBlogPostRequest(
 	req.Header.Set("User-Agent", "test-agent")
 	req.Header.Set("X-SERJ-TOKEN", authToken)
 
-	resp, err := s.httpClient.Do(req)
-	require.NoError(s.T(), err)
-	resp.Body.Close()
-	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	return s.httpClient.Do(req)
 }
 
 func (s *IntegrationTestSuite) newBlogPostRequest(
@@ -124,7 +122,7 @@ func (s *IntegrationTestSuite) TestBlogs() {
 		defer resp.Body.Close()
 	})
 
-	s.T().Run("add posts", func(t *testing.T) {
+	s.T().Run("add posts and try delete", func(t *testing.T) {
 		authToken := s.doLogin(ctx)
 
 		now := time.Now()
@@ -156,5 +154,19 @@ func (s *IntegrationTestSuite) TestBlogs() {
 		require.Equal(t, blogPost1.Title, blogsPage.Posts[1].Title)
 		require.Equal(t, blogPost1.Content, blogsPage.Posts[1].Content)
 		require.NotZero(t, blogsPage.Posts[1].CreatedAt)
+
+		// try delete with invalid token
+		resp, err := s.deleteBlogPostRequest(ctx, "invalid-token", postID1)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+		// try delete with valid token
+		resp, err = s.deleteBlogPostRequest(ctx, authToken, postID1)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		blogsPage = s.getBlogPostsPage(ctx, 1, 10)
+		require.Equal(t, 1, len(blogsPage.Posts))
+		require.Equal(t, 1, blogsPage.Total)
 	})
 }
