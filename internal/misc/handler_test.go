@@ -10,6 +10,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+	"github.com/go-redis/redis_rate/v9"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -136,6 +137,7 @@ func TestHandler_VersionAndRoot(t *testing.T) {
 func TestHandler_Login(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	authServiceMock := NewMockauthService(ctrl)
+	rateLimiterMock := NewMockRequestRateLimiter(ctrl)
 
 	handler := misc.NewHandler(
 		nil,
@@ -145,9 +147,13 @@ func TestHandler_Login(t *testing.T) {
 	)
 
 	r := mux.NewRouter()
-	handler.SetupRoutes(r, nil, metrics.NewTestManager())
+	handler.SetupRoutes(
+		r,
+		rateLimiterMock,
+		metrics.NewTestManager(),
+	)
 
-	loginRequest := misc.LoginRequest{
+	loginRequest := auth.Credentials{
 		Username: "test-username",
 		Password: "test-password",
 	}
@@ -157,15 +163,25 @@ func TestHandler_Login(t *testing.T) {
 	req, err := http.NewRequest("POST", "/a/login", bytes.NewReader(loginRequestJson))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "test")
+
+	rateLimiterMock.EXPECT().
+		Allow(gomock.Any(), "login", gomock.Any()).
+		Return(&redis_rate.Result{
+			Allowed: 10,
+		}, nil)
 
 	authServiceMock.EXPECT().
 		Login(gomock.Any(), loginRequest, gomock.Any()).
-		Return("OK", nil)
+		Return("test-token", nil)
 
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, "OK", rr.Body.String())
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var loginResponse misc.LoginResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &loginResponse))
+	assert.Equal(t, "test-token", loginResponse.Token)
 }
 
 // TODO: other tests

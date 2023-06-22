@@ -26,6 +26,7 @@ type LoginRequest struct {
 }
 
 //go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=misc_test
+//go:generate mockgen -source=../middleware/rate_limiting.go -destination=mocks_rate_limiter_test.go -package=misc_test
 
 type authService interface {
 	Login(ctx context.Context, creds auth.Credentials, createdAt time.Time) (string, error)
