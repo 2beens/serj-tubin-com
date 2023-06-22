@@ -175,7 +175,7 @@ func getTestConfig(redisPort, postgresPort string) *config.Config {
 		PostgresPort:                postgresPort,
 		PostgresHost:                "localhost",
 		PostgresDBName:              "serj_blogs",
-		LoginRateLimitAllowedPerMin: 15,
+		LoginRateLimitAllowedPerMin: 10,
 	}
 }
 

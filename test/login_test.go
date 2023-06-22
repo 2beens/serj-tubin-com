@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -116,4 +117,39 @@ func (s *IntegrationTestSuite) TestLogin() {
 			tc.assertFunc(resp)
 		})
 	}
+
+	t.Run("rate limiting", func(t *testing.T) {
+		// simulate login requests brute force attack
+		loginRequest := misc.LoginRequest{
+			Username: "test-user",
+			Password: "test-pass",
+		}
+		loginReqJson, err := json.Marshal(loginRequest)
+		require.NoError(t, err)
+
+		// config is set to allow 10 login attempts per minute, so after 10th attempt we should get 429
+		// before this test, we've made 5 other login/logout attempts, so we should get 429 after 5 more attempts ??
+		// TODO: the best would be to reset the rate limiter data in redis before this test
+		for i := 1; i <= 20; i++ {
+			req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/a/login", serverEndpoint), bytes.NewBuffer(loginReqJson))
+			require.NoError(t, err)
+			req.Header.Set("User-Agent", "test-agent")
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := s.httpClient.Do(req)
+			require.NoError(t, err)
+
+			if i < 10 {
+				require.Equal(t, http.StatusBadRequest, resp.StatusCode, "iteration: %d", i)
+				assert.Empty(t, resp.Header.Get("Retry-After"), "iteration: %d", i)
+			} else {
+				require.Equal(t, http.StatusTooManyRequests, resp.StatusCode, "iteration: %d", i)
+				retryAfter, err := strconv.Atoi(resp.Header.Get("Retry-After"))
+				require.NoError(t, err, "iteration: %d", i)
+				assert.True(t, retryAfter > 0, "iteration: %d", i)
+			}
+
+			assert.NoError(t, resp.Body.Close())
+		}
+	})
 }

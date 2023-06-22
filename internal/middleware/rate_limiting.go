@@ -40,11 +40,17 @@ func RateLimit(
 				return
 			}
 
+			// set retry after header to res.RetryAfter
+			w.Header().Set(
+				"Retry-After",
+				fmt.Sprintf("%f", res.RetryAfter.Seconds()),
+			)
+
 			metricsManager.CounterRateLimitedRequests.Inc()
 			http.Error(
 				w,
 				fmt.Sprintf("retry after %f seconds", res.RetryAfter.Seconds()),
-				http.StatusTooEarly,
+				http.StatusTooManyRequests,
 			)
 		})
 	}

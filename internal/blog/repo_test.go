@@ -1,5 +1,7 @@
 //go:build all_tests
 
+// TODO: move all this to integration tests
+
 package blog
 
 import (
