@@ -1,17 +1,16 @@
-package misc
+package misc_test
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/middleware"
+	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
-
-	"github.com/go-redis/redis/v8"
-	"github.com/go-redis/redis_rate/v9"
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,73 +28,9 @@ func TestMain(m *testing.M) {
 	)
 }
 
-type testRequestRateLimiter struct {
-	// key to limit map
-	Limits map[string]int
-}
-
-func (l *testRequestRateLimiter) Allow(_ context.Context, key string, limit redis_rate.Limit) (*redis_rate.Result, error) {
-	res := &redis_rate.Result{
-		Limit: redis_rate.Limit{
-			Rate:   0,
-			Burst:  0,
-			Period: 0,
-		},
-		Allowed:    0,
-		Remaining:  0,
-		RetryAfter: 0,
-		ResetAfter: 0,
-	}
-
-	foundLimit, ok := l.Limits[key]
-	if !ok || foundLimit == 0 {
-		return res, nil
-	}
-
-	res.Allowed = l.Limits[key]
-	l.Limits[key]--
-
-	return res, nil
-}
-
-func setupNetlogRouterForTests(
-	t *testing.T,
-	authService *auth.Service,
-	redisClient *redis.Client,
-	reqRateLimiter *testRequestRateLimiter,
-	metricsManager *metrics.Manager,
-	gymstatsIOSAppSecret,
-	browserReqSecret string,
-) *mux.Router {
-	t.Helper()
-
-	r := mux.NewRouter()
-	authMiddleware := middleware.NewAuthMiddlewareHandler(
-		gymstatsIOSAppSecret,
-		browserReqSecret,
-		auth.NewLoginChecker(time.Hour, redisClient),
-	)
-
-	// the same setup as in Server.routerSetup() ... these are not so much of a "unit" tests
-	r.Use(middleware.PanicRecovery(metricsManager))
-	r.Use(middleware.LogRequest())
-	r.Use(middleware.RequestMetrics(metricsManager))
-	r.Use(middleware.Cors())
-	r.Use(authMiddleware.AuthCheck())
-	r.Use(middleware.DrainAndCloseRequest())
-
-	handler := NewHandler(
-		nil, nil,
-		"dummy", authService,
-	)
-	handler.SetupRoutes(r, reqRateLimiter, metrics.NewTestManager())
-
-	return r
-}
-
 func TestNewMiscHandler(t *testing.T) {
 	mainRouter := mux.NewRouter()
-	handler := NewHandler(nil, nil, "dummy", &auth.Service{})
+	handler := misc.NewHandler(nil, nil, "dummy", &auth.Service{})
 	handler.SetupRoutes(mainRouter, nil, metrics.NewTestManager())
 	require.NotNil(t, handler)
 	require.NotNil(t, mainRouter)
@@ -169,62 +104,68 @@ func TestNewMiscHandler(t *testing.T) {
 	}
 }
 
-//func TestLogin(t *testing.T) {
-//	rdb, mock := redismock.NewClientMock()
-//	defer rdb.Close()
-//
-//	// redis mock is quite poor in a way that we cannot set any expectations on the functions
-//	//mock.ExpectSet("key", "value", time.Hour).SetVal("OK")
-//
-//	username := "testuser"
-//	password := "testpass"
-//	passwordHash := "$2a$14$6Gmhg85si2etd3K9oB8nYu1cxfbrdmhkg6wI6OXsa88IF4L2r/L9i" // testpass
-//
-//	authService := auth.NewAuthService(&auth.Admin{
-//		Username:     username,
-//		PasswordHash: passwordHash,
-//	}, time.Hour, rdb)
-//	require.NotNil(t, authService)
-//	testToken := "test_token"
-//	randStringFunc := func(s int) (string, error) {
-//		return testToken, nil
-//	}
-//	authService.RandStringFunc = randStringFunc
-//
-//	reqRateLimiter := &testRequestRateLimiter{
-//		Limits: map[string]int{},
-//	}
-//	r := setupNetlogRouterForTests(
-//		t,
-//		authService,
-//		rdb,
-//		reqRateLimiter,
-//		metrics.NewTestManager(),
-//		"test",
-//		"test",
-//	)
-//
-//	reqRateLimiter.Limits["login"] = 1
-//
-//	rr := httptest.NewRecorder()
-//	req := httptest.NewRequest("POST", "/a/login", nil)
-//	req.PostForm = url.Values{}
-//	req.PostForm.Add("username", username)
-//	req.PostForm.Add("password", password)
-//	req.Header.Set("User-Agent", "test-agent")
-//
-//	r.ServeHTTP(rr, req)
-//	require.Equal(t, http.StatusOK, rr.Code)
-//
-//	var loginResponse LoginResponse
-//	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &loginResponse))
-//	assert.Equal(t, testToken, loginResponse.Token)
-//
-//	// next time fails
-//	rr = httptest.NewRecorder()
-//	r.ServeHTTP(rr, req)
-//	assert.Equal(t, http.StatusTooEarly, rr.Code)
-//	assert.True(t, strings.HasPrefix(rr.Body.String(), "retry after"))
-//}
+func TestHandler_VersionAndRoot(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	authServiceMock := NewMockauthService(ctrl)
+
+	handler := misc.NewHandler(
+		nil,
+		nil,
+		"dummy-version-info",
+		authServiceMock,
+	)
+
+	r := mux.NewRouter()
+	handler.SetupRoutes(r, nil, metrics.NewTestManager())
+
+	req, err := http.NewRequest("GET", "/version", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "dummy-version-info", rr.Body.String())
+
+	req, err = http.NewRequest("GET", "/", nil)
+	require.NoError(t, err)
+	rr = httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "I'm OK, thanks ;)", rr.Body.String())
+}
+
+func TestHandler_Login(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	authServiceMock := NewMockauthService(ctrl)
+
+	handler := misc.NewHandler(
+		nil,
+		nil,
+		"dummy-version-info",
+		authServiceMock,
+	)
+
+	r := mux.NewRouter()
+	handler.SetupRoutes(r, nil, metrics.NewTestManager())
+
+	loginRequest := misc.LoginRequest{
+		Username: "test-username",
+		Password: "test-password",
+	}
+	loginRequestJson, err := json.Marshal(loginRequest)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("POST", "/a/login", bytes.NewReader(loginRequestJson))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	authServiceMock.EXPECT().
+		Login(gomock.Any(), loginRequest, gomock.Any()).
+		Return("OK", nil)
+
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "OK", rr.Body.String())
+}
 
 // TODO: other tests

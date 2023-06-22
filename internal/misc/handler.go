@@ -1,6 +1,7 @@
 package misc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,18 +25,25 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=misc_test
+
+type authService interface {
+	Login(ctx context.Context, creds auth.Credentials, createdAt time.Time) (string, error)
+	Logout(ctx context.Context, token string) (bool, error)
+}
+
 type Handler struct {
 	geoIp         *geoip.Api
 	quotesManager *QuotesManager
 	versionInfo   string
-	authService   *auth.Service
+	authService   authService
 }
 
 func NewHandler(
 	geoIp *geoip.Api,
 	quotesManager *QuotesManager,
 	versionInfo string,
-	authService *auth.Service,
+	authService authService,
 ) *Handler {
 	return &Handler{
 		geoIp:         geoIp,
