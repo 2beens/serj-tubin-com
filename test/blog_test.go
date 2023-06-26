@@ -118,8 +118,8 @@ func (s *IntegrationTestSuite) TestBlogs() {
 
 		resp, err := s.httpClient.Do(req)
 		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-		defer resp.Body.Close()
 	})
 
 	s.T().Run("add posts and try delete", func(t *testing.T) {

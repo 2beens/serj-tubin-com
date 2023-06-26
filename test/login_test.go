@@ -128,9 +128,10 @@ func (s *IntegrationTestSuite) TestLogin() {
 		require.NoError(t, err)
 
 		// config is set to allow 10 login attempts per minute, so after 10th attempt we should get 429
-		// before this test, we've made 5 other login/logout attempts, so we should get 429 after 5 more attempts ??
-		// TODO: the best would be to reset the rate limiter data in redis before this test
-		for i := 1; i <= 20; i++ {
+		// but first, do a redis cleanup
+		require.NoError(t, s.redisDataCleanup(ctx))
+
+		for i := 1; i <= 15; i++ {
 			req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/a/login", serverEndpoint), bytes.NewBuffer(loginReqJson))
 			require.NoError(t, err)
 			req.Header.Set("User-Agent", "test-agent")
@@ -139,17 +140,19 @@ func (s *IntegrationTestSuite) TestLogin() {
 			resp, err := s.httpClient.Do(req)
 			require.NoError(t, err)
 
-			if i < 10 {
+			if i <= 10 {
 				require.Equal(t, http.StatusBadRequest, resp.StatusCode, "iteration: %d", i)
 				assert.Empty(t, resp.Header.Get("Retry-After"), "iteration: %d", i)
 			} else {
 				require.Equal(t, http.StatusTooManyRequests, resp.StatusCode, "iteration: %d", i)
-				retryAfter, err := strconv.Atoi(resp.Header.Get("Retry-After"))
+				retryAfter, err := strconv.ParseFloat(resp.Header.Get("Retry-After"), 64)
 				require.NoError(t, err, "iteration: %d", i)
 				assert.True(t, retryAfter > 0, "iteration: %d", i)
 			}
 
 			assert.NoError(t, resp.Body.Close())
 		}
+
+		require.NoError(t, s.redisDataCleanup(ctx))
 	})
 }
