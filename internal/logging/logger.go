@@ -44,7 +44,6 @@ func Setup(params LoggerSetupParams) {
 		})
 		logrus.AddHook(hook)
 
-		sentry.CaptureMessage("sentry set up success")
 		logrus.Infoln("Sentry set up successfully")
 	}
 
