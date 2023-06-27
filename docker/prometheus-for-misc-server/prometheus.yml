@@ -34,6 +34,7 @@ scrape_configs:
       - targets: ['h.serj-tubin.com']
 
   # check all scrape targets: https://prometheus.serj-tubin.com/targets?search=
+  # more info in ../docker-compose-prometheus.yml
   ####################################################################################
 
   - job_name: node_exporter_misc_server
