@@ -25,7 +25,7 @@ func (s *IntegrationTestSuite) deleteAllExercises(ctx context.Context) {
 func (s *IntegrationTestSuite) newExerciseRequest(
 	ctx context.Context,
 	exercise gymstats.Exercise,
-) gymstats.Exercise {
+) gymstats.AddExerciseResponse {
 	exerciseJson, err := json.Marshal(exercise)
 	require.NoError(s.T(), err)
 
@@ -47,7 +47,7 @@ func (s *IntegrationTestSuite) newExerciseRequest(
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var addedExercise gymstats.Exercise
+	var addedExercise gymstats.AddExerciseResponse
 	require.NoError(s.T(), json.Unmarshal(respBytes, &addedExercise))
 
 	return addedExercise
@@ -305,6 +305,11 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		addedE4 := s.newExerciseRequest(ctx, e4)
 		e1.ID, e2.ID, e3.ID, e4.ID = addedE1.ID, addedE2.ID, addedE3.ID, addedE4.ID
 
+		assert.Equal(t, 1, addedE1.CountToday)
+		assert.Equal(t, 1, addedE2.CountToday)
+		assert.Equal(t, 2, addedE3.CountToday)
+		assert.Equal(t, 1, addedE4.CountToday)
+
 		assert.Equal(t, e1.CreatedAt.Truncate(time.Second).In(time.UTC), addedE1.CreatedAt.Truncate(time.Second).In(time.UTC))
 		assert.Equal(t, e2.CreatedAt.Truncate(time.Second).In(time.UTC), addedE2.CreatedAt.Truncate(time.Second).In(time.UTC))
 		assert.Equal(t, e3.CreatedAt.Truncate(time.Second).In(time.UTC), addedE3.CreatedAt.Truncate(time.Second).In(time.UTC))
@@ -314,10 +319,10 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		addedE3.CreatedAt = e3.CreatedAt
 		addedE4.CreatedAt = e4.CreatedAt
 
-		assert.Equal(t, e1, addedE1)
-		assert.Equal(t, e2, addedE2)
-		assert.Equal(t, e3, addedE3)
-		assert.Equal(t, e4, addedE4)
+		assert.Equal(t, e1, addedE1.Exercise)
+		assert.Equal(t, e2, addedE2.Exercise)
+		assert.Equal(t, e3, addedE3.Exercise)
+		assert.Equal(t, e4, addedE4.Exercise)
 
 		ex2history := s.getExerciseHistory(ctx, "ex2", "legs")
 		assert.Len(t, ex2history.Stats, 1)
