@@ -21,6 +21,8 @@ var ErrExerciseNotFound = errors.New("exercise not found")
 type ExerciseParams struct {
 	ExerciseID  string
 	MuscleGroup string
+	From        *time.Time
+	To          *time.Time
 }
 
 type ListParams struct {
@@ -211,8 +213,11 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 			FROM exercise
 				WHERE exercise_id = $1
 				AND muscle_group = $2
+				AND ($3::timestamp IS NULL OR created_at >= $3)
+				AND ($4::timestamp IS NULL OR created_at <= $4)
 			ORDER BY created_at DESC;`,
 		params.ExerciseID, params.MuscleGroup,
+		params.From, params.To,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)

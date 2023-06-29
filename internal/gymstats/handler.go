@@ -33,6 +33,11 @@ type UpdateExerciseResponse struct {
 	UpdatedID int `json:"updatedId"`
 }
 
+type AddExerciseResponse struct {
+	Exercise
+	CountToday int `json:"countToday"`
+}
+
 type ExercisesListResponse struct {
 	Exercises []Exercise `json:"exercises"`
 	Total     int        `json:"total"`
@@ -80,7 +85,21 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 
 	log.Debugf("new exercise added: [%s] [%s]: %d", addedExercise.MuscleGroup, addedExercise.ExerciseID, addedExercise.ID)
 
-	addedExJson, err := json.Marshal(addedExercise)
+	exercisesToday, err := handler.repo.ListAll(ctx, ExerciseParams{
+		ExerciseID:  addedExercise.ExerciseID,
+		MuscleGroup: addedExercise.MuscleGroup,
+	})
+	if err != nil {
+		// just log the error, no need to return error to the client
+		log.Errorf("failed to get exercises today [%s] [%s]: %s", addedExercise.ExerciseID, addedExercise.MuscleGroup, err)
+	}
+
+	addExerciseResponse := AddExerciseResponse{
+		Exercise:   *addedExercise,
+		CountToday: len(exercisesToday),
+	}
+
+	addedExJson, err := json.Marshal(addExerciseResponse)
 	if err != nil {
 		log.Errorf("failed to marshal new exercise: %s", err)
 		http.Error(w, "error, failed to add new exercise", http.StatusInternalServerError)
