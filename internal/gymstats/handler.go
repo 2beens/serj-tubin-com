@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
@@ -85,9 +86,13 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 
 	log.Debugf("new exercise added: [%s] [%s]: %d", addedExercise.MuscleGroup, addedExercise.ExerciseID, addedExercise.ID)
 
+	todayMidnight := time.Now().Truncate(24 * time.Hour)
+	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
 	exercisesToday, err := handler.repo.ListAll(ctx, ExerciseParams{
 		ExerciseID:  addedExercise.ExerciseID,
 		MuscleGroup: addedExercise.MuscleGroup,
+		From:        &todayMidnight,
+		To:          &tomorrowMidnight,
 	})
 	if err != nil {
 		// just log the error, no need to return error to the client
