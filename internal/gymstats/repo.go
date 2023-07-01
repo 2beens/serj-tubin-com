@@ -51,7 +51,7 @@ func NewRepo(db *pgxpool.Pool) *Repo {
 	}
 }
 
-func (r *Repo) Add(ctx context.Context, exercise *Exercise) (_ *Exercise, err error) {
+func (r *Repo) Add(ctx context.Context, exercise Exercise) (_ *Exercise, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.add")
 	defer func() {
 		if err != nil {
@@ -95,7 +95,7 @@ func (r *Repo) Add(ctx context.Context, exercise *Exercise) (_ *Exercise, err er
 	span.SetAttributes(attribute.Int("exercise.id", id))
 
 	exercise.ID = id
-	return exercise, nil
+	return &exercise, nil
 }
 
 func (r *Repo) Update(ctx context.Context, exercise *Exercise) (err error) {

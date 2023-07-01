@@ -17,7 +17,7 @@ import (
 //go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=gymstats_test
 
 type exercisesRepo interface {
-	Add(ctx context.Context, exercise *Exercise) (*Exercise, error)
+	Add(ctx context.Context, exercise Exercise) (*Exercise, error)
 	Get(ctx context.Context, id int) (*Exercise, error)
 	List(ctx context.Context, params ListParams) (_ []Exercise, total int, err error)
 	ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise, err error)
@@ -77,7 +77,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	addedExercise, err := handler.repo.Add(ctx, &exercise)
+	addedExercise, err := handler.repo.Add(ctx, exercise)
 	if err != nil {
 		log.Errorf("failed to add new exercise [%s], [%s]: %s", exercise.MuscleGroup, exercise.ExerciseID, err)
 		http.Error(w, "error, failed to add new exercise", http.StatusInternalServerError)
