@@ -39,7 +39,7 @@ test-all:
 
 .PHONY: integration-tests
 integration-tests:
-	ST_INT_TESTS=1 go test -v -race github.com/2beens/serjtubincom/test
+	go mod tidy && go mod vendor && export ST_INT_TESTS=1 && go test -v -race github.com/2beens/serjtubincom/test
 
 .PHONY: deploy deploy-c
 deploy:
