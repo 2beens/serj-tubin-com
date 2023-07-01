@@ -33,9 +33,9 @@ run-fs: run-file-service
 
 .PHONY: test test-all
 test:
-	go test -v -race ./...
+	go mod tidy && go mod vendor && go test -v -race ./...
 test-all:
-	go test -v -race ./... -tags=all_tests
+	go mod tidy && go mod vendor && go test -v -race ./... -tags=all_tests
 
 .PHONY: integration-tests
 integration-tests:
