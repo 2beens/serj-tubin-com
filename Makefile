@@ -33,13 +33,13 @@ run-fs: run-file-service
 
 .PHONY: test test-all
 test:
-	go mod tidy && go mod vendor && go test -v -race ./...
+	go test -v -race ./...
 test-all:
-	go mod tidy && go mod vendor && go test -v -race ./... -tags=all_tests
+	go test -v -race ./... -tags=all_tests
 
 .PHONY: integration-tests
 integration-tests:
-	go mod tidy && go mod vendor && export ST_INT_TESTS=1 && go test -v -race github.com/2beens/serjtubincom/test
+	export ST_INT_TESTS=1 && go test -v -race github.com/2beens/serjtubincom/test
 
 .PHONY: deploy deploy-c
 deploy:
