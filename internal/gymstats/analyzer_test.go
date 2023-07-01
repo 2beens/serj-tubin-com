@@ -6,10 +6,21 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/gymstats"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m,
+		// INFO: https://github.com/go-redis/redis/issues/1029
+		goleak.IgnoreTopFunction(
+			"github.com/go-redis/redis/v8/internal/pool.(*ConnPool).reaper",
+		),
+	)
+}
 
 func TestAnalyzer_ExerciseHistory_NoExercisesFound(t *testing.T) {
 	ctrl := gomock.NewController(t)

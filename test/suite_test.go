@@ -15,6 +15,7 @@ import (
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
@@ -44,7 +45,8 @@ type IntegrationTestSuite struct {
 	server     *internal.Server
 	teardown   []func()
 
-	httpClient *http.Client
+	httpClient  *http.Client
+	redisClient *redis.Client
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -147,11 +149,7 @@ func (s *IntegrationTestSuite) TearDownSuite() {
 }
 
 func (s *IntegrationTestSuite) cleanup() {
-	fmt.Println(" --> cleaning up test suite...")
-	if s.dbPool != nil {
-		s.dbPool.Close()
-	}
-	fmt.Println(" --> test suite db closed")
+	fmt.Println(" --> test suite cleanup ...")
 	if s.server != nil {
 		s.server.GracefulShutdown()
 	}
@@ -159,23 +157,35 @@ func (s *IntegrationTestSuite) cleanup() {
 	for _, teardown := range s.teardown {
 		teardown()
 	}
+	fmt.Println(" --> teardown done...")
+	if s.dbPool != nil {
+		s.dbPool.Close()
+	}
 	fmt.Println(" --> test suite cleanup done")
 }
 
 func getTestConfig(redisPort, postgresPort string) *config.Config {
 	tempDir := os.TempDir()
 	return &config.Config{
-		Host:                     serverHost,
-		Port:                     serverPort,
-		QuotesCsvPath:            "../assets/quotes.csv",
-		NetlogUnixSocketAddrDir:  tempDir,
-		NetlogUnixSocketFileName: "netlog-test.sock",
-		RedisHost:                "localhost",
-		RedisPort:                redisPort,
-		PostgresPort:             postgresPort,
-		PostgresHost:             "localhost",
-		PostgresDBName:           "serj_blogs",
+		Host:                        serverHost,
+		Port:                        serverPort,
+		QuotesCsvPath:               "../assets/quotes.csv",
+		NetlogUnixSocketAddrDir:     tempDir,
+		NetlogUnixSocketFileName:    "netlog-test.sock",
+		RedisHost:                   "localhost",
+		RedisPort:                   redisPort,
+		PostgresPort:                postgresPort,
+		PostgresHost:                "localhost",
+		PostgresDBName:              "serj_blogs",
+		LoginRateLimitAllowedPerMin: 10,
 	}
+}
+
+func (s *IntegrationTestSuite) redisDataCleanup(ctx context.Context) error {
+	if err := s.redisClient.FlushAll(ctx).Err(); err != nil {
+		return fmt.Errorf("flush redis: %s", err)
+	}
+	return nil
 }
 
 func (s *IntegrationTestSuite) redisSetup() (string, error) {
@@ -190,13 +200,17 @@ func (s *IntegrationTestSuite) redisSetup() (string, error) {
 		return "", fmt.Errorf("run redis: %s", err)
 	}
 
+	redisPort := redisResource.GetPort("6379/tcp")
+	s.redisClient = redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("localhost:%s", redisPort),
+	})
+
 	s.teardown = append(s.teardown, func() {
 		if err := redisResource.Close(); err != nil {
 			fmt.Printf("redis teardown: %s\n", err)
 		}
 	})
 
-	redisPort := redisResource.GetPort("6379/tcp")
 	return redisPort, nil
 }
 

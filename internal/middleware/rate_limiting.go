@@ -21,12 +21,13 @@ func RateLimit(
 	allowedPerMin int,
 	metricsManager *metrics.Manager,
 ) func(next http.Handler) http.Handler {
+	perMinuteRate := redis_rate.PerMinute(allowedPerMin)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			res, err := rateLimiter.Allow(
 				r.Context(),
 				routerName,
-				redis_rate.PerMinute(allowedPerMin),
+				perMinuteRate,
 			)
 			if err != nil {
 				log.Errorf("rate limit middleware: %v", err)
@@ -39,11 +40,17 @@ func RateLimit(
 				return
 			}
 
+			// set retry after header to res.RetryAfter
+			w.Header().Set(
+				"Retry-After",
+				fmt.Sprintf("%f", res.RetryAfter.Seconds()),
+			)
+
 			metricsManager.CounterRateLimitedRequests.Inc()
 			http.Error(
 				w,
 				fmt.Sprintf("retry after %f seconds", res.RetryAfter.Seconds()),
-				http.StatusTooEarly,
+				http.StatusTooManyRequests,
 			)
 		})
 	}

@@ -1,6 +1,7 @@
 package misc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,18 +25,26 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=misc_test
+//go:generate mockgen -source=../middleware/rate_limiting.go -destination=mocks_rate_limiter_test.go -package=misc_test
+
+type authService interface {
+	Login(ctx context.Context, creds auth.Credentials, createdAt time.Time) (string, error)
+	Logout(ctx context.Context, token string) (bool, error)
+}
+
 type Handler struct {
 	geoIp         *geoip.Api
 	quotesManager *QuotesManager
 	versionInfo   string
-	authService   *auth.Service
+	authService   authService
 }
 
 func NewHandler(
 	geoIp *geoip.Api,
 	quotesManager *QuotesManager,
 	versionInfo string,
-	authService *auth.Service,
+	authService authService,
 ) *Handler {
 	return &Handler{
 		geoIp:         geoIp,
@@ -49,6 +58,7 @@ func (handler *Handler) SetupRoutes(
 	mainRouter *mux.Router,
 	rateLimiter middleware.RequestRateLimiter,
 	metricsManager *metrics.Manager,
+	loginRateLimitAllowedPerMin int,
 ) {
 	mainRouter.HandleFunc("/", handler.handleRoot).Methods("GET", "POST", "OPTIONS").Name("root")
 	mainRouter.HandleFunc("/quote/random", handler.handleGetRandomQuote).Methods("GET").Name("quote")
@@ -65,7 +75,12 @@ func (handler *Handler) SetupRoutes(
 		Methods("GET", "OPTIONS").Name("logout")
 
 	// rate limit the /login and /logout endpoints to prevent abuse
-	loginSubrouter.Use(middleware.RateLimit(rateLimiter, "login", 15, metricsManager))
+	loginSubrouter.Use(middleware.RateLimit(
+		rateLimiter,
+		"login",
+		loginRateLimitAllowedPerMin,
+		metricsManager,
+	))
 	loginSubrouter.Use(middleware.Cors())
 }
 

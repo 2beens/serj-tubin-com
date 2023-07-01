@@ -36,7 +36,7 @@ func (m *MockexercisesRepo) EXPECT() *MockexercisesRepoMockRecorder {
 }
 
 // Add mocks base method.
-func (m *MockexercisesRepo) Add(ctx context.Context, exercise *gymstats.Exercise) (*gymstats.Exercise, error) {
+func (m *MockexercisesRepo) Add(ctx context.Context, exercise gymstats.Exercise) (*gymstats.Exercise, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Add", ctx, exercise)
 	ret0, _ := ret[0].(*gymstats.Exercise)

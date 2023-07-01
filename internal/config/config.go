@@ -33,6 +33,8 @@ type Config struct {
 	// Sentry
 	SentryEnabled bool   `toml:"sentry_enabled"`
 	SentryDSN     string // loaded from env. var.
+	// Other
+	LoginRateLimitAllowedPerMin int `toml:"login_rate_limit_allowed_per_min"`
 }
 
 type Toml struct {
