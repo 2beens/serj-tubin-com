@@ -328,10 +328,27 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		assert.Len(t, ex2history.Stats, 1)
 		assert.Equal(t, "ex2", ex2history.ExerciseID)
 		assert.Equal(t, "legs", ex2history.MuscleGroup)
-		for _, histStats := range ex2history.Stats {
+		for day, histStats := range ex2history.Stats {
+			assert.Equal(t, time.Now().UTC().Truncate(24*time.Hour).Unix(), day.Unix())
+			assert.Equal(t, 2, histStats.Sets)
 			assert.Equal(t, 235, histStats.AvgKilos)
 			assert.Equal(t, 10, histStats.AvgReps)
 		}
+
+		ex1history := s.getExerciseHistory(ctx, "ex1", "triceps")
+		assert.Len(t, ex1history.Stats, 1)
+		assert.Equal(t, "ex1", ex1history.ExerciseID)
+		for day, histStats := range ex1history.Stats {
+			assert.Equal(t, time.Now().UTC().Truncate(24*time.Hour).Unix(), day.Unix())
+			assert.Equal(t, 1, histStats.Sets)
+			assert.Equal(t, 10, histStats.AvgKilos)
+			assert.Equal(t, 10, histStats.AvgReps)
+		}
+
+		emptyHistory := s.getExerciseHistory(ctx, "never-done-before", "triceps")
+		assert.Empty(t, emptyHistory.Stats)
+		assert.Equal(t, "never-done-before", emptyHistory.ExerciseID)
+		assert.Equal(t, "triceps", emptyHistory.MuscleGroup)
 
 		listExercisesResp := s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10})
 		assert.Len(t, listExercisesResp.Exercises, 4)

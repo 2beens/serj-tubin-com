@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/gymstats"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -118,8 +119,13 @@ func TestAnalyzer_ExerciseHistory(t *testing.T) {
 
 	assert.Equal(t, 20, dateNowStats.AvgKilos)
 	assert.Equal(t, 10, dateNowStats.AvgReps)
+	assert.Equal(t, 1, dateNowStats.Sets)
+
 	assert.Equal(t, 68, dateYesterdayStats.AvgKilos)
 	assert.Equal(t, 11, dateYesterdayStats.AvgReps)
+	assert.Equal(t, 3, dateYesterdayStats.Sets)
+
 	assert.Equal(t, 23, dateTenDaysAgoStats.AvgKilos)
 	assert.Equal(t, 10, dateTenDaysAgoStats.AvgReps)
+	assert.Equal(t, 6, dateTenDaysAgoStats.Sets)
 }
