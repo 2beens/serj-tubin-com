@@ -18,6 +18,7 @@ type ExerciseHistory struct {
 type ExerciseStats struct {
 	AvgKilos int `json:"avgKilos"`
 	AvgReps  int `json:"avgReps"`
+	Sets     int `json:"sets"`
 }
 
 type Analyzer struct {
@@ -68,6 +69,7 @@ func (a *Analyzer) ExerciseHistory(
 		history.Stats[day] = ExerciseStats{
 			AvgKilos: avgKilos,
 			AvgReps:  avgReps,
+			Sets:     len(dayExercises),
 		}
 	}
 

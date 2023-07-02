@@ -129,8 +129,13 @@ func TestAnalyzer_ExerciseHistory(t *testing.T) {
 
 	assert.Equal(t, 20, dateNowStats.AvgKilos)
 	assert.Equal(t, 10, dateNowStats.AvgReps)
+	assert.Equal(t, 1, dateNowStats.Sets)
+
 	assert.Equal(t, 68, dateYesterdayStats.AvgKilos)
 	assert.Equal(t, 11, dateYesterdayStats.AvgReps)
+	assert.Equal(t, 3, dateYesterdayStats.Sets)
+
 	assert.Equal(t, 23, dateTenDaysAgoStats.AvgKilos)
 	assert.Equal(t, 10, dateTenDaysAgoStats.AvgReps)
+	assert.Equal(t, 6, dateTenDaysAgoStats.Sets)
 }
