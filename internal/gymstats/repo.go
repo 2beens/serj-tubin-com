@@ -43,29 +43,6 @@ type Exercise struct {
 	Metadata    map[string]string `json:"metadata"`
 }
 
-// TODO: check if this is needed
-
-//func (e *Exercise) IsFromProd() bool {
-//	if e.Metadata == nil {
-//		return false
-//	}
-//	if env, ok := e.Metadata["env"]; ok {
-//		e := strings.ToLower(env)
-//		return e == "prod" || e == "production"
-//	}
-//	return false
-//}
-//
-//func (e *Exercise) HasTestingMetadataFlag() bool {
-//	if e.Metadata == nil {
-//		return false
-//	}
-//	if testingFlag, ok := e.Metadata["testing"]; ok {
-//		return strings.ToLower(testingFlag) == "true"
-//	}
-//	return false
-//}
-
 type Repo struct {
 	db *pgxpool.Pool
 }
