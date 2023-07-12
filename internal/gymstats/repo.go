@@ -19,10 +19,12 @@ import (
 var ErrExerciseNotFound = errors.New("exercise not found")
 
 type ExerciseParams struct {
-	ExerciseID  string
-	MuscleGroup string
-	From        *time.Time
-	To          *time.Time
+	ExerciseID         string
+	MuscleGroup        string
+	OnlyProd           bool
+	ExcludeTestingData bool
+	From               *time.Time
+	To                 *time.Time
 }
 
 type ListParams struct {
@@ -202,6 +204,14 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 	}()
 	span.SetAttributes(attribute.String("exercise_id", params.ExerciseID))
 	span.SetAttributes(attribute.String("muscle_group", params.MuscleGroup))
+	span.SetAttributes(attribute.Bool("only-prod", params.OnlyProd))
+	span.SetAttributes(attribute.Bool("exclude-testing-data", params.ExcludeTestingData))
+	if params.From != nil {
+		span.SetAttributes(attribute.String("from", params.From.String()))
+	}
+	if params.To != nil {
+		span.SetAttributes(attribute.String("to", params.To.String()))
+	}
 
 	log.Tracef("getting all exercises: %+v", params)
 
@@ -215,9 +225,12 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 				AND muscle_group = $2
 				AND ($3::timestamp IS NULL OR created_at >= $3)
 				AND ($4::timestamp IS NULL OR created_at <= $4)
+				AND ($5::boolean IS FALSE OR metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
+				AND ($6::boolean IS FALSE OR metadata->>'testing' != 'true' OR metadata->>'test' != 'true')
 			ORDER BY created_at DESC;`,
 		params.ExerciseID, params.MuscleGroup,
 		params.From, params.To,
+		params.OnlyProd, params.ExcludeTestingData,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
@@ -248,6 +261,14 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 	span.SetAttributes(attribute.Int("size", params.Size))
 	span.SetAttributes(attribute.String("exercise_id", params.ExerciseID))
 	span.SetAttributes(attribute.String("muscle_group", params.MuscleGroup))
+	span.SetAttributes(attribute.Bool("only-prod", params.OnlyProd))
+	span.SetAttributes(attribute.Bool("exclude-testing-data", params.ExcludeTestingData))
+	if params.From != nil {
+		span.SetAttributes(attribute.String("from", params.From.String()))
+	}
+	if params.To != nil {
+		span.SetAttributes(attribute.String("to", params.To.String()))
+	}
 
 	if params.Page < 1 {
 		return nil, -1, errors.New("page must be greater than 0")
@@ -285,10 +306,14 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 			FROM exercise
 				WHERE ($1::text = '' OR exercise_id = $1)
 				AND ($2::text = '' OR muscle_group = $2)
+				AND ($5::boolean IS FALSE OR metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
+				AND ($6::boolean IS FALSE OR metadata->>'testing' != 'true' OR metadata->>'test' != 'true')
 			ORDER BY created_at DESC
 			LIMIT $3
 			OFFSET $4;`,
-		params.ExerciseID, params.MuscleGroup, limit, offset,
+		params.ExerciseID, params.MuscleGroup,
+		limit, offset,
+		params.OnlyProd, params.ExcludeTestingData,
 	)
 	if err != nil {
 		return nil, -1, err
@@ -313,8 +338,16 @@ func (r *Repo) ExercisesCount(ctx context.Context, params ListParams) (int, erro
 	rows, err := r.db.Query(ctx, `
 		SELECT COUNT(*) FROM exercise
 			WHERE ($1::text = '' OR exercise_id = $1)
-			AND ($2::text = '' OR muscle_group = $2);
-	`, params.ExerciseID, params.MuscleGroup)
+			AND ($2::text = '' OR muscle_group = $2)
+		  	AND ($3::timestamp IS NULL OR created_at >= $3)
+			AND ($4::timestamp IS NULL OR created_at <= $4)
+			AND ($5::boolean IS FALSE OR metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
+			AND ($6::boolean IS FALSE OR metadata->>'testing' != 'true' OR metadata->>'test' != 'true');
+	`,
+		params.ExerciseID, params.MuscleGroup,
+		params.From, params.To,
+		params.OnlyProd, params.ExcludeTestingData,
+	)
 	if err != nil {
 		return -1, err
 	}

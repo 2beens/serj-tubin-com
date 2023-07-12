@@ -79,10 +79,12 @@ func TestHandler_HandleAdd(t *testing.T) {
 	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
 	repoMock.EXPECT().
 		ListAll(gomock.Any(), gymstats.ExerciseParams{
-			ExerciseID:  testEx2.ExerciseID,
-			MuscleGroup: testEx2.MuscleGroup,
-			From:        &todayMidnight,
-			To:          &tomorrowMidnight,
+			ExerciseID:         testEx2.ExerciseID,
+			MuscleGroup:        testEx2.MuscleGroup,
+			From:               &todayMidnight,
+			To:                 &tomorrowMidnight,
+			OnlyProd:           true,
+			ExcludeTestingData: true,
 		}).
 		Return([]gymstats.Exercise{testEx1, testEx2}, nil)
 
