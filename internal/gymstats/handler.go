@@ -89,10 +89,12 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	todayMidnight := time.Now().Truncate(24 * time.Hour)
 	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
 	exercisesToday, err := handler.repo.ListAll(ctx, ExerciseParams{
-		ExerciseID:  addedExercise.ExerciseID,
-		MuscleGroup: addedExercise.MuscleGroup,
-		From:        &todayMidnight,
-		To:          &tomorrowMidnight,
+		ExerciseID:         addedExercise.ExerciseID,
+		MuscleGroup:        addedExercise.MuscleGroup,
+		From:               &todayMidnight,
+		To:                 &tomorrowMidnight,
+		OnlyProd:           true,
+		ExcludeTestingData: true,
 	})
 	if err != nil {
 		// just log the error, no need to return error to the client

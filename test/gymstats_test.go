@@ -235,7 +235,8 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		Reps:        12,
 		CreatedAt:   now.Add(-time.Minute * 4),
 		Metadata: map[string]string{
-			"testing": "true",
+			"env":     "prod",
+			"testing": "false",
 		},
 	}
 	e4 := gymstats.Exercise{
@@ -245,8 +246,19 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		Reps:        10,
 		CreatedAt:   now,
 		Metadata: map[string]string{
+			"env":     "prod",
+			"testing": "false",
+		},
+	}
+	e5 := gymstats.Exercise{
+		ExerciseID:  "ex2",
+		MuscleGroup: "legs",
+		Kilos:       510,
+		Reps:        50,
+		CreatedAt:   now.Add(time.Minute * 2),
+		Metadata: map[string]string{
+			"env":     "prod",
 			"testing": "true",
-			"env":     "stage",
 		},
 	}
 
@@ -314,12 +326,14 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		addedE2 := s.newExerciseRequest(ctx, e2)
 		addedE3 := s.newExerciseRequest(ctx, e3)
 		addedE4 := s.newExerciseRequest(ctx, e4)
-		e1.ID, e2.ID, e3.ID, e4.ID = addedE1.ID, addedE2.ID, addedE3.ID, addedE4.ID
+		addedE5 := s.newExerciseRequest(ctx, e5)
+		e1.ID, e2.ID, e3.ID, e4.ID, e5.ID = addedE1.ID, addedE2.ID, addedE3.ID, addedE4.ID, addedE5.ID
 
 		assert.Equal(t, 1, addedE1.CountToday)
 		assert.Equal(t, 1, addedE2.CountToday)
 		assert.Equal(t, 2, addedE3.CountToday)
 		assert.Equal(t, 1, addedE4.CountToday)
+		assert.Equal(t, 2, addedE5.CountToday) // testing one will be ignored, that's why 2 and not 3
 
 		assert.Equal(t, e1.CreatedAt.Truncate(time.Second).In(time.UTC), addedE1.CreatedAt.Truncate(time.Second).In(time.UTC))
 		assert.Equal(t, e2.CreatedAt.Truncate(time.Second).In(time.UTC), addedE2.CreatedAt.Truncate(time.Second).In(time.UTC))
@@ -361,15 +375,33 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		assert.Equal(t, "never-done-before", emptyHistory.ExerciseID)
 		assert.Equal(t, "triceps", emptyHistory.MuscleGroup)
 
-		listExercisesResp := s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10})
+		// the testing one will be ignored
+		listExercisesResp := s.listExercisesRequest(
+			ctx,
+			gymstats.ListParams{
+				ExerciseParams: gymstats.ExerciseParams{
+					OnlyProd:           true,
+					ExcludeTestingData: true,
+				},
+				Page: 1,
+				Size: 10,
+			},
+		)
 		assert.Len(t, listExercisesResp.Exercises, 4)
 		assert.Equal(t, 4, listExercisesResp.Total)
+
+		// the testing one will NOT be ignored
+		listExercisesResp = s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10})
+		assert.Len(t, listExercisesResp.Exercises, 5)
+		assert.Equal(t, 5, listExercisesResp.Total)
 
 		legsEx2Resp := s.listExercisesRequest(ctx,
 			gymstats.ListParams{
 				ExerciseParams: gymstats.ExerciseParams{
-					MuscleGroup: "legs",
-					ExerciseID:  "ex2",
+					MuscleGroup:        "legs",
+					ExerciseID:         "ex2",
+					OnlyProd:           true,
+					ExcludeTestingData: true,
 				},
 				Page: 1,
 				Size: 2,
@@ -383,7 +415,9 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		legsResp := s.listExercisesRequest(ctx,
 			gymstats.ListParams{
 				ExerciseParams: gymstats.ExerciseParams{
-					MuscleGroup: "legs",
+					MuscleGroup:        "legs",
+					OnlyProd:           true,
+					ExcludeTestingData: true,
 				},
 				Page: 1,
 				Size: 3,
@@ -397,7 +431,16 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		require.Equal(t, addedE2.ID, deleteResp.DeletedID)
 
 		// now list again
-		exercisesListResp := s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10})
+		exercisesListResp := s.listExercisesRequest(ctx,
+			gymstats.ListParams{
+				ExerciseParams: gymstats.ExerciseParams{
+					OnlyProd:           true,
+					ExcludeTestingData: true,
+				},
+				Page: 1,
+				Size: 10,
+			},
+		)
 		require.Len(t, exercisesListResp.Exercises, 3) // sorted by created_at desc
 		assert.Equal(t, exercisesListResp.Total, 3)
 		assert.Equal(t, e4.ID, exercisesListResp.Exercises[0].ID)
@@ -407,7 +450,9 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		exercisesListResp = s.listExercisesRequest(ctx,
 			gymstats.ListParams{
 				ExerciseParams: gymstats.ExerciseParams{
-					MuscleGroup: "legs",
+					MuscleGroup:        "legs",
+					OnlyProd:           true,
+					ExcludeTestingData: true,
 				},
 				Page: 1,
 				Size: 10,
