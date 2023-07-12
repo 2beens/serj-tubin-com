@@ -166,6 +166,12 @@ func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params 
 	if params.ExerciseID != "" {
 		urlVals.Add("exercise_id", params.ExerciseID)
 	}
+	if params.OnlyProd {
+		urlVals.Add("only_prod", "true")
+	}
+	if params.ExcludeTestingData {
+		urlVals.Add("exclude_testing_data", "true")
+	}
 
 	req, err := http.NewRequestWithContext(
 		ctx,
@@ -206,6 +212,10 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		Kilos:       10,
 		Reps:        10,
 		CreatedAt:   now.Add(-time.Minute * 10),
+		Metadata: map[string]string{
+			"env":     "prod",
+			"testing": "false",
+		},
 	}
 	e2 := gymstats.Exercise{
 		ExerciseID:  "ex2",
@@ -214,7 +224,8 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		Reps:        8,
 		CreatedAt:   now.Add(-time.Minute * 5),
 		Metadata: map[string]string{
-			"test": "true",
+			"env":     "prod",
+			"testing": "false",
 		},
 	}
 	e3 := gymstats.Exercise{
@@ -224,7 +235,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		Reps:        12,
 		CreatedAt:   now.Add(-time.Minute * 4),
 		Metadata: map[string]string{
-			"test": "true",
+			"testing": "true",
 		},
 	}
 	e4 := gymstats.Exercise{
@@ -234,8 +245,8 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		Reps:        10,
 		CreatedAt:   now,
 		Metadata: map[string]string{
-			"test": "true",
-			"env":  "stage",
+			"testing": "true",
+			"env":     "stage",
 		},
 	}
 
@@ -504,6 +515,98 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			assert.Equal(t, map[string]string{
 				"test": "false",
 				"env":  "stage",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
+	})
+
+	s.T().Run("exercises page with authorization present and only prod and no testing", func(t *testing.T) {
+		s.deleteAllExercises(context.Background())
+		require.Equal(t, 0, s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10}).Total)
+
+		// add some exercises for stage and no test
+		total := 15
+		now := time.Now()
+		for i := 0; i < total; i++ {
+			s.newExerciseRequest(ctx, gymstats.Exercise{
+				ExerciseID:  fmt.Sprintf("exercise-%d", i),
+				MuscleGroup: "legs",
+				Kilos:       rand.Intn(100),
+				Reps:        rand.Intn(20),
+				CreatedAt:   now.Add(-time.Minute * time.Duration(i)),
+				Metadata: map[string]string{
+					"testing": "false",
+					"env":     "stage",
+				},
+			})
+		}
+		// add some exercises for prod and testing true
+		now = time.Now()
+		for i := 0; i < total; i++ {
+			s.newExerciseRequest(ctx, gymstats.Exercise{
+				ExerciseID:  fmt.Sprintf("exercise-%d", i),
+				MuscleGroup: "legs",
+				Kilos:       rand.Intn(100),
+				Reps:        rand.Intn(20),
+				CreatedAt:   now.Add(-time.Minute * time.Duration(i)),
+				Metadata: map[string]string{
+					"testing": "true",
+					"env":     "prod",
+				},
+			})
+		}
+		// finally, add 5 exercises for real prod (no testing)
+		now = time.Now()
+		totalProd := 5
+		for i := 0; i < totalProd; i++ {
+			s.newExerciseRequest(ctx, gymstats.Exercise{
+				ExerciseID:  fmt.Sprintf("exercise-%d", i),
+				MuscleGroup: "legs",
+				Kilos:       rand.Intn(100),
+				Reps:        rand.Intn(20),
+				CreatedAt:   now.Add(-time.Minute * time.Duration(i)),
+				Metadata: map[string]string{
+					"testing": "false",
+					"env":     "prod",
+				},
+			})
+		}
+
+		// get exercises page
+		exercisesPageResp := s.listExercisesRequest(ctx, gymstats.ListParams{
+			Page: 1,
+			Size: 10,
+			ExerciseParams: gymstats.ExerciseParams{
+				OnlyProd:           true,
+				ExcludeTestingData: true,
+			},
+		})
+		require.Len(t, exercisesPageResp.Exercises, totalProd)
+		assert.Equal(t, totalProd, exercisesPageResp.Total)
+		for i := 0; i < totalProd; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"testing": "false",
+				"env":     "prod",
+			}, exercisesPageResp.Exercises[i].Metadata)
+		}
+
+		exercisesPageResp = s.listExercisesRequest(ctx, gymstats.ListParams{
+			Page: 2,
+			Size: 2,
+			ExerciseParams: gymstats.ExerciseParams{
+				OnlyProd:           true,
+				ExcludeTestingData: true,
+			},
+		})
+		require.Len(t, exercisesPageResp.Exercises, 2)
+		assert.Equal(t, totalProd, exercisesPageResp.Total)
+		for i := 0; i < 2; i++ {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i+2), exercisesPageResp.Exercises[i].ExerciseID)
+			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
+			assert.Equal(t, map[string]string{
+				"testing": "false",
+				"env":     "prod",
 			}, exercisesPageResp.Exercises[i].Metadata)
 		}
 	})

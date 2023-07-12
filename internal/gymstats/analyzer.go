@@ -39,8 +39,10 @@ func (a *Analyzer) ExerciseHistory(
 	defer span.End()
 
 	exercises, err := a.repo.ListAll(ctx, ExerciseParams{
-		ExerciseID:  exerciseID,
-		MuscleGroup: muscleGroup,
+		ExerciseID:         exerciseID,
+		MuscleGroup:        muscleGroup,
+		OnlyProd:           true,
+		ExcludeTestingData: true,
 	})
 	if err != nil {
 		return nil, err

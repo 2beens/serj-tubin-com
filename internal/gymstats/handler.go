@@ -242,18 +242,42 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	onlyProd := false
+	onlyProdStr := r.URL.Query().Get("only_prod")
+	if onlyProdStr != "" {
+		onlyProd, err = strconv.ParseBool(onlyProdStr)
+		if err != nil {
+			log.Errorf("failed to parse onlyProd param: %s", err)
+			http.Error(w, "failed to parse onlyProd param", http.StatusBadRequest)
+			return
+		}
+	}
+
+	excludeTestingData := false
+	excludeTestingDataStr := r.URL.Query().Get("exclude_testing_data")
+	if excludeTestingDataStr != "" {
+		excludeTestingData, err = strconv.ParseBool(excludeTestingDataStr)
+		if err != nil {
+			log.Errorf("failed to parse noTesting param: %s", err)
+			http.Error(w, "failed to parse noTesting param", http.StatusBadRequest)
+			return
+		}
+	}
+
 	listParams := ListParams{
 		ExerciseParams: ExerciseParams{
-			MuscleGroup: r.URL.Query().Get("group"),
-			ExerciseID:  r.URL.Query().Get("exercise_id"),
+			MuscleGroup:        r.URL.Query().Get("group"),
+			ExerciseID:         r.URL.Query().Get("exercise_id"),
+			OnlyProd:           onlyProd,
+			ExcludeTestingData: excludeTestingData,
 		},
 		Page: page,
 		Size: size,
 	}
 
 	log.Tracef(
-		"list exercises - page %s size %s, muscle group [%s], exercise id [%s]",
-		pageStr, sizeStr, listParams.MuscleGroup, listParams.ExerciseID,
+		"list exercises - page %s size %s, muscle group [%s], exercise id [%s], only prod [%t], exclude testing data [%t]",
+		pageStr, sizeStr, listParams.MuscleGroup, listParams.ExerciseID, listParams.OnlyProd, listParams.ExcludeTestingData,
 	)
 
 	exercises, total, err := handler.repo.List(ctx, listParams)
