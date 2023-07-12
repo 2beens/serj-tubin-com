@@ -28,8 +28,10 @@ func TestAnalyzer_ExerciseHistory_NoExercisesFound(t *testing.T) {
 	analyzer := gymstats.NewAnalyzer(repoMock)
 
 	repoMock.EXPECT().ListAll(gomock.Any(), gymstats.ExerciseParams{
-		ExerciseID:  "ex",
-		MuscleGroup: "mg",
+		ExerciseID:         "ex",
+		MuscleGroup:        "mg",
+		OnlyProd:           true,
+		ExcludeTestingData: true,
 	}).Return([]gymstats.Exercise{}, nil)
 
 	hist, err := analyzer.ExerciseHistory(context.Background(), "ex", "mg")
@@ -109,8 +111,10 @@ func TestAnalyzer_ExerciseHistory(t *testing.T) {
 	}
 
 	repoMock.EXPECT().ListAll(gomock.Any(), gymstats.ExerciseParams{
-		ExerciseID:  "ex",
-		MuscleGroup: "mg",
+		ExerciseID:         "ex",
+		MuscleGroup:        "mg",
+		OnlyProd:           true,
+		ExcludeTestingData: true,
 	}).Return(exercises, nil)
 
 	hist, err := analyzer.ExerciseHistory(context.Background(), "ex", "mg")
