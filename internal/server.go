@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
 	"net"
 	"net/http"
 	"os"
@@ -27,7 +28,6 @@ import (
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/db"
 	"github.com/2beens/serjtubincom/internal/geoip"
-	"github.com/2beens/serjtubincom/internal/gymstats"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/netlog"
@@ -229,7 +229,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
 	r.HandleFunc("/notes/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
 
-	gymStatsHandler := gymstats.NewHandler(gymstats.NewRepo(s.dbPool))
+	gymStatsHandler := exercises.NewHandler(exercises.NewRepo(s.dbPool))
 	r.HandleFunc("/gymstats", gymStatsHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise")
 	r.HandleFunc("/gymstats/exercise/{id}", gymStatsHandler.HandleGet).Methods("GET", "OPTIONS").Name("get-exercise")
 	r.HandleFunc("/gymstats/exercise/{exid}/group/{mgroup}/history", gymStatsHandler.HandleExerciseHistory).Methods("GET", "OPTIONS").Name("get-exercise")

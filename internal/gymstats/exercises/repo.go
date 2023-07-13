@@ -1,4 +1,4 @@
-package gymstats
+package exercises
 
 import (
 	"context"

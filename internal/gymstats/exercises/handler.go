@@ -1,4 +1,4 @@
-package gymstats
+package exercises
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/2beens/serjtubincom/pkg"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=gymstats_test
+//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=exercises_test
 
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise Exercise) (*Exercise, error)

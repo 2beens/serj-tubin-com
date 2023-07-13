@@ -1,16 +1,16 @@
-package gymstats_test
+package exercises_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
-
-	"github.com/2beens/serjtubincom/internal/gymstats"
 )
 
 func TestMain(m *testing.M) {
@@ -25,14 +25,14 @@ func TestMain(m *testing.M) {
 func TestAnalyzer_ExerciseHistory_NoExercisesFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repoMock := NewMockexercisesRepo(ctrl)
-	analyzer := gymstats.NewAnalyzer(repoMock)
+	analyzer := exercises.NewAnalyzer(repoMock)
 
-	repoMock.EXPECT().ListAll(gomock.Any(), gymstats.ExerciseParams{
+	repoMock.EXPECT().ListAll(gomock.Any(), exercises.ExerciseParams{
 		ExerciseID:         "ex",
 		MuscleGroup:        "mg",
 		OnlyProd:           true,
 		ExcludeTestingData: true,
-	}).Return([]gymstats.Exercise{}, nil)
+	}).Return([]exercises.Exercise{}, nil)
 
 	hist, err := analyzer.ExerciseHistory(context.Background(), "ex", "mg")
 	require.NoError(t, err)
@@ -45,13 +45,13 @@ func TestAnalyzer_ExerciseHistory_NoExercisesFound(t *testing.T) {
 func TestAnalyzer_ExerciseHistory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repoMock := NewMockexercisesRepo(ctrl)
-	analyzer := gymstats.NewAnalyzer(repoMock)
+	analyzer := exercises.NewAnalyzer(repoMock)
 
 	dateNow := time.Date(2021, 5, 5, 12, 0, 0, 0, time.UTC)
 	dateYesterday := dateNow.AddDate(0, 0, -1)
 	dateTenDaysAgo := dateNow.AddDate(0, 0, -10)
 
-	exercises := []gymstats.Exercise{
+	testExercises := []exercises.Exercise{
 		{
 			Kilos:     20,
 			Reps:      10,
@@ -104,18 +104,18 @@ func TestAnalyzer_ExerciseHistory(t *testing.T) {
 		},
 	}
 
-	for i := range exercises {
-		exercises[i].ID = i + 1
-		exercises[i].MuscleGroup = "mg"
-		exercises[i].ExerciseID = "ex"
+	for i := range testExercises {
+		testExercises[i].ID = i + 1
+		testExercises[i].MuscleGroup = "mg"
+		testExercises[i].ExerciseID = "ex"
 	}
 
-	repoMock.EXPECT().ListAll(gomock.Any(), gymstats.ExerciseParams{
+	repoMock.EXPECT().ListAll(gomock.Any(), exercises.ExerciseParams{
 		ExerciseID:         "ex",
 		MuscleGroup:        "mg",
 		OnlyProd:           true,
 		ExcludeTestingData: true,
-	}).Return(exercises, nil)
+	}).Return(testExercises, nil)
 
 	hist, err := analyzer.ExerciseHistory(context.Background(), "ex", "mg")
 	require.NoError(t, err)
