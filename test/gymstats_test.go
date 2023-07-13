@@ -12,7 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/gymstats"
+	"github.com/2beens/serjtubincom/internal/gymstats/handlers"
+	"github.com/2beens/serjtubincom/internal/gymstats/stats"
+
+	"github.com/2beens/serjtubincom/internal/gymstats/repo"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,8 +28,8 @@ func (s *IntegrationTestSuite) deleteAllExercises(ctx context.Context) {
 
 func (s *IntegrationTestSuite) newExerciseRequest(
 	ctx context.Context,
-	exercise gymstats.Exercise,
-) gymstats.AddExerciseResponse {
+	exercise repo.Exercise,
+) handlers.AddExerciseResponse {
 	exerciseJson, err := json.Marshal(exercise)
 	require.NoError(s.T(), err)
 
@@ -47,7 +51,7 @@ func (s *IntegrationTestSuite) newExerciseRequest(
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var addedExercise gymstats.AddExerciseResponse
+	var addedExercise handlers.AddExerciseResponse
 	require.NoError(s.T(), json.Unmarshal(respBytes, &addedExercise))
 
 	return addedExercise
@@ -55,8 +59,8 @@ func (s *IntegrationTestSuite) newExerciseRequest(
 
 func (s *IntegrationTestSuite) updateExerciseRequest(
 	ctx context.Context,
-	exercise gymstats.Exercise,
-) gymstats.UpdateExerciseResponse {
+	exercise repo.Exercise,
+) handlers.UpdateExerciseResponse {
 	exerciseJson, err := json.Marshal(exercise)
 	require.NoError(s.T(), err)
 
@@ -78,12 +82,12 @@ func (s *IntegrationTestSuite) updateExerciseRequest(
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var updateResp gymstats.UpdateExerciseResponse
+	var updateResp handlers.UpdateExerciseResponse
 	require.NoError(s.T(), json.Unmarshal(respBytes, &updateResp))
 	return updateResp
 }
 
-func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, exID, muscleGroup string) *gymstats.ExerciseHistory {
+func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, exID, muscleGroup string) *stats.ExerciseHistory {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"GET", fmt.Sprintf(
@@ -104,13 +108,13 @@ func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, exID, mus
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var history gymstats.ExerciseHistory
+	var history stats.ExerciseHistory
 	require.NoError(s.T(), json.Unmarshal(respBytes, &history))
 
 	return &history
 }
 
-func (s *IntegrationTestSuite) getExerciseRequest(ctx context.Context, id int) gymstats.Exercise {
+func (s *IntegrationTestSuite) getExerciseRequest(ctx context.Context, id int) repo.Exercise {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"GET", fmt.Sprintf("%s/gymstats/exercise/%d", serverEndpoint, id),
@@ -128,12 +132,12 @@ func (s *IntegrationTestSuite) getExerciseRequest(ctx context.Context, id int) g
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var exercise gymstats.Exercise
+	var exercise repo.Exercise
 	require.NoError(s.T(), json.Unmarshal(respBytes, &exercise))
 	return exercise
 }
 
-func (s *IntegrationTestSuite) deleteExerciseRequest(ctx context.Context, id int) gymstats.DeleteExerciseResponse {
+func (s *IntegrationTestSuite) deleteExerciseRequest(ctx context.Context, id int) handlers.DeleteExerciseResponse {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"DELETE", fmt.Sprintf("%s/gymstats/%d", serverEndpoint, id),
@@ -151,14 +155,14 @@ func (s *IntegrationTestSuite) deleteExerciseRequest(ctx context.Context, id int
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var deleteResp gymstats.DeleteExerciseResponse
+	var deleteResp handlers.DeleteExerciseResponse
 	err = json.Unmarshal(respBytes, &deleteResp)
 	require.NoError(s.T(), err)
 
 	return deleteResp
 }
 
-func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params gymstats.ListParams) gymstats.ExercisesListResponse {
+func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params repo.ListParams) handlers.ExercisesListResponse {
 	urlVals := url.Values{}
 	if params.MuscleGroup != "" {
 		urlVals.Add("group", params.MuscleGroup)
@@ -194,7 +198,7 @@ func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params 
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var exercisesPageResponse gymstats.ExercisesListResponse
+	var exercisesPageResponse handlers.ExercisesListResponse
 	require.NoError(s.T(), json.Unmarshal(respBytes, &exercisesPageResponse))
 
 	return exercisesPageResponse
@@ -206,7 +210,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 
 	now := time.Now().In(time.Local)
 
-	e1 := gymstats.Exercise{
+	e1 := repo.Exercise{
 		ExerciseID:  "ex1",
 		MuscleGroup: "triceps",
 		Kilos:       10,
@@ -217,7 +221,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			"testing": "false",
 		},
 	}
-	e2 := gymstats.Exercise{
+	e2 := repo.Exercise{
 		ExerciseID:  "ex2",
 		MuscleGroup: "legs",
 		Kilos:       250,
@@ -228,7 +232,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			"testing": "false",
 		},
 	}
-	e3 := gymstats.Exercise{
+	e3 := repo.Exercise{
 		ExerciseID:  "ex2",
 		MuscleGroup: "legs",
 		Kilos:       220,
@@ -239,7 +243,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			"testing": "false",
 		},
 	}
-	e4 := gymstats.Exercise{
+	e4 := repo.Exercise{
 		ExerciseID:  "ex3",
 		MuscleGroup: "legs",
 		Kilos:       210,
@@ -250,7 +254,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			"testing": "false",
 		},
 	}
-	e5 := gymstats.Exercise{
+	e5 := repo.Exercise{
 		ExerciseID:  "ex2",
 		MuscleGroup: "legs",
 		Kilos:       510,
@@ -319,7 +323,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 	s.T().Run("authorization present", func(t *testing.T) {
 		s.deleteAllExercises(context.Background())
 		// before we add anything, no exercises should be returned
-		require.Len(t, s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10}).Exercises, 0)
+		require.Len(t, s.listExercisesRequest(ctx, repo.ListParams{Page: 1, Size: 10}).Exercises, 0)
 
 		//// now add some exercises
 		addedE1 := s.newExerciseRequest(ctx, e1)
@@ -378,8 +382,8 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		// the testing one will be ignored
 		listExercisesResp := s.listExercisesRequest(
 			ctx,
-			gymstats.ListParams{
-				ExerciseParams: gymstats.ExerciseParams{
+			repo.ListParams{
+				ExerciseParams: repo.ExerciseParams{
 					OnlyProd:           true,
 					ExcludeTestingData: true,
 				},
@@ -391,13 +395,13 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		assert.Equal(t, 4, listExercisesResp.Total)
 
 		// the testing one will NOT be ignored
-		listExercisesResp = s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10})
+		listExercisesResp = s.listExercisesRequest(ctx, repo.ListParams{Page: 1, Size: 10})
 		assert.Len(t, listExercisesResp.Exercises, 5)
 		assert.Equal(t, 5, listExercisesResp.Total)
 
 		legsEx2Resp := s.listExercisesRequest(ctx,
-			gymstats.ListParams{
-				ExerciseParams: gymstats.ExerciseParams{
+			repo.ListParams{
+				ExerciseParams: repo.ExerciseParams{
 					MuscleGroup:        "legs",
 					ExerciseID:         "ex2",
 					OnlyProd:           true,
@@ -413,8 +417,8 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		assert.Equal(t, e2.ID, legsEx2Resp.Exercises[1].ID)
 
 		legsResp := s.listExercisesRequest(ctx,
-			gymstats.ListParams{
-				ExerciseParams: gymstats.ExerciseParams{
+			repo.ListParams{
+				ExerciseParams: repo.ExerciseParams{
 					MuscleGroup:        "legs",
 					OnlyProd:           true,
 					ExcludeTestingData: true,
@@ -432,8 +436,8 @@ func (s *IntegrationTestSuite) TestGymStats() {
 
 		// now list again
 		exercisesListResp := s.listExercisesRequest(ctx,
-			gymstats.ListParams{
-				ExerciseParams: gymstats.ExerciseParams{
+			repo.ListParams{
+				ExerciseParams: repo.ExerciseParams{
 					OnlyProd:           true,
 					ExcludeTestingData: true,
 				},
@@ -448,8 +452,8 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		assert.Equal(t, e1.ID, exercisesListResp.Exercises[2].ID)
 
 		exercisesListResp = s.listExercisesRequest(ctx,
-			gymstats.ListParams{
-				ExerciseParams: gymstats.ExerciseParams{
+			repo.ListParams{
+				ExerciseParams: repo.ExerciseParams{
 					MuscleGroup:        "legs",
 					OnlyProd:           true,
 					ExcludeTestingData: true,
@@ -465,7 +469,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 
 		// lastly, try update
 		newCreatedAt := e3.CreatedAt.Add(-time.Minute * 10).In(time.UTC)
-		updateResp := s.updateExerciseRequest(ctx, gymstats.Exercise{
+		updateResp := s.updateExerciseRequest(ctx, repo.Exercise{
 			ID:          e3.ID,
 			ExerciseID:  "new-exercise-id",
 			MuscleGroup: "legs",
@@ -497,13 +501,13 @@ func (s *IntegrationTestSuite) TestGymStats() {
 
 	s.T().Run("exercises page with authorization present", func(t *testing.T) {
 		s.deleteAllExercises(context.Background())
-		require.Equal(t, 0, s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10}).Total)
+		require.Equal(t, 0, s.listExercisesRequest(ctx, repo.ListParams{Page: 1, Size: 10}).Total)
 
 		// add some exercises
 		total := 15
 		now := time.Now()
 		for i := 0; i < total; i++ {
-			s.newExerciseRequest(ctx, gymstats.Exercise{
+			s.newExerciseRequest(ctx, repo.Exercise{
 				ExerciseID:  fmt.Sprintf("exercise-%d", i),
 				MuscleGroup: "legs",
 				Kilos:       rand.Intn(100),
@@ -517,7 +521,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		}
 
 		// get exercises page
-		exercisesPageResp := s.listExercisesRequest(ctx, gymstats.ListParams{
+		exercisesPageResp := s.listExercisesRequest(ctx, repo.ListParams{
 			Page: 1,
 			Size: 10,
 		})
@@ -533,7 +537,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		}
 
 		// will move the offset from 10 to 5, and get last 10
-		exercisesPageResp = s.listExercisesRequest(ctx, gymstats.ListParams{
+		exercisesPageResp = s.listExercisesRequest(ctx, repo.ListParams{
 			Page: 2,
 			Size: 10,
 		})
@@ -548,7 +552,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			}, exercisesPageResp.Exercises[i].Metadata)
 		}
 
-		exercisesPageResp = s.listExercisesRequest(ctx, gymstats.ListParams{
+		exercisesPageResp = s.listExercisesRequest(ctx, repo.ListParams{
 			Page: 2,
 			Size: 3,
 		})
@@ -566,13 +570,13 @@ func (s *IntegrationTestSuite) TestGymStats() {
 
 	s.T().Run("exercises page with authorization present and only prod and no testing", func(t *testing.T) {
 		s.deleteAllExercises(context.Background())
-		require.Equal(t, 0, s.listExercisesRequest(ctx, gymstats.ListParams{Page: 1, Size: 10}).Total)
+		require.Equal(t, 0, s.listExercisesRequest(ctx, repo.ListParams{Page: 1, Size: 10}).Total)
 
 		// add some exercises for stage and no test
 		total := 15
 		now := time.Now()
 		for i := 0; i < total; i++ {
-			s.newExerciseRequest(ctx, gymstats.Exercise{
+			s.newExerciseRequest(ctx, repo.Exercise{
 				ExerciseID:  fmt.Sprintf("exercise-%d", i),
 				MuscleGroup: "legs",
 				Kilos:       rand.Intn(100),
@@ -587,7 +591,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		// add some exercises for prod and testing true
 		now = time.Now()
 		for i := 0; i < total; i++ {
-			s.newExerciseRequest(ctx, gymstats.Exercise{
+			s.newExerciseRequest(ctx, repo.Exercise{
 				ExerciseID:  fmt.Sprintf("exercise-%d", i),
 				MuscleGroup: "legs",
 				Kilos:       rand.Intn(100),
@@ -603,7 +607,7 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		now = time.Now()
 		totalProd := 5
 		for i := 0; i < totalProd; i++ {
-			s.newExerciseRequest(ctx, gymstats.Exercise{
+			s.newExerciseRequest(ctx, repo.Exercise{
 				ExerciseID:  fmt.Sprintf("exercise-%d", i),
 				MuscleGroup: "legs",
 				Kilos:       rand.Intn(100),
@@ -617,10 +621,10 @@ func (s *IntegrationTestSuite) TestGymStats() {
 		}
 
 		// get exercises page
-		exercisesPageResp := s.listExercisesRequest(ctx, gymstats.ListParams{
+		exercisesPageResp := s.listExercisesRequest(ctx, repo.ListParams{
 			Page: 1,
 			Size: 10,
-			ExerciseParams: gymstats.ExerciseParams{
+			ExerciseParams: repo.ExerciseParams{
 				OnlyProd:           true,
 				ExcludeTestingData: true,
 			},
@@ -636,10 +640,10 @@ func (s *IntegrationTestSuite) TestGymStats() {
 			}, exercisesPageResp.Exercises[i].Metadata)
 		}
 
-		exercisesPageResp = s.listExercisesRequest(ctx, gymstats.ListParams{
+		exercisesPageResp = s.listExercisesRequest(ctx, repo.ListParams{
 			Page: 2,
 			Size: 2,
-			ExerciseParams: gymstats.ExerciseParams{
+			ExerciseParams: repo.ExerciseParams{
 				OnlyProd:           true,
 				ExcludeTestingData: true,
 			},

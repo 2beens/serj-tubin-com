@@ -1,4 +1,4 @@
-package gymstats
+package repo
 
 import (
 	"context"
@@ -47,7 +47,7 @@ type Repo struct {
 	db *pgxpool.Pool
 }
 
-func NewRepo(db *pgxpool.Pool) *Repo {
+func NewExercisesRepo(db *pgxpool.Pool) *Repo {
 	return &Repo{
 		db: db,
 	}

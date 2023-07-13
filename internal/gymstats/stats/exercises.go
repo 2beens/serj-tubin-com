@@ -1,9 +1,10 @@
-package gymstats
+package stats
 
 import (
 	"context"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/gymstats/repo"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 )
 
@@ -21,24 +22,30 @@ type ExerciseStats struct {
 	Sets     int `json:"sets"`
 }
 
-type Analyzer struct {
+//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=stats_test
+
+type exercisesRepo interface {
+	ListAll(ctx context.Context, params repo.ExerciseParams) (_ []repo.Exercise, err error)
+}
+
+type Exercises struct {
 	repo exercisesRepo
 }
 
-func NewAnalyzer(repo exercisesRepo) *Analyzer {
-	return &Analyzer{
+func NewExercisesStats(repo exercisesRepo) *Exercises {
+	return &Exercises{
 		repo: repo,
 	}
 }
 
-func (a *Analyzer) ExerciseHistory(
+func (a *Exercises) ExerciseHistory(
 	ctx context.Context,
 	exerciseID, muscleGroup string,
 ) (*ExerciseHistory, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.exerciseHistory")
 	defer span.End()
 
-	exercises, err := a.repo.ListAll(ctx, ExerciseParams{
+	exercises, err := a.repo.ListAll(ctx, repo.ExerciseParams{
 		ExerciseID:         exerciseID,
 		MuscleGroup:        muscleGroup,
 		OnlyProd:           true,
@@ -54,7 +61,7 @@ func (a *Analyzer) ExerciseHistory(
 		Stats:       make(map[time.Time]ExerciseStats),
 	}
 
-	day2exercises := make(map[time.Time][]Exercise)
+	day2exercises := make(map[time.Time][]repo.Exercise)
 	for _, ex := range exercises {
 		day := ex.CreatedAt.Truncate(24 * time.Hour)
 		day2exercises[day] = append(day2exercises[day], ex)

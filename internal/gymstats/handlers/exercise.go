@@ -1,4 +1,4 @@
-package gymstats
+package handlers
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/gymstats/repo"
+	"github.com/2beens/serjtubincom/internal/gymstats/stats"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
@@ -14,16 +16,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=gymstats_test
+//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=handlers_test
 
 type exercisesRepo interface {
-	Add(ctx context.Context, exercise Exercise) (*Exercise, error)
-	Get(ctx context.Context, id int) (*Exercise, error)
-	List(ctx context.Context, params ListParams) (_ []Exercise, total int, err error)
-	ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise, err error)
-	Update(ctx context.Context, exercise *Exercise) error
+	Add(ctx context.Context, exercise repo.Exercise) (*repo.Exercise, error)
+	Get(ctx context.Context, id int) (*repo.Exercise, error)
+	List(ctx context.Context, params repo.ListParams) (_ []repo.Exercise, total int, err error)
+	ListAll(ctx context.Context, params repo.ExerciseParams) (_ []repo.Exercise, err error)
+	Update(ctx context.Context, exercise *repo.Exercise) error
 	Delete(ctx context.Context, id int) error
-	ExercisesCount(ctx context.Context, params ListParams) (int, error)
+	ExercisesCount(ctx context.Context, params repo.ListParams) (int, error)
 }
 
 type DeleteExerciseResponse struct {
@@ -35,24 +37,24 @@ type UpdateExerciseResponse struct {
 }
 
 type AddExerciseResponse struct {
-	Exercise
+	repo.Exercise
 	CountToday int `json:"countToday"`
 }
 
 type ExercisesListResponse struct {
-	Exercises []Exercise `json:"exercises"`
-	Total     int        `json:"total"`
+	Exercises []repo.Exercise `json:"exercises"`
+	Total     int             `json:"total"`
 }
 
 type Handler struct {
-	repo     exercisesRepo
-	analyzer *Analyzer
+	exercisesRepo  exercisesRepo
+	exercisesStats *stats.Exercises
 }
 
-func NewHandler(repo exercisesRepo) *Handler {
+func NewHandler(exercisesRepo exercisesRepo) *Handler {
 	return &Handler{
-		repo:     repo,
-		analyzer: NewAnalyzer(repo),
+		exercisesRepo:  exercisesRepo,
+		exercisesStats: stats.NewExercisesStats(exercisesRepo),
 	}
 }
 
@@ -65,7 +67,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var exercise Exercise
+	var exercise repo.Exercise
 	if err := json.NewDecoder(r.Body).Decode(&exercise); err != nil {
 		log.Errorf("new exercise, unmarshal json params: %s", err)
 		http.Error(w, "add exercise failed", http.StatusBadRequest)
@@ -77,7 +79,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	addedExercise, err := handler.repo.Add(ctx, exercise)
+	addedExercise, err := handler.exercisesRepo.Add(ctx, exercise)
 	if err != nil {
 		log.Errorf("failed to add new exercise [%s], [%s]: %s", exercise.MuscleGroup, exercise.ExerciseID, err)
 		http.Error(w, "error, failed to add new exercise", http.StatusInternalServerError)
@@ -88,7 +90,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 
 	todayMidnight := time.Now().Truncate(24 * time.Hour)
 	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
-	exercisesToday, err := handler.repo.ListAll(ctx, ExerciseParams{
+	exercisesToday, err := handler.exercisesRepo.ListAll(ctx, repo.ExerciseParams{
 		ExerciseID:         addedExercise.ExerciseID,
 		MuscleGroup:        addedExercise.MuscleGroup,
 		From:               &todayMidnight,
@@ -131,7 +133,7 @@ func (handler *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	e, err := handler.repo.Get(ctx, id)
+	e, err := handler.exercisesRepo.Get(ctx, id)
 	if err != nil {
 		log.Errorf("failed to get exercise %d: %s", id, err)
 		http.Error(w, "exercise not found", http.StatusBadRequest)
@@ -163,7 +165,7 @@ func (handler *Handler) HandleExerciseHistory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	exHistory, err := handler.analyzer.ExerciseHistory(ctx, exerciseID, muscleGroup)
+	exHistory, err := handler.exercisesStats.ExerciseHistory(ctx, exerciseID, muscleGroup)
 	if err != nil {
 		log.Errorf("failed to get exercise history [%s] [%s]: %s", exerciseID, muscleGroup, err)
 		http.Error(w, "exercise history not found", http.StatusBadRequest)
@@ -196,7 +198,7 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.repo.Delete(ctx, id); err != nil {
+	if err := handler.exercisesRepo.Delete(ctx, id); err != nil {
 		log.Errorf("failed to delete exercise %d: %s", id, err)
 		http.Error(w, "exercise not deleted", http.StatusInternalServerError)
 		return
@@ -266,8 +268,8 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	listParams := ListParams{
-		ExerciseParams: ExerciseParams{
+	listParams := repo.ListParams{
+		ExerciseParams: repo.ExerciseParams{
 			MuscleGroup:        r.URL.Query().Get("group"),
 			ExerciseID:         r.URL.Query().Get("exercise_id"),
 			OnlyProd:           onlyProd,
@@ -282,7 +284,7 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		pageStr, sizeStr, listParams.MuscleGroup, listParams.ExerciseID, listParams.OnlyProd, listParams.ExcludeTestingData,
 	)
 
-	exercises, total, err := handler.repo.List(ctx, listParams)
+	exercises, total, err := handler.exercisesRepo.List(ctx, listParams)
 	if err != nil {
 		log.Errorf("list exercises error: %s", err)
 		http.Error(w, "failed to get exercises", http.StatusInternalServerError)
@@ -313,7 +315,7 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var exercise Exercise
+	var exercise repo.Exercise
 	if err := json.NewDecoder(r.Body).Decode(&exercise); err != nil {
 		log.Errorf("update exercise, unmarshal json params: %s", err)
 		http.Error(w, "update exercise failed", http.StatusBadRequest)
@@ -325,7 +327,7 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.repo.Update(ctx, &exercise); err != nil {
+	if err := handler.exercisesRepo.Update(ctx, &exercise); err != nil {
 		log.Errorf("failed to update exercise [%d], [%s]: %s", exercise.ID, exercise.ExerciseID, err)
 		http.Error(w, "error, failed to update exercise", http.StatusInternalServerError)
 		return

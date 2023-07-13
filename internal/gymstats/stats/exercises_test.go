@@ -1,11 +1,12 @@
-package gymstats_test
+package stats_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/gymstats"
+	"github.com/2beens/serjtubincom/internal/gymstats/repo"
+	"github.com/2beens/serjtubincom/internal/gymstats/stats"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -25,16 +26,16 @@ func TestMain(m *testing.M) {
 func TestAnalyzer_ExerciseHistory_NoExercisesFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repoMock := NewMockexercisesRepo(ctrl)
-	analyzer := gymstats.NewAnalyzer(repoMock)
+	exStats := stats.NewExercisesStats(repoMock)
 
-	repoMock.EXPECT().ListAll(gomock.Any(), gymstats.ExerciseParams{
+	repoMock.EXPECT().ListAll(gomock.Any(), repo.ExerciseParams{
 		ExerciseID:         "ex",
 		MuscleGroup:        "mg",
 		OnlyProd:           true,
 		ExcludeTestingData: true,
-	}).Return([]gymstats.Exercise{}, nil)
+	}).Return([]repo.Exercise{}, nil)
 
-	hist, err := analyzer.ExerciseHistory(context.Background(), "ex", "mg")
+	hist, err := exStats.ExerciseHistory(context.Background(), "ex", "mg")
 	require.NoError(t, err)
 	require.NotNil(t, hist)
 	assert.Empty(t, hist.Stats)
@@ -45,13 +46,13 @@ func TestAnalyzer_ExerciseHistory_NoExercisesFound(t *testing.T) {
 func TestAnalyzer_ExerciseHistory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repoMock := NewMockexercisesRepo(ctrl)
-	analyzer := gymstats.NewAnalyzer(repoMock)
+	exStats := stats.NewExercisesStats(repoMock)
 
 	dateNow := time.Date(2021, 5, 5, 12, 0, 0, 0, time.UTC)
 	dateYesterday := dateNow.AddDate(0, 0, -1)
 	dateTenDaysAgo := dateNow.AddDate(0, 0, -10)
 
-	exercises := []gymstats.Exercise{
+	exercises := []repo.Exercise{
 		{
 			Kilos:     20,
 			Reps:      10,
@@ -110,14 +111,14 @@ func TestAnalyzer_ExerciseHistory(t *testing.T) {
 		exercises[i].ExerciseID = "ex"
 	}
 
-	repoMock.EXPECT().ListAll(gomock.Any(), gymstats.ExerciseParams{
+	repoMock.EXPECT().ListAll(gomock.Any(), repo.ExerciseParams{
 		ExerciseID:         "ex",
 		MuscleGroup:        "mg",
 		OnlyProd:           true,
 		ExcludeTestingData: true,
 	}).Return(exercises, nil)
 
-	hist, err := analyzer.ExerciseHistory(context.Background(), "ex", "mg")
+	hist, err := exStats.ExerciseHistory(context.Background(), "ex", "mg")
 	require.NoError(t, err)
 	require.NotNil(t, hist)
 	require.NotEmpty(t, hist.Stats)
