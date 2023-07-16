@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 )
 
 func RequestMetrics(metricsManager *metrics.Manager) func(next http.Handler) http.Handler {

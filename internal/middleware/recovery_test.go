@@ -5,11 +5,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
-
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/goleak"
+
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 )
 
 // TestMain will run goleak after all tests have been run in the package

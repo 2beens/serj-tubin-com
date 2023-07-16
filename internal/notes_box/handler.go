@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
-	"github.com/2beens/serjtubincom/pkg"
-
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+	"github.com/2beens/serjtubincom/pkg"
 )
 
 type NotesListResponse struct {

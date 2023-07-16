@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/codes"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
-
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/codes"
 )
 
 type AuthMiddlewareHandler struct {

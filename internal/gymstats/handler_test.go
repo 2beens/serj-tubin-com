@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/gymstats"
-
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/2beens/serjtubincom/internal/gymstats"
 )
 
 func TestHandler_HandleAdd(t *testing.T) {

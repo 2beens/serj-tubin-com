@@ -9,12 +9,13 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/go-redis/redis/v8"
 	"github.com/ipinfo/go/v2/ipinfo"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 )
 
 var (

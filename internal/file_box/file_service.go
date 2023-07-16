@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/middleware"
-	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
-
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/middleware"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 )
 
 type FileService struct {
