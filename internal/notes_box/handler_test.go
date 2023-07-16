@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 )
 
 // TestMain will run goleak after all tests have been run in the package

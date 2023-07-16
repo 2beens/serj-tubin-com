@@ -10,8 +10,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/2beens/serjtubincom/pkg"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/2beens/serjtubincom/pkg"
 )
 
 const (

@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
-	"github.com/2beens/serjtubincom/pkg"
-
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+	"github.com/2beens/serjtubincom/pkg"
 )
 
 //go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=gymstats_test

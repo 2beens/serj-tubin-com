@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/db"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/2beens/serjtubincom/internal/db"
 )
 
 func deleteAll(ctx context.Context, repo *Repo) (int64, error) {

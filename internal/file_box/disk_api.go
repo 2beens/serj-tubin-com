@@ -10,9 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 )
 
 var (

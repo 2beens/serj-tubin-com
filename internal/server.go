@@ -10,6 +10,18 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/IBM/pgxpoolprometheus"
+	"github.com/getsentry/sentry-go"
+	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis_rate/v9"
+	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/blog"
 	"github.com/2beens/serjtubincom/internal/config"
@@ -25,18 +37,6 @@ import (
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	visitorBoard "github.com/2beens/serjtubincom/internal/visitor_board"
 	"github.com/2beens/serjtubincom/internal/weather"
-
-	"github.com/IBM/pgxpoolprometheus"
-	"github.com/getsentry/sentry-go"
-	"github.com/go-redis/redis/v8"
-	"github.com/go-redis/redis_rate/v9"
-	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Server struct {

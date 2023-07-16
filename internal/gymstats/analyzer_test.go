@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/gymstats"
-
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/2beens/serjtubincom/internal/gymstats"
 )
 
 func TestMain(m *testing.M) {

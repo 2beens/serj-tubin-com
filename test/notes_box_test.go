@@ -7,10 +7,10 @@ import (
 	"io"
 	"net/http"
 
-	notesBox "github.com/2beens/serjtubincom/internal/notes_box"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	notesBox "github.com/2beens/serjtubincom/internal/notes_box"
 )
 
 func (s *IntegrationTestSuite) TestNotesBox() {

@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/pkg"
 )
 
 type PostsResponse struct {

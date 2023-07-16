@@ -10,14 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
-
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 type netlogRepo interface {

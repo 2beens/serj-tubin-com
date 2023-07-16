@@ -8,9 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/2beens/serjtubincom/internal/logging"
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {

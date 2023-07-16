@@ -10,17 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/db"
-
-	"github.com/2beens/serjtubincom/internal"
-	"github.com/2beens/serjtubincom/internal/config"
-
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/2beens/serjtubincom/internal"
+	"github.com/2beens/serjtubincom/internal/config"
+	"github.com/2beens/serjtubincom/internal/db"
 )
 
 const (

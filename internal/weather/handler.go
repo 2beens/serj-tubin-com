@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/2beens/serjtubincom/internal/geoip"
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
-	"github.com/2beens/serjtubincom/pkg"
-
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+
+	"github.com/2beens/serjtubincom/internal/geoip"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+	"github.com/2beens/serjtubincom/pkg"
 )
 
 type Handler struct {

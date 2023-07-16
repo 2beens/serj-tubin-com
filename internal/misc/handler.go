@@ -7,17 +7,17 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
-
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 )
 
 type LoginRequest struct {

@@ -8,9 +8,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/2beens/serjtubincom/internal/misc"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/2beens/serjtubincom/internal/misc"
 )
 
 func (s *IntegrationTestSuite) doLogin(ctx context.Context) string {
