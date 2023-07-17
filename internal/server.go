@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/2beens/serjtubincom/internal/gymstats/events"
+	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
 
 	"github.com/IBM/pgxpoolprometheus"
 	"github.com/getsentry/sentry-go"
@@ -229,13 +231,22 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
 	r.HandleFunc("/notes/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
 
-	gymStatsHandler := exercises.NewHandler(exercises.NewRepo(s.dbPool))
-	r.HandleFunc("/gymstats", gymStatsHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise")
-	r.HandleFunc("/gymstats/exercise/{id}", gymStatsHandler.HandleGet).Methods("GET", "OPTIONS").Name("get-exercise")
-	r.HandleFunc("/gymstats/exercise/{exid}/group/{mgroup}/history", gymStatsHandler.HandleExerciseHistory).Methods("GET", "OPTIONS").Name("get-exercise")
-	r.HandleFunc("/gymstats", gymStatsHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-exercise")
-	r.HandleFunc("/gymstats/{id}", gymStatsHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise")
-	r.HandleFunc("/gymstats/list/page/{page}/size/{size}", gymStatsHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
+	gymStatsExercisesHandler := exercises.NewHandler(exercises.NewRepo(s.dbPool))
+	r.HandleFunc("/gymstats", gymStatsExercisesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise")
+	r.HandleFunc("/gymstats/exercise/{id}", gymStatsExercisesHandler.HandleGet).Methods("GET", "OPTIONS").Name("get-exercise")
+	r.HandleFunc("/gymstats/exercise/{exid}/group/{mgroup}/history", gymStatsExercisesHandler.HandleExerciseHistory).Methods("GET", "OPTIONS").Name("get-exercise")
+	r.HandleFunc("/gymstats", gymStatsExercisesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-exercise")
+	r.HandleFunc("/gymstats/{id}", gymStatsExercisesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise")
+	r.HandleFunc("/gymstats/list/page/{page}/size/{size}", gymStatsExercisesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
+
+	gymStatsEventsHandler := events.NewHandler(
+		events.NewService(events.NewRepo(s.dbPool)),
+	)
+	r.HandleFunc("/gymstats/events/training/start", gymStatsEventsHandler.HandleTrainingStart).Methods("POST", "OPTIONS")
+	r.HandleFunc("/gymstats/events/training/finish", gymStatsEventsHandler.HandleTrainingFinished).Methods("POST", "OPTIONS")
+	r.HandleFunc("/gymstats/events/report/weight", gymStatsEventsHandler.HandleWeightReport).Methods("POST", "OPTIONS")
+	r.HandleFunc("/gymstats/events/report/pain", gymStatsEventsHandler.HandlePainReport).Methods("POST", "OPTIONS")
+	r.HandleFunc("/gymstats/events/list/page/{page}/size/{size}", gymStatsEventsHandler.HandleList).Methods("GET", "OPTIONS")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {

@@ -27,7 +27,7 @@ type ListResponse struct {
 	Total  int      `json:"total"`
 }
 
-func (h *Handler) HandleListEvents(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.list.events")
 	defer span.End()
 
