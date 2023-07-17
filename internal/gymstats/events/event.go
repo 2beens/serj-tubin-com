@@ -96,3 +96,19 @@ const (
 	EventTypeWeightReport     EventType = "weight_report"
 	EventTypePainReport       EventType = "pain_report"
 )
+
+func (et EventType) String() string {
+	return string(et)
+}
+
+func (et EventType) IsValid() bool {
+	switch et {
+	case EventTypeTrainingStarted,
+		EventTypeTrainingFinished,
+		EventTypeWeightReport,
+		EventTypePainReport:
+		return true
+	default:
+		return false
+	}
+}

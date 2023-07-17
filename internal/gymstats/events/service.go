@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"fmt"
+
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -87,4 +88,38 @@ func (s *Service) AddPainReport(ctx context.Context, pr PainReport) (_ int, err 
 		return 0, fmt.Errorf("add pain report event: %w", err)
 	}
 	return event.ID, nil
+}
+
+func (s *Service) List(ctx context.Context, params ListParams) (_ []*Event, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "service.gymstats.events.list")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+
+	events, err := s.repo.List(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("list events: %w", err)
+	}
+	return events, nil
+}
+
+func (s *Service) Count(ctx context.Context, params EventParams) (_ int, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "service.gymstats.events.count")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+
+	count, err := s.repo.Count(ctx, params)
+	if err != nil {
+		return 0, fmt.Errorf("count events: %w", err)
+	}
+	return count, nil
 }
