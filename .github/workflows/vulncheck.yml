@@ -19,7 +19,7 @@ jobs:
         uses: Templum/govulncheck-action@v0.10.1
         with:
           go-version: 1.20.5
-          package: ./...
+          skip-upload: true
           fail-on-vuln: true
 
       - name: Send email if VulnCheck fails
