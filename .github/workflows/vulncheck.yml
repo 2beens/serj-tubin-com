@@ -21,3 +21,34 @@ jobs:
           go-version: 1.20.5
           package: ./...
           fail-on-vuln: true
+
+      - name: Send email if VulnCheck fails
+        if: failure()
+        run: |
+          curl --request POST \
+            --url https://api.sendgrid.com/v3/mail/send \
+            --header "Authorization: Bearer ${{ secrets.SENDGRID_API_KEY }}" \
+            --header 'Content-Type: application/json' \
+            --data '
+            {
+              "personalizations":[
+                 {
+                    "to":[
+                       {
+                          "email":"${{ secrets.SENDGRID_EMAIL_TO }}"
+                       }
+                    ]
+                 }
+              ],
+              "from":{
+                 "email":"${{ secrets.SENDGRID_EMAIL_FROM }}"
+              },
+              "subject":"VulnCheck failing",
+              "content":[
+                 {
+                    "type":"text/plain",
+                    "value": "VulnCheck failing. See ${{ github.event.repository.html_url }}/actions/runs/${{ github.run_id }} for details."
+                 }
+              ]
+            }
+           '
