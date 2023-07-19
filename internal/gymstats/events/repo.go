@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
@@ -53,7 +54,9 @@ func (r *Repo) Add(ctx context.Context, event Event) (_ *Event, err error) {
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback(ctx)
+			if rollbackErr := tx.Rollback(ctx); err != nil {
+				err = fmt.Errorf("failed to rollback transaction: %w: %w", rollbackErr, err)
+			}
 		} else {
 			err = tx.Commit(ctx)
 		}
