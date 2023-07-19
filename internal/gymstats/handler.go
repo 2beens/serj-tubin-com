@@ -84,8 +84,6 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Debugf("new exercise added: [%s] [%s]: %d", addedExercise.MuscleGroup, addedExercise.ExerciseID, addedExercise.ID)
-
 	todayMidnight := time.Now().Truncate(24 * time.Hour)
 	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
 	exercisesToday, err := handler.repo.ListAll(ctx, ExerciseParams{
@@ -112,6 +110,8 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error, failed to add new exercise", http.StatusInternalServerError)
 		return
 	}
+
+	log.Debugf("new exercise added: %s", addedExJson)
 	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, addedExJson, http.StatusCreated)
 }
 
@@ -195,6 +195,19 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error, id NaN", http.StatusBadRequest)
 		return
 	}
+
+	exercise, err := handler.repo.Get(ctx, id)
+	if err != nil && err != ErrExerciseNotFound {
+		log.Errorf("failed to get exercise %d: %s", id, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	} else if err == ErrExerciseNotFound {
+		log.Debugf("exercise %d not found", id)
+		http.Error(w, "exercise not found", http.StatusNotFound)
+		return
+	}
+
+	log.Debugf("deleting exercise %+v", exercise)
 
 	if err := handler.repo.Delete(ctx, id); err != nil {
 		log.Errorf("failed to delete exercise %d: %s", id, err)
@@ -324,6 +337,18 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error, exercise id or muscle group empty", http.StatusBadRequest)
 		return
 	}
+
+	currentExercise, err := handler.repo.Get(ctx, exercise.ID)
+	if err != nil && err != ErrExerciseNotFound {
+		log.Errorf("failed to get exercise %d: %s", exercise.ID, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	} else if err == ErrExerciseNotFound {
+		log.Debugf("exercise %d not found", exercise.ID)
+		http.Error(w, "exercise not found", http.StatusNotFound)
+		return
+	}
+	log.Debugf("update exercise %+v -> %+v", currentExercise, exercise)
 
 	if err := handler.repo.Update(ctx, &exercise); err != nil {
 		log.Errorf("failed to update exercise [%d], [%s]: %s", exercise.ID, exercise.ExerciseID, err)
