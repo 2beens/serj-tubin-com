@@ -94,6 +94,10 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 			Type:               eventType,
 			OnlyProd:           onlyProd,
 			ExcludeTestingData: excludeTestingData,
+
+			// TODO: implement filtering by date
+			// From:               nil,
+			// To:                 nil,
 		},
 		Page: page,
 		Size: size,

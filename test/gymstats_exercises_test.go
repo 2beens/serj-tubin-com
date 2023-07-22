@@ -201,7 +201,7 @@ func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params 
 	return exercisesPageResponse
 }
 
-func (s *IntegrationTestSuite) TestGymStats() {
+func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

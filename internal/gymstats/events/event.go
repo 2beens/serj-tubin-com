@@ -46,6 +46,7 @@ func NewTrainingStartEvent(ts TrainingStart) Event {
 		ID:        ts.ID,
 		Type:      EventTypeTrainingStarted,
 		Timestamp: ts.Timestamp,
+		Data:      map[string]string{},
 	}
 }
 

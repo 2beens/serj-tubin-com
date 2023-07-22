@@ -3,6 +3,7 @@ package exercises
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -197,11 +198,11 @@ func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	exercise, err := handler.repo.Get(ctx, id)
-	if err != nil && err != ErrExerciseNotFound {
+	if err != nil && !errors.Is(err, ErrExerciseNotFound) {
 		log.Errorf("failed to get exercise %d: %s", id, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
-	} else if err == ErrExerciseNotFound {
+	} else if errors.Is(err, ErrExerciseNotFound) {
 		log.Debugf("exercise %d not found", id)
 		http.Error(w, "exercise not found", http.StatusNotFound)
 		return
