@@ -63,7 +63,7 @@ func (s *IntegrationTestSuite) updateExerciseRequest(
 
 	req, err := http.NewRequestWithContext(
 		ctx,
-		"POST", fmt.Sprintf("%s/gymstats/%d", serverEndpoint, exercise.ID),
+		"PUT", fmt.Sprintf("%s/gymstats", serverEndpoint),
 		bytes.NewReader(exerciseJson),
 	)
 	require.NoError(s.T(), err)
