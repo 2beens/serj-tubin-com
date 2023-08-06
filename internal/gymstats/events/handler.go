@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
@@ -36,14 +37,14 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	pageStr := vars["page"]
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
-		log.Errorf("handle get events page, from <page> param: %s", err)
+		log.Errorf("handle get events page, from <page> param [%s]: %s", pageStr, err)
 		http.Error(w, "parse form error, parameter <page>", http.StatusBadRequest)
 		return
 	}
 	sizeStr := vars["size"]
 	size, err := strconv.Atoi(sizeStr)
 	if err != nil {
-		log.Errorf("handle get events page, from <size> param: %s", err)
+		log.Errorf("handle get events page, from <size> param [%s]: %s", sizeStr, err)
 		http.Error(w, "parse form error, parameter <size>", http.StatusBadRequest)
 		return
 	}
@@ -82,7 +83,7 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	var eventType *EventType = nil
 	eventTypeParam := EventType(r.URL.Query().Get("type"))
 	if eventTypeParam != "" && !eventTypeParam.IsValid() {
-		log.Errorf("invalid event type: %s", eventType)
+		log.Errorf("invalid event type: %s", eventTypeParam)
 		http.Error(w, "invalid event type", http.StatusBadRequest)
 		return
 	} else if eventTypeParam != "" {
@@ -141,7 +142,7 @@ func (h *Handler) HandleTrainingStart(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.new.trainingstart")
 	defer span.End()
 
-	if r.Header.Get("Content-Type") != "application/json" {
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		http.Error(w, "invalid content type", http.StatusBadRequest)
 		return
 	}
@@ -161,8 +162,6 @@ func (h *Handler) HandleTrainingStart(w http.ResponseWriter, r *http.Request) {
 	}
 	trainingStart.ID = id
 
-	w.WriteHeader(http.StatusCreated)
-
 	trainingStartJson, err := json.Marshal(trainingStart)
 	if err != nil {
 		log.Errorf("failed to marshal new training start: %s", err)
@@ -176,7 +175,7 @@ func (h *Handler) HandleTrainingFinished(w http.ResponseWriter, r *http.Request)
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.new.trainingend")
 	defer span.End()
 
-	if r.Header.Get("Content-Type") != "application/json" {
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		http.Error(w, "invalid content type", http.StatusBadRequest)
 		return
 	}
@@ -196,8 +195,6 @@ func (h *Handler) HandleTrainingFinished(w http.ResponseWriter, r *http.Request)
 	}
 	trainingFinish.ID = id
 
-	w.WriteHeader(http.StatusCreated)
-
 	trainingFinishJson, err := json.Marshal(trainingFinish)
 	if err != nil {
 		log.Errorf("failed to marshal new training finish: %s", err)
@@ -211,7 +208,7 @@ func (h *Handler) HandleWeightReport(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.new.weightreport")
 	defer span.End()
 
-	if r.Header.Get("Content-Type") != "application/json" {
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		http.Error(w, "invalid content type", http.StatusBadRequest)
 		return
 	}
@@ -231,8 +228,6 @@ func (h *Handler) HandleWeightReport(w http.ResponseWriter, r *http.Request) {
 	}
 	weightReport.ID = id
 
-	w.WriteHeader(http.StatusCreated)
-
 	weightReportJson, err := json.Marshal(weightReport)
 	if err != nil {
 		log.Errorf("failed to marshal new weight report: %s", err)
@@ -246,7 +241,7 @@ func (h *Handler) HandlePainReport(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.new.painreport")
 	defer span.End()
 
-	if r.Header.Get("Content-Type") != "application/json" {
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		http.Error(w, "invalid content type", http.StatusBadRequest)
 		return
 	}
@@ -265,8 +260,6 @@ func (h *Handler) HandlePainReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	painReport.ID = id
-
-	w.WriteHeader(http.StatusCreated)
 
 	painReportJson, err := json.Marshal(painReport)
 	if err != nil {
