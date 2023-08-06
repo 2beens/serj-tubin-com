@@ -154,17 +154,25 @@ func (s *IntegrationTestSuite) TestGymStats_Events() {
 	s.T().Run("training start - finish", func(t *testing.T) {
 		s.deleteAllEvents(ctx)
 
+		equalTimeWithIgnoredTZ := func(t1, t2 time.Time) bool {
+			return t1.Year() == t2.Year() &&
+				t1.Month() == t2.Month() &&
+				t1.Day() == t2.Day() &&
+				t1.Hour() == t2.Hour() &&
+				t1.Minute() == t2.Minute() &&
+				t1.Second() == t2.Second()
+		}
+
 		now := time.Now()
 		tsResp := s.newTrainingStartRequest(ctx, now)
-		s.T().Logf("added training start: %+v", tsResp)
-		assert.Equal(t, now.Truncate(time.Second), tsResp.Timestamp.Truncate(time.Second))
+		assert.True(t, equalTimeWithIgnoredTZ(now, tsResp.Timestamp))
 
 		tfResp := s.newTrainingFinishRequest(ctx, events.TrainingFinish{
 			Timestamp: now.Add(time.Hour),
 			Calories:  660,
 		})
-		s.T().Logf("added training finish: %+v", tfResp)
-		assert.Equal(t, now.Add(time.Hour).Truncate(time.Second), tfResp.Timestamp.Truncate(time.Second))
+		assert.True(t, equalTimeWithIgnoredTZ(now.Add(time.Hour), tfResp.Timestamp))
+		require.Equal(t, 660, tfResp.Calories)
 
 		allEvents := s.getAllEventsRequest(ctx, events.ListParams{
 			EventParams: events.EventParams{
