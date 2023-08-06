@@ -19,7 +19,7 @@ func TestHandler_HandleTrainingStart(t *testing.T) {
 	mockService := NewMockservice(ctrl)
 	h := events.NewHandler(mockService)
 
-	now := time.Now().Truncate(time.Second)
+	now := time.Now().UTC().Truncate(time.Second)
 	trainingStart := events.TrainingStart{
 		Timestamp: now,
 	}
@@ -47,4 +47,42 @@ func TestHandler_HandleTrainingStart(t *testing.T) {
 	var trainingStartResp events.TrainingStart
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &trainingStartResp))
 	assert.Equal(t, now, trainingStartResp.Timestamp)
+}
+
+func TestHandler_HandleTrainingFinished(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockService := NewMockservice(ctrl)
+	h := events.NewHandler(mockService)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	trainingEnd := events.TrainingFinish{
+		Timestamp: now,
+		Calories:  100,
+	}
+	teJson, err := json.Marshal(trainingEnd)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("POST", "/", bytes.NewBuffer(teJson))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handlerFunc := http.HandlerFunc(h.HandleTrainingFinished)
+
+	mockService.EXPECT().
+		AddTrainingFinish(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ any, tf events.TrainingFinish) (int, error) {
+			assert.Equal(t, now, tf.Timestamp)
+			assert.Equal(t, 100, tf.Calories)
+			return 1, nil
+		})
+
+	// Call the HandlerFunc
+	handlerFunc.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusCreated, rr.Code)
+
+	var trainingEndResp events.TrainingFinish
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &trainingEndResp))
+	assert.Equal(t, now, trainingEndResp.Timestamp)
+	assert.Equal(t, 100, trainingEndResp.Calories)
 }
