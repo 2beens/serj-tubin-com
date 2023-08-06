@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -13,11 +14,22 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Handler struct {
-	service *Service
+//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=events_test
+
+type service interface {
+	List(ctx context.Context, params ListParams) ([]*Event, error)
+	Count(ctx context.Context, params EventParams) (int, error)
+	AddTrainingStart(ctx context.Context, trainingStart TrainingStart) (int, error)
+	AddTrainingFinish(ctx context.Context, trainingFinish TrainingFinish) (int, error)
+	AddWeightReport(ctx context.Context, weightReport WeightReport) (int, error)
+	AddPainReport(ctx context.Context, painReport PainReport) (int, error)
 }
 
-func NewHandler(service *Service) *Handler {
+type Handler struct {
+	service service
+}
+
+func NewHandler(service service) *Handler {
 	return &Handler{
 		service: service,
 	}
