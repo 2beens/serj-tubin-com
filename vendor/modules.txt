@@ -199,7 +199,7 @@ github.com/honeycombio/otel-config-go/otelconfig/pipelines
 # github.com/imdario/mergo v0.3.15
 ## explicit; go 1.13
 github.com/imdario/mergo
-# github.com/ipinfo/go/v2 v2.9.2
+# github.com/ipinfo/go/v2 v2.9.4
 ## explicit; go 1.15
 github.com/ipinfo/go/v2/ipinfo
 github.com/ipinfo/go/v2/ipinfo/cache
