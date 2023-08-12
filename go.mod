@@ -16,7 +16,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/honeycombio/honeycomb-opentelemetry-go v0.6.0
 	github.com/honeycombio/otel-config-go v1.9.0
-	github.com/ipinfo/go/v2 v2.9.2
+	github.com/ipinfo/go/v2 v2.9.4
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/lib/pq v1.10.9
 	github.com/ory/dockertest/v3 v3.10.0
