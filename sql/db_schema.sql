@@ -50,6 +50,17 @@ CREATE TABLE public.exercise
 ALTER TABLE public.exercise OWNER TO postgres;
 CREATE INDEX ix_exercise_created_at ON public.exercise (created_at);
 
+CREATE TABLE public.gymstats_event
+(
+    id         SERIAL PRIMARY KEY,
+    type       VARCHAR NOT NULL,
+    data       JSONB NOT NULL DEFAULT '{}',
+    timestamp  TIMESTAMP WITHOUT TIME ZONE NOT NULL
+);
+
+ALTER TABLE public.gymstats_event OWNER TO postgres;
+CREATE INDEX ix_gymstats_event_created_at ON public.gymstats_event (timestamp);
+
 CREATE TABLE public.visitor_board_message
 (
     id         SERIAL PRIMARY KEY,

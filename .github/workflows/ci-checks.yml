@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
           go-version: 1.20.7
       - name: Setup dependencies
@@ -19,9 +19,9 @@ jobs:
           go mod tidy
           go mod vendor
       - name: Run linter
-        uses: golangci/golangci-lint-action@v3.4.0
+        uses: golangci/golangci-lint-action@v3
         with:
-          args: --timeout 5m
+          args: --timeout 6m
   tests:
     name: tests
     runs-on: ubuntu-latest

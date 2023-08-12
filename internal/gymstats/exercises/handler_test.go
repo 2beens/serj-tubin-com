@@ -1,4 +1,4 @@
-package gymstats_test
+package exercises_test
 
 import (
 	"bytes"
@@ -13,16 +13,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/2beens/serjtubincom/internal/gymstats"
+	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
 )
 
 func TestHandler_HandleAdd(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repoMock := NewMockexercisesRepo(ctrl)
-	h := gymstats.NewHandler(repoMock)
+	h := exercises.NewHandler(repoMock)
 
 	now := time.Now()
-	testEx1 := gymstats.Exercise{
+	testEx1 := exercises.Exercise{
 		ExerciseID:  "test-ex-1",
 		MuscleGroup: "legs",
 		Kilos:       20,
@@ -33,7 +33,7 @@ func TestHandler_HandleAdd(t *testing.T) {
 		},
 	}
 
-	testEx2 := gymstats.Exercise{
+	testEx2 := exercises.Exercise{
 		ExerciseID:  "test-ex-1",
 		MuscleGroup: "legs",
 		Kilos:       25,
@@ -54,7 +54,7 @@ func TestHandler_HandleAdd(t *testing.T) {
 
 	repoMock.EXPECT().
 		Add(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, ex gymstats.Exercise) (*gymstats.Exercise, error) {
+		DoAndReturn(func(ctx context.Context, ex exercises.Exercise) (*exercises.Exercise, error) {
 			assert.Equal(t, testEx2.ExerciseID, ex.ExerciseID)
 			assert.Equal(t, testEx2.MuscleGroup, ex.MuscleGroup)
 			assert.Equal(t, testEx2.Kilos, ex.Kilos)
@@ -64,7 +64,7 @@ func TestHandler_HandleAdd(t *testing.T) {
 				ex.CreatedAt.Truncate(time.Second).Unix(),
 			)
 			assert.Equal(t, testEx2.Metadata, ex.Metadata)
-			return &gymstats.Exercise{
+			return &exercises.Exercise{
 				ID:          2,
 				ExerciseID:  testEx2.ExerciseID,
 				MuscleGroup: testEx2.MuscleGroup,
@@ -78,7 +78,7 @@ func TestHandler_HandleAdd(t *testing.T) {
 	todayMidnight := time.Now().Truncate(24 * time.Hour)
 	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
 	repoMock.EXPECT().
-		ListAll(gomock.Any(), gymstats.ExerciseParams{
+		ListAll(gomock.Any(), exercises.ExerciseParams{
 			ExerciseID:         testEx2.ExerciseID,
 			MuscleGroup:        testEx2.MuscleGroup,
 			From:               &todayMidnight,
@@ -86,12 +86,12 @@ func TestHandler_HandleAdd(t *testing.T) {
 			OnlyProd:           true,
 			ExcludeTestingData: true,
 		}).
-		Return([]gymstats.Exercise{testEx1, testEx2}, nil)
+		Return([]exercises.Exercise{testEx1, testEx2}, nil)
 
 	h.HandleAdd(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
 
-	var addExerciseResponse gymstats.AddExerciseResponse
+	var addExerciseResponse exercises.AddExerciseResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &addExerciseResponse))
 	assert.Equal(t, 2, addExerciseResponse.ID)
 	assert.Equal(t, testEx2.ExerciseID, addExerciseResponse.ExerciseID)

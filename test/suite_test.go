@@ -218,6 +218,7 @@ func (s *IntegrationTestSuite) postgresSetup(ctx context.Context) (string, error
 		Repository: "postgres",
 		Tag:        "12",
 		Env: []string{
+			"TZ=Europe/Berlin",
 			"POSTGRES_USER=postgres",
 			"POSTGRES_DB=serj_blogs",
 			"POSTGRES_HOST_AUTH_METHOD=trust",
