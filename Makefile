@@ -74,20 +74,26 @@ integration-tests: ## Run integration tests
 	ST_INT_TESTS=1 go test -v -race github.com/2beens/serjtubincom/test
 
 # Deployment
-.PHONY: deploy deploy-c deploy-file-service deploy-file-service-c deploy-fsc deploy-fs
+.PHONY: deploy
 deploy: ## Deploy the main service
 	./scripts/redeploy.sh
 
+.PHONY: deploy-c
 deploy-c: ## Deploy the main service with current commit
 	./scripts/redeploy.sh --current-commit
 
+.PHONY: deploy-file-service
 deploy-file-service: ## Deploy the file service
 	./scripts/redeploy-file-box-service.sh
 
+.PHONY: deploy-file-service-c
 deploy-file-service-c: ## Deploy the file service with current commit
 	./scripts/redeploy-file-box-service.sh --current-commit
 
+.PHONY: deploy-fsc
 deploy-fsc: deploy-file-service-c ## Alias for deploying file service with current commit
+
+.PHONY: deploy-fs
 deploy-fs: deploy-file-service ## Alias for deploying file service
 
 # Compilation for various platforms
