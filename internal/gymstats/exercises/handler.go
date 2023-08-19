@@ -369,3 +369,7 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("exercise updated: [%s] [%s]: %d", exercise.MuscleGroup, exercise.ExerciseID, exercise.ID)
 	pkg.WriteJSONResponseOK(w, string(updateRespJson))
 }
+
+func (handler *Handler) HandleAvgWaitBetweenExercises(w http.ResponseWriter, r *http.Request) {
+
+}

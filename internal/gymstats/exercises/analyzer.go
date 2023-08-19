@@ -31,6 +31,35 @@ func NewAnalyzer(repo exercisesRepo) *Analyzer {
 	}
 }
 
+func (a *Analyzer) AvgWaitBetweenExercises(
+	ctx context.Context,
+	exerciseParams ExerciseParams,
+) (time.Duration, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.avg-wait")
+	defer span.End()
+
+	exercises, err := a.repo.ListAll(ctx, exerciseParams)
+	if err != nil {
+		return 0, err
+	}
+
+	// TODO: wait has to be calculated between sets in the same muscle group and the same exercise
+	// plan:
+	// - iterate by by each day
+	// - in that day, iterate by each exercise sets
+	// - if the exercise is the same, calculate the wait between sets
+	//    - something like:
+	//	  - (if exercise[i-1].muscleGroup == exercise[i].muscleGroup) && (exercise[i-1].exerciseID == exercise[i].exerciseID)
+	// maybe also add the option to get the avg wait between all exercise sets in a single day
+
+	var totalWait time.Duration
+
+	// TODO: calculate
+	totalWait = time.Minute
+
+	return totalWait / time.Duration(len(exercises)-1), nil
+}
+
 func (a *Analyzer) ExerciseHistory(
 	ctx context.Context,
 	exerciseID, muscleGroup string,
