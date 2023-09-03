@@ -7,6 +7,7 @@ import (
 
 var allowedOrigins = map[string]bool{
 	"https://www.serj-tubin.com": true,
+	"https://2beens.xyz":         true,
 	"http://localhost:8080":      true,
 	"test":                       true,
 }
