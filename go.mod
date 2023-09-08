@@ -30,7 +30,7 @@ require (
 	go.uber.org/goleak v1.2.1
 	go.uber.org/multierr v1.11.0
 	golang.org/x/crypto v0.12.0
-	google.golang.org/api v0.138.0
+	google.golang.org/api v0.139.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
@@ -46,7 +46,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/s2a-go v0.1.5 // indirect
+	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -63,7 +63,7 @@ require (
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/tools v0.9.1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230803162519-f966b187b2e5 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230807174057-1744710a1577 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 )
