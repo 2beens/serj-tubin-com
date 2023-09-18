@@ -111,6 +111,33 @@ func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, exID, mus
 	return &history
 }
 
+func (s *IntegrationTestSuite) getAvgWaitBetweenExercises(ctx context.Context) *exercises.AvgWaitResponse {
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"GET", fmt.Sprintf(
+			"%s/gymstats/avgwait",
+			serverEndpoint,
+		),
+		nil,
+	)
+	require.NoError(s.T(), err)
+	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
+
+	resp, err := s.httpClient.Do(req)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+
+	var avgWaitResp exercises.AvgWaitResponse
+	require.NoError(s.T(), json.Unmarshal(respBytes, &avgWaitResp))
+
+	return &avgWaitResp
+}
+
 func (s *IntegrationTestSuite) getExerciseRequest(ctx context.Context, id int) exercises.Exercise {
 	req, err := http.NewRequestWithContext(
 		ctx,
@@ -494,6 +521,11 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 			"test": "false",
 			"env":  "stage",
 		}, updatedEx3.Metadata)
+
+		// try to get avg wait between exercises
+		avgWaitResp := s.getAvgWaitBetweenExercises(ctx)
+		assert.Equal(t, int64(50), avgWaitResp.AvgWait.Milliseconds())
+		assert.Len(t, avgWaitResp.AvgWaitPerDay, 1)
 	})
 
 	s.T().Run("exercises page with authorization present", func(t *testing.T) {
