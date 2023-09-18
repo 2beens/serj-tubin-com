@@ -385,5 +385,34 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) HandleAvgWaitBetweenExercises(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.avg-wait")
+	defer span.End()
 
+	onlyProd := false
+	if r.URL.Query().Get("only_prod") == "true" {
+		onlyProd = true
+	}
+	excludeTestingData := false
+	if r.URL.Query().Get("exclude_testing_data") == "true" {
+		excludeTestingData = true
+	}
+
+	avgWaitResponse, err := handler.analyzer.AvgWaitBetweenExercises(ctx, ExerciseParams{
+		OnlyProd:           onlyProd,
+		ExcludeTestingData: excludeTestingData,
+	})
+	if err != nil {
+		log.Errorf("failed to get avg wait between exercises: %s", err)
+		http.Error(w, "failed to get avg wait between exercises", http.StatusInternalServerError)
+		return
+	}
+
+	avgWaitResponseJson, err := json.Marshal(avgWaitResponse)
+	if err != nil {
+		log.Errorf("failed to marshal avg wait response: %s", err)
+		http.Error(w, "failed to marshal avg wait response", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, avgWaitResponseJson, http.StatusOK)
 }
