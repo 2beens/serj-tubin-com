@@ -31,34 +31,54 @@ func NewAnalyzer(repo exercisesRepo) *Analyzer {
 	}
 }
 
+type AvgWaitResponse struct {
+	// AvgWait is the average wait between sets for all exercises ever done
+	AvgWait time.Duration `json:"avgWait"`
+	// AvgWaitPerDay is the average wait between exercises for each day
+	AvgWaitPerDay map[time.Time]time.Duration `json:"avgWaitPerDay"`
+}
+
 func (a *Analyzer) AvgWaitBetweenExercises(
 	ctx context.Context,
 	exerciseParams ExerciseParams,
-) (time.Duration, error) {
+) (*AvgWaitResponse, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.avg-wait")
 	defer span.End()
 
 	exercises, err := a.repo.ListAll(ctx, exerciseParams)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	// TODO: wait has to be calculated between sets in the same muscle group and the same exercise
-	// plan:
-	// - iterate by by each day
-	// - in that day, iterate by each exercise sets
-	// - if the exercise is the same, calculate the wait between sets
-	//    - something like:
-	//	  - (if exercise[i-1].muscleGroup == exercise[i].muscleGroup) && (exercise[i-1].exerciseID == exercise[i].exerciseID)
-	// maybe also add the option to get the avg wait between all exercise sets in a single day
-	// or - return an object that contains avgWait for all exercises and avgWait for exercises in a single day
+	day2exercises := make(map[time.Time][]Exercise)
+	for _, ex := range exercises {
+		day := ex.CreatedAt.Truncate(24 * time.Hour)
+		day2exercises[day] = append(day2exercises[day], ex)
+	}
 
-	var totalWait time.Duration
+	avgWaitPerDay := make(map[time.Time]time.Duration)
+	for day, dayExercises := range day2exercises {
+		var avgWait time.Duration
+		for i, ex := range dayExercises {
+			if i == 0 {
+				continue
+			}
+			avgWait += ex.CreatedAt.Sub(dayExercises[i-1].CreatedAt)
+		}
+		avgWait /= time.Duration(len(dayExercises) - 1)
+		avgWaitPerDay[day] = avgWait
+	}
 
-	// TODO: calculate
-	totalWait = time.Minute
+	var avgWait time.Duration
+	for _, dayExercises := range avgWaitPerDay {
+		avgWait += dayExercises
+	}
+	avgWait /= time.Duration(len(avgWaitPerDay))
 
-	return totalWait / time.Duration(len(exercises)-1), nil
+	return &AvgWaitResponse{
+		AvgWait:       avgWait,
+		AvgWaitPerDay: avgWaitPerDay,
+	}, nil
 }
 
 func (a *Analyzer) ExerciseHistory(
