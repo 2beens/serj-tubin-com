@@ -159,7 +159,7 @@ func (s *IntegrationTestSuite) deleteExerciseRequest(ctx context.Context, id int
 	return deleteResp
 }
 
-func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params exercises.ListParams) exercises.ExercisesListResponse {
+func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params exercises.ListParams) exercises.ListResponse {
 	urlVals := url.Values{}
 	if params.MuscleGroup != "" {
 		urlVals.Add("group", params.MuscleGroup)
@@ -195,7 +195,7 @@ func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params 
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var exercisesPageResponse exercises.ExercisesListResponse
+	var exercisesPageResponse exercises.ListResponse
 	require.NoError(s.T(), json.Unmarshal(respBytes, &exercisesPageResponse))
 
 	return exercisesPageResponse

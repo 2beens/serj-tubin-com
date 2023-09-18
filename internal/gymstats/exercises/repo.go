@@ -194,6 +194,7 @@ func (r *Repo) Get(ctx context.Context, id int) (_ *Exercise, err error) {
 	return &exercises[0], nil
 }
 
+// ListAll returns all exercises for a certain muscle group and exercise ID.
 func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.listall")
 	defer func() {
@@ -222,8 +223,8 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 			SELECT
 				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
 			FROM exercise
-				WHERE exercise_id = $1
-				AND muscle_group = $2
+				WHERE ($1::text = '' OR exercise_id = $1)
+				AND ($2::text = '' OR muscle_group = $2)
 				AND ($3::timestamp IS NULL OR created_at >= $3)
 				AND ($4::timestamp IS NULL OR created_at <= $4)
 				AND ($5::boolean IS FALSE OR metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
@@ -249,6 +250,8 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 	return exercises, nil
 }
 
+// List is like ListAll, but it returns the specific PAGE for a certain muscle group and exercise ID
+// i.e. is used for pagination.
 func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total int, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.list")
 	defer func() {

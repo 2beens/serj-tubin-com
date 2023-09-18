@@ -38,6 +38,10 @@ type AvgWaitResponse struct {
 	AvgWaitPerDay map[time.Time]time.Duration `json:"avgWaitPerDay"`
 }
 
+// AvgWaitBetweenExercises calculates the average wait between exercises
+// for all exercises ever done and for each day.
+// Accepts the ExerciseParams to filter the exercises, so leave it empty
+// to get the average wait for all exercises ever done.
 func (a *Analyzer) AvgWaitBetweenExercises(
 	ctx context.Context,
 	exerciseParams ExerciseParams,

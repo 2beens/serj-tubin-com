@@ -40,7 +40,7 @@ type AddExerciseResponse struct {
 	CountToday int `json:"countToday"`
 }
 
-type ExercisesListResponse struct {
+type ListResponse struct {
 	Exercises []Exercise `json:"exercises"`
 	Total     int        `json:"total"`
 }
@@ -317,7 +317,7 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exercisesPageResponse := ExercisesListResponse{
+	exercisesPageResponse := ListResponse{
 		Exercises: exercises,
 		Total:     total,
 	}
