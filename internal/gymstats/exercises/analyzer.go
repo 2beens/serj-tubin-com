@@ -62,6 +62,9 @@ func (a *Analyzer) AvgWaitBetweenExercises(
 
 	avgWaitPerDay := make(map[time.Time]time.Duration)
 	for day, dayExercises := range day2exercises {
+		if len(dayExercises) == 1 {
+			continue
+		}
 		var avgWait time.Duration
 		for i, ex := range dayExercises {
 			if i == 0 {
