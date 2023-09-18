@@ -51,6 +51,7 @@ func (a *Analyzer) AvgWaitBetweenExercises(
 	//    - something like:
 	//	  - (if exercise[i-1].muscleGroup == exercise[i].muscleGroup) && (exercise[i-1].exerciseID == exercise[i].exerciseID)
 	// maybe also add the option to get the avg wait between all exercise sets in a single day
+	// or - return an object that contains avgWait for all exercises and avgWait for exercises in a single day
 
 	var totalWait time.Duration
 
@@ -62,24 +63,19 @@ func (a *Analyzer) AvgWaitBetweenExercises(
 
 func (a *Analyzer) ExerciseHistory(
 	ctx context.Context,
-	exerciseID, muscleGroup string,
+	exerciseParams ExerciseParams,
 ) (*ExerciseHistory, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.exerciseHistory")
 	defer span.End()
 
-	exercises, err := a.repo.ListAll(ctx, ExerciseParams{
-		ExerciseID:         exerciseID,
-		MuscleGroup:        muscleGroup,
-		OnlyProd:           true,
-		ExcludeTestingData: true,
-	})
+	exercises, err := a.repo.ListAll(ctx, exerciseParams)
 	if err != nil {
 		return nil, err
 	}
 
 	history := &ExerciseHistory{
-		ExerciseID:  exerciseID,
-		MuscleGroup: muscleGroup,
+		ExerciseID:  exerciseParams.ExerciseID,
+		MuscleGroup: exerciseParams.MuscleGroup,
 		Stats:       make(map[time.Time]ExerciseStats),
 	}
 

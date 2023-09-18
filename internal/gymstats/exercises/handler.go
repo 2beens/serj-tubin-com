@@ -164,7 +164,21 @@ func (handler *Handler) HandleExerciseHistory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	exHistory, err := handler.analyzer.ExerciseHistory(ctx, exerciseID, muscleGroup)
+	onlyProd := false
+	if r.URL.Query().Get("only_prod") == "true" {
+		onlyProd = true
+	}
+	excludeTestingData := false
+	if r.URL.Query().Get("exclude_testing_data") == "true" {
+		excludeTestingData = true
+	}
+
+	exHistory, err := handler.analyzer.ExerciseHistory(ctx, ExerciseParams{
+		ExerciseID:         exerciseID,
+		MuscleGroup:        muscleGroup,
+		OnlyProd:           onlyProd,
+		ExcludeTestingData: excludeTestingData,
+	})
 	if err != nil {
 		log.Errorf("failed to get exercise history [%s] [%s]: %s", exerciseID, muscleGroup, err)
 		http.Error(w, "exercise history not found", http.StatusBadRequest)

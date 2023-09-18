@@ -27,14 +27,15 @@ func TestAnalyzer_ExerciseHistory_NoExercisesFound(t *testing.T) {
 	repoMock := NewMockexercisesRepo(ctrl)
 	analyzer := exercises.NewAnalyzer(repoMock)
 
-	repoMock.EXPECT().ListAll(gomock.Any(), exercises.ExerciseParams{
+	params := exercises.ExerciseParams{
 		ExerciseID:         "ex",
 		MuscleGroup:        "mg",
 		OnlyProd:           true,
 		ExcludeTestingData: true,
-	}).Return([]exercises.Exercise{}, nil)
+	}
+	repoMock.EXPECT().ListAll(gomock.Any(), params).Return([]exercises.Exercise{}, nil)
 
-	hist, err := analyzer.ExerciseHistory(context.Background(), "ex", "mg")
+	hist, err := analyzer.ExerciseHistory(context.Background(), params)
 	require.NoError(t, err)
 	require.NotNil(t, hist)
 	assert.Empty(t, hist.Stats)
@@ -110,14 +111,15 @@ func TestAnalyzer_ExerciseHistory(t *testing.T) {
 		testExercises[i].ExerciseID = "ex"
 	}
 
-	repoMock.EXPECT().ListAll(gomock.Any(), exercises.ExerciseParams{
+	params := exercises.ExerciseParams{
 		ExerciseID:         "ex",
 		MuscleGroup:        "mg",
 		OnlyProd:           true,
 		ExcludeTestingData: true,
-	}).Return(testExercises, nil)
+	}
+	repoMock.EXPECT().ListAll(gomock.Any(), params).Return(testExercises, nil)
 
-	hist, err := analyzer.ExerciseHistory(context.Background(), "ex", "mg")
+	hist, err := analyzer.ExerciseHistory(context.Background(), params)
 	require.NoError(t, err)
 	require.NotNil(t, hist)
 	require.NotEmpty(t, hist.Stats)
