@@ -73,6 +73,12 @@ func (a *Analyzer) AvgWaitBetweenExercises(
 			avgWait += ex.CreatedAt.Sub(dayExercises[i-1].CreatedAt)
 		}
 		avgWait /= time.Duration(len(dayExercises) - 1)
+
+		// get absolute value of avgWait
+		if avgWait < 0 {
+			avgWait = -avgWait
+		}
+
 		avgWaitPerDay[day] = avgWait
 	}
 

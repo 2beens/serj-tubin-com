@@ -217,6 +217,7 @@ func TestAnalyzer_AvgWaitBetweenExercises(t *testing.T) {
 	repoMock.EXPECT().
 		ListAll(gomock.Any(), exercises.ExerciseParams{}).
 		Return(testExercises, nil)
+
 	avgWaitResult, err := analyzer.AvgWaitBetweenExercises(context.Background(), exercises.ExerciseParams{})
 	require.NoError(t, err)
 	assert.Equal(t, int64(135000), avgWaitResult.AvgWait.Milliseconds())

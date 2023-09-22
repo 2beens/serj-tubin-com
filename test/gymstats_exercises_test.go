@@ -391,6 +391,15 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Equal(t, e3, addedE3.Exercise)
 		assert.Equal(t, e4, addedE4.Exercise)
 
+		// try to get avg wait between exercises
+		avgWaitResp := s.getAvgWaitBetweenExercises(ctx, true, true)
+		assert.Equal(t, float64(3.3333333333333335), avgWaitResp.AvgWait.Minutes())
+		require.Len(t, avgWaitResp.AvgWaitPerDay, 1)
+		assert.Equal(t,
+			float64(3.3333333333333335),
+			avgWaitResp.AvgWaitPerDay[time.Now().UTC().Truncate(24*time.Hour)].Minutes(),
+		)
+
 		ex2history := s.getExerciseHistory(ctx, exercises.ExerciseParams{
 			ExerciseID:         "ex2",
 			MuscleGroup:        "legs",
@@ -550,11 +559,6 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 			"test": "false",
 			"env":  "stage",
 		}, updatedEx3.Metadata)
-
-		// try to get avg wait between exercises
-		avgWaitResp := s.getAvgWaitBetweenExercises(ctx, true, true)
-		assert.Equal(t, int64(50), avgWaitResp.AvgWait.Milliseconds())
-		assert.Len(t, avgWaitResp.AvgWaitPerDay, 1)
 	})
 
 	s.T().Run("exercises page with authorization present", func(t *testing.T) {
