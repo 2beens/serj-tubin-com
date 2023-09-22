@@ -84,15 +84,24 @@ func (s *IntegrationTestSuite) updateExerciseRequest(
 	return updateResp
 }
 
-func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, exID, muscleGroup string) *exercises.ExerciseHistory {
-	req, err := http.NewRequestWithContext(
-		ctx,
-		"GET", fmt.Sprintf(
+func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, params exercises.ExerciseParams) *exercises.ExerciseHistory {
+	reqUrl, err := url.Parse(
+		fmt.Sprintf(
 			"%s/gymstats/exercise/%s/group/%s/history",
-			serverEndpoint, exID, muscleGroup,
-		),
-		nil,
-	)
+			serverEndpoint, params.ExerciseID, params.MuscleGroup,
+		))
+	require.NoError(s.T(), err)
+
+	queryValues := reqUrl.Query()
+	if params.OnlyProd {
+		queryValues.Add("only_prod", "true")
+	}
+	if params.ExcludeTestingData {
+		queryValues.Add("exclude_testing_data", "true")
+	}
+	reqUrl.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqUrl.String(), nil)
 	require.NoError(s.T(), err)
 	req.Header.Set("User-Agent", "test-agent")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
@@ -111,15 +120,20 @@ func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, exID, mus
 	return &history
 }
 
-func (s *IntegrationTestSuite) getAvgWaitBetweenExercises(ctx context.Context) *exercises.AvgWaitResponse {
-	req, err := http.NewRequestWithContext(
-		ctx,
-		"GET", fmt.Sprintf(
-			"%s/gymstats/avgwait",
-			serverEndpoint,
-		),
-		nil,
-	)
+func (s *IntegrationTestSuite) getAvgWaitBetweenExercises(ctx context.Context, onlyProd, excludeTestingData bool) *exercises.AvgWaitResponse {
+	reqUrl, err := url.Parse(fmt.Sprintf("%s/gymstats/avgwait", serverEndpoint))
+	require.NoError(s.T(), err)
+
+	queryValues := reqUrl.Query()
+	if onlyProd {
+		queryValues.Add("only_prod", "true")
+	}
+	if excludeTestingData {
+		queryValues.Add("exclude_testing_data", "true")
+	}
+	reqUrl.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqUrl.String(), nil)
 	require.NoError(s.T(), err)
 	req.Header.Set("User-Agent", "test-agent")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
@@ -377,7 +391,12 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Equal(t, e3, addedE3.Exercise)
 		assert.Equal(t, e4, addedE4.Exercise)
 
-		ex2history := s.getExerciseHistory(ctx, "ex2", "legs")
+		ex2history := s.getExerciseHistory(ctx, exercises.ExerciseParams{
+			ExerciseID:         "ex2",
+			MuscleGroup:        "legs",
+			OnlyProd:           true,
+			ExcludeTestingData: true,
+		})
 		assert.Len(t, ex2history.Stats, 1)
 		assert.Equal(t, "ex2", ex2history.ExerciseID)
 		assert.Equal(t, "legs", ex2history.MuscleGroup)
@@ -388,7 +407,12 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 			assert.Equal(t, 10, histStats.AvgReps)
 		}
 
-		ex1history := s.getExerciseHistory(ctx, "ex1", "triceps")
+		ex1history := s.getExerciseHistory(ctx, exercises.ExerciseParams{
+			ExerciseID:         "ex1",
+			MuscleGroup:        "triceps",
+			OnlyProd:           true,
+			ExcludeTestingData: true,
+		})
 		assert.Len(t, ex1history.Stats, 1)
 		assert.Equal(t, "ex1", ex1history.ExerciseID)
 		for day, histStats := range ex1history.Stats {
@@ -398,7 +422,12 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 			assert.Equal(t, 10, histStats.AvgReps)
 		}
 
-		emptyHistory := s.getExerciseHistory(ctx, "never-done-before", "triceps")
+		emptyHistory := s.getExerciseHistory(ctx, exercises.ExerciseParams{
+			ExerciseID:         "never-done-before",
+			MuscleGroup:        "triceps",
+			OnlyProd:           true,
+			ExcludeTestingData: true,
+		})
 		assert.Empty(t, emptyHistory.Stats)
 		assert.Equal(t, "never-done-before", emptyHistory.ExerciseID)
 		assert.Equal(t, "triceps", emptyHistory.MuscleGroup)
@@ -523,7 +552,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		}, updatedEx3.Metadata)
 
 		// try to get avg wait between exercises
-		avgWaitResp := s.getAvgWaitBetweenExercises(ctx)
+		avgWaitResp := s.getAvgWaitBetweenExercises(ctx, true, true)
 		assert.Equal(t, int64(50), avgWaitResp.AvgWait.Milliseconds())
 		assert.Len(t, avgWaitResp.AvgWaitPerDay, 1)
 	})
