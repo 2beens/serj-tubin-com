@@ -31,26 +31,84 @@ func NewAnalyzer(repo exercisesRepo) *Analyzer {
 	}
 }
 
+type AvgWaitResponse struct {
+	// AvgWait is the average wait between sets for all exercises ever done
+	AvgWait time.Duration `json:"avgWait"`
+	// AvgWaitPerDay is the average wait between exercises for each day
+	AvgWaitPerDay map[time.Time]time.Duration `json:"avgWaitPerDay"`
+}
+
+// AvgWaitBetweenExercises calculates the average wait between exercises
+// for all exercises ever done and for each day.
+// Accepts the ExerciseParams to filter the exercises, so leave it empty
+// to get the average wait for all exercises ever done.
+func (a *Analyzer) AvgWaitBetweenExercises(
+	ctx context.Context,
+	exerciseParams ExerciseParams,
+) (*AvgWaitResponse, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.avg-wait")
+	defer span.End()
+
+	exercises, err := a.repo.ListAll(ctx, exerciseParams)
+	if err != nil {
+		return nil, err
+	}
+
+	day2exercises := make(map[time.Time][]Exercise)
+	for _, ex := range exercises {
+		day := ex.CreatedAt.Truncate(24 * time.Hour)
+		day2exercises[day] = append(day2exercises[day], ex)
+	}
+
+	avgWaitPerDay := make(map[time.Time]time.Duration)
+	for day, dayExercises := range day2exercises {
+		if len(dayExercises) == 1 {
+			continue
+		}
+		var avgWait time.Duration
+		for i, ex := range dayExercises {
+			if i == 0 {
+				continue
+			}
+			avgWait += ex.CreatedAt.Sub(dayExercises[i-1].CreatedAt)
+		}
+		avgWait /= time.Duration(len(dayExercises) - 1)
+
+		// get absolute value of avgWait
+		if avgWait < 0 {
+			avgWait = -avgWait
+		}
+
+		avgWaitPerDay[day] = avgWait
+	}
+
+	var avgWait time.Duration
+	for _, dayExercises := range avgWaitPerDay {
+		avgWait += dayExercises
+	}
+	avgWait /= time.Duration(len(avgWaitPerDay))
+
+	return &AvgWaitResponse{
+		AvgWait:       avgWait,
+		AvgWaitPerDay: avgWaitPerDay,
+	}, nil
+}
+
 func (a *Analyzer) ExerciseHistory(
 	ctx context.Context,
-	exerciseID, muscleGroup string,
+	exerciseParams ExerciseParams,
 ) (*ExerciseHistory, error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.exerciseHistory")
 	defer span.End()
 
-	exercises, err := a.repo.ListAll(ctx, ExerciseParams{
-		ExerciseID:         exerciseID,
-		MuscleGroup:        muscleGroup,
-		OnlyProd:           true,
-		ExcludeTestingData: true,
-	})
+	exercises, err := a.repo.ListAll(ctx, exerciseParams)
 	if err != nil {
 		return nil, err
 	}
 
 	history := &ExerciseHistory{
-		ExerciseID:  exerciseID,
-		MuscleGroup: muscleGroup,
+		ExerciseID:  exerciseParams.ExerciseID,
+		MuscleGroup: exerciseParams.MuscleGroup,
 		Stats:       make(map[time.Time]ExerciseStats),
 	}
 

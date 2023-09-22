@@ -84,15 +84,24 @@ func (s *IntegrationTestSuite) updateExerciseRequest(
 	return updateResp
 }
 
-func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, exID, muscleGroup string) *exercises.ExerciseHistory {
-	req, err := http.NewRequestWithContext(
-		ctx,
-		"GET", fmt.Sprintf(
+func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, params exercises.ExerciseParams) *exercises.ExerciseHistory {
+	reqUrl, err := url.Parse(
+		fmt.Sprintf(
 			"%s/gymstats/exercise/%s/group/%s/history",
-			serverEndpoint, exID, muscleGroup,
-		),
-		nil,
-	)
+			serverEndpoint, params.ExerciseID, params.MuscleGroup,
+		))
+	require.NoError(s.T(), err)
+
+	queryValues := reqUrl.Query()
+	if params.OnlyProd {
+		queryValues.Add("only_prod", "true")
+	}
+	if params.ExcludeTestingData {
+		queryValues.Add("exclude_testing_data", "true")
+	}
+	reqUrl.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqUrl.String(), nil)
 	require.NoError(s.T(), err)
 	req.Header.Set("User-Agent", "test-agent")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
@@ -109,6 +118,38 @@ func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, exID, mus
 	require.NoError(s.T(), json.Unmarshal(respBytes, &history))
 
 	return &history
+}
+
+func (s *IntegrationTestSuite) getAvgWaitBetweenExercises(ctx context.Context, onlyProd, excludeTestingData bool) *exercises.AvgWaitResponse {
+	reqUrl, err := url.Parse(fmt.Sprintf("%s/gymstats/avgwait", serverEndpoint))
+	require.NoError(s.T(), err)
+
+	queryValues := reqUrl.Query()
+	if onlyProd {
+		queryValues.Add("only_prod", "true")
+	}
+	if excludeTestingData {
+		queryValues.Add("exclude_testing_data", "true")
+	}
+	reqUrl.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqUrl.String(), nil)
+	require.NoError(s.T(), err)
+	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
+
+	resp, err := s.httpClient.Do(req)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+
+	var avgWaitResp exercises.AvgWaitResponse
+	require.NoError(s.T(), json.Unmarshal(respBytes, &avgWaitResp))
+
+	return &avgWaitResp
 }
 
 func (s *IntegrationTestSuite) getExerciseRequest(ctx context.Context, id int) exercises.Exercise {
@@ -159,7 +200,7 @@ func (s *IntegrationTestSuite) deleteExerciseRequest(ctx context.Context, id int
 	return deleteResp
 }
 
-func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params exercises.ListParams) exercises.ExercisesListResponse {
+func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params exercises.ListParams) exercises.ListResponse {
 	urlVals := url.Values{}
 	if params.MuscleGroup != "" {
 		urlVals.Add("group", params.MuscleGroup)
@@ -195,7 +236,7 @@ func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params 
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var exercisesPageResponse exercises.ExercisesListResponse
+	var exercisesPageResponse exercises.ListResponse
 	require.NoError(s.T(), json.Unmarshal(respBytes, &exercisesPageResponse))
 
 	return exercisesPageResponse
@@ -350,7 +391,21 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Equal(t, e3, addedE3.Exercise)
 		assert.Equal(t, e4, addedE4.Exercise)
 
-		ex2history := s.getExerciseHistory(ctx, "ex2", "legs")
+		// try to get avg wait between exercises
+		avgWaitResp := s.getAvgWaitBetweenExercises(ctx, true, true)
+		assert.Equal(t, float64(3.3333333333333335), avgWaitResp.AvgWait.Minutes())
+		require.Len(t, avgWaitResp.AvgWaitPerDay, 1)
+		assert.Equal(t,
+			float64(3.3333333333333335),
+			avgWaitResp.AvgWaitPerDay[time.Now().UTC().Truncate(24*time.Hour)].Minutes(),
+		)
+
+		ex2history := s.getExerciseHistory(ctx, exercises.ExerciseParams{
+			ExerciseID:         "ex2",
+			MuscleGroup:        "legs",
+			OnlyProd:           true,
+			ExcludeTestingData: true,
+		})
 		assert.Len(t, ex2history.Stats, 1)
 		assert.Equal(t, "ex2", ex2history.ExerciseID)
 		assert.Equal(t, "legs", ex2history.MuscleGroup)
@@ -361,7 +416,12 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 			assert.Equal(t, 10, histStats.AvgReps)
 		}
 
-		ex1history := s.getExerciseHistory(ctx, "ex1", "triceps")
+		ex1history := s.getExerciseHistory(ctx, exercises.ExerciseParams{
+			ExerciseID:         "ex1",
+			MuscleGroup:        "triceps",
+			OnlyProd:           true,
+			ExcludeTestingData: true,
+		})
 		assert.Len(t, ex1history.Stats, 1)
 		assert.Equal(t, "ex1", ex1history.ExerciseID)
 		for day, histStats := range ex1history.Stats {
@@ -371,7 +431,12 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 			assert.Equal(t, 10, histStats.AvgReps)
 		}
 
-		emptyHistory := s.getExerciseHistory(ctx, "never-done-before", "triceps")
+		emptyHistory := s.getExerciseHistory(ctx, exercises.ExerciseParams{
+			ExerciseID:         "never-done-before",
+			MuscleGroup:        "triceps",
+			OnlyProd:           true,
+			ExcludeTestingData: true,
+		})
 		assert.Empty(t, emptyHistory.Stats)
 		assert.Equal(t, "never-done-before", emptyHistory.ExerciseID)
 		assert.Equal(t, "triceps", emptyHistory.MuscleGroup)

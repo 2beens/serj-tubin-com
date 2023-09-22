@@ -40,7 +40,7 @@ type AddExerciseResponse struct {
 	CountToday int `json:"countToday"`
 }
 
-type ExercisesListResponse struct {
+type ListResponse struct {
 	Exercises []Exercise `json:"exercises"`
 	Total     int        `json:"total"`
 }
@@ -164,7 +164,21 @@ func (handler *Handler) HandleExerciseHistory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	exHistory, err := handler.analyzer.ExerciseHistory(ctx, exerciseID, muscleGroup)
+	onlyProd := false
+	if r.URL.Query().Get("only_prod") == "true" {
+		onlyProd = true
+	}
+	excludeTestingData := false
+	if r.URL.Query().Get("exclude_testing_data") == "true" {
+		excludeTestingData = true
+	}
+
+	exHistory, err := handler.analyzer.ExerciseHistory(ctx, ExerciseParams{
+		ExerciseID:         exerciseID,
+		MuscleGroup:        muscleGroup,
+		OnlyProd:           onlyProd,
+		ExcludeTestingData: excludeTestingData,
+	})
 	if err != nil {
 		log.Errorf("failed to get exercise history [%s] [%s]: %s", exerciseID, muscleGroup, err)
 		http.Error(w, "exercise history not found", http.StatusBadRequest)
@@ -303,7 +317,7 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exercisesPageResponse := ExercisesListResponse{
+	exercisesPageResponse := ListResponse{
 		Exercises: exercises,
 		Total:     total,
 	}
@@ -368,4 +382,37 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	log.Debugf("exercise updated: [%s] [%s]: %d", exercise.MuscleGroup, exercise.ExerciseID, exercise.ID)
 	pkg.WriteJSONResponseOK(w, string(updateRespJson))
+}
+
+func (handler *Handler) HandleAvgWaitBetweenExercises(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.avg-wait")
+	defer span.End()
+
+	onlyProd := false
+	if r.URL.Query().Get("only_prod") == "true" {
+		onlyProd = true
+	}
+	excludeTestingData := false
+	if r.URL.Query().Get("exclude_testing_data") == "true" {
+		excludeTestingData = true
+	}
+
+	avgWaitResponse, err := handler.analyzer.AvgWaitBetweenExercises(ctx, ExerciseParams{
+		OnlyProd:           onlyProd,
+		ExcludeTestingData: excludeTestingData,
+	})
+	if err != nil {
+		log.Errorf("failed to get avg wait between exercises: %s", err)
+		http.Error(w, "failed to get avg wait between exercises", http.StatusInternalServerError)
+		return
+	}
+
+	avgWaitResponseJson, err := json.Marshal(avgWaitResponse)
+	if err != nil {
+		log.Errorf("failed to marshal avg wait response: %s", err)
+		http.Error(w, "failed to marshal avg wait response", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, avgWaitResponseJson, http.StatusOK)
 }
