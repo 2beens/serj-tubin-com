@@ -78,7 +78,7 @@ func (r *Repo) AddVisit(ctx context.Context, visit *Visit) (err error) {
 		}
 	}
 
-	return errors.New("unexpected error, failed to insert visit")
+	return fmt.Errorf("unexpected error, failed to insert visit: %+v", *visit)
 }
 
 func (r *Repo) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) ([]*Visit, error) {

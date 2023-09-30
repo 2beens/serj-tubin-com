@@ -63,10 +63,14 @@ func (handler *Handler) HandleCurrent(w http.ResponseWriter, r *http.Request) {
 	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City, locationInfo.Country)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
-		log.Errorf(
-			"get current weather city from geo ip info for city [%s] and country code [%s]: %s",
-			locationInfo.City, locationInfo.Country, err,
-		)
+		if errors.Is(err, ErrNotFound) {
+			log.Warnf("handle current weather: weather city not found for %s %s", locationInfo.City, locationInfo.Country)
+		} else {
+			log.Errorf(
+				"handle current weather: error getting weather city from geo ip info [%s %s]: %s",
+				locationInfo.City, locationInfo.Country, err,
+			)
+		}
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}
@@ -119,7 +123,14 @@ func (handler *Handler) HandleTomorrow(w http.ResponseWriter, r *http.Request) {
 	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City, locationInfo.Country)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
-		log.Errorf("handle weather tomorrow: error getting weather city from geo ip info: %s", err)
+		if errors.Is(err, ErrNotFound) {
+			log.Warnf("handle weather tomorrow: weather city not found for %s %s", locationInfo.City, locationInfo.Country)
+		} else {
+			log.Errorf(
+				"handle weather tomorrow: error getting weather city from geo ip info [%s %s]: %s",
+				locationInfo.City, locationInfo.Country, err,
+			)
+		}
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}
@@ -183,7 +194,14 @@ func (handler *Handler) Handle5Days(w http.ResponseWriter, r *http.Request) {
 	city, err := handler.weatherApi.GetWeatherCity(locationInfo.City, locationInfo.Country)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
-		log.Errorf("handle weather 5 days: error getting weather city from geo ip info: %s", err)
+		if errors.Is(err, ErrNotFound) {
+			log.Warnf("handle weather 5 days: weather city not found for %s %s", locationInfo.City, locationInfo.Country)
+		} else {
+			log.Errorf(
+				"handle weather 5 days: error getting weather city from geo ip info [%s %s]: %s",
+				locationInfo.City, locationInfo.Country, err,
+			)
+		}
 		http.Error(w, "weather city info error", http.StatusInternalServerError)
 		return
 	}
