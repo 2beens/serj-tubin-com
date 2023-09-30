@@ -39,17 +39,12 @@ func NewRepo(db *pgxpool.Pool) *Repo {
 
 func (r *Repo) AddVisit(ctx context.Context, visit *Visit) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.add")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	span.SetAttributes(attribute.String("visit.source", visit.Source))
 	span.SetAttributes(attribute.String("visit.device", visit.Device))
-	defer span.End()
-	defer func() {
-		if err != nil {
-			span.SetStatus(codes.Error, "add visit failed")
-			span.RecordError(err)
-		} else {
-			span.SetStatus(codes.Ok, "visit added")
-		}
-	}()
 
 	if visit.URL == "" || visit.Timestamp.IsZero() {
 		span.SetStatus(codes.Error, "visit url or timestamp empty")
@@ -81,17 +76,19 @@ func (r *Repo) AddVisit(ctx context.Context, visit *Visit) (err error) {
 	return fmt.Errorf("unexpected error, failed to insert visit: %+v", *visit)
 }
 
-func (r *Repo) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) ([]*Visit, error) {
+func (r *Repo) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) (_ []*Visit, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.all")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	if fromTimestamp != nil {
 		span.SetAttributes(attribute.String("visit.from-time", fromTimestamp.String()))
 	} else {
 		span.SetAttributes(attribute.String("visit.from-time", "nil"))
 	}
-	defer span.End()
 
 	var rows pgx.Rows
-	var err error
 	if fromTimestamp != nil {
 		rows, err = r.db.Query(
 			ctx,
@@ -125,12 +122,15 @@ func (r *Repo) GetAllVisits(ctx context.Context, fromTimestamp *time.Time) ([]*V
 	return visits, nil
 }
 
-func (r *Repo) GetVisits(ctx context.Context, keywords []string, field string, source string, limit int) ([]*Visit, error) {
+func (r *Repo) GetVisits(ctx context.Context, keywords []string, field string, source string, limit int) (_ []*Visit, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.getVisits")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	span.SetAttributes(attribute.String("visit.source", source))
 	span.SetAttributes(attribute.String("visit.field", field))
 	span.SetAttributes(attribute.Int("limit", limit))
-	defer span.End()
 
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
@@ -165,11 +165,14 @@ func (r *Repo) CountAll(ctx context.Context) (int, error) {
 	return r.Count(ctx, []string{}, "url", "all")
 }
 
-func (r *Repo) Count(ctx context.Context, keywords []string, field string, source string) (int, error) {
+func (r *Repo) Count(ctx context.Context, keywords []string, field string, source string) (_ int, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.count")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	span.SetAttributes(attribute.String("visit.source", source))
 	span.SetAttributes(attribute.String("visit.field", field))
-	defer span.End()
 
 	sbQueryLike := getQueryWhereCondition(field, source, keywords)
 	query := fmt.Sprintf(`
@@ -202,13 +205,16 @@ func (r *Repo) Count(ctx context.Context, keywords []string, field string, sourc
 	return -1, errors.New("unexpected error, failed to get netlog visits count")
 }
 
-func (r *Repo) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) ([]*Visit, error) {
+func (r *Repo) GetVisitsPage(ctx context.Context, keywords []string, field string, source string, page int, size int) (_ []*Visit, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "netlogPsqlApi.getVisitsPage")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	span.SetAttributes(attribute.String("visit.source", source))
 	span.SetAttributes(attribute.String("visit.field", field))
 	span.SetAttributes(attribute.Int("page", page))
 	span.SetAttributes(attribute.Int("size", size))
-	defer span.End()
 
 	limit := size
 	offset := (page - 1) * size

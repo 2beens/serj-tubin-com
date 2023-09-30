@@ -8,11 +8,10 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.opentelemetry.io/otel/codes"
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type EventParams struct {
@@ -43,11 +42,7 @@ func NewRepo(db *pgxpool.Pool) *Repo {
 func (r *Repo) Add(ctx context.Context, event Event) (_ *Event, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.events.add")
 	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
+		tracing.EndSpanWithErrCheck(span, err)
 	}()
 
 	tx, err := r.db.Begin(ctx)
@@ -107,11 +102,7 @@ func (r *Repo) Add(ctx context.Context, event Event) (_ *Event, err error) {
 func (r *Repo) Get(ctx context.Context, id int) (_ *Event, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.events.get")
 	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
+		tracing.EndSpanWithErrCheck(span, err)
 	}()
 
 	event := &Event{}
@@ -131,12 +122,9 @@ func (r *Repo) Get(ctx context.Context, id int) (_ *Event, err error) {
 func (r *Repo) List(ctx context.Context, params ListParams) (_ []*Event, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.events.listall")
 	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
+		tracing.EndSpanWithErrCheck(span, err)
 	}()
+
 	if params.Type != nil {
 		span.SetAttributes(attribute.String("type", string(*params.Type)))
 	}
@@ -186,9 +174,11 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []*Event, err err
 	return events, nil
 }
 
-func (r *Repo) Count(ctx context.Context, params EventParams) (int, error) {
+func (r *Repo) Count(ctx context.Context, params EventParams) (_ int, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.events.count")
-	defer span.End()
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
 
 	rows, err := r.db.Query(ctx, `
 		SELECT COUNT(*) FROM gymstats_event

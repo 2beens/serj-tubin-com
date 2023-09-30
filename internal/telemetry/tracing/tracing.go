@@ -9,6 +9,8 @@ import (
 	"github.com/honeycombio/otel-config-go/otelconfig"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var GlobalTracer = otel.Tracer("main-backend")
@@ -48,4 +50,21 @@ func HoneycombSetup(
 	}
 
 	return shutdownFunc, err
+}
+
+// EndSpanWithErrCheck ends the span and sets the status to error if err is not nil
+// otherwise sets the status to ok
+// can be used as a defer function:
+//
+//	defer func() {
+//	    EndSpanWithErrCheck(span, err)
+//	}()
+func EndSpanWithErrCheck(span trace.Span, err error) {
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	} else {
+		span.SetStatus(codes.Ok, "ok")
+	}
+	span.End()
 }
