@@ -146,7 +146,7 @@ func TestAnalyzer_ExerciseHistory(t *testing.T) {
 	assert.Equal(t, 6, dateTenDaysAgoStats.Sets)
 }
 
-func TestAnalyzer_AvgWaitBetweenExercises(t *testing.T) {
+func TestAnalyzer_AvgSetDuration(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repoMock := NewMockexercisesRepo(ctrl)
 	analyzer := exercises.NewAnalyzer(repoMock)
@@ -218,15 +218,15 @@ func TestAnalyzer_AvgWaitBetweenExercises(t *testing.T) {
 		ListAll(gomock.Any(), exercises.ExerciseParams{}).
 		Return(testExercises, nil)
 
-	avgWaitResult, err := analyzer.AvgWaitBetweenExercises(context.Background(), exercises.ExerciseParams{})
+	res, err := analyzer.AvgSetDuration(context.Background(), exercises.ExerciseParams{})
 	require.NoError(t, err)
-	assert.Equal(t, int64(135000), avgWaitResult.AvgWait.Milliseconds())
-	require.Equal(t, 2, len(avgWaitResult.AvgWaitPerDay))
+	assert.Equal(t, int64(135000), res.Duration.Milliseconds())
+	require.Equal(t, 2, len(res.DurationPerDay))
 
-	avgWaitForDateYesterday, ok := avgWaitResult.AvgWaitPerDay[dateYesterday.Truncate(24*time.Hour)]
+	avgDurationForDateYesterday, ok := res.DurationPerDay[dateYesterday.Truncate(24*time.Hour)]
 	require.True(t, ok)
-	assert.Equal(t, int64(150000), avgWaitForDateYesterday.Milliseconds())
-	avgWaitForDateTenDaysAgo, ok := avgWaitResult.AvgWaitPerDay[dateTenDaysAgo.Truncate(24*time.Hour)]
+	assert.Equal(t, int64(150000), avgDurationForDateYesterday.Milliseconds())
+	avgDurationForDateTenDaysAgo, ok := res.DurationPerDay[dateTenDaysAgo.Truncate(24*time.Hour)]
 	require.True(t, ok)
-	assert.Equal(t, int64(120000), avgWaitForDateTenDaysAgo.Milliseconds())
+	assert.Equal(t, int64(120000), avgDurationForDateTenDaysAgo.Milliseconds())
 }

@@ -31,22 +31,22 @@ func NewAnalyzer(repo exercisesRepo) *Analyzer {
 	}
 }
 
-type AvgWaitResponse struct {
-	// AvgWait is the average wait between sets for all exercises ever done
-	AvgWait time.Duration `json:"avgWait"`
-	// AvgWaitPerDay is the average wait between exercises for each day
-	AvgWaitPerDay map[time.Time]time.Duration `json:"avgWaitPerDay"`
+type AvgSetDurationResponse struct {
+	// Duration is the average duration between sets for all exercises ever done
+	Duration time.Duration `json:"duration"`
+	// DurationPerDay is the average set duration between exercises for each day
+	DurationPerDay map[time.Time]time.Duration `json:"durationPerDay"`
 }
 
-// AvgWaitBetweenExercises calculates the average wait between exercises
+// AvgSetDuration calculates the average duration between sets
 // for all exercises ever done and for each day.
 // Accepts the ExerciseParams to filter the exercises, so leave it empty
 // to get the average wait for all exercises ever done.
-func (a *Analyzer) AvgWaitBetweenExercises(
+func (a *Analyzer) AvgSetDuration(
 	ctx context.Context,
 	exerciseParams ExerciseParams,
-) (*AvgWaitResponse, error) {
-	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.avg-wait")
+) (*AvgSetDurationResponse, error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.avg-set-duration")
 	defer span.End()
 
 	exercises, err := a.repo.ListAll(ctx, exerciseParams)
@@ -60,37 +60,37 @@ func (a *Analyzer) AvgWaitBetweenExercises(
 		day2exercises[day] = append(day2exercises[day], ex)
 	}
 
-	avgWaitPerDay := make(map[time.Time]time.Duration)
+	avgDurationPerDay := make(map[time.Time]time.Duration)
 	for day, dayExercises := range day2exercises {
 		if len(dayExercises) == 1 {
 			continue
 		}
-		var avgWait time.Duration
+		var avgDuration time.Duration
 		for i, ex := range dayExercises {
 			if i == 0 {
 				continue
 			}
-			avgWait += ex.CreatedAt.Sub(dayExercises[i-1].CreatedAt)
+			avgDuration += ex.CreatedAt.Sub(dayExercises[i-1].CreatedAt)
 		}
-		avgWait /= time.Duration(len(dayExercises) - 1)
+		avgDuration /= time.Duration(len(dayExercises) - 1)
 
-		// get absolute value of avgWait
-		if avgWait < 0 {
-			avgWait = -avgWait
+		// get absolute value of avgDuration
+		if avgDuration < 0 {
+			avgDuration = -avgDuration
 		}
 
-		avgWaitPerDay[day] = avgWait
+		avgDurationPerDay[day] = avgDuration
 	}
 
-	var avgWait time.Duration
-	for _, dayExercises := range avgWaitPerDay {
-		avgWait += dayExercises
+	var avgDuration time.Duration
+	for _, dayExercises := range avgDurationPerDay {
+		avgDuration += dayExercises
 	}
-	avgWait /= time.Duration(len(avgWaitPerDay))
+	avgDuration /= time.Duration(len(avgDurationPerDay))
 
-	return &AvgWaitResponse{
-		AvgWait:       avgWait,
-		AvgWaitPerDay: avgWaitPerDay,
+	return &AvgSetDurationResponse{
+		Duration:       avgDuration,
+		DurationPerDay: avgDurationPerDay,
 	}, nil
 }
 
