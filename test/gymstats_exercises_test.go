@@ -120,8 +120,8 @@ func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, params ex
 	return &history
 }
 
-func (s *IntegrationTestSuite) getAvgWaitBetweenExercises(ctx context.Context, onlyProd, excludeTestingData bool) *exercises.AvgWaitResponse {
-	reqUrl, err := url.Parse(fmt.Sprintf("%s/gymstats/avgwait", serverEndpoint))
+func (s *IntegrationTestSuite) getAvgDurationBetweenExercises(ctx context.Context, onlyProd, excludeTestingData bool) *exercises.AvgSetDurationResponse {
+	reqUrl, err := url.Parse(fmt.Sprintf("%s/gymstats/sets/avgduration", serverEndpoint))
 	require.NoError(s.T(), err)
 
 	queryValues := reqUrl.Query()
@@ -146,10 +146,10 @@ func (s *IntegrationTestSuite) getAvgWaitBetweenExercises(ctx context.Context, o
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var avgWaitResp exercises.AvgWaitResponse
-	require.NoError(s.T(), json.Unmarshal(respBytes, &avgWaitResp))
+	var avgDurationResp exercises.AvgSetDurationResponse
+	require.NoError(s.T(), json.Unmarshal(respBytes, &avgDurationResp))
 
-	return &avgWaitResp
+	return &avgDurationResp
 }
 
 func (s *IntegrationTestSuite) getExerciseRequest(ctx context.Context, id int) exercises.Exercise {
@@ -392,12 +392,12 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Equal(t, e4, addedE4.Exercise)
 
 		// try to get avg wait between exercises
-		avgWaitResp := s.getAvgWaitBetweenExercises(ctx, true, true)
-		assert.Equal(t, float64(3.3333333333333335), avgWaitResp.AvgWait.Minutes())
-		require.Len(t, avgWaitResp.AvgWaitPerDay, 1)
+		avgDurationResp := s.getAvgDurationBetweenExercises(ctx, true, true)
+		assert.Equal(t, float64(3.3333333333333335), avgDurationResp.Duration.Minutes())
+		require.Len(t, avgDurationResp.DurationPerDay, 1)
 		assert.Equal(t,
 			float64(3.3333333333333335),
-			avgWaitResp.AvgWaitPerDay[time.Now().UTC().Truncate(24*time.Hour)].Minutes(),
+			avgDurationResp.DurationPerDay[time.Now().UTC().Truncate(24*time.Hour)].Minutes(),
 		)
 
 		ex2history := s.getExerciseHistory(ctx, exercises.ExerciseParams{

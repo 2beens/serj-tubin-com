@@ -384,7 +384,7 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	pkg.WriteJSONResponseOK(w, string(updateRespJson))
 }
 
-func (handler *Handler) HandleAvgWaitBetweenExercises(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) HandleAvgDurationBetweenExerciseSets(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.avg-wait")
 	defer span.End()
 
@@ -397,22 +397,22 @@ func (handler *Handler) HandleAvgWaitBetweenExercises(w http.ResponseWriter, r *
 		excludeTestingData = true
 	}
 
-	avgWaitResponse, err := handler.analyzer.AvgWaitBetweenExercises(ctx, ExerciseParams{
+	avgDurationResp, err := handler.analyzer.AvgSetDuration(ctx, ExerciseParams{
 		OnlyProd:           onlyProd,
 		ExcludeTestingData: excludeTestingData,
 	})
 	if err != nil {
-		log.Errorf("failed to get avg wait between exercises: %s", err)
-		http.Error(w, "failed to get avg wait between exercises", http.StatusInternalServerError)
+		log.Errorf("failed to get avg set duration between exercises: %s", err)
+		http.Error(w, "failed to get avg set duration between exercises", http.StatusInternalServerError)
 		return
 	}
 
-	avgWaitResponseJson, err := json.Marshal(avgWaitResponse)
+	avgDurationRespJson, err := json.Marshal(avgDurationResp)
 	if err != nil {
-		log.Errorf("failed to marshal avg wait response: %s", err)
-		http.Error(w, "failed to marshal avg wait response", http.StatusInternalServerError)
+		log.Errorf("failed to marshal avg set duration response: %s", err)
+		http.Error(w, "failed to marshal avg set duration response", http.StatusInternalServerError)
 		return
 	}
 
-	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, avgWaitResponseJson, http.StatusOK)
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, avgDurationRespJson, http.StatusOK)
 }
