@@ -230,3 +230,107 @@ func TestAnalyzer_AvgSetDuration(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, int64(120000), avgDurationForDateTenDaysAgo.Milliseconds())
 }
+
+func TestAnalyzer_AvgSetDuration_NoExercisesFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	repoMock := NewMockexercisesRepo(ctrl)
+	analyzer := exercises.NewAnalyzer(repoMock)
+
+	repoMock.EXPECT().
+		ListAll(gomock.Any(), exercises.ExerciseParams{}).
+		Return([]exercises.Exercise{}, nil)
+
+	res, err := analyzer.AvgSetDuration(context.Background(), exercises.ExerciseParams{})
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), res.Duration.Milliseconds())
+	require.Empty(t, res.DurationPerDay)
+}
+
+func TestAnalyzer_ExercisePercentages(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	repoMock := NewMockexercisesRepo(ctrl)
+	analyzer := exercises.NewAnalyzer(repoMock)
+
+	dateNow := time.Date(2021, 5, 5, 12, 0, 0, 0, time.UTC)
+	dateYesterday := dateNow.AddDate(0, 0, -1)
+	dateTenDaysAgo := dateNow.AddDate(0, 0, -10)
+
+	testExercises := []exercises.Exercise{
+		{
+			ExerciseID:  "ex1",
+			MuscleGroup: "mg1",
+			Kilos:       20,
+			Reps:        10,
+			CreatedAt:   dateNow,
+			Metadata:    nil,
+		},
+		{
+			ExerciseID:  "ex1",
+			MuscleGroup: "mg1",
+			Kilos:       75,
+			Reps:        10,
+			CreatedAt:   dateYesterday,
+		},
+		{
+			ExerciseID:  "ex1",
+			MuscleGroup: "mg1",
+			Kilos:       80,
+			Reps:        12,
+			CreatedAt:   dateYesterday,
+		},
+		{
+			ExerciseID:  "ex2",
+			MuscleGroup: "mg1",
+			Kilos:       50,
+			Reps:        13,
+			CreatedAt:   dateYesterday,
+		},
+		{
+			ExerciseID:  "ex2",
+			MuscleGroup: "mg1",
+			Kilos:       20,
+			Reps:        13,
+			CreatedAt:   dateTenDaysAgo,
+		},
+		{
+			ExerciseID:  "ex3",
+			MuscleGroup: "mg1",
+			Kilos:       20,
+			Reps:        13,
+			CreatedAt:   dateTenDaysAgo,
+		},
+	}
+
+	repoMock.EXPECT().
+		ListAll(gomock.Any(), exercises.ExerciseParams{
+			MuscleGroup:        "mg2",
+			OnlyProd:           true,
+			ExcludeTestingData: true,
+		}).
+		Return(testExercises, nil)
+
+	res, err := analyzer.ExercisePercentages(context.Background(), "mg2", true, true)
+	require.NoError(t, err)
+	require.Equal(t, 3, len(res))
+	assert.Equal(t, float64(50), res["ex1"])
+	assert.Equal(t, float64(33.33), res["ex2"])
+	assert.Equal(t, float64(16.66), res["ex3"])
+}
+
+func TestAnalyzer_ExercisePercentages_NoExercisesFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	repoMock := NewMockexercisesRepo(ctrl)
+	analyzer := exercises.NewAnalyzer(repoMock)
+
+	repoMock.EXPECT().
+		ListAll(gomock.Any(), exercises.ExerciseParams{
+			MuscleGroup:        "mg2",
+			OnlyProd:           true,
+			ExcludeTestingData: true,
+		}).
+		Return([]exercises.Exercise{}, nil)
+
+	res, err := analyzer.ExercisePercentages(context.Background(), "mg2", true, true)
+	require.NoError(t, err)
+	require.Empty(t, res)
+}

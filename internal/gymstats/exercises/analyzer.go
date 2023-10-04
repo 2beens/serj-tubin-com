@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // ExerciseHistory represents the history of an exercise
@@ -45,9 +46,11 @@ type AvgSetDurationResponse struct {
 func (a *Analyzer) AvgSetDuration(
 	ctx context.Context,
 	exerciseParams ExerciseParams,
-) (*AvgSetDurationResponse, error) {
+) (_ *AvgSetDurationResponse, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.avg-set-duration")
-	defer span.End()
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
 
 	exercises, err := a.repo.ListAll(ctx, exerciseParams)
 	if err != nil {
@@ -82,6 +85,13 @@ func (a *Analyzer) AvgSetDuration(
 		avgDurationPerDay[day] = avgDuration
 	}
 
+	if len(avgDurationPerDay) == 0 {
+		return &AvgSetDurationResponse{
+			Duration:       0,
+			DurationPerDay: avgDurationPerDay,
+		}, nil
+	}
+
 	var avgDuration time.Duration
 	for _, dayExercises := range avgDurationPerDay {
 		avgDuration += dayExercises
@@ -97,9 +107,11 @@ func (a *Analyzer) AvgSetDuration(
 func (a *Analyzer) ExerciseHistory(
 	ctx context.Context,
 	exerciseParams ExerciseParams,
-) (*ExerciseHistory, error) {
+) (_ *ExerciseHistory, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.exerciseHistory")
-	defer span.End()
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
 
 	exercises, err := a.repo.ListAll(ctx, exerciseParams)
 	if err != nil {
@@ -134,4 +146,41 @@ func (a *Analyzer) ExerciseHistory(
 	}
 
 	return history, nil
+}
+
+// ExercisePercentages returns the percentages of the exercises worked out for a given muscle group
+func (a *Analyzer) ExercisePercentages(
+	ctx context.Context,
+	muscleGroup string,
+	onlyProd, excludeTestingData bool,
+) (_ map[string]float64, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.exerciseHistory")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
+	span.SetAttributes(attribute.String("muscle_group", muscleGroup))
+
+	exercises, err := a.repo.ListAll(ctx, ExerciseParams{
+		MuscleGroup:        muscleGroup,
+		OnlyProd:           onlyProd,
+		ExcludeTestingData: excludeTestingData,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	exercise2count := make(map[string]int)
+	for _, ex := range exercises {
+		exercise2count[ex.ExerciseID]++
+	}
+
+	exercise2percentage := make(map[string]float64)
+	for exercise, count := range exercise2count {
+		exercise2percentage[exercise] = float64(count) / float64(len(exercises)) * 100
+		// leave only 2 decimals
+		exercise2percentage[exercise] = float64(int(exercise2percentage[exercise]*100)) / 100
+	}
+
+	return exercise2percentage, nil
 }
