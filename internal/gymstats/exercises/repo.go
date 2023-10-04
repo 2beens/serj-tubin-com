@@ -19,11 +19,10 @@ import (
 var ErrExerciseNotFound = errors.New("exercise not found")
 
 type ExerciseParams struct {
-	ExerciseID  string
-	MuscleGroup string
-	From        *time.Time
-	To          *time.Time
-
+	ExerciseID         string
+	MuscleGroup        string
+	From               *time.Time
+	To                 *time.Time
 	OnlyProd           bool
 	ExcludeTestingData bool
 }

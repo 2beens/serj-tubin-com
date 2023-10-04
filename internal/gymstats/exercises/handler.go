@@ -354,11 +354,11 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentExercise, err := handler.repo.Get(ctx, exercise.ID)
-	if err != nil && err != ErrExerciseNotFound {
+	if err != nil && errors.Is(err, ErrExerciseNotFound) {
 		log.Errorf("failed to get exercise %d: %s", exercise.ID, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
-	} else if err == ErrExerciseNotFound {
+	} else if errors.Is(err, ErrExerciseNotFound) {
 		log.Debugf("exercise %d not found", exercise.ID)
 		http.Error(w, "exercise not found", http.StatusNotFound)
 		return
@@ -415,4 +415,41 @@ func (handler *Handler) HandleAvgDurationBetweenExerciseSets(w http.ResponseWrit
 	}
 
 	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, avgDurationRespJson, http.StatusOK)
+}
+
+func (handler *Handler) HandleExercisesPercentages(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.exercises-percentages")
+	defer span.End()
+
+	onlyProd := false
+	if r.URL.Query().Get("only_prod") == "true" {
+		onlyProd = true
+	}
+	excludeTestingData := false
+	if r.URL.Query().Get("exclude_testing_data") == "true" {
+		excludeTestingData = true
+	}
+
+	vars := mux.Vars(r)
+	muscleGroup := vars["mgroup"]
+	if muscleGroup == "" {
+		http.Error(w, "error, muscle group empty", http.StatusBadRequest)
+		return
+	}
+
+	percentages, err := handler.analyzer.ExercisePercentages(ctx, muscleGroup, onlyProd, excludeTestingData)
+	if err != nil {
+		log.Errorf("failed to get exercises percentages: %s", err)
+		http.Error(w, "failed to get exercises percentages", http.StatusInternalServerError)
+		return
+	}
+
+	percentagesJson, err := json.Marshal(percentages)
+	if err != nil {
+		log.Errorf("failed to marshal exercises percentages response: %s", err)
+		http.Error(w, "failed to marshal exercises percentages response", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, percentagesJson, http.StatusOK)
 }
