@@ -30,7 +30,7 @@ require (
 	go.uber.org/goleak v1.2.1
 	go.uber.org/multierr v1.11.0
 	golang.org/x/crypto v0.14.0
-	google.golang.org/api v0.145.0
+	google.golang.org/api v0.146.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
