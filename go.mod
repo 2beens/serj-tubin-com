@@ -13,7 +13,7 @@ require (
 	github.com/go-redis/redis_rate/v9 v9.1.2
 	github.com/go-redis/redismock/v8 v8.11.5
 	github.com/golang/mock v1.6.0
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/honeycombio/honeycomb-opentelemetry-go v0.8.1
 	github.com/honeycombio/otel-config-go v1.12.1
 	github.com/ipinfo/go/v2 v2.10.0
