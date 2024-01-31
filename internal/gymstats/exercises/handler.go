@@ -78,6 +78,10 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if exercise.CreatedAt.IsZero() {
+		exercise.CreatedAt = time.Now()
+	}
+
 	addedExercise, err := handler.repo.Add(ctx, exercise)
 	if err != nil {
 		log.Errorf("failed to add new exercise [%s], [%s]: %s", exercise.MuscleGroup, exercise.ExerciseID, err)
