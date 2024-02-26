@@ -7,7 +7,7 @@ require (
 	github.com/IBM/pgxpoolprometheus v1.1.1
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/coocood/freecache v1.2.4
-	github.com/exaring/otelpgx v0.5.3
+	github.com/exaring/otelpgx v0.5.4
 	github.com/go-redis/redis/extra/redisotel/v8 v8.11.5
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-redis/redis_rate/v9 v9.1.2
