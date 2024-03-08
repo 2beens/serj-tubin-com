@@ -3,12 +3,13 @@ package exercises
 import (
 	"context"
 	"encoding/json"
-	"github.com/2beens/serjtubincom/pkg"
 	"github.com/gorilla/mux"
 	"net/http"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+	"github.com/2beens/serjtubincom/pkg"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -23,12 +24,17 @@ type exerciseTypesRepo interface {
 }
 
 type TypesHandler struct {
-	repo exerciseTypesRepo
+	diskApi *file_box.DiskApi // used for storing/getting exercise type images
+	repo    exerciseTypesRepo
 }
 
-func NewTypesHandler(repo exerciseTypesRepo) *TypesHandler {
+func NewTypesHandler(
+	diskApi *file_box.DiskApi,
+	repo exerciseTypesRepo,
+) *TypesHandler {
 	return &TypesHandler{
-		repo: repo,
+		diskApi: diskApi,
+		repo:    repo,
 	}
 }
 
@@ -88,6 +94,9 @@ func (handler *TypesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+
+	// TODO: get images for each exercise type
+	// ...
 
 	exTypesJson, err := json.Marshal(exerciseTypes)
 	if err != nil {

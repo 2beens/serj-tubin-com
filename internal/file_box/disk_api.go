@@ -28,9 +28,12 @@ type DiskApi struct {
 }
 
 func NewDiskApi(rootPath string) (*DiskApi, error) {
+	if rootPath == "" {
+		return nil, errors.New("root path cannot be empty")
+	}
 	root, err := getRootFolder(rootPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get root folder: %w", err)
 	}
 	return &DiskApi{
 		rootPath: rootPath,

@@ -59,11 +59,11 @@ CREATE INDEX ix_exercise_exercise_id ON public.exercise (exercise_id);
 -- Create exercise_type table
 CREATE TABLE public.exercise_type
 (
-    id VARCHAR PRIMARY KEY, -- example: deadlift, bench_press, etc.
+    id           VARCHAR PRIMARY KEY, -- example: deadlift, bench_press, etc.
     muscle_group VARCHAR NOT NULL,
-    name VARCHAR NOT NULL,  -- example: "Deadlift", "Bench Press", etc.
-    description TEXT,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+    name         VARCHAR NOT NULL,  -- example: "Deadlift", "Bench Press", etc.
+    description  TEXT,
+    created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL
 );
 
 -- Assign ownership and create an index on the created_at column
@@ -73,10 +73,10 @@ CREATE INDEX ix_exercise_type_muscle_group ON public.exercise_type (muscle_group
 -- Create exercise_image table
 CREATE TABLE public.exercise_image
 (
-    id SERIAL PRIMARY KEY,
-    exercise_id VARCHAR NOT NULL,
+    id SERIAL       PRIMARY KEY,
+    exercise_id     VARCHAR NOT NULL,
     image_path TEXT NOT NULL,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    created_at      TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     CONSTRAINT fk_exercise FOREIGN KEY (exercise_id) REFERENCES public.exercise_type (id)
 );
 

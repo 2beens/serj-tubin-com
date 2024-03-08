@@ -117,6 +117,7 @@ func main() {
 			AdminPasswordHash:       adminPasswordHash,
 			RedisPassword:           redisPassword,
 			HoneycombTracingEnabled: honeycombEnabled,
+			GymStatsDiskApiRootPath: cfg.GymStatsDiskApiRootPath,
 		},
 	)
 	if err != nil {

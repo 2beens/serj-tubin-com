@@ -119,6 +119,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 			AdminPasswordHash:       testPasswordHash,
 			RedisPassword:           "",
 			HoneycombTracingEnabled: false,
+			GymStatsDiskApiRootPath: "/var/tmp/gymstats",
 		},
 	)
 	if err != nil {

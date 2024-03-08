@@ -25,6 +25,7 @@ type ExerciseType struct {
 type ExerciseImage struct {
 	ID         int       `json:"id"`
 	ExerciseID string    `json:"exerciseId"`
-	ImagePath  string    `json:"imagePath"`
+	ImagePath  string    `json:"-"` // not returned to client
+	URL        string    `json:"url"`
 	CreatedAt  time.Time `json:"createdAt"`
 }

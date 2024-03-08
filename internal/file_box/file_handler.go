@@ -3,6 +3,7 @@ package file_box
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -260,7 +261,7 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 		log.Debugf("-> tryint to delete item: %d", id)
 
 		fileInfo, _, err := handler.api.Get(ctx, id)
-		if err != nil && err != ErrFileNotFound {
+		if err != nil && !errors.Is(err, ErrFileNotFound) {
 			log.Errorf("delete file [%d]: %s", id, err)
 			//http.Error(w, "internal error", http.StatusInternalServerError)
 			//return
