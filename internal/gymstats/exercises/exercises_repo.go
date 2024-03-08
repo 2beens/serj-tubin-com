@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 )
 
 var ErrExerciseNotFound = errors.New("exercise not found")
@@ -33,16 +32,6 @@ type ListParams struct {
 	Size int
 }
 
-type Exercise struct {
-	ID          int               `json:"id"`
-	ExerciseID  string            `json:"exerciseId"`
-	MuscleGroup string            `json:"muscleGroup"`
-	Kilos       int               `json:"kilos"`
-	Reps        int               `json:"reps"`
-	CreatedAt   time.Time         `json:"createdAt"`
-	Metadata    map[string]string `json:"metadata"`
-}
-
 type Repo struct {
 	db *pgxpool.Pool
 }
@@ -56,11 +45,7 @@ func NewRepo(db *pgxpool.Pool) *Repo {
 func (r *Repo) Add(ctx context.Context, exercise Exercise) (_ *Exercise, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.add")
 	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
+		tracing.EndSpanWithErrCheck(span, err)
 	}()
 
 	metadataJson, err := json.Marshal(exercise.Metadata)
@@ -103,11 +88,7 @@ func (r *Repo) Add(ctx context.Context, exercise Exercise) (_ *Exercise, err err
 func (r *Repo) Update(ctx context.Context, exercise *Exercise) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.update")
 	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
+		tracing.EndSpanWithErrCheck(span, err)
 	}()
 	span.SetAttributes(attribute.Int("id", exercise.ID))
 
@@ -130,11 +111,7 @@ func (r *Repo) Update(ctx context.Context, exercise *Exercise) (err error) {
 func (r *Repo) Delete(ctx context.Context, id int) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.delete")
 	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
+		tracing.EndSpanWithErrCheck(span, err)
 	}()
 	span.SetAttributes(attribute.Int("id", id))
 
@@ -155,11 +132,7 @@ func (r *Repo) Delete(ctx context.Context, id int) (err error) {
 func (r *Repo) Get(ctx context.Context, id int) (_ *Exercise, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.get")
 	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
+		tracing.EndSpanWithErrCheck(span, err)
 	}()
 	span.SetAttributes(attribute.Int("id", id))
 
@@ -197,11 +170,7 @@ func (r *Repo) Get(ctx context.Context, id int) (_ *Exercise, err error) {
 func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.listall")
 	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
+		tracing.EndSpanWithErrCheck(span, err)
 	}()
 	span.SetAttributes(attribute.String("exercise_id", params.ExerciseID))
 	span.SetAttributes(attribute.String("muscle_group", params.MuscleGroup))
@@ -254,11 +223,7 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total int, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.list")
 	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-		span.End()
+		tracing.EndSpanWithErrCheck(span, err)
 	}()
 	span.SetAttributes(attribute.Int("page", params.Page))
 	span.SetAttributes(attribute.Int("size", params.Size))
@@ -334,9 +299,11 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 	return exercises, countAll, nil
 }
 
-func (r *Repo) ExercisesCount(ctx context.Context, params ListParams) (int, error) {
+func (r *Repo) ExercisesCount(ctx context.Context, params ListParams) (_ int, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.count")
-	defer span.End()
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
 
 	rows, err := r.db.Query(ctx, `
 		SELECT COUNT(*) FROM exercise
