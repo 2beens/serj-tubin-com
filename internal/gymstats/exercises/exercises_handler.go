@@ -15,7 +15,7 @@ import (
 	"github.com/2beens/serjtubincom/pkg"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=exercises_test
+//go:generate mockgen -source=$GOFILE -destination=exercises_mocks_test.go -package=exercises_test
 
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise Exercise) (*Exercise, error)

@@ -231,7 +231,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
 	r.HandleFunc("/notes/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
 
-	gymStatsExercisesHandler := exercises.NewHandler(exercises.NewRepo(s.dbPool))
+	gsRepo := exercises.NewRepo(s.dbPool)
+	gymStatsExercisesHandler := exercises.NewHandler(gsRepo)
 	r.HandleFunc("/gymstats", gymStatsExercisesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise")
 	r.HandleFunc("/gymstats/exercise/{id}", gymStatsExercisesHandler.HandleGet).Methods("GET", "OPTIONS").Name("get-exercise")
 	r.HandleFunc("/gymstats/exercise/{exid}/group/{mgroup}/history", gymStatsExercisesHandler.HandleExerciseHistory).Methods("GET", "OPTIONS").Name("get-exercise")
@@ -240,6 +241,12 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats", gymStatsExercisesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-exercise")
 	r.HandleFunc("/gymstats/{id}", gymStatsExercisesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise")
 	r.HandleFunc("/gymstats/list/page/{page}/size/{size}", gymStatsExercisesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
+
+	gymStatsExTypesHandler := exercises.NewTypesHandler(gsRepo)
+	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise-type")
+	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleGet).Methods("GET", "OPTIONS").Name("get-exercise-types")
+	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-exercise-type")
+	r.HandleFunc("/gymstats/types/{id}", gymStatsExTypesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise-type")
 
 	gymStatsEventsHandler := events.NewHandler(
 		events.NewService(events.NewRepo(s.dbPool)),

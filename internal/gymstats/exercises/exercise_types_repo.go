@@ -2,6 +2,7 @@ package exercises
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 )
+
+var ErrExerciseTypeNotFound = errors.New("exercise type not found")
 
 type GetExerciseTypesParams struct {
 	MuscleGroup *string
@@ -110,6 +113,31 @@ func (r *Repo) UpdateExerciseType(ctx context.Context, exerciseType ExerciseType
 	)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (r *Repo) DeleteExerciseType(ctx context.Context, exerciseTypeID string) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.delete")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
+	rows, err := r.db.Exec(
+		ctx,
+		`
+			DELETE FROM exercise_types
+			WHERE id = $1
+		`,
+		exerciseTypeID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if rows.RowsAffected() == 0 {
+		return ErrExerciseTypeNotFound
 	}
 
 	return nil

@@ -1,0 +1,151 @@
+package exercises
+
+import (
+	"context"
+	"encoding/json"
+	"github.com/2beens/serjtubincom/pkg"
+	"github.com/gorilla/mux"
+	"net/http"
+	"time"
+
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
+	log "github.com/sirupsen/logrus"
+)
+
+//go:generate mockgen -source=$GOFILE -destination=exercise_types_mocks_test.go -package=exercises_test
+
+type exerciseTypesRepo interface {
+	GetExerciseTypes(ctx context.Context, params GetExerciseTypesParams) (_ []ExerciseType, err error)
+	AddExerciseType(ctx context.Context, exerciseType ExerciseType) (err error)
+	UpdateExerciseType(ctx context.Context, exerciseType ExerciseType) (err error)
+	DeleteExerciseType(ctx context.Context, exerciseTypeID string) (err error)
+}
+
+type TypesHandler struct {
+	repo exerciseTypesRepo
+}
+
+func NewTypesHandler(repo exerciseTypesRepo) *TypesHandler {
+	return &TypesHandler{
+		repo: repo,
+	}
+}
+
+func (handler *TypesHandler) HandleAdd(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.exercise_types.new")
+	defer span.End()
+
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "invalid content type", http.StatusBadRequest)
+		return
+	}
+
+	var exerciseType ExerciseType
+	if err := json.NewDecoder(r.Body).Decode(&exerciseType); err != nil {
+		log.Errorf("new exercise type, unmarshal json params: %s", err)
+		http.Error(w, "add exercise type failed", http.StatusBadRequest)
+		return
+	}
+
+	if exerciseType.ID == "" || exerciseType.MuscleGroup == "" || exerciseType.Name == "" {
+		http.Error(w, "error, exercise id, muscle group, and name are required", http.StatusBadRequest)
+		return
+	}
+
+	if exerciseType.CreatedAt.IsZero() {
+		exerciseType.CreatedAt = time.Now()
+	}
+
+	if err := handler.repo.AddExerciseType(ctx, exerciseType); err != nil {
+		log.Errorf("add exercise type: %s", err)
+		http.Error(w, "add exercise type failed", http.StatusInternalServerError)
+		return
+	}
+
+	log.Debugf("new exercise type added: %+v", exerciseType)
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (handler *TypesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.exercise_types.get")
+	defer span.End()
+
+	muscleGroup := r.URL.Query().Get("muscleGroup")
+	params := GetExerciseTypesParams{}
+	if muscleGroup != "" {
+		params.MuscleGroup = &muscleGroup
+	}
+
+	exerciseTypes, err := handler.repo.GetExerciseTypes(ctx, params)
+	if err != nil {
+		log.Errorf("get exercise types: %s", err)
+		http.Error(w, "get exercise types failed", http.StatusInternalServerError)
+		return
+	}
+
+	if len(exerciseTypes) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	exTypesJson, err := json.Marshal(exerciseTypes)
+	if err != nil {
+		log.Errorf("marshal exercise types: %s", err)
+		http.Error(w, "get exercise types failed", http.StatusInternalServerError)
+		return
+	}
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, exTypesJson, http.StatusOK)
+}
+
+func (handler *TypesHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.exercise_types.update")
+	defer span.End()
+
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "invalid content type", http.StatusBadRequest)
+		return
+	}
+
+	var exerciseType ExerciseType
+	if err := json.NewDecoder(r.Body).Decode(&exerciseType); err != nil {
+		log.Errorf("update exercise type, unmarshal json params: %s", err)
+		http.Error(w, "update exercise type failed", http.StatusBadRequest)
+		return
+	}
+
+	if exerciseType.ID == "" || exerciseType.MuscleGroup == "" || exerciseType.Name == "" {
+		http.Error(w, "error, exercise id, muscle group, and name are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := handler.repo.UpdateExerciseType(ctx, exerciseType); err != nil {
+		log.Errorf("update exercise type: %s", err)
+		http.Error(w, "update exercise type failed", http.StatusInternalServerError)
+		return
+	}
+
+	log.Debugf("exercise type updated: %+v", exerciseType)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (handler *TypesHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.exercise_types.delete")
+	defer span.End()
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+	if id == "" {
+		http.Error(w, "error, id empty", http.StatusBadRequest)
+		return
+	}
+
+	if err := handler.repo.DeleteExerciseType(ctx, id); err != nil {
+		log.Errorf("delete exercise type: %s", err)
+		http.Error(w, "delete exercise type failed", http.StatusInternalServerError)
+		return
+	}
+
+	log.Debugf("exercise type deleted: %s", id)
+	w.WriteHeader(http.StatusNoContent)
+}
