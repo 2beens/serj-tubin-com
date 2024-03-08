@@ -36,6 +36,7 @@ CREATE TABLE public.note
 
 ALTER TABLE public.note OWNER TO postgres;
 
+-- Create exercise table, which will store the exercises (sets) performed
 CREATE TABLE public.exercise
 (
     id           SERIAL PRIMARY KEY,
@@ -45,10 +46,42 @@ CREATE TABLE public.exercise
     reps         INTEGER NOT NULL,
     metadata     JSONB NOT NULL DEFAULT '{}',
     created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL
+
+    -- TODO: add fk constraint to exercise_type table after DB cleanup
+    -- CONSTRAINT fk_exercise_type FOREIGN KEY (exercise_id) REFERENCES public.exercise_type (id)
 );
 
 ALTER TABLE public.exercise OWNER TO postgres;
 CREATE INDEX ix_exercise_created_at ON public.exercise (created_at);
+CREATE INDEX ix_exercise_muscle_group ON public.exercise (muscle_group);
+CREATE INDEX ix_exercise_exercise_id ON public.exercise (exercise_id);
+
+-- Create exercise_type table
+CREATE TABLE public.exercise_type
+(
+    id VARCHAR PRIMARY KEY, -- example: deadlift, bench_press, etc.
+    muscle_group VARCHAR NOT NULL,
+    name VARCHAR NOT NULL,  -- example: "Deadlift", "Bench Press", etc.
+    description TEXT,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+);
+
+-- Assign ownership and create an index on the created_at column
+ALTER TABLE public.exercise_type OWNER TO postgres;
+CREATE INDEX ix_exercise_type_muscle_group ON public.exercise_type (muscle_group);
+
+-- Create exercise_image table
+CREATE TABLE public.exercise_image
+(
+    id SERIAL PRIMARY KEY,
+    exercise_id VARCHAR NOT NULL,
+    image_path TEXT NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    CONSTRAINT fk_exercise FOREIGN KEY (exercise_id) REFERENCES public.exercise_type (id)
+);
+
+ALTER TABLE public.exercise_image OWNER TO postgres;
+CREATE INDEX ix_exercise_image_exercise_id ON public.exercise_image (exercise_id);
 
 CREATE TABLE public.gymstats_event
 (
