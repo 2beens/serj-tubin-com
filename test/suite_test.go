@@ -105,6 +105,14 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	}
 	fmt.Println("postgres setup successful")
 
+	// create a temp dir for gymstats disk api
+	gymStatsDiskApiRootDir, err := os.CreateTemp("", "gymstats")
+	if err != nil {
+		s.cleanup()
+		log.Fatalf("create temp dir for gymstats disk api: %s", err)
+	}
+	defer gymStatsDiskApiRootDir.Close()
+
 	cfg := getTestConfig(redisPort, pgPort)
 	s.server, err = internal.NewServer(
 		ctx,
@@ -119,7 +127,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 			AdminPasswordHash:       testPasswordHash,
 			RedisPassword:           "",
 			HoneycombTracingEnabled: false,
-			GymStatsDiskApiRootPath: "/var/tmp/gymstats",
+			GymStatsDiskApiRootPath: gymStatsDiskApiRootDir.Name(),
 		},
 	)
 	if err != nil {
