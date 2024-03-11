@@ -15,7 +15,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/honeycombio/honeycomb-opentelemetry-go v0.9.0
-	github.com/honeycombio/otel-config-go v1.13.1
+	github.com/honeycombio/otel-config-go v1.14.0
 	github.com/ipinfo/go/v2 v2.10.0
 	github.com/jackc/pgx/v5 v5.5.3
 	github.com/lib/pq v1.10.9
