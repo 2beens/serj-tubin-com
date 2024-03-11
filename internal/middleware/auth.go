@@ -82,8 +82,7 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 			}
 
 			if h.pathIsAlwaysAllowed(r.URL.Path) {
-				span.SetStatus(codes.Ok, "ok")
-				next.ServeHTTP(w, r)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
@@ -95,8 +94,7 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 			// visitor board: only path /messages/delete/ is protected
 			if strings.HasPrefix(r.URL.Path, "/board/messages/") {
 				if !strings.HasPrefix(r.URL.Path, "/board/messages/delete/") {
-					span.SetStatus(codes.Ok, "ok")
-					next.ServeHTTP(w, r)
+					next.ServeHTTP(w, r.WithContext(ctx))
 					return
 				}
 			}
@@ -111,8 +109,7 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 					span.SetStatus(codes.Error, "decoy-sent")
 					return
 				}
-				span.SetStatus(codes.Ok, "ok")
-				next.ServeHTTP(w, r)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
@@ -128,8 +125,7 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 					span.SetStatus(codes.Error, "missing-auth-token")
 					return
 				}
-				span.SetStatus(codes.Ok, "ok")
-				next.ServeHTTP(w, r)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
@@ -155,8 +151,7 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 				return
 			}
 
-			span.SetStatus(codes.Ok, "ok")
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
