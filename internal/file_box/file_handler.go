@@ -468,7 +468,7 @@ func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
-			_, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.auth")
+			ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.auth")
 			defer span.End()
 
 			isLogged, err := handler.isLogged(r)
@@ -483,6 +483,8 @@ func (handler *FileHandler) authMiddleware() func(next http.Handler) http.Handle
 				return
 			}
 
+			// pass the tracing info from ctx to r.Context()
+			r = r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 		})
 	}
