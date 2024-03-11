@@ -3,7 +3,6 @@ package exercises
 import (
 	"context"
 	"encoding/json"
-	"github.com/gorilla/mux"
 	"net/http"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
+	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -157,4 +157,75 @@ func (handler *TypesHandler) HandleDelete(w http.ResponseWriter, r *http.Request
 
 	log.Debugf("exercise type deleted: %s", id)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type SavedImageResponse struct {
+	ID int64 `json:"id"`
+}
+
+func (handler *TypesHandler) HandleUploadImage(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.exercise_types.upload_image")
+	defer span.End()
+
+	vars := mux.Vars(r)
+	exerciseTypeID := vars["id"]
+	if exerciseTypeID == "" {
+		http.Error(w, "error, id empty", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		log.Errorf("upload image, get file from form: %s", err)
+		http.Error(w, "upload image failed", http.StatusBadRequest)
+		return
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Errorf("upload image, close file: %s", err)
+		}
+	}()
+
+	log.Debugf("upload image, file: %+v", header)
+
+	rootFolder, err := handler.diskApi.GetRootFolder()
+	if err != nil {
+		log.Errorf("upload image, get root folder: %s", err)
+		http.Error(w, "upload image failed", http.StatusInternalServerError)
+		return
+	}
+
+	var imagesFolder *file_box.Folder
+	for _, f := range rootFolder.Subfolders {
+		if f.Name == "images" {
+			imagesFolder = f
+			break
+		}
+	}
+
+	fileType := "unknown"
+	if t, ok := header.Header["Content-Type"]; ok {
+		if len(t) > 0 {
+			fileType = t[0]
+		}
+	}
+
+	uploadedFileId, err := handler.diskApi.Save(
+		ctx, header.Filename, imagesFolder.Id,
+		header.Size, fileType, file,
+	)
+	if err != nil {
+		log.Errorf("upload image, save file: %s", err)
+		http.Error(w, "upload image failed", http.StatusInternalServerError)
+		return
+	}
+
+	savedImageJson, err := json.Marshal(SavedImageResponse{ID: uploadedFileId})
+	if err != nil {
+		log.Errorf("upload image, marshal saved image: %s", err)
+		http.Error(w, "upload image failed", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, savedImageJson, http.StatusCreated)
 }

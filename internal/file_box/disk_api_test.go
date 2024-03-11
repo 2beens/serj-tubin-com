@@ -126,7 +126,7 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 	require.True(t, file1Id > 0)
 	assert.Len(t, api.root.Files, 1)
 
-	folder1, err := api.NewFolder(0, "folder1")
+	folder1, err := api.NewFolder(context.Background(), 0, "folder1")
 	require.NoError(t, err)
 	require.NotNil(t, folder1)
 
@@ -154,10 +154,10 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 	assert.True(t, retrievedFile2.IsPrivate)
 
 	// now test delete
-	err = api.Delete(1000) // try delete non existing file
+	err = api.Delete(context.Background(), 1000) // try delete non existing file
 	assert.ErrorIs(t, err, ErrFileNotFound)
 
-	err = api.Delete(file2Id)
+	err = api.Delete(context.Background(), file2Id)
 	require.NoError(t, err)
 	retrievedFile2, _, err = api.Get(ctx, file2Id)
 	assert.ErrorIs(t, err, ErrFileNotFound)
@@ -174,7 +174,7 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, api)
 
-	err = api.DeleteFolder(0)
+	err = api.DeleteFolder(context.Background(), 0)
 	assert.Equal(t, "cannot delete root folder", err.Error())
 
 	// add one file to the root
@@ -191,10 +191,10 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	require.True(t, file1Id > 0)
 	assert.Len(t, api.root.Files, 1)
 
-	folder1, err := api.NewFolder(0, "folder1")
+	folder1, err := api.NewFolder(context.Background(), 0, "folder1")
 	require.NoError(t, err)
 	require.NotNil(t, folder1)
-	folder2, err := api.NewFolder(0, "folder2")
+	folder2, err := api.NewFolder(context.Background(), 0, "folder2")
 	require.NoError(t, err)
 	require.NotNil(t, folder2)
 
@@ -214,7 +214,7 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	assert.Len(t, folder1.Files, 1)
 	assert.Len(t, folder1.Subfolders, 0)
 
-	folder11, err := api.NewFolder(folder1.Id, "folder11")
+	folder11, err := api.NewFolder(context.Background(), folder1.Id, "folder11")
 	require.NoError(t, err)
 	require.NotNil(t, folder11)
 
@@ -222,10 +222,10 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	assert.Len(t, folder1.Files, 1)
 	assert.Len(t, folder1.Subfolders, 1)
 
-	err = api.DeleteFolder(1000) // non existent folder
+	err = api.DeleteFolder(context.Background(), 1000) // non existent folder
 	require.ErrorIs(t, err, ErrFolderNotFound)
 
-	err = api.DeleteFolder(folder1.Id)
+	err = api.DeleteFolder(context.Background(), folder1.Id)
 	require.NoError(t, err)
 	assert.Len(t, api.root.Files, 1)
 	assert.Len(t, api.root.Subfolders, 1) // only folder2 left in the root

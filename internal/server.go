@@ -49,7 +49,7 @@ type Server struct {
 	gymstatsIOSAppSecret  string // used with my gym tracking ios app
 	browserRequestsSecret string // used in netlog, when posting new visit
 	versionInfo           string
-	diskApi               *file_box.DiskApi // used for storing/getting gymstats exercise type images
+	gymStatsDiskApi       *file_box.DiskApi // used for storing/getting gymstats exercise type images
 
 	config        *config.Config
 	dbPool        *pgxpool.Pool
@@ -146,9 +146,14 @@ func NewServer(
 		return nil, fmt.Errorf("failed to load weather cities data: %s", err)
 	}
 
-	diskApi, err := file_box.NewDiskApi(params.GymStatsDiskApiRootPath)
+	gymStatsDiskApi, err := file_box.NewDiskApi(params.GymStatsDiskApiRootPath)
 	if err != nil {
 		return nil, fmt.Errorf("new disk api: %w", err)
+	}
+	// get/create "images" folder in the root folder
+	_, err = gymStatsDiskApi.NewFolder(context.Background(), -1, "images")
+	if err != nil && !errors.Is(err, file_box.ErrFolderExists) {
+		return nil, fmt.Errorf("create gymstats images folder: %w", err)
 	}
 
 	s := &Server{
@@ -179,7 +184,7 @@ func NewServer(
 		promRegistry:   promRegistry,
 		otelShutdown:   otelShutdown,
 
-		diskApi: diskApi,
+		gymStatsDiskApi: gymStatsDiskApi,
 	}
 
 	quotesCsvFile, err := os.Open(params.Config.QuotesCsvPath)
@@ -253,13 +258,12 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/{id}", gymStatsExercisesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise")
 	r.HandleFunc("/gymstats/list/page/{page}/size/{size}", gymStatsExercisesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
 
-	gymStatsExTypesHandler := exercises.NewTypesHandler(s.diskApi, gsRepo)
-	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise-type")
-	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleGet).Methods("GET", "OPTIONS").Name("get-exercise-types")
-	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-exercise-type")
-	r.HandleFunc("/gymstats/types/{id}", gymStatsExTypesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise-type")
-	// TODO: handlers for exercise images
-	// ...
+	gymStatsExTypesHandler := exercises.NewTypesHandler(s.gymStatsDiskApi, gsRepo)
+	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleAdd).Methods("POST", "OPTIONS")
+	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleGet).Methods("GET", "OPTIONS")
+	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleUpdate).Methods("PUT", "OPTIONS")
+	r.HandleFunc("/gymstats/types/{id}", gymStatsExTypesHandler.HandleDelete).Methods("DELETE", "OPTIONS")
+	r.HandleFunc("/gymstats/types/{id}/image", gymStatsExTypesHandler.HandleUploadImage).Methods("POST", "OPTIONS")
 
 	gymStatsEventsHandler := events.NewHandler(
 		events.NewService(events.NewRepo(s.dbPool)),

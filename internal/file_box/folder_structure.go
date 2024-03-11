@@ -2,6 +2,7 @@ package file_box
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,9 +11,10 @@ import (
 	"sort"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -120,7 +122,12 @@ func rootPathExists(rootPath string) error {
 	return nil
 }
 
-func getRootFolder(rootPath string) (*Folder, error) {
+func getRootFolder(ctx context.Context, rootPath string) (_ *Folder, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "fileHandler.getRootFolder")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	if err := rootPathExists(rootPath); err != nil {
 		return nil, err
 	}
@@ -136,7 +143,7 @@ func getRootFolder(rootPath string) (*Folder, error) {
 	if !rootFolderJsonExists {
 		log.Debugln("root folder JSON does not exist, creating a fresh copy ...")
 		rootFolder := NewRootFolder(rootPath)
-		if err := saveRootFolder(rootPath, rootFolder); err != nil {
+		if err := saveRootFolder(ctx, rootPath, rootFolder); err != nil {
 			return nil, fmt.Errorf("root folder created, but failed to save: %w", err)
 		}
 		return rootFolder, nil
@@ -153,7 +160,12 @@ func getRootFolder(rootPath string) (*Folder, error) {
 	return &rootFolder, nil
 }
 
-func saveRootFolder(rootPath string, folder *Folder) error {
+func saveRootFolder(ctx context.Context, rootPath string, folder *Folder) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "fileHandler.saveRootFolder")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	if err := rootPathExists(rootPath); err != nil {
 		return err
 	}
