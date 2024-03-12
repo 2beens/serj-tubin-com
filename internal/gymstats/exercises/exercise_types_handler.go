@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/file_box"
@@ -104,6 +105,32 @@ func (handler *TypesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, exTypesJson, http.StatusOK)
+}
+
+func (handler *TypesHandler) HandleGetImage(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.exercise_types.get_image")
+	defer span.End()
+
+	vars := mux.Vars(r)
+	idParam := vars["id"]
+	if idParam == "" {
+		http.Error(w, "error, id empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		http.Error(w, "error, file ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	imageFile, _, err := handler.diskApi.Get(ctx, id)
+	if err != nil {
+		log.Errorf("get image: %s", err)
+		http.Error(w, "get image failed", http.StatusInternalServerError)
+		return
+	}
+
+	http.ServeFile(w, r, imageFile.Path)
 }
 
 func (handler *TypesHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
