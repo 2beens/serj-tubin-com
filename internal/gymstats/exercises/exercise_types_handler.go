@@ -17,8 +17,10 @@ import (
 //go:generate mockgen -source=$GOFILE -destination=exercise_types_mocks_test.go -package=exercises_test
 
 type exerciseTypesRepo interface {
+	GetExerciseType(ctx context.Context, exerciseTypeID string) (_ ExerciseType, err error)
 	GetExerciseTypes(ctx context.Context, params GetExerciseTypesParams) (_ []ExerciseType, err error)
 	AddExerciseType(ctx context.Context, exerciseType ExerciseType) (err error)
+	AddExerciseTypeImage(ctx context.Context, exerciseImage ExerciseImage) (err error)
 	UpdateExerciseType(ctx context.Context, exerciseType ExerciseType) (err error)
 	DeleteExerciseType(ctx context.Context, exerciseTypeID string) (err error)
 }
@@ -94,9 +96,6 @@ func (handler *TypesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-
-	// TODO: get images for each exercise type
-	// ...
 
 	exTypesJson, err := json.Marshal(exerciseTypes)
 	if err != nil {
@@ -174,6 +173,13 @@ func (handler *TypesHandler) HandleUploadImage(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	_, err := handler.repo.GetExerciseType(ctx, exerciseTypeID)
+	if err != nil {
+		log.Errorf("upload image, get exercise type: %s", err)
+		http.Error(w, "upload image failed, exercise type not found", http.StatusNotFound)
+		return
+	}
+
 	file, header, err := r.FormFile("image")
 	if err != nil {
 		log.Errorf("upload image, get file from form: %s", err)
@@ -216,6 +222,18 @@ func (handler *TypesHandler) HandleUploadImage(w http.ResponseWriter, r *http.Re
 	)
 	if err != nil {
 		log.Errorf("upload image, save file: %s", err)
+		http.Error(w, "upload image failed", http.StatusInternalServerError)
+		return
+	}
+
+	// store the image metadata to the database
+	exerciseImage := ExerciseImage{
+		ID:         uploadedFileId,
+		ExerciseID: exerciseTypeID,
+		CreatedAt:  time.Now(),
+	}
+	if err := handler.repo.AddExerciseTypeImage(ctx, exerciseImage); err != nil {
+		log.Errorf("upload image, save image metadata: %s", err)
 		http.Error(w, "upload image failed", http.StatusInternalServerError)
 		return
 	}

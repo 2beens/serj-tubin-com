@@ -73,10 +73,10 @@ CREATE INDEX ix_exercise_type_muscle_group ON public.exercise_type (muscle_group
 -- Create exercise_image table
 CREATE TABLE public.exercise_image
 (
-    id SERIAL       PRIMARY KEY,
-    exercise_id     VARCHAR NOT NULL,
-    image_path TEXT NOT NULL,
-    created_at      TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    -- id is an int64 representation of a diskApi file id, and is a primary key for the table
+    id          BIGINT PRIMARY KEY,
+    exercise_id VARCHAR NOT NULL,
+    created_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     CONSTRAINT fk_exercise FOREIGN KEY (exercise_id) REFERENCES public.exercise_type (id)
 );
 

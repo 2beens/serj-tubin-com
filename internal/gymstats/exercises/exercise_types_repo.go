@@ -17,8 +17,81 @@ type GetExerciseTypesParams struct {
 	MuscleGroup *string
 }
 
-func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesParams) (_ []ExerciseType, err error) {
+func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ ExerciseType, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.get")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
+	var exerciseType ExerciseType
+	err = r.db.QueryRow(
+		ctx,
+		`
+			SELECT 
+			    id, muscle_group, name, description, created_at
+			FROM exercise_types
+			WHERE id = $1
+		`,
+		exerciseTypeID,
+	).Scan(
+		&exerciseType.ID,
+		&exerciseType.MuscleGroup,
+		&exerciseType.Name,
+		&exerciseType.Description,
+		&exerciseType.CreatedAt,
+	)
+	if err != nil {
+		return ExerciseType{}, fmt.Errorf("exercise type [query row]: %w", err)
+	}
+
+	exerciseType.Images, err = r.GetExerciseTypeImages(ctx, exerciseTypeID)
+	if err != nil {
+		return ExerciseType{}, fmt.Errorf("exercise type images: %w", err)
+	}
+
+	return exerciseType, nil
+}
+
+func (r *Repo) GetExerciseTypeImages(ctx context.Context, exerciseTypeID string) (_ []ExerciseImage, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.get_images")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
+	rows, err := r.db.Query(
+		ctx,
+		`
+			SELECT
+			    id, exercise_id, image_path, created_at
+			FROM exercise_image
+			WHERE exercise_id = $1
+		`,
+		exerciseTypeID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("exercise images [query]: %w", err)
+	}
+	defer rows.Close()
+
+	var exerciseImages []ExerciseImage
+	for rows.Next() {
+		var exerciseImage ExerciseImage
+		err := rows.Scan(
+			&exerciseImage.ID,
+			&exerciseImage.ExerciseID,
+			&exerciseImage.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("exercise images [rows scan]: %w", err)
+		}
+		exerciseImages = append(exerciseImages, exerciseImage)
+	}
+
+	return exerciseImages, nil
+}
+
+func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesParams) (_ []ExerciseType, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.get_types")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
@@ -27,7 +100,7 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 	rows, err := r.db.Query(
 		ctx,
 		`
-			SELECT 
+			SELECT
 			    id, muscle_group, name, description, created_at
 			FROM exercise_types
 			WHERE ($1 IS NULL OR muscle_group = $1)
@@ -57,6 +130,11 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 			return nil, err
 		}
 
+		exerciseType.Images, err = r.GetExerciseTypeImages(ctx, exerciseType.ID)
+		if err != nil {
+			return nil, fmt.Errorf("get exercise type images for type [%s]: %w", exerciseType.ID, err)
+		}
+
 		exerciseTypes = append(exerciseTypes, exerciseType)
 	}
 
@@ -76,7 +154,7 @@ func (r *Repo) AddExerciseType(ctx context.Context, exerciseType ExerciseType) (
 	_, err = r.db.Exec(
 		ctx,
 		`
-			INSERT INTO exercise_types 
+			INSERT INTO exercise_types
 			    (id, muscle_group, name, description, created_at)
 			VALUES ($1, $2, $3, $4, $5)
 		`,
@@ -85,6 +163,34 @@ func (r *Repo) AddExerciseType(ctx context.Context, exerciseType ExerciseType) (
 		exerciseType.Name,
 		exerciseType.Description,
 		exerciseType.CreatedAt,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repo) AddExerciseTypeImage(ctx context.Context, exerciseImage ExerciseImage) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.add_image")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
+	if exerciseImage.CreatedAt.IsZero() {
+		exerciseImage.CreatedAt = time.Now()
+	}
+
+	_, err = r.db.Exec(
+		ctx,
+		`
+			INSERT INTO exercise_image
+			    (id, exercise_id, created_at)
+			VALUES ($1, $2, $3)
+		`,
+		exerciseImage.ID,
+		exerciseImage.ExerciseID,
+		exerciseImage.CreatedAt,
 	)
 	if err != nil {
 		return err
