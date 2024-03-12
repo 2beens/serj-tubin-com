@@ -10,16 +10,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal"
+	"github.com/2beens/serjtubincom/internal/config"
+	"github.com/2beens/serjtubincom/internal/db"
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/2beens/serjtubincom/internal"
-	"github.com/2beens/serjtubincom/internal/config"
-	"github.com/2beens/serjtubincom/internal/db"
 )
 
 const (
@@ -106,12 +107,25 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	fmt.Println("postgres setup successful")
 
 	// create a temp dir for gymstats disk api
-	gymStatsDiskApiRootDir, err := os.CreateTemp("", "gymstats")
+	gymStatsDiskApiRootDir, err := os.MkdirTemp("", "gymstats-disk-api-root")
 	if err != nil {
 		s.cleanup()
 		log.Fatalf("create temp dir for gymstats disk api: %s", err)
 	}
-	defer gymStatsDiskApiRootDir.Close()
+
+	// check that the temp dir was created
+	dirCreated, err := pkg.PathExists(gymStatsDiskApiRootDir, true)
+	if err != nil {
+		s.cleanup()
+		log.Fatalf("check gymstats disk api root dir: %s", err)
+	}
+
+	if !dirCreated {
+		s.cleanup()
+		log.Fatalf("gymstats disk api root dir does not exist")
+	} else {
+		log.Printf("gymstats disk api root dir: %s", gymStatsDiskApiRootDir)
+	}
 
 	cfg := getTestConfig(redisPort, pgPort)
 	s.server, err = internal.NewServer(
@@ -127,7 +141,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 			AdminPasswordHash:       testPasswordHash,
 			RedisPassword:           "",
 			HoneycombTracingEnabled: false,
-			GymStatsDiskApiRootPath: gymStatsDiskApiRootDir.Name(),
+			GymStatsDiskApiRootPath: gymStatsDiskApiRootDir,
 		},
 	)
 	if err != nil {

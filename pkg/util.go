@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"os"
@@ -48,12 +49,12 @@ func PathExists(path string, isDir bool) (bool, error) {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
-		return false, err
+		return false, fmt.Errorf("stat %s: %w", path, err)
 	}
 	if (isDir && stat.IsDir()) || (!isDir && !stat.IsDir()) {
 		return true, nil
 	}
-	return false, err
+	return false, fmt.Errorf("path %s is not a directory", path)
 }
 
 func Compress(src string, buf io.Writer) error {

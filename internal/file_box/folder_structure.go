@@ -161,7 +161,7 @@ func getRootFolder(ctx context.Context, rootPath string) (_ *Folder, err error) 
 }
 
 func saveRootFolder(ctx context.Context, rootPath string, folder *Folder) (err error) {
-	ctx, span := tracing.GlobalTracer.Start(ctx, "fileHandler.saveRootFolder")
+	_, span := tracing.GlobalTracer.Start(ctx, "fileHandler.saveRootFolder")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()

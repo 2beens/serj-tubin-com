@@ -307,7 +307,7 @@ func (da *DiskApi) NewFolder(ctx context.Context, parentId int64, name string) (
 
 	parentFolder := da.getFolder(da.root, parentId)
 	if parentFolder == nil {
-		return nil, ErrFolderNotFound
+		return nil, fmt.Errorf("parent folder [%d]: %w", parentId, ErrFolderNotFound)
 	}
 
 	for _, subFolder := range parentFolder.Subfolders {

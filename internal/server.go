@@ -151,7 +151,11 @@ func NewServer(
 		return nil, fmt.Errorf("new disk api: %w", err)
 	}
 	// get/create "images" folder in the root folder
-	_, err = gymStatsDiskApi.NewFolder(context.Background(), -1, "images")
+	gymStatsRoot, err := gymStatsDiskApi.GetRootFolder()
+	if err != nil {
+		return nil, fmt.Errorf("get gymstats root folder: %w", err)
+	}
+	_, err = gymStatsDiskApi.NewFolder(context.Background(), gymStatsRoot.Id, "images")
 	if err != nil && !errors.Is(err, file_box.ErrFolderExists) {
 		return nil, fmt.Errorf("create gymstats images folder: %w", err)
 	}
