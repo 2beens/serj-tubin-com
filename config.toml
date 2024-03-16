@@ -23,7 +23,7 @@ quotes_csv_path = "./assets/quotes.csv"
 # SENTRY
 sentry_enabled = false
 # GYMSTATS
-gymstats_disk_api_root_path = "/var/tmp/gymstats"
+gymstats_disk_api_root_path = "/var/gymstats"
 # OTHER
 login_rate_limit_allowed_per_min = 15
 

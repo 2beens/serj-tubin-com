@@ -175,7 +175,7 @@ func saveRootFolder(ctx context.Context, rootPath string, folder *Folder) (err e
 
 	rootFolderJson, err := json.Marshal(folder)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal root folder: %w", err)
 	}
 
 	if err := os.Remove(folderStructureJsonPath); err != nil {
@@ -184,12 +184,12 @@ func saveRootFolder(ctx context.Context, rootPath string, folder *Folder) (err e
 
 	dst, err := os.Create(folderStructureJsonPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("create new root folder json: %w", err)
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, bytes.NewReader(rootFolderJson)); err != nil {
-		return err
+		return fmt.Errorf("copy root folder json: %w", err)
 	}
 
 	log.Debugln("new folder structure saved")
