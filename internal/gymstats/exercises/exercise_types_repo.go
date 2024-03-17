@@ -63,7 +63,7 @@ func (r *Repo) GetExerciseTypeImages(ctx context.Context, exerciseTypeID string)
 		ctx,
 		`
 			SELECT
-			    id, exercise_id, image_path, created_at
+			    id, exercise_id, created_at
 			FROM exercise_image
 			WHERE exercise_id = $1
 		`,
@@ -125,16 +125,21 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 
 	var exerciseTypes []ExerciseType
 	for rows.Next() {
+		var description *string
 		var exerciseType ExerciseType
 		err := rows.Scan(
 			&exerciseType.ID,
 			&exerciseType.MuscleGroup,
 			&exerciseType.Name,
-			&exerciseType.Description,
+			&description,
 			&exerciseType.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("exercise types [rows scan]: %w", err)
+		}
+
+		if description != nil {
+			exerciseType.Description = *description
 		}
 
 		exerciseType.Images, err = r.GetExerciseTypeImages(ctx, exerciseType.ID)

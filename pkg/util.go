@@ -54,7 +54,7 @@ func PathExists(path string, isDir bool) (bool, error) {
 	if (isDir && stat.IsDir()) || (!isDir && !stat.IsDir()) {
 		return true, nil
 	}
-	return false, fmt.Errorf("path %s is not a directory", path)
+	return false, nil
 }
 
 func Compress(src string, buf io.Writer) error {
