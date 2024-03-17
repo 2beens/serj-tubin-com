@@ -86,6 +86,11 @@ func (handler *TypesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		params.MuscleGroup = &muscleGroup
 	}
 
+	exerciseId := r.URL.Query().Get("id")
+	if exerciseId != "" {
+		params.ExerciseId = &exerciseId
+	}
+
 	exerciseTypes, err := handler.repo.GetExerciseTypes(ctx, params)
 	if err != nil {
 		log.Errorf("get exercise types: %s", err)
