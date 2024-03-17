@@ -68,7 +68,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 
 	var exercise Exercise
 	if err := json.NewDecoder(r.Body).Decode(&exercise); err != nil {
-		log.Errorf("new exercise, unmarshal json params: %s", err)
+		log.Tracef("new exercise, unmarshal json params: %s", err)
 		http.Error(w, "add exercise failed", http.StatusBadRequest)
 		return
 	}
@@ -255,14 +255,14 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	pageStr := vars["page"]
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
-		log.Errorf("handle get exercises page, from <page> param: %s", err)
+		log.Tracef("handle get exercises page, from <page> param: %s", err)
 		http.Error(w, "parse form error, parameter <page>", http.StatusBadRequest)
 		return
 	}
 	sizeStr := vars["size"]
 	size, err := strconv.Atoi(sizeStr)
 	if err != nil {
-		log.Errorf("handle get exercises page, from <size> param: %s", err)
+		log.Tracef("handle get exercises page, from <size> param: %s", err)
 		http.Error(w, "parse form error, parameter <size>", http.StatusBadRequest)
 		return
 	}

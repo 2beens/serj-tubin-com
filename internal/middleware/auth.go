@@ -138,7 +138,7 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 
 			isLogged, err := h.loginChecker.IsLogged(ctx, authToken)
 			if err != nil {
-				log.Errorf("[failed login check] => %s: %s", r.URL.Path, err)
+				log.Warnf("[failed login check] => %s: %s", r.URL.Path, err)
 				http.Error(w, "no can do", http.StatusUnauthorized)
 				span.SetStatus(codes.Error, "check-logged-err")
 				span.RecordError(err)

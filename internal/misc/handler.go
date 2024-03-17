@@ -233,7 +233,7 @@ func (handler *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 	loggedOut, err := handler.authService.Logout(r.Context(), authToken)
 	if err != nil {
-		log.Tracef("[failed login check] => %s: %s", r.URL.Path, err)
+		log.Warnf("[failed login check] => %s: %s", r.URL.Path, err)
 		http.Error(w, "no can do", http.StatusUnauthorized)
 		return
 	}

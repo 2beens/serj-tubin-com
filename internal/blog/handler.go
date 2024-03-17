@@ -252,18 +252,17 @@ func (handler *Handler) handleAll(w http.ResponseWriter, r *http.Request) {
 
 func (handler *Handler) handleGetPage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-
 	pageStr := vars["page"]
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
-		log.Errorf("handle get blogs page, from <page> param: %s", err)
+		log.Tracef("handle get blogs page, from <page> param: %s", err)
 		http.Error(w, "parse form error, parameter <page>", http.StatusBadRequest)
 		return
 	}
 	sizeStr := vars["size"]
 	size, err := strconv.Atoi(sizeStr)
 	if err != nil {
-		log.Errorf("handle get blogs page, from <size> param: %s", err)
+		log.Tracef("handle get blogs page, from <size> param: %s", err)
 		http.Error(w, "parse form error, parameter <size>", http.StatusInternalServerError)
 		return
 	}
