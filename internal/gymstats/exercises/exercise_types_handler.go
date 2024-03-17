@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/file_box"
@@ -14,6 +16,34 @@ import (
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
+
+var MuscleGroup = struct {
+	Biceps    string
+	Triceps   string
+	Back      string
+	Legs      string
+	Chest     string
+	Shoulders string
+	Other     string
+}{
+	Biceps:    "biceps",
+	Triceps:   "triceps",
+	Back:      "back",
+	Legs:      "legs",
+	Chest:     "chest",
+	Shoulders: "shoulders",
+	Other:     "other",
+}
+
+var MuscleGroups = []string{
+	MuscleGroup.Biceps,
+	MuscleGroup.Triceps,
+	MuscleGroup.Back,
+	MuscleGroup.Legs,
+	MuscleGroup.Chest,
+	MuscleGroup.Shoulders,
+	MuscleGroup.Other,
+}
 
 //go:generate mockgen -source=$GOFILE -destination=exercise_types_mocks_test.go -package=exercises_test
 
@@ -59,6 +89,12 @@ func (handler *TypesHandler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 
 	if exerciseType.ID == "" || exerciseType.MuscleGroup == "" || exerciseType.Name == "" {
 		http.Error(w, "error, exercise id, muscle group, and name are required", http.StatusBadRequest)
+		return
+	}
+
+	exerciseType.MuscleGroup = strings.ToLower(exerciseType.MuscleGroup)
+	if slices.Contains(MuscleGroups, exerciseType.MuscleGroup) == false {
+		http.Error(w, "error, invalid muscle group", http.StatusBadRequest)
 		return
 	}
 

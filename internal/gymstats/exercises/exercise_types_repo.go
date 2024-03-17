@@ -30,7 +30,7 @@ func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ Ex
 		`
 			SELECT 
 			    id, muscle_group, name, description, created_at
-			FROM exercise_types
+			FROM exercise_type
 			WHERE id = $1
 		`,
 		exerciseTypeID,
@@ -161,7 +161,7 @@ func (r *Repo) AddExerciseType(ctx context.Context, exerciseType ExerciseType) (
 	_, err = r.db.Exec(
 		ctx,
 		`
-			INSERT INTO exercise_types
+			INSERT INTO exercise_type
 			    (id, muscle_group, name, description, created_at)
 			VALUES ($1, $2, $3, $4, $5)
 		`,
@@ -215,7 +215,7 @@ func (r *Repo) UpdateExerciseType(ctx context.Context, exerciseType ExerciseType
 	_, err = r.db.Exec(
 		ctx,
 		`
-			UPDATE exercise_types
+			UPDATE exercise_type
 			SET muscle_group = $2, name = $3, description = $4
 			WHERE id = $1
 		`,
@@ -240,7 +240,7 @@ func (r *Repo) DeleteExerciseType(ctx context.Context, exerciseTypeID string) (e
 	rows, err := r.db.Exec(
 		ctx,
 		`
-			DELETE FROM exercise_types
+			DELETE FROM exercise_type
 			WHERE id = $1
 		`,
 		exerciseTypeID,
