@@ -80,26 +80,13 @@ func (handler *TypesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.exercise_types.get")
 	defer span.End()
 
-	muscleGroup := r.URL.Query().Get("muscleGroup")
-	params := GetExerciseTypesParams{}
-	if muscleGroup != "" {
-		params.MuscleGroup = &muscleGroup
-	}
-
-	exerciseId := r.URL.Query().Get("id")
-	if exerciseId != "" {
-		params.ExerciseId = &exerciseId
-	}
-
-	exerciseTypes, err := handler.repo.GetExerciseTypes(ctx, params)
+	exerciseTypes, err := handler.repo.GetExerciseTypes(ctx, GetExerciseTypesParams{
+		MuscleGroup: r.URL.Query().Get("muscleGroup"),
+		ExerciseId:  r.URL.Query().Get("id"),
+	})
 	if err != nil {
 		log.Errorf("get exercise types: %s", err)
 		http.Error(w, "get exercise types failed", http.StatusInternalServerError)
-		return
-	}
-
-	if len(exerciseTypes) == 0 {
-		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 

@@ -14,8 +14,8 @@ import (
 var ErrExerciseTypeNotFound = errors.New("exercise type not found")
 
 type GetExerciseTypesParams struct {
-	MuscleGroup *string
-	ExerciseId  *string
+	MuscleGroup string
+	ExerciseId  string
 }
 
 func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ ExerciseType, err error) {
@@ -96,7 +96,12 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
-	span.SetAttributes(attribute.Int("params.muscleGroup", len(*params.MuscleGroup)))
+	if params.MuscleGroup != "" {
+		span.SetAttributes(attribute.String("params.muscleGroup", params.MuscleGroup))
+	}
+	if params.ExerciseId != "" {
+		span.SetAttributes(attribute.String("params.exerciseId", params.ExerciseId))
+	}
 
 	rows, err := r.db.Query(
 		ctx,
@@ -104,7 +109,7 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 			SELECT
 			    id, muscle_group, name, description, created_at
 			FROM exercise_type
-			WHERE ($1 IS NULL OR muscle_group = $1) AND ($2 IS NULL OR id = $2)
+			WHERE ($1::text = '' OR muscle_group = $1) AND ($2::text = '' OR id = $2)
 		`,
 		params.MuscleGroup,
 		params.ExerciseId,
