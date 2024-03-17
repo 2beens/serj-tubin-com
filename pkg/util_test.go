@@ -44,6 +44,7 @@ func TestPathExists(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, exists)
 	exists, err = PathExists(tempDir, false)
-	assert.NoError(t, err)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is not a directory")
 	assert.False(t, exists)
 }
