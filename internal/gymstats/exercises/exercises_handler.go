@@ -25,6 +25,7 @@ type exercisesRepo interface {
 	Update(ctx context.Context, exercise *Exercise) error
 	Delete(ctx context.Context, id int) error
 	ExercisesCount(ctx context.Context, params ListParams) (int, error)
+	GetExerciseTypes(ctx context.Context, params GetExerciseTypesParams) (_ []ExerciseType, err error)
 }
 
 type DeleteExerciseResponse struct {

@@ -94,6 +94,21 @@ func (mr *MockexercisesRepoMockRecorder) Get(ctx, id interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockexercisesRepo)(nil).Get), ctx, id)
 }
 
+// GetExerciseTypes mocks base method.
+func (m *MockexercisesRepo) GetExerciseTypes(ctx context.Context, params exercises.GetExerciseTypesParams) ([]exercises.ExerciseType, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetExerciseTypes", ctx, params)
+	ret0, _ := ret[0].([]exercises.ExerciseType)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetExerciseTypes indicates an expected call of GetExerciseTypes.
+func (mr *MockexercisesRepoMockRecorder) GetExerciseTypes(ctx, params interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExerciseTypes", reflect.TypeOf((*MockexercisesRepo)(nil).GetExerciseTypes), ctx, params)
+}
+
 // List mocks base method.
 func (m *MockexercisesRepo) List(ctx context.Context, params exercises.ListParams) ([]exercises.Exercise, int, error) {
 	m.ctrl.T.Helper()

@@ -309,12 +309,25 @@ func TestAnalyzer_ExercisePercentages(t *testing.T) {
 		}).
 		Return(testExercises, nil)
 
+	repoMock.EXPECT().GetExerciseTypes(gomock.Any(), exercises.GetExerciseTypesParams{
+		MuscleGroup: "mg2",
+	}).Return([]exercises.ExerciseType{
+		{
+			ID:          "ex4",
+			MuscleGroup: "mg1",
+			Name:        "ex4",
+			Description: "desc1",
+			CreatedAt:   dateNow.AddDate(0, -22, -1),
+		},
+	}, nil)
+
 	res, err := analyzer.ExercisePercentages(context.Background(), "mg2", true, true)
 	require.NoError(t, err)
-	require.Equal(t, 3, len(res))
+	require.Equal(t, 4, len(res))
 	assert.Equal(t, float64(50), res["ex1"])
 	assert.Equal(t, float64(33.33), res["ex2"])
 	assert.Equal(t, float64(16.66), res["ex3"])
+	assert.Equal(t, float64(0), res["ex4"])
 }
 
 func TestAnalyzer_ExercisePercentages_NoExercisesFound(t *testing.T) {
@@ -330,7 +343,20 @@ func TestAnalyzer_ExercisePercentages_NoExercisesFound(t *testing.T) {
 		}).
 		Return([]exercises.Exercise{}, nil)
 
+	repoMock.EXPECT().GetExerciseTypes(gomock.Any(), exercises.GetExerciseTypesParams{
+		MuscleGroup: "mg2",
+	}).Return([]exercises.ExerciseType{
+		{
+			ID:          "ex4",
+			MuscleGroup: "mg1",
+			Name:        "ex4",
+			Description: "desc1",
+			CreatedAt:   time.Now(),
+		},
+	}, nil)
+
 	res, err := analyzer.ExercisePercentages(context.Background(), "mg2", true, true)
 	require.NoError(t, err)
-	require.Empty(t, res)
+	require.Equal(t, 1, len(res))
+	assert.Equal(t, float64(0), res["ex4"])
 }

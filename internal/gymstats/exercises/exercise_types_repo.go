@@ -115,7 +115,7 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 		params.ExerciseId,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("exercise types [query]: %w", err)
 	}
 	defer rows.Close()
 
@@ -134,7 +134,7 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 			&exerciseType.CreatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("exercise types [rows scan]: %w", err)
 		}
 
 		exerciseType.Images, err = r.GetExerciseTypeImages(ctx, exerciseType.ID)
