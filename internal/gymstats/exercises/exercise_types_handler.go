@@ -151,12 +151,16 @@ func (handler *TypesHandler) HandleGetImage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	log.Debugf("get image, id: %d", id)
+
 	imageFile, _, err := handler.diskApi.Get(ctx, id)
 	if err != nil {
 		log.Errorf("get image: %s", err)
 		http.Error(w, "get image failed", http.StatusInternalServerError)
 		return
 	}
+
+	log.Debugf("image %s found, serving...", imageFile.Path)
 
 	http.ServeFile(w, r, imageFile.Path)
 }
@@ -275,8 +279,14 @@ func (handler *TypesHandler) HandleUploadImage(w http.ResponseWriter, r *http.Re
 	}
 
 	uploadedFileId, err := handler.diskApi.Save(
-		ctx, header.Filename, imagesFolder.Id,
-		header.Size, fileType, file,
+		ctx, file_box.SaveFileParams{
+			Filename:  header.Filename,
+			FolderId:  imagesFolder.Id,
+			Size:      header.Size,
+			FileType:  fileType,
+			File:      file,
+			IsPrivate: false,
+		},
 	)
 	if err != nil {
 		log.Errorf("upload image, save file: %s", err)

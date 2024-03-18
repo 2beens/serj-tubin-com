@@ -419,11 +419,14 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 
 		newFileId, err := handler.api.Save(
 			ctx,
-			fileHeader.Filename,
-			folderId,
-			fileHeader.Size,
-			fileType,
-			file,
+			SaveFileParams{
+				Filename:  fileHeader.Filename,
+				FolderId:  folderId,
+				Size:      fileHeader.Size,
+				FileType:  fileType,
+				File:      file,
+				IsPrivate: true,
+			},
 		)
 		if err != nil {
 			log.Errorf("upload new file: %s", err)

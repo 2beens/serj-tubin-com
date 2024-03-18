@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -17,7 +18,7 @@ type AuthMiddlewareHandler struct {
 	browserRequestsSecret string
 	loginChecker          *auth.LoginChecker
 	allowedPaths          map[string]bool
-	allowedPathsPrefixes  []string
+	allowedPathsRegex     []string
 }
 
 func NewAuthMiddlewareHandler(
@@ -50,18 +51,29 @@ func NewAuthMiddlewareHandler(
 			"/a/login":  true,
 			"/a/logout": true,
 		},
-		allowedPathsPrefixes: []string{
-			"/blog/page/",
+		allowedPathsRegex: []string{
+			// allow: /gymstats/image/{id}
+			"^/gymstats/image/\\d+",
+			// allow starting with: /blog/page/
+			"^/blog/page/.*",
 		},
 	}
 }
 
-func (h *AuthMiddlewareHandler) pathIsAlwaysAllowed(path string) bool {
+func (h *AuthMiddlewareHandler) pathIsAlwaysAllowed(path string) (allowed bool) {
+	defer func() {
+		log.Debugf("pathIsAlwaysAllowed: %s => %t", path, allowed)
+	}()
 	if h.allowedPaths[path] {
 		return true
 	}
-	for _, prefix := range h.allowedPathsPrefixes {
-		if strings.HasPrefix(path, prefix) {
+	for _, pathRegex := range h.allowedPathsRegex {
+		matched, err := regexp.MatchString(pathRegex, path)
+		if err != nil {
+			log.Errorf("error matching regex for path %s: %s", path, err)
+			return false
+		}
+		if matched {
 			return true
 		}
 	}

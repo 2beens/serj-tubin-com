@@ -114,14 +114,16 @@ func (da *DiskApi) UpdateInfo(
 	return nil
 }
 
-func (da *DiskApi) Save(
-	ctx context.Context,
-	filename string,
-	folderId int64,
-	size int64,
-	fileType string,
-	file io.Reader,
-) (_ int64, err error) {
+type SaveFileParams struct {
+	Filename  string
+	FolderId  int64
+	Size      int64
+	FileType  string
+	File      io.Reader
+	IsPrivate bool
+}
+
+func (da *DiskApi) Save(ctx context.Context, params SaveFileParams) (_ int64, err error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
@@ -130,11 +132,11 @@ func (da *DiskApi) Save(
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
 
-	span.SetAttributes(attribute.String("file.name", filename))
-	span.SetAttributes(attribute.Int64("file.size", size))
-	log.Debugf("disk api: saving new file: %s, folder id: %d", filename, folderId)
+	span.SetAttributes(attribute.String("file.name", params.Filename))
+	span.SetAttributes(attribute.Int64("file.size", params.Size))
+	log.Debugf("disk api: saving new file: %s, folder id: %d", params.Filename, params.FolderId)
 
-	folder := da.getFolder(da.root, folderId)
+	folder := da.getFolder(da.root, params.FolderId)
 	if folder == nil {
 		return -1, ErrFolderNotFound
 	}
@@ -142,7 +144,7 @@ func (da *DiskApi) Save(
 	log.Debugf("disk api: parent folder found: %s", folder.Path)
 
 	newId := NewId()
-	newFileName := fmt.Sprintf("%d_%s", newId, filename)
+	newFileName := fmt.Sprintf("%d_%s", newId, params.Filename)
 	newFilePath := path.Join(folder.Path, newFileName)
 	dst, err := os.Create(newFilePath)
 	if err != nil {
@@ -150,17 +152,17 @@ func (da *DiskApi) Save(
 	}
 	defer dst.Close()
 
-	if _, err := io.Copy(dst, file); err != nil {
+	if _, err := io.Copy(dst, params.File); err != nil {
 		return -1, err
 	}
 
 	newFile := &File{
 		Id:        newId,
-		Name:      filename,
-		IsPrivate: true,
+		Name:      params.Filename,
+		IsPrivate: params.IsPrivate,
 		Path:      newFilePath,
-		Type:      fileType,
-		Size:      size,
+		Type:      params.FileType,
+		Size:      params.Size,
 		CreatedAt: time.Now(),
 	}
 
