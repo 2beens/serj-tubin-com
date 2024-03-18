@@ -24,6 +24,7 @@ func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ Ex
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
 
+	var description *string
 	var exerciseType ExerciseType
 	err = r.db.QueryRow(
 		ctx,
@@ -38,11 +39,15 @@ func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ Ex
 		&exerciseType.ID,
 		&exerciseType.MuscleGroup,
 		&exerciseType.Name,
-		&exerciseType.Description,
+		&description,
 		&exerciseType.CreatedAt,
 	)
 	if err != nil {
 		return ExerciseType{}, fmt.Errorf("exercise type [query row]: %w", err)
+	}
+
+	if description != nil {
+		exerciseType.Description = *description
 	}
 
 	exerciseType.Images, err = r.GetExerciseTypeImages(ctx, exerciseTypeID)

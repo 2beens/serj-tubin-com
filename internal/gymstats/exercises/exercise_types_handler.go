@@ -247,7 +247,10 @@ func (handler *TypesHandler) HandleUploadImage(w http.ResponseWriter, r *http.Re
 		}
 	}()
 
-	log.Debugf("upload image, file: %+v", header)
+	log.Debugf(
+		"upload image, filename: %s, size: %d, content-type: %s",
+		header.Filename, header.Size, header.Header["Content-Type"],
+	)
 
 	rootFolder, err := handler.diskApi.GetRootFolder()
 	if err != nil {
