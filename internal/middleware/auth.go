@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"regexp"
 	"strings"
@@ -8,15 +9,20 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/codes"
 
-	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 )
 
+//go:generate go run go.uber.org/mock/mockgen -source=auth.go -destination=auth_mocks_test.go -package=middleware_test
+
+type loginChecker interface {
+	IsLogged(ctx context.Context, token string) (bool, error)
+}
+
 type AuthMiddlewareHandler struct {
 	gymstatsIOSAppSecret  string
 	browserRequestsSecret string
-	loginChecker          *auth.LoginChecker
+	loginChecker          loginChecker
 	allowedPaths          map[string]bool
 	allowedPathsRegex     []string
 }
@@ -24,7 +30,7 @@ type AuthMiddlewareHandler struct {
 func NewAuthMiddlewareHandler(
 	gymstatsIOSAppSecret string,
 	browserRequestsSecret string,
-	loginChecker *auth.LoginChecker,
+	loginChecker loginChecker,
 ) *AuthMiddlewareHandler {
 	return &AuthMiddlewareHandler{
 		gymstatsIOSAppSecret:  gymstatsIOSAppSecret,
