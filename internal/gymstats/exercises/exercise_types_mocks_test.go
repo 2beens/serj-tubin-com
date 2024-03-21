@@ -49,6 +49,20 @@ func (mr *MockexerciseTypesRepoMockRecorder) AddExerciseType(ctx, exerciseType i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddExerciseType", reflect.TypeOf((*MockexerciseTypesRepo)(nil).AddExerciseType), ctx, exerciseType)
 }
 
+// AddExerciseTypeImage mocks base method.
+func (m *MockexerciseTypesRepo) AddExerciseTypeImage(ctx context.Context, exerciseImage exercises.ExerciseImage) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddExerciseTypeImage", ctx, exerciseImage)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddExerciseTypeImage indicates an expected call of AddExerciseTypeImage.
+func (mr *MockexerciseTypesRepoMockRecorder) AddExerciseTypeImage(ctx, exerciseImage interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddExerciseTypeImage", reflect.TypeOf((*MockexerciseTypesRepo)(nil).AddExerciseTypeImage), ctx, exerciseImage)
+}
+
 // DeleteExerciseType mocks base method.
 func (m *MockexerciseTypesRepo) DeleteExerciseType(ctx context.Context, exerciseTypeID string) error {
 	m.ctrl.T.Helper()
@@ -61,6 +75,35 @@ func (m *MockexerciseTypesRepo) DeleteExerciseType(ctx context.Context, exercise
 func (mr *MockexerciseTypesRepoMockRecorder) DeleteExerciseType(ctx, exerciseTypeID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteExerciseType", reflect.TypeOf((*MockexerciseTypesRepo)(nil).DeleteExerciseType), ctx, exerciseTypeID)
+}
+
+// DeleteExerciseTypeImage mocks base method.
+func (m *MockexerciseTypesRepo) DeleteExerciseTypeImage(ctx context.Context, exerciseImageID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteExerciseTypeImage", ctx, exerciseImageID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteExerciseTypeImage indicates an expected call of DeleteExerciseTypeImage.
+func (mr *MockexerciseTypesRepoMockRecorder) DeleteExerciseTypeImage(ctx, exerciseImageID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteExerciseTypeImage", reflect.TypeOf((*MockexerciseTypesRepo)(nil).DeleteExerciseTypeImage), ctx, exerciseImageID)
+}
+
+// GetExerciseType mocks base method.
+func (m *MockexerciseTypesRepo) GetExerciseType(ctx context.Context, exerciseTypeID string) (exercises.ExerciseType, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetExerciseType", ctx, exerciseTypeID)
+	ret0, _ := ret[0].(exercises.ExerciseType)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetExerciseType indicates an expected call of GetExerciseType.
+func (mr *MockexerciseTypesRepoMockRecorder) GetExerciseType(ctx, exerciseTypeID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExerciseType", reflect.TypeOf((*MockexerciseTypesRepo)(nil).GetExerciseType), ctx, exerciseTypeID)
 }
 
 // GetExerciseTypes mocks base method.

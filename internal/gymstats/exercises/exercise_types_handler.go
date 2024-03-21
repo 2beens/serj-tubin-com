@@ -3,6 +3,7 @@ package exercises
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"strconv"
@@ -54,6 +55,7 @@ type exerciseTypesRepo interface {
 	AddExerciseTypeImage(ctx context.Context, exerciseImage ExerciseImage) (err error)
 	UpdateExerciseType(ctx context.Context, exerciseType ExerciseType) (err error)
 	DeleteExerciseType(ctx context.Context, exerciseTypeID string) (err error)
+	DeleteExerciseTypeImage(ctx context.Context, exerciseImageID int64) (err error)
 }
 
 type TypesHandler struct {
@@ -163,6 +165,44 @@ func (handler *TypesHandler) HandleGetImage(w http.ResponseWriter, r *http.Reque
 	log.Debugf("image %s found, serving...", imageFile.Path)
 
 	http.ServeFile(w, r, imageFile.Path)
+}
+
+func (handler *TypesHandler) HandleDeleteImage(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.exercise_types.delete_image")
+	defer span.End()
+
+	vars := mux.Vars(r)
+	idParam := vars["id"]
+	if idParam == "" {
+		http.Error(w, "error, image ID empty", http.StatusBadRequest)
+		return
+	}
+	imageId, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		http.Error(w, "error, image ID invalid", http.StatusBadRequest)
+		return
+	}
+
+	log.Debugf("delete image %d", imageId)
+
+	if err := handler.repo.DeleteExerciseTypeImage(ctx, imageId); err != nil {
+		if errors.Is(err, ErrExerciseTypeNotFound) {
+			http.Error(w, "delete image failed - not found", http.StatusNotFound)
+			return
+		}
+		log.Errorf("delete image: %s", err)
+		http.Error(w, "delete image failed", http.StatusInternalServerError)
+		return
+	}
+
+	if err := handler.diskApi.Delete(ctx, imageId); err != nil {
+		log.Errorf("delete image: %s", err)
+		http.Error(w, "delete image failed", http.StatusInternalServerError)
+		return
+	}
+
+	log.Debugf("image %d deleted", imageId)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *TypesHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {

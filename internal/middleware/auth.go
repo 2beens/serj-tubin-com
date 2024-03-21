@@ -66,12 +66,7 @@ func NewAuthMiddlewareHandler(
 	}
 }
 
-func (h *AuthMiddlewareHandler) pathIsAlwaysAllowed(path string) (allowed bool) {
-	defer func() {
-		if !allowed {
-			log.Tracef("auth: path is not allowed: %s", path)
-		}
-	}()
+func (h *AuthMiddlewareHandler) pathIsAlwaysAllowed(path string) bool {
 	if h.allowedPaths[path] {
 		return true
 	}

@@ -265,3 +265,28 @@ func (r *Repo) DeleteExerciseType(ctx context.Context, exerciseTypeID string) (e
 
 	return nil
 }
+
+func (r *Repo) DeleteExerciseTypeImage(ctx context.Context, exerciseImageID int64) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.delete_image")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
+	rows, err := r.db.Exec(
+		ctx,
+		`
+			DELETE FROM exercise_image
+			WHERE id = $1
+		`,
+		exerciseImageID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if rows.RowsAffected() == 0 {
+		return ErrExerciseTypeNotFound
+	}
+
+	return nil
+}

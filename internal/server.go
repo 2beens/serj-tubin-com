@@ -268,6 +268,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleUpdate).Methods("PUT", "OPTIONS")
 	r.HandleFunc("/gymstats/types/{id}", gymStatsExTypesHandler.HandleDelete).Methods("DELETE", "OPTIONS")
 	r.HandleFunc("/gymstats/image/{id}", gymStatsExTypesHandler.HandleGetImage).Methods("GET", "OPTIONS")
+	r.HandleFunc("/gymstats/image/{id}", gymStatsExTypesHandler.HandleDeleteImage).Methods("DELETE", "OPTIONS")
 	r.HandleFunc("/gymstats/types/{id}/image", gymStatsExTypesHandler.HandleUploadImage).Methods("POST", "OPTIONS")
 
 	gymStatsEventsHandler := events.NewHandler(
