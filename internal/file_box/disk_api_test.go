@@ -39,7 +39,17 @@ func TestDiskApi_UpdateInfo(t *testing.T) {
 
 	fileName := "file1"
 	randomContent := strings.NewReader("random test content")
-	file1Id, err = api.Save(ctx, fileName, parentId, randomContent.Size(), "rand-binary", randomContent)
+	file1Id, err = api.Save(
+		ctx,
+		SaveFileParams{
+			Filename:  fileName,
+			FolderId:  parentId,
+			Size:      randomContent.Size(),
+			FileType:  "rand-binary",
+			File:      randomContent,
+			IsPrivate: true,
+		},
+	)
 	require.NoError(t, err)
 	assert.True(t, file1Id > 0)
 	assert.Len(t, api.root.Files, 1)
@@ -80,11 +90,14 @@ func TestDiskApi_Save_InRoot(t *testing.T) {
 		randomContent := strings.NewReader(fmt.Sprintf("random test content %d", i))
 		fileId, err := api.Save(
 			ctx,
-			fmt.Sprintf("file_%d", i),
-			parentId,
-			randomContent.Size(),
-			"rand-binary",
-			randomContent,
+			SaveFileParams{
+				Filename:  fmt.Sprintf("file_%d", i),
+				FolderId:  parentId,
+				Size:      randomContent.Size(),
+				FileType:  "rand-binary",
+				File:      randomContent,
+				IsPrivate: true,
+			},
 		)
 		require.NoError(t, err)
 		assert.True(t, fileId > 0)
@@ -116,11 +129,14 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 	randomContent := strings.NewReader("random test content 1")
 	file1Id, err := api.Save(
 		ctx,
-		"file_1",
-		0,
-		randomContent.Size(),
-		"rand-binary",
-		randomContent,
+		SaveFileParams{
+			Filename:  "file_1",
+			FolderId:  0,
+			Size:      randomContent.Size(),
+			FileType:  "rand-binary",
+			File:      randomContent,
+			IsPrivate: true,
+		},
 	)
 	require.NoError(t, err)
 	require.True(t, file1Id > 0)
@@ -134,11 +150,14 @@ func TestDiskApi_Save_InOtherFolder_ThenDelete(t *testing.T) {
 	randomContent = strings.NewReader("random test content 2")
 	file2Id, err := api.Save(
 		ctx,
-		"file_2",
-		folder1.Id,
-		randomContent.Size(),
-		"rand-binary",
-		randomContent,
+		SaveFileParams{
+			Filename:  "file_2",
+			FolderId:  folder1.Id,
+			Size:      randomContent.Size(),
+			FileType:  "rand-binary",
+			File:      randomContent,
+			IsPrivate: true,
+		},
 	)
 	require.NoError(t, err)
 	require.True(t, file2Id > 0)
@@ -181,11 +200,14 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	randomContent := strings.NewReader("random test content 1")
 	file1Id, err := api.Save(
 		ctx,
-		"file_1",
-		0,
-		randomContent.Size(),
-		"rand-binary",
-		randomContent,
+		SaveFileParams{
+			Filename:  "file_1",
+			FolderId:  0,
+			Size:      randomContent.Size(),
+			FileType:  "rand-binary",
+			File:      randomContent,
+			IsPrivate: true,
+		},
 	)
 	require.NoError(t, err)
 	require.True(t, file1Id > 0)
@@ -202,11 +224,14 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	randomContent = strings.NewReader("random test content 2")
 	file2Id, err := api.Save(
 		ctx,
-		"file_2",
-		folder1.Id,
-		randomContent.Size(),
-		"rand-binary",
-		randomContent,
+		SaveFileParams{
+			Filename:  "file_2",
+			FolderId:  folder1.Id,
+			Size:      randomContent.Size(),
+			FileType:  "rand-binary",
+			File:      randomContent,
+			IsPrivate: true,
+		},
 	)
 	require.NoError(t, err)
 	require.True(t, file2Id > 0)
