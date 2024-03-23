@@ -54,6 +54,7 @@ type exerciseTypesRepo interface {
 	AddExerciseType(ctx context.Context, exerciseType ExerciseType) (err error)
 	AddExerciseTypeImage(ctx context.Context, exerciseImage ExerciseImage) (err error)
 	UpdateExerciseType(ctx context.Context, exerciseType ExerciseType) (err error)
+	ExerciseTypeIsInUse(ctx context.Context, exerciseTypeID string) (_ bool, err error)
 	DeleteExerciseType(ctx context.Context, exerciseTypeID string) (err error)
 	DeleteExerciseTypeImage(ctx context.Context, exerciseImageID int64) (err error)
 }
@@ -105,6 +106,10 @@ func (handler *TypesHandler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := handler.repo.AddExerciseType(ctx, exerciseType); err != nil {
+		if errors.Is(err, ErrAlreadyExists) {
+			http.Error(w, "error, exercise type already exists", http.StatusConflict)
+			return
+		}
 		log.Errorf("add exercise type: %s", err)
 		http.Error(w, "add exercise type failed", http.StatusInternalServerError)
 		return
@@ -247,7 +252,50 @@ func (handler *TypesHandler) HandleDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := handler.repo.DeleteExerciseType(ctx, id); err != nil {
+	exType, err := handler.repo.GetExerciseType(ctx, id)
+	if err != nil {
+		if errors.Is(err, ErrExerciseTypeNotFound) {
+			http.Error(w, "delete exercise type failed: not found", http.StatusNotFound)
+			return
+		}
+		log.Errorf("delete exercise type, get exercise type: %s", err)
+		http.Error(w, "delete exercise type failed", http.StatusInternalServerError)
+		return
+	}
+
+	if inUse, err := handler.repo.ExerciseTypeIsInUse(ctx, id); err != nil {
+		log.Errorf("delete exercise type, check if in use: %s", err)
+		http.Error(w, "delete exercise type failed", http.StatusInternalServerError)
+		return
+	} else if inUse {
+		http.Error(w, "delete exercise type failed: used in exercises", http.StatusConflict)
+		return
+	}
+
+	// delete all images associated with this exercise type
+	var delImagesErr error
+	for _, img := range exType.Images {
+		if err := handler.diskApi.Delete(ctx, img.ID); err != nil {
+			log.Errorf("delete exercise type images: %s", err)
+			delImagesErr = errors.Join(err)
+		}
+		if err := handler.repo.DeleteExerciseTypeImage(ctx, img.ID); err != nil {
+			log.Errorf("delete exercise type images: %s", err)
+			delImagesErr = errors.Join(err)
+		}
+	}
+
+	if delImagesErr != nil {
+		log.Errorf("delete exercise type images: %s", delImagesErr)
+		http.Error(w, "delete exercise type failed", http.StatusInternalServerError)
+		return
+	}
+
+	if err := handler.repo.DeleteExerciseType(ctx, exType.ID); err != nil {
+		if errors.Is(err, ErrExerciseTypeInUse) {
+			http.Error(w, "delete exercise type failed: used in exercises", http.StatusConflict)
+			return
+		}
 		log.Errorf("delete exercise type: %s", err)
 		http.Error(w, "delete exercise type failed", http.StatusInternalServerError)
 		return

@@ -2,16 +2,21 @@ package exercises
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
-
+	"github.com/2beens/serjtubincom/pkg"
 	"go.opentelemetry.io/otel/attribute"
 )
 
-var ErrExerciseTypeNotFound = errors.New("exercise type not found")
+var (
+	ErrExerciseTypeNotFound = errors.New("exercise type not found")
+	ErrAlreadyExists        = errors.New("exercise type already exists")
+	ErrExerciseTypeInUse    = errors.New("exercise type is in use")
+)
 
 type GetExerciseTypesParams struct {
 	MuscleGroup string
@@ -43,6 +48,9 @@ func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ Ex
 		&exerciseType.CreatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ExerciseType{}, ErrExerciseTypeNotFound
+		}
 		return ExerciseType{}, fmt.Errorf("exercise type [query row]: %w", err)
 	}
 
@@ -182,6 +190,9 @@ func (r *Repo) AddExerciseType(ctx context.Context, exerciseType ExerciseType) (
 		exerciseType.CreatedAt,
 	)
 	if err != nil {
+		if pkg.IsUniqueViolationError(err) {
+			return ErrAlreadyExists
+		}
 		return err
 	}
 
@@ -241,6 +252,29 @@ func (r *Repo) UpdateExerciseType(ctx context.Context, exerciseType ExerciseType
 	return nil
 }
 
+func (r *Repo) ExerciseTypeIsInUse(ctx context.Context, exerciseTypeID string) (_ bool, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.is_in_use")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
+	var count int
+	err = r.db.QueryRow(
+		ctx,
+		`
+			SELECT COUNT(*)
+			FROM exercise
+			WHERE exercise_id = $1
+		`,
+		exerciseTypeID,
+	).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
 func (r *Repo) DeleteExerciseType(ctx context.Context, exerciseTypeID string) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.delete")
 	defer func() {
@@ -256,6 +290,9 @@ func (r *Repo) DeleteExerciseType(ctx context.Context, exerciseTypeID string) (e
 		exerciseTypeID,
 	)
 	if err != nil {
+		if pkg.IsForeignKeyViolationError(err) {
+			return ErrExerciseTypeInUse
+		}
 		return err
 	}
 

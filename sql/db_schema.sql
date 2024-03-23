@@ -48,6 +48,7 @@ CREATE TABLE public.exercise
     created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL
 
     -- TODO: add fk constraint to exercise_type table after DB cleanup
+    -- because there are exercises added from before, with invalid exercise_id
     -- CONSTRAINT fk_exercise_type FOREIGN KEY (exercise_id) REFERENCES public.exercise_type (id)
 );
 
