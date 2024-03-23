@@ -59,13 +59,20 @@ type exerciseTypesRepo interface {
 	DeleteExerciseTypeImage(ctx context.Context, exerciseImageID int64) (err error)
 }
 
+type diskApi interface {
+	GetRootFolder() (_ *file_box.Folder, err error)
+	Get(ctx context.Context, fileId int64) (_ *file_box.File, _ *file_box.Folder, err error)
+	Save(ctx context.Context, params file_box.SaveFileParams) (_ int64, err error)
+	Delete(ctx context.Context, fileId int64) (err error)
+}
+
 type TypesHandler struct {
-	diskApi *file_box.DiskApi // used for storing/getting exercise type images
+	diskApi diskApi // used for storing/getting exercise type images
 	repo    exerciseTypesRepo
 }
 
 func NewTypesHandler(
-	diskApi *file_box.DiskApi,
+	diskApi diskApi,
 	repo exerciseTypesRepo,
 ) *TypesHandler {
 	return &TypesHandler{

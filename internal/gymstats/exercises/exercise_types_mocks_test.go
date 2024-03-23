@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	file_box "github.com/2beens/serjtubincom/internal/file_box"
 	exercises "github.com/2beens/serjtubincom/internal/gymstats/exercises"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -148,4 +149,87 @@ func (m *MockexerciseTypesRepo) UpdateExerciseType(ctx context.Context, exercise
 func (mr *MockexerciseTypesRepoMockRecorder) UpdateExerciseType(ctx, exerciseType interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateExerciseType", reflect.TypeOf((*MockexerciseTypesRepo)(nil).UpdateExerciseType), ctx, exerciseType)
+}
+
+// MockdiskApi is a mock of diskApi interface.
+type MockdiskApi struct {
+	ctrl     *gomock.Controller
+	recorder *MockdiskApiMockRecorder
+}
+
+// MockdiskApiMockRecorder is the mock recorder for MockdiskApi.
+type MockdiskApiMockRecorder struct {
+	mock *MockdiskApi
+}
+
+// NewMockdiskApi creates a new mock instance.
+func NewMockdiskApi(ctrl *gomock.Controller) *MockdiskApi {
+	mock := &MockdiskApi{ctrl: ctrl}
+	mock.recorder = &MockdiskApiMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockdiskApi) EXPECT() *MockdiskApiMockRecorder {
+	return m.recorder
+}
+
+// Delete mocks base method.
+func (m *MockdiskApi) Delete(ctx context.Context, fileId int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, fileId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockdiskApiMockRecorder) Delete(ctx, fileId interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockdiskApi)(nil).Delete), ctx, fileId)
+}
+
+// Get mocks base method.
+func (m *MockdiskApi) Get(ctx context.Context, fileId int64) (*file_box.File, *file_box.Folder, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, fileId)
+	ret0, _ := ret[0].(*file_box.File)
+	ret1, _ := ret[1].(*file_box.Folder)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockdiskApiMockRecorder) Get(ctx, fileId interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockdiskApi)(nil).Get), ctx, fileId)
+}
+
+// GetRootFolder mocks base method.
+func (m *MockdiskApi) GetRootFolder() (*file_box.Folder, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRootFolder")
+	ret0, _ := ret[0].(*file_box.Folder)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRootFolder indicates an expected call of GetRootFolder.
+func (mr *MockdiskApiMockRecorder) GetRootFolder() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRootFolder", reflect.TypeOf((*MockdiskApi)(nil).GetRootFolder))
+}
+
+// Save mocks base method.
+func (m *MockdiskApi) Save(ctx context.Context, params file_box.SaveFileParams) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Save", ctx, params)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Save indicates an expected call of Save.
+func (mr *MockdiskApiMockRecorder) Save(ctx, params interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockdiskApi)(nil).Save), ctx, params)
 }
