@@ -183,8 +183,6 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 		span.SetAttributes(attribute.String("to", params.To.String()))
 	}
 
-	log.Tracef("getting all exercises: %+v", params)
-
 	rows, err := r.db.Query(
 		ctx,
 		`

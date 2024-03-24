@@ -46,7 +46,7 @@ func HoneycombSetup(
 		otelconfig.WithLogLevel("info"), // info log is default anyway
 	)
 	if err != nil {
-		return nil, fmt.Errorf("honecomb, configure open telemetry: %w", err)
+		return nil, fmt.Errorf("honeycomb, configure open telemetry: %w", err)
 	}
 
 	return shutdownFunc, err
