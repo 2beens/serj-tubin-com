@@ -11,7 +11,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -259,7 +258,6 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 		offset = countAll - limit
 	}
 
-	log.Tracef("getting exercises, total count %d, limit %d, offset %d", countAll, limit, offset)
 	span.SetAttributes(attribute.Int("count_all", countAll))
 	span.SetAttributes(attribute.Int("limit", limit))
 	span.SetAttributes(attribute.Int("offset", offset))
