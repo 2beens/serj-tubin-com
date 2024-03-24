@@ -34,7 +34,7 @@ func (s *IntegrationTestSuite) newTrainingStartRequest(ctx context.Context, time
 		bytes.NewReader(tsJson),
 	)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -62,7 +62,7 @@ func (s *IntegrationTestSuite) newTrainingFinishRequest(ctx context.Context, tf 
 		bytes.NewReader(tfJson),
 	)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -90,7 +90,7 @@ func (s *IntegrationTestSuite) newWeightReportRequest(ctx context.Context, wr ev
 		bytes.NewReader(wrJson),
 	)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -130,7 +130,7 @@ func (s *IntegrationTestSuite) getAllEventsRequest(ctx context.Context, params e
 		nil,
 	)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 
 	resp, err := s.httpClient.Do(req)

@@ -15,7 +15,7 @@ import (
 	"github.com/2beens/serjtubincom/pkg"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=exercises_test
+//go:generate mockgen -source=$GOFILE -destination=exercises_mocks_test.go -package=exercises_test
 
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise Exercise) (*Exercise, error)
@@ -25,6 +25,7 @@ type exercisesRepo interface {
 	Update(ctx context.Context, exercise *Exercise) error
 	Delete(ctx context.Context, id int) error
 	ExercisesCount(ctx context.Context, params ListParams) (int, error)
+	GetExerciseTypes(ctx context.Context, params GetExerciseTypesParams) (_ []ExerciseType, err error)
 }
 
 type DeleteExerciseResponse struct {

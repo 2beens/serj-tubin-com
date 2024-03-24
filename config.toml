@@ -22,6 +22,8 @@ redis_port = "6379"
 quotes_csv_path = "./assets/quotes.csv"
 # SENTRY
 sentry_enabled = false
+# GYMSTATS
+gymstats_disk_api_root_path = "/var/gymstats"
 # OTHER
 login_rate_limit_allowed_per_min = 15
 
@@ -49,6 +51,8 @@ redis_port = "6379"
 quotes_csv_path = "./assets/quotes.csv"
 # SENTRY
 sentry_enabled = false
+# GYMSTATS
+gymstats_disk_api_root_path = "/var/tmp/gymstats"
 # OTHER
 login_rate_limit_allowed_per_min = 15
 
@@ -76,5 +80,7 @@ redis_port = "6379"
 quotes_csv_path = "./assets/quotes.csv"
 # SENTRY
 sentry_enabled = true
+# GYMSTATS
+gymstats_disk_api_root_path = "/home/serj/gymstats-data"
 # OTHER
 login_rate_limit_allowed_per_min = 15

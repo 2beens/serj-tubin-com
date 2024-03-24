@@ -17,6 +17,8 @@ WORKDIR /build
 # capabilities within the container.
 RUN adduser -D stservice
 
+RUN mkdir -p /var/gymstats && chown stservice:stservice /var/gymstats
+
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -26,7 +28,7 @@ COPY . .
 # -s: disable the generation of the symbol table in the resulting binary
 RUN go build -o bin/service -ldflags="-w -s" cmd/service/main.go
 
-FROM scratch
+FROM alpine
 
 ARG OPEN_WEATHER_API_KEY_ARG=todo
 ARG SERJ_TUBIN_COM_ADMIN_USERNAME_ARG=todo
@@ -51,10 +53,14 @@ ENV HONEYCOMB_API_KEY=${HONEYCOMB_API_KEY_ARG}
 ENV SENTRY_DSN=${SENTRY_DSN_ARG}
 
 COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
 COPY --from=builder /build/bin/service /usr/bin/service
 COPY --from=builder /build/bin/service /usr/bin/service
 COPY --from=builder /build/config.toml config.toml
 COPY --from=builder /build/assets assets
+COPY --from=builder /var/gymstats /var/gymstats
+
+RUN chown -R stservice:stservice /var/gymstats
 
 USER stservice
 CMD ["./usr/bin/service", "-env", "dockerdev"]

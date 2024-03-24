@@ -52,11 +52,14 @@ func TestFileHandler_handleGet(t *testing.T) {
 		fileName := fmt.Sprintf("file_%d", i)
 		fileId, err := api.Save(
 			ctx,
-			fileName,
-			parentId,
-			randomContent.Size(),
-			"rand-binary",
-			randomContent,
+			SaveFileParams{
+				Filename:  fileName,
+				FolderId:  parentId,
+				Size:      randomContent.Size(),
+				FileType:  "rand-binary",
+				File:      randomContent,
+				IsPrivate: true,
+			},
 		)
 		require.NoError(t, err)
 		assert.True(t, fileId > 0)
@@ -185,11 +188,14 @@ func TestFileHandler_handleDeleteFile(t *testing.T) {
 				fileName := fmt.Sprintf("file_%d", i)
 				fileId, err := api.Save(
 					ctx,
-					fileName,
-					parentId,
-					randomContent.Size(),
-					"rand-binary",
-					randomContent,
+					SaveFileParams{
+						Filename:  fileName,
+						FolderId:  parentId,
+						Size:      randomContent.Size(),
+						FileType:  "rand-binary",
+						File:      randomContent,
+						IsPrivate: true,
+					},
 				)
 				require.NoError(t, err)
 				assert.True(t, fileId > 0)
@@ -294,11 +300,14 @@ func TestFileHandler_handleUpdateInfo(t *testing.T) {
 			fileName := "test-name"
 			fileId, err := api.Save(
 				ctx,
-				fileName,
-				parentId,
-				fileContent.Size(),
-				"rand-binary",
-				fileContent,
+				SaveFileParams{
+					Filename:  fileName,
+					FolderId:  parentId,
+					Size:      fileContent.Size(),
+					FileType:  "rand-binary",
+					File:      fileContent,
+					IsPrivate: true,
+				},
 			)
 			require.NoError(t, err)
 			assert.True(t, fileId > 0)
@@ -345,11 +354,14 @@ func TestFileHandler_handleGetRoot(t *testing.T) {
 	fileName := "test-name"
 	fileId, err := api.Save(
 		ctx,
-		fileName,
-		rootId,
-		fileContent.Size(),
-		"rand-binary",
-		fileContent,
+		SaveFileParams{
+			Filename:  fileName,
+			FolderId:  rootId,
+			Size:      fileContent.Size(),
+			FileType:  "rand-binary",
+			File:      fileContent,
+			IsPrivate: true,
+		},
 	)
 	require.NoError(t, err)
 	assert.True(t, fileId > 0)

@@ -1,29 +1,36 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
+	"regexp"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/codes"
 
-	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 )
 
+//go:generate go run go.uber.org/mock/mockgen -source=auth.go -destination=auth_mocks_test.go -package=middleware_test
+
+type loginChecker interface {
+	IsLogged(ctx context.Context, token string) (bool, error)
+}
+
 type AuthMiddlewareHandler struct {
 	gymstatsIOSAppSecret  string
 	browserRequestsSecret string
-	loginChecker          *auth.LoginChecker
+	loginChecker          loginChecker
 	allowedPaths          map[string]bool
-	allowedPathsPrefixes  []string
+	allowedPathsRegex     []string
 }
 
 func NewAuthMiddlewareHandler(
 	gymstatsIOSAppSecret string,
 	browserRequestsSecret string,
-	loginChecker *auth.LoginChecker,
+	loginChecker loginChecker,
 ) *AuthMiddlewareHandler {
 	return &AuthMiddlewareHandler{
 		gymstatsIOSAppSecret:  gymstatsIOSAppSecret,
@@ -50,8 +57,11 @@ func NewAuthMiddlewareHandler(
 			"/a/login":  true,
 			"/a/logout": true,
 		},
-		allowedPathsPrefixes: []string{
-			"/blog/page/",
+		allowedPathsRegex: []string{
+			// allow: /gymstats/image/{id}
+			"^/gymstats/image/\\d+",
+			// allow starting with: /blog/page/
+			"^/blog/page/.*",
 		},
 	}
 }
@@ -60,8 +70,13 @@ func (h *AuthMiddlewareHandler) pathIsAlwaysAllowed(path string) bool {
 	if h.allowedPaths[path] {
 		return true
 	}
-	for _, prefix := range h.allowedPathsPrefixes {
-		if strings.HasPrefix(path, prefix) {
+	for _, pathRegex := range h.allowedPathsRegex {
+		matched, err := regexp.MatchString(pathRegex, path)
+		if err != nil {
+			log.Errorf("error matching regex for path %s: %s", path, err)
+			return false
+		}
+		if matched {
 			return true
 		}
 	}
@@ -115,8 +130,7 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 
 			userAgent := r.Header.Get("User-Agent")
 			isGymstatsAllowedAgent := strings.HasPrefix(userAgent, "curl/") ||
-				strings.HasPrefix(userAgent, "GymStats/1") ||
-				strings.HasPrefix(userAgent, "test-agent")
+				strings.HasPrefix(userAgent, "GymStats/1")
 			if isGymstatsAllowedAgent && strings.HasPrefix(r.URL.Path, "/gymstats") {
 				// requests coming from GymStats iOS app or curl
 				receivedAuthToken := r.Header.Get("Authorization")

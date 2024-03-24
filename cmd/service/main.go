@@ -104,6 +104,17 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	// check if cfg.GymStatsDiskApiRootPath exists and is a directory, and create if not
+	dirCreated, err := pkg.PathExists(cfg.GymStatsDiskApiRootPath, true)
+	if err != nil {
+		log.Fatalf("check gymstats disk api root dir: %s", err)
+	}
+	if !dirCreated {
+		log.Fatalf("gymstats disk api root dir not created: %s", cfg.GymStatsDiskApiRootPath)
+	} else {
+		log.Printf("gymstats disk api root dir: %s", cfg.GymStatsDiskApiRootPath)
+	}
+
 	server, err := internal.NewServer(
 		ctx,
 		internal.NewServerParams{
@@ -117,6 +128,7 @@ func main() {
 			AdminPasswordHash:       adminPasswordHash,
 			RedisPassword:           redisPassword,
 			HoneycombTracingEnabled: honeycombEnabled,
+			GymStatsDiskApiRootPath: cfg.GymStatsDiskApiRootPath,
 		},
 	)
 	if err != nil {

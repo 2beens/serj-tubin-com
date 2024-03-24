@@ -3,6 +3,7 @@ package file_box
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +19,8 @@ import (
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 )
+
+const maxUploadedFileSize = 1024 * 1024 * 999 // 999 MB
 
 type deleteRequest struct {
 	Ids []int64 `json:"ids"`
@@ -260,13 +263,13 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 		log.Debugf("-> tryint to delete item: %d", id)
 
 		fileInfo, _, err := handler.api.Get(ctx, id)
-		if err != nil && err != ErrFileNotFound {
+		if err != nil && !errors.Is(err, ErrFileNotFound) {
 			log.Errorf("delete file [%d]: %s", id, err)
 			//http.Error(w, "internal error", http.StatusInternalServerError)
 			//return
 		} else if fileInfo != nil {
 			log.Debugf("will delete file: %s", fileInfo.Path)
-			if err := handler.api.Delete(id); err != nil {
+			if err := handler.api.Delete(ctx, id); err != nil {
 				log.Errorf("delete file [%d]: %s", id, err)
 				//http.Error(w, "internal error", http.StatusInternalServerError)
 				//return
@@ -275,7 +278,7 @@ func (handler *FileHandler) handleDelete(w http.ResponseWriter, r *http.Request)
 			deletedCount++
 		} else {
 			// not a file - try to delete folder instead
-			if err := handler.api.DeleteFolder(id); err != nil {
+			if err := handler.api.DeleteFolder(ctx, id); err != nil {
 				log.Errorf("delete folder [%d]: %s", id, err)
 				//http.Error(w, "internal error", http.StatusInternalServerError)
 				//return
@@ -310,7 +313,7 @@ func (handler *FileHandler) handleGetRoot(w http.ResponseWriter, r *http.Request
 }
 
 func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Request) {
-	_, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.newFolder")
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "fileHandler.newFolder")
 	defer span.End()
 
 	vars := mux.Vars(r)
@@ -351,7 +354,7 @@ func (handler *FileHandler) handleNewFolder(w http.ResponseWriter, r *http.Reque
 
 	log.Debugf("creating child folder [%s] for folder [%d]", newFolderReq.Name, parentId)
 
-	if f, err := handler.api.NewFolder(parentId, newFolderReq.Name); err != nil {
+	if f, err := handler.api.NewFolder(ctx, parentId, newFolderReq.Name); err != nil {
 		log.Errorf("create child folder for %d: %s", parentId, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	} else {
@@ -386,8 +389,7 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 
 	log.Tracef("new file upload incoming for folder [%d]", folderId)
 
-	const maxFileSize = 1024 * 1024 * 999 // 999 MB
-	if err := r.ParseMultipartForm(maxFileSize); err != nil {
+	if err := r.ParseMultipartForm(maxUploadedFileSize); err != nil {
 		log.Errorf("get file, parse multipart form: %s", err)
 		http.Error(w, "internal error or file too big", http.StatusInternalServerError)
 		return
@@ -417,11 +419,14 @@ func (handler *FileHandler) handleUpload(w http.ResponseWriter, r *http.Request)
 
 		newFileId, err := handler.api.Save(
 			ctx,
-			fileHeader.Filename,
-			folderId,
-			fileHeader.Size,
-			fileType,
-			file,
+			SaveFileParams{
+				Filename:  fileHeader.Filename,
+				FolderId:  folderId,
+				Size:      fileHeader.Size,
+				FileType:  fileType,
+				File:      file,
+				IsPrivate: true,
+			},
 		)
 		if err != nil {
 			log.Errorf("upload new file: %s", err)

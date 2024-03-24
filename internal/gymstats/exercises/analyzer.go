@@ -2,6 +2,7 @@ package exercises
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
@@ -180,6 +181,21 @@ func (a *Analyzer) ExercisePercentages(
 		exercise2percentage[exercise] = float64(count) / float64(len(exercises)) * 100
 		// leave only 2 decimals
 		exercise2percentage[exercise] = float64(int(exercise2percentage[exercise]*100)) / 100
+	}
+
+	// get all exercise types, even if there are no exercises for them
+	// and set their percentage to 0
+	exTypes, err := a.repo.GetExerciseTypes(ctx, GetExerciseTypesParams{
+		MuscleGroup: muscleGroup,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get exercise types: %w", err)
+	}
+
+	for _, exType := range exTypes {
+		if _, ok := exercise2percentage[exType.ExerciseID]; !ok {
+			exercise2percentage[exType.ExerciseID] = 0
+		}
 	}
 
 	return exercise2percentage, nil

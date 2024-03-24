@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/2beens/serjtubincom/internal/gymstats/events"
 	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
 
@@ -47,6 +49,7 @@ type Server struct {
 	gymstatsIOSAppSecret  string // used with my gym tracking ios app
 	browserRequestsSecret string // used in netlog, when posting new visit
 	versionInfo           string
+	gymStatsDiskApi       *file_box.DiskApi // used for storing/getting gymstats exercise type images
 
 	config        *config.Config
 	dbPool        *pgxpool.Pool
@@ -75,6 +78,7 @@ type NewServerParams struct {
 	AdminPasswordHash       string
 	RedisPassword           string
 	HoneycombTracingEnabled bool
+	GymStatsDiskApiRootPath string
 }
 
 func NewServer(
@@ -142,6 +146,20 @@ func NewServer(
 		return nil, fmt.Errorf("failed to load weather cities data: %s", err)
 	}
 
+	gymStatsDiskApi, err := file_box.NewDiskApi(params.GymStatsDiskApiRootPath)
+	if err != nil {
+		return nil, fmt.Errorf("new disk api: %w", err)
+	}
+	// get/create "images" folder in the root folder
+	gymStatsRoot, err := gymStatsDiskApi.GetRootFolder()
+	if err != nil {
+		return nil, fmt.Errorf("get gymstats root folder: %w", err)
+	}
+	_, err = gymStatsDiskApi.NewFolder(context.Background(), gymStatsRoot.Id, "images")
+	if err != nil && !errors.Is(err, file_box.ErrFolderExists) {
+		return nil, fmt.Errorf("create gymstats images folder: %w", err)
+	}
+
 	s := &Server{
 		config:                params.Config,
 		dbPool:                dbPool,
@@ -169,6 +187,8 @@ func NewServer(
 		metricsManager: metricsManager,
 		promRegistry:   promRegistry,
 		otelShutdown:   otelShutdown,
+
+		gymStatsDiskApi: gymStatsDiskApi,
 	}
 
 	quotesCsvFile, err := os.Open(params.Config.QuotesCsvPath)
@@ -231,7 +251,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
 	r.HandleFunc("/notes/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
 
-	gymStatsExercisesHandler := exercises.NewHandler(exercises.NewRepo(s.dbPool))
+	gsRepo := exercises.NewRepo(s.dbPool)
+	gymStatsExercisesHandler := exercises.NewHandler(gsRepo)
 	r.HandleFunc("/gymstats", gymStatsExercisesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-exercise")
 	r.HandleFunc("/gymstats/exercise/{id}", gymStatsExercisesHandler.HandleGet).Methods("GET", "OPTIONS").Name("get-exercise")
 	r.HandleFunc("/gymstats/exercise/{exid}/group/{mgroup}/history", gymStatsExercisesHandler.HandleExerciseHistory).Methods("GET", "OPTIONS").Name("get-exercise")
@@ -240,6 +261,15 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats", gymStatsExercisesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-exercise")
 	r.HandleFunc("/gymstats/{id}", gymStatsExercisesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise")
 	r.HandleFunc("/gymstats/list/page/{page}/size/{size}", gymStatsExercisesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
+
+	gymStatsExTypesHandler := exercises.NewTypesHandler(s.gymStatsDiskApi, gsRepo)
+	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleAdd).Methods("POST", "OPTIONS")
+	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleGet).Methods("GET", "OPTIONS")
+	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleUpdate).Methods("PUT", "OPTIONS")
+	r.HandleFunc("/gymstats/types/{id}/mg/{mgid}", gymStatsExTypesHandler.HandleDelete).Methods("DELETE", "OPTIONS")
+	r.HandleFunc("/gymstats/image/{id}", gymStatsExTypesHandler.HandleGetImage).Methods("GET", "OPTIONS")
+	r.HandleFunc("/gymstats/image/{id}", gymStatsExTypesHandler.HandleDeleteImage).Methods("DELETE", "OPTIONS")
+	r.HandleFunc("/gymstats/types/{id}/mg/{mgid}/image", gymStatsExTypesHandler.HandleUploadImage).Methods("POST", "OPTIONS")
 
 	gymStatsEventsHandler := events.NewHandler(
 		events.NewService(events.NewRepo(s.dbPool)),
@@ -302,7 +332,7 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	go func() {
 		log.Infof(" > server listening on: [%s]", ipAndPort)
 		err := s.httpServer.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("main service, listen and serve: %s", err)
 		}
 	}()
@@ -310,7 +340,7 @@ func (s *Server) Serve(ctx context.Context, host string, port int) {
 	go func() {
 		log.Debugf(" > metrics listening on: [%s]", metricsAddr)
 		err := s.metricsHttpServer.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("metrics service, listen and serve: %s", err)
 		}
 	}()
@@ -374,6 +404,8 @@ func (s *Server) connStateMetrics(_ net.Conn, state http.ConnState) {
 		s.metricsManager.GaugeRequests.Add(1)
 	case http.StateClosed:
 		s.metricsManager.GaugeRequests.Add(-1)
+	default:
+		// do nothing
 	}
 }
 

@@ -10,15 +10,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
-
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 )
 
 var (
 	ErrFolderNotFound = errors.New("folder not found")
 	ErrFileNotFound   = errors.New("file not found")
+	ErrFolderExists   = errors.New("folder already exists")
 )
 
 type DiskApi struct {
@@ -28,9 +29,12 @@ type DiskApi struct {
 }
 
 func NewDiskApi(rootPath string) (*DiskApi, error) {
-	root, err := getRootFolder(rootPath)
+	if rootPath == "" {
+		return nil, errors.New("root path cannot be empty")
+	}
+	root, err := getRootFolder(context.Background(), rootPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get root folder: %w", err)
 	}
 	return &DiskApi{
 		rootPath: rootPath,
@@ -83,9 +87,11 @@ func (da *DiskApi) UpdateInfo(
 	id int64,
 	newName string,
 	isPrivate bool,
-) error {
+) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "diskApi.updateInfo")
-	defer span.End()
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
 
 	file, _, err := da.Get(ctx, id)
 	if err != nil {
@@ -99,7 +105,7 @@ func (da *DiskApi) UpdateInfo(
 	file.IsPrivate = isPrivate
 
 	// save folder structure to disk
-	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+	if err := saveRootFolder(ctx, da.rootPath, da.root); err != nil {
 		return fmt.Errorf("file updated, but failed to save structure info: %w", err)
 	}
 
@@ -108,25 +114,29 @@ func (da *DiskApi) UpdateInfo(
 	return nil
 }
 
-func (da *DiskApi) Save(
-	ctx context.Context,
-	filename string,
-	folderId int64,
-	size int64,
-	fileType string,
-	file io.Reader,
-) (int64, error) {
+type SaveFileParams struct {
+	Filename  string
+	FolderId  int64
+	Size      int64
+	FileType  string
+	File      io.Reader
+	IsPrivate bool
+}
+
+func (da *DiskApi) Save(ctx context.Context, params SaveFileParams) (_ int64, err error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
 
 	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.updateInfo")
-	defer span.End()
-	span.SetAttributes(attribute.String("file.name", filename))
-	span.SetAttributes(attribute.Int64("file.size", size))
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
 
-	log.Debugf("disk api: saving new file: %s, folder id: %d", filename, folderId)
+	span.SetAttributes(attribute.String("file.name", params.Filename))
+	span.SetAttributes(attribute.Int64("file.size", params.Size))
+	log.Debugf("disk api: saving new file: %s, folder id: %d", params.Filename, params.FolderId)
 
-	folder := da.getFolder(da.root, folderId)
+	folder := da.getFolder(da.root, params.FolderId)
 	if folder == nil {
 		return -1, ErrFolderNotFound
 	}
@@ -134,7 +144,7 @@ func (da *DiskApi) Save(
 	log.Debugf("disk api: parent folder found: %s", folder.Path)
 
 	newId := NewId()
-	newFileName := fmt.Sprintf("%d_%s", newId, filename)
+	newFileName := fmt.Sprintf("%d_%s", newId, params.Filename)
 	newFilePath := path.Join(folder.Path, newFileName)
 	dst, err := os.Create(newFilePath)
 	if err != nil {
@@ -142,24 +152,24 @@ func (da *DiskApi) Save(
 	}
 	defer dst.Close()
 
-	if _, err := io.Copy(dst, file); err != nil {
+	if _, err := io.Copy(dst, params.File); err != nil {
 		return -1, err
 	}
 
 	newFile := &File{
 		Id:        newId,
-		Name:      filename,
-		IsPrivate: true,
+		Name:      params.Filename,
+		IsPrivate: params.IsPrivate,
 		Path:      newFilePath,
-		Type:      fileType,
-		Size:      size,
+		Type:      params.FileType,
+		Size:      params.Size,
 		CreatedAt: time.Now(),
 	}
 
 	folder.Files[newId] = newFile
 
 	// save folder structure to disk
-	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+	if err := saveRootFolder(ctx, da.rootPath, da.root); err != nil {
 		return -1, err
 	}
 
@@ -183,9 +193,12 @@ func (da *DiskApi) Get(ctx context.Context, id int64) (*File, *Folder, error) {
 	return file, parent, nil
 }
 
-func (da *DiskApi) Delete(id int64) error {
+func (da *DiskApi) Delete(ctx context.Context, id int64) error {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
+
+	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.delete")
+	defer span.End()
 
 	log.Debugf("disk api: deleting file: %d", id)
 
@@ -206,7 +219,7 @@ func (da *DiskApi) Delete(id int64) error {
 	delete(folder.Files, file.Id)
 
 	// save folder structure to disk
-	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+	if err := saveRootFolder(ctx, da.rootPath, da.root); err != nil {
 		// TODO: send metrics and create alarms for cases like this one
 		return fmt.Errorf("file deleted, but failed to save structure info: %w", err)
 	}
@@ -216,7 +229,12 @@ func (da *DiskApi) Delete(id int64) error {
 	return nil
 }
 
-func (da *DiskApi) DeleteFolder(folderId int64) error {
+func (da *DiskApi) DeleteFolder(ctx context.Context, folderId int64) (err error) {
+	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.deleteFolder")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	if folderId == 0 {
 		return errors.New("cannot delete root folder")
 	}
@@ -249,7 +267,7 @@ func (da *DiskApi) DeleteFolder(folderId int64) error {
 	parentFolder.Subfolders = subfolders
 
 	// save folder structure to disk
-	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+	if err := saveRootFolder(ctx, da.rootPath, da.root); err != nil {
 		return fmt.Errorf("folder %d deleted, but failed to save structure info: %w", folderId, err)
 	}
 
@@ -282,20 +300,23 @@ func (da *DiskApi) GetFolder(ctx context.Context, id int64) (*Folder, error) {
 	return folder, nil
 }
 
-func (da *DiskApi) NewFolder(parentId int64, name string) (*Folder, error) {
+func (da *DiskApi) NewFolder(ctx context.Context, parentId int64, name string) (*Folder, error) {
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
+
+	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.newFolder")
+	defer span.End()
 
 	log.Debugf("disk api: creating new child folder for: %d", parentId)
 
 	parentFolder := da.getFolder(da.root, parentId)
 	if parentFolder == nil {
-		return nil, ErrFolderNotFound
+		return nil, fmt.Errorf("parent folder [%d]: %w", parentId, ErrFolderNotFound)
 	}
 
 	for _, subFolder := range parentFolder.Subfolders {
 		if subFolder.Name == name {
-			return nil, fmt.Errorf("child folder [%s] already exists", name)
+			return nil, fmt.Errorf("%s: %w", name, ErrFolderExists)
 		}
 	}
 
@@ -318,7 +339,7 @@ func (da *DiskApi) NewFolder(parentId int64, name string) (*Folder, error) {
 	parentFolder.Subfolders = append(parentFolder.Subfolders, newFolder)
 
 	// save folder structure to disk
-	if err := saveRootFolder(da.rootPath, da.root); err != nil {
+	if err := saveRootFolder(ctx, da.rootPath, da.root); err != nil {
 		return nil, fmt.Errorf("child folder created, but failed to save structure info: %w", err)
 	}
 
