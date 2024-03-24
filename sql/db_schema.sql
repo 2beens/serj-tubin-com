@@ -60,11 +60,12 @@ CREATE INDEX ix_exercise_exercise_id ON public.exercise (exercise_id);
 -- Create exercise_type table
 CREATE TABLE public.exercise_type
 (
-    id           VARCHAR PRIMARY KEY, -- example: deadlift, bench_press, etc.
-    muscle_group VARCHAR NOT NULL,
+    exercise_id  VARCHAR NOT NULL,  -- example: deadlift, bench_press, etc.
+    muscle_group VARCHAR NOT NULL,  -- example: "legs", "chest", etc.
     name         VARCHAR NOT NULL,  -- example: "Deadlift", "Bench Press", etc.
     description  TEXT,
-    created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL
+    created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    PRIMARY KEY (exercise_id, muscle_group)
 );
 
 -- Assign ownership and create an index on the created_at column
@@ -75,10 +76,11 @@ CREATE INDEX ix_exercise_type_muscle_group ON public.exercise_type (muscle_group
 CREATE TABLE public.exercise_image
 (
     -- id is an int64 representation of a diskApi file id, and is a primary key for the table
-    id          BIGINT PRIMARY KEY,
-    exercise_id VARCHAR NOT NULL,
-    created_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    CONSTRAINT fk_exercise FOREIGN KEY (exercise_id) REFERENCES public.exercise_type (id)
+    id           BIGINT PRIMARY KEY,
+    exercise_id  VARCHAR NOT NULL,
+    muscle_group VARCHAR NOT NULL,
+    created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    CONSTRAINT fk_exercise FOREIGN KEY (exercise_id, muscle_group) REFERENCES public.exercise_type (exercise_id, muscle_group)
 );
 
 ALTER TABLE public.exercise_image OWNER TO postgres;
@@ -106,10 +108,10 @@ CREATE TABLE public.visitor_board_message
 ALTER TABLE public.visitor_board_message OWNER TO postgres;
 CREATE INDEX ix_visitor_board_message_created_at ON public.visitor_board_message (created_at);
 
--- add basic exercise types from the javascript code from the web client:
+-- add some basic/default exercise types
 ---------------------------------------------------------------------------
 -- biceps exercises
-INSERT INTO public.exercise_type (id, muscle_group, name, created_at)
+INSERT INTO public.exercise_type (exercise_id,  muscle_group, name, created_at)
 VALUES
     ('preacher_curl', 'biceps', 'Preacher Curl', NOW()),
     ('barbell_curl', 'biceps', 'Barbell Curl', NOW()),
@@ -121,7 +123,7 @@ VALUES
     ('dumbells_declined', 'biceps', 'Dumbells [declined]', NOW());
 
 -- triceps exercises
-INSERT INTO public.exercise_type (id, muscle_group, name, created_at)
+INSERT INTO public.exercise_type (exercise_id,  muscle_group, name, created_at)
 VALUES
     ('skullcrusher_with_ez_bar', 'triceps', 'Skullcrusher w EZ 💀', NOW()),
     ('triceps_pushdown', 'triceps', 'Tricep Pushdown', NOW()),
@@ -135,7 +137,7 @@ VALUES
     ('barbell_push_down_ez', 'triceps', 'Barbell EZ Push-Down', NOW());
 
 -- chest exercises
-INSERT INTO public.exercise_type (id, muscle_group, name, created_at)
+INSERT INTO public.exercise_type (exercise_id,  muscle_group, name, created_at)
 VALUES
     ('bench_press', 'chest', 'Bench Press', NOW()),
     ('bench_press_inclined', 'chest', 'Bench Press [inclined]', NOW()),
@@ -148,7 +150,7 @@ VALUES
     ('dumbbell_pull_over', 'chest', 'Dumbbell Pull-Over', NOW());
 
 -- legs exercises
-INSERT INTO public.exercise_type (id, muscle_group, name, created_at)
+INSERT INTO public.exercise_type (exercise_id,  muscle_group, name, created_at)
 VALUES
     ('leg_press', 'legs', 'Leg Press', NOW()),
     ('calf_raise_seated', 'legs', 'Calf Raise [seated]', NOW()),
@@ -158,7 +160,7 @@ VALUES
     ('leg_curl_machine', 'legs', 'Leg Curl Machine', NOW());
 
 -- shoulders exercises
-INSERT INTO public.exercise_type (id, muscle_group, name, created_at)
+INSERT INTO public.exercise_type (exercise_id,  muscle_group, name, created_at)
 VALUES
     ('lateral_raise', 'shoulders', 'Lateral Raise 👐', NOW()),
     ('side_lateral_raise', 'shoulders', 'Side Lateral Raise 👐', NOW()),
@@ -175,7 +177,7 @@ VALUES
     ('rear_delt_fly', 'shoulders', 'Rear Delt Fly', NOW());
 
 -- back exercises
-INSERT INTO public.exercise_type (id, muscle_group, name, created_at)
+INSERT INTO public.exercise_type (exercise_id,  muscle_group, name, created_at)
 VALUES
     ('dumbbell_row_inclined', 'back', 'Inclined Dumbbell Row', NOW()),
     ('barbell_row_inclined', 'back', 'Inclined Barbell Row', NOW()),
@@ -190,7 +192,7 @@ VALUES
     ('lat_pull_down_v_handle', 'back', 'Lat Pull-Down [V handle]', NOW());
 
 -- other exercises
-INSERT INTO public.exercise_type (id, muscle_group, name, created_at)
+INSERT INTO public.exercise_type (exercise_id,  muscle_group, name, created_at)
 VALUES
     ('oblique_crunch_hyperext_bench', 'other', 'Oblique Crunch [Hyperextension Bench]', NOW()),
     ('crunch', 'other', 'Crunch', NOW()),

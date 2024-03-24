@@ -24,7 +24,7 @@ func TestTypesHandler_HandleAdd(t *testing.T) {
 	handler := exercises.NewTypesHandler(mockDiskApi, mockExerciseTypesRepo)
 
 	exerciseType := exercises.ExerciseType{
-		ID:          "100",
+		ExerciseID:  "100",
 		MuscleGroup: "biceps",
 		Name:        "curl",
 		Description: "some desc",
@@ -35,11 +35,11 @@ func TestTypesHandler_HandleAdd(t *testing.T) {
 	mockExerciseTypesRepo.EXPECT().
 		AddExerciseType(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, exType exercises.ExerciseType) error {
-			assert.Equal(t, exerciseType.ID, exType.ID)
+			assert.Equal(t, exerciseType.ExerciseID, exType.ExerciseID)
 			assert.Equal(t, exerciseType.MuscleGroup, exType.MuscleGroup)
 			assert.Equal(t, exerciseType.Name, exType.Name)
 			assert.Equal(t, exerciseType.Description, exType.Description)
-			assert.True(t, time.Now().Sub(exType.CreatedAt) < time.Minute)
+			assert.True(t, time.Since(exType.CreatedAt) < 2*time.Minute)
 			return nil
 		})
 

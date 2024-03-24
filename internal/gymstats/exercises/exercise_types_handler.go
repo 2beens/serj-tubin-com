@@ -49,13 +49,13 @@ var MuscleGroups = []string{
 //go:generate go run go.uber.org/mock/mockgen  -source=$GOFILE -destination=exercise_types_mocks_test.go -package=exercises_test
 
 type exerciseTypesRepo interface {
-	GetExerciseType(ctx context.Context, exerciseTypeID string) (_ ExerciseType, err error)
+	GetExerciseType(ctx context.Context, exerciseTypeID, muscleGroup string) (_ ExerciseType, err error)
 	GetExerciseTypes(ctx context.Context, params GetExerciseTypesParams) (_ []ExerciseType, err error)
 	AddExerciseType(ctx context.Context, exerciseType ExerciseType) (err error)
 	AddExerciseTypeImage(ctx context.Context, exerciseImage ExerciseImage) (err error)
 	UpdateExerciseType(ctx context.Context, exerciseType ExerciseType) (err error)
-	ExerciseTypeIsInUse(ctx context.Context, exerciseTypeID string) (_ bool, err error)
-	DeleteExerciseType(ctx context.Context, exerciseTypeID string) (err error)
+	ExerciseTypeIsInUse(ctx context.Context, exerciseTypeID, muscleGroup string) (_ bool, err error)
+	DeleteExerciseType(ctx context.Context, exerciseTypeID, muscleGroup string) (err error)
 	DeleteExerciseTypeImage(ctx context.Context, exerciseImageID int64) (err error)
 }
 
@@ -97,13 +97,13 @@ func (handler *TypesHandler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if exerciseType.ID == "" || exerciseType.MuscleGroup == "" || exerciseType.Name == "" {
+	if exerciseType.ExerciseID == "" || exerciseType.MuscleGroup == "" || exerciseType.Name == "" {
 		http.Error(w, "error, exercise id, muscle group, and name are required", http.StatusBadRequest)
 		return
 	}
 
 	exerciseType.MuscleGroup = strings.ToLower(exerciseType.MuscleGroup)
-	if slices.Contains(MuscleGroups, exerciseType.MuscleGroup) == false {
+	if !slices.Contains(MuscleGroups, exerciseType.MuscleGroup) {
 		http.Error(w, "error, invalid muscle group", http.StatusBadRequest)
 		return
 	}
@@ -132,7 +132,7 @@ func (handler *TypesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	exerciseTypes, err := handler.repo.GetExerciseTypes(ctx, GetExerciseTypesParams{
 		MuscleGroup: r.URL.Query().Get("muscleGroup"),
-		ExerciseId:  r.URL.Query().Get("id"),
+		ExerciseId:  r.URL.Query().Get("exerciseId"),
 	})
 	if err != nil {
 		log.Errorf("get exercise types: %s", err)
@@ -233,7 +233,7 @@ func (handler *TypesHandler) HandleUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if exerciseType.ID == "" || exerciseType.MuscleGroup == "" || exerciseType.Name == "" {
+	if exerciseType.ExerciseID == "" || exerciseType.MuscleGroup == "" || exerciseType.Name == "" {
 		http.Error(w, "error, exercise id, muscle group, and name are required", http.StatusBadRequest)
 		return
 	}
@@ -258,8 +258,13 @@ func (handler *TypesHandler) HandleDelete(w http.ResponseWriter, r *http.Request
 		http.Error(w, "error, id empty", http.StatusBadRequest)
 		return
 	}
+	muscleGroup := vars["mgid"]
+	if muscleGroup == "" {
+		http.Error(w, "error, muscle group empty", http.StatusBadRequest)
+		return
+	}
 
-	exType, err := handler.repo.GetExerciseType(ctx, id)
+	exType, err := handler.repo.GetExerciseType(ctx, id, muscleGroup)
 	if err != nil {
 		if errors.Is(err, ErrExerciseTypeNotFound) {
 			http.Error(w, "delete exercise type failed: not found", http.StatusNotFound)
@@ -270,7 +275,7 @@ func (handler *TypesHandler) HandleDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if inUse, err := handler.repo.ExerciseTypeIsInUse(ctx, id); err != nil {
+	if inUse, err := handler.repo.ExerciseTypeIsInUse(ctx, id, muscleGroup); err != nil {
 		log.Errorf("delete exercise type, check if in use: %s", err)
 		http.Error(w, "delete exercise type failed", http.StatusInternalServerError)
 		return
@@ -298,7 +303,7 @@ func (handler *TypesHandler) HandleDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := handler.repo.DeleteExerciseType(ctx, exType.ID); err != nil {
+	if err := handler.repo.DeleteExerciseType(ctx, exType.ExerciseID, exType.MuscleGroup); err != nil {
 		if errors.Is(err, ErrExerciseTypeInUse) {
 			http.Error(w, "delete exercise type failed: used in exercises", http.StatusConflict)
 			return
@@ -326,8 +331,13 @@ func (handler *TypesHandler) HandleUploadImage(w http.ResponseWriter, r *http.Re
 		http.Error(w, "error, id empty", http.StatusBadRequest)
 		return
 	}
+	muscleGroup := vars["mgid"]
+	if muscleGroup == "" {
+		http.Error(w, "error, muscle group empty", http.StatusBadRequest)
+		return
+	}
 
-	_, err := handler.repo.GetExerciseType(ctx, exerciseTypeID)
+	_, err := handler.repo.GetExerciseType(ctx, exerciseTypeID, muscleGroup)
 	if err != nil {
 		log.Errorf("upload image, get exercise type: %s", err)
 		http.Error(w, "upload image failed, exercise type not found", http.StatusNotFound)
@@ -391,9 +401,10 @@ func (handler *TypesHandler) HandleUploadImage(w http.ResponseWriter, r *http.Re
 
 	// store the image metadata to the database
 	exerciseImage := ExerciseImage{
-		ID:         uploadedFileId,
-		ExerciseID: exerciseTypeID,
-		CreatedAt:  time.Now(),
+		ID:          uploadedFileId,
+		ExerciseID:  exerciseTypeID,
+		MuscleGroup: muscleGroup,
+		CreatedAt:   time.Now(),
 	}
 	if err := handler.repo.AddExerciseTypeImage(ctx, exerciseImage); err != nil {
 		log.Errorf("upload image, save image metadata: %s", err)

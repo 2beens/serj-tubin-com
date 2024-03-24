@@ -313,7 +313,7 @@ func TestAnalyzer_ExercisePercentages(t *testing.T) {
 		MuscleGroup: "mg2",
 	}).Return([]exercises.ExerciseType{
 		{
-			ID:          "ex4",
+			ExerciseID:  "ex4",
 			MuscleGroup: "mg1",
 			Name:        "ex4",
 			Description: "desc1",
@@ -347,7 +347,7 @@ func TestAnalyzer_ExercisePercentages_NoExercisesFound(t *testing.T) {
 		MuscleGroup: "mg2",
 	}).Return([]exercises.ExerciseType{
 		{
-			ID:          "ex4",
+			ExerciseID:  "ex4",
 			MuscleGroup: "mg1",
 			Name:        "ex4",
 			Description: "desc1",

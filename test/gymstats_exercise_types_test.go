@@ -65,7 +65,7 @@ func (s *IntegrationTestSuite) getAllExerciseTypesRequest(
 		urlVals.Add("muscleGroup", params.MuscleGroup)
 	}
 	if params.ExerciseId != "" {
-		urlVals.Add("id", params.ExerciseId)
+		urlVals.Add("exerciseId", params.ExerciseId)
 	}
 
 	req, err := http.NewRequestWithContext(
@@ -130,14 +130,14 @@ func (s *IntegrationTestSuite) TestGymStats_ExerciseTypes() {
 			http.StatusOK,
 		)
 		require.Len(t, benchDipExType, 1)
-		assert.Equal(t, "bench_dip", benchDipExType[0].ID)
+		assert.Equal(t, "bench_dip", benchDipExType[0].ExerciseID)
 		assert.Equal(t, "Bench Dip", benchDipExType[0].Name)
 		assert.Equal(t, "triceps", benchDipExType[0].MuscleGroup)
 	})
 
 	s.T().Run("add exercise type", func(t *testing.T) {
 		newExType := exercises.ExerciseType{
-			ID:          "some_id",
+			ExerciseID:  "some_id",
 			MuscleGroup: "legs",
 			Name:        "Some Ex1",
 			Description: "Some Ex1 description",
@@ -149,12 +149,12 @@ func (s *IntegrationTestSuite) TestGymStats_ExerciseTypes() {
 		addedExType := s.getAllExerciseTypesRequest(ctx, authToken,
 			exercises.GetExerciseTypesParams{
 				MuscleGroup: newExType.MuscleGroup,
-				ExerciseId:  newExType.ID,
+				ExerciseId:  newExType.ExerciseID,
 			},
 			http.StatusOK,
 		)
 		require.Len(t, addedExType, 1)
-		assert.Equal(t, newExType.ID, addedExType[0].ID)
+		assert.Equal(t, newExType.ExerciseID, addedExType[0].ExerciseID)
 		assert.Equal(t, newExType.MuscleGroup, addedExType[0].MuscleGroup)
 		assert.Equal(t, newExType.Name, addedExType[0].Name)
 		assert.Equal(t, newExType.Description, addedExType[0].Description)
@@ -165,7 +165,7 @@ func (s *IntegrationTestSuite) TestGymStats_ExerciseTypes() {
 
 		// same id but different group
 		newExType2 := exercises.ExerciseType{
-			ID:          "some_id",
+			ExerciseID:  "some_id",
 			MuscleGroup: "shoulders",
 			Name:        "Some Ex2",
 			Description: "Some Ex2 description",
@@ -176,15 +176,45 @@ func (s *IntegrationTestSuite) TestGymStats_ExerciseTypes() {
 		addedExType2 := s.getAllExerciseTypesRequest(ctx, authToken,
 			exercises.GetExerciseTypesParams{
 				MuscleGroup: newExType2.MuscleGroup,
-				ExerciseId:  newExType2.ID,
+				ExerciseId:  newExType2.ExerciseID,
 			},
 			http.StatusOK,
 		)
 		require.Len(t, addedExType2, 1)
-		assert.Equal(t, newExType2.ID, addedExType2[0].ID)
+		assert.Equal(t, newExType2.ExerciseID, addedExType2[0].ExerciseID)
 		assert.Equal(t, newExType2.MuscleGroup, addedExType2[0].MuscleGroup)
 		assert.Equal(t, newExType2.Name, addedExType2[0].Name)
 		assert.Equal(t, newExType2.Description, addedExType2[0].Description)
 		assert.False(t, addedExType2[0].CreatedAt.IsZero())
+
+		// try to add the same exercise type again
+		s.addExerciseTypeRequest(ctx, authToken, exercises.ExerciseType{
+			ExerciseID:  "some_id1",
+			MuscleGroup: "other",
+			Name:        "Some Ex1",
+			Description: "Some Ex1 description",
+		}, http.StatusCreated)
+		s.addExerciseTypeRequest(ctx, authToken, exercises.ExerciseType{
+			ExerciseID:  "some_id2",
+			MuscleGroup: "other",
+			Name:        "Some Ex2",
+			Description: "Some Ex2 description",
+		}, http.StatusCreated)
+
+		bicepsExTypes := s.getAllExerciseTypesRequest(ctx, authToken,
+			exercises.GetExerciseTypesParams{
+				MuscleGroup: "other",
+			},
+			http.StatusOK,
+		)
+		assert.Len(t, bicepsExTypes, 13)
+
+		bicepsExTypes = s.getAllExerciseTypesRequest(ctx, authToken,
+			exercises.GetExerciseTypesParams{
+				ExerciseId: "some_id",
+			},
+			http.StatusOK,
+		)
+		assert.Len(t, bicepsExTypes, 2)
 	})
 }

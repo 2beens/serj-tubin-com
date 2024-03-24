@@ -193,8 +193,8 @@ func (a *Analyzer) ExercisePercentages(
 	}
 
 	for _, exType := range exTypes {
-		if _, ok := exercise2percentage[exType.ID]; !ok {
-			exercise2percentage[exType.ID] = 0
+		if _, ok := exercise2percentage[exType.ExerciseID]; !ok {
+			exercise2percentage[exType.ExerciseID] = 0
 		}
 	}
 

@@ -13,7 +13,7 @@ type Exercise struct {
 }
 
 type ExerciseType struct {
-	ID          string    `json:"id"`
+	ExerciseID  string    `json:"exerciseId"`
 	MuscleGroup string    `json:"muscleGroup"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
@@ -23,7 +23,8 @@ type ExerciseType struct {
 }
 
 type ExerciseImage struct {
-	ID         int64     `json:"id"`
-	ExerciseID string    `json:"exerciseId"`
-	CreatedAt  time.Time `json:"createdAt"`
+	ID          int64     `json:"id"`
+	ExerciseID  string    `json:"exerciseId"`
+	MuscleGroup string    `json:"muscleGroup"`
+	CreatedAt   time.Time `json:"createdAt"`
 }

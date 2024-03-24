@@ -23,7 +23,7 @@ type GetExerciseTypesParams struct {
 	ExerciseId  string
 }
 
-func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ ExerciseType, err error) {
+func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID, muscleGroup string) (_ ExerciseType, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.get")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
@@ -35,13 +35,13 @@ func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ Ex
 		ctx,
 		`
 			SELECT 
-			    id, muscle_group, name, description, created_at
+			    exercise_id, muscle_group, name, description, created_at
 			FROM exercise_type
-			WHERE id = $1
+			WHERE exercise_id = $1 AND muscle_group = $2
 		`,
-		exerciseTypeID,
+		exerciseTypeID, muscleGroup,
 	).Scan(
-		&exerciseType.ID,
+		&exerciseType.ExerciseID,
 		&exerciseType.MuscleGroup,
 		&exerciseType.Name,
 		&description,
@@ -58,7 +58,7 @@ func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ Ex
 		exerciseType.Description = *description
 	}
 
-	exerciseType.Images, err = r.GetExerciseTypeImages(ctx, exerciseTypeID)
+	exerciseType.Images, err = r.GetExerciseTypeImages(ctx, exerciseTypeID, muscleGroup)
 	if err != nil {
 		return ExerciseType{}, fmt.Errorf("exercise type images: %w", err)
 	}
@@ -66,7 +66,7 @@ func (r *Repo) GetExerciseType(ctx context.Context, exerciseTypeID string) (_ Ex
 	return exerciseType, nil
 }
 
-func (r *Repo) GetExerciseTypeImages(ctx context.Context, exerciseTypeID string) (_ []ExerciseImage, err error) {
+func (r *Repo) GetExerciseTypeImages(ctx context.Context, exerciseTypeID, muscleGroup string) (_ []ExerciseImage, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.get_images")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
@@ -76,11 +76,11 @@ func (r *Repo) GetExerciseTypeImages(ctx context.Context, exerciseTypeID string)
 		ctx,
 		`
 			SELECT
-			    id, exercise_id, created_at
+			    id, exercise_id, muscle_group, created_at
 			FROM exercise_image
-			WHERE exercise_id = $1
+			WHERE exercise_id = $1 AND muscle_group = $2
 		`,
-		exerciseTypeID,
+		exerciseTypeID, muscleGroup,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("exercise images [query]: %w", err)
@@ -93,6 +93,7 @@ func (r *Repo) GetExerciseTypeImages(ctx context.Context, exerciseTypeID string)
 		err := rows.Scan(
 			&exerciseImage.ID,
 			&exerciseImage.ExerciseID,
+			&exerciseImage.MuscleGroup,
 			&exerciseImage.CreatedAt,
 		)
 		if err != nil {
@@ -120,9 +121,9 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 		ctx,
 		`
 			SELECT
-			    id, muscle_group, name, description, created_at
+			    exercise_id, muscle_group, name, description, created_at
 			FROM exercise_type
-			WHERE ($1::text = '' OR muscle_group = $1) AND ($2::text = '' OR id = $2)
+			WHERE ($1::text = '' OR muscle_group = $1) AND ($2::text = '' OR exercise_id = $2)
 		`,
 		params.MuscleGroup,
 		params.ExerciseId,
@@ -141,7 +142,7 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 		var description *string
 		var exerciseType ExerciseType
 		err := rows.Scan(
-			&exerciseType.ID,
+			&exerciseType.ExerciseID,
 			&exerciseType.MuscleGroup,
 			&exerciseType.Name,
 			&description,
@@ -155,9 +156,9 @@ func (r *Repo) GetExerciseTypes(ctx context.Context, params GetExerciseTypesPara
 			exerciseType.Description = *description
 		}
 
-		exerciseType.Images, err = r.GetExerciseTypeImages(ctx, exerciseType.ID)
+		exerciseType.Images, err = r.GetExerciseTypeImages(ctx, exerciseType.ExerciseID, exerciseType.MuscleGroup)
 		if err != nil {
-			return nil, fmt.Errorf("get exercise type images for type [%s]: %w", exerciseType.ID, err)
+			return nil, fmt.Errorf("get exercise type images for type [%s]: %w", exerciseType.ExerciseID, err)
 		}
 
 		exerciseTypes = append(exerciseTypes, exerciseType)
@@ -180,10 +181,10 @@ func (r *Repo) AddExerciseType(ctx context.Context, exerciseType ExerciseType) (
 		ctx,
 		`
 			INSERT INTO exercise_type
-			    (id, muscle_group, name, description, created_at)
+			    (exercise_id, muscle_group, name, description, created_at)
 			VALUES ($1, $2, $3, $4, $5)
 		`,
-		exerciseType.ID,
+		exerciseType.ExerciseID,
 		exerciseType.MuscleGroup,
 		exerciseType.Name,
 		exerciseType.Description,
@@ -213,11 +214,12 @@ func (r *Repo) AddExerciseTypeImage(ctx context.Context, exerciseImage ExerciseI
 		ctx,
 		`
 			INSERT INTO exercise_image
-			    (id, exercise_id, created_at)
-			VALUES ($1, $2, $3)
+			    (id, exercise_id, muscle_group, created_at)
+			VALUES ($1, $2, $3, $4)
 		`,
 		exerciseImage.ID,
 		exerciseImage.ExerciseID,
+		exerciseImage.MuscleGroup,
 		exerciseImage.CreatedAt,
 	)
 	if err != nil {
@@ -237,10 +239,10 @@ func (r *Repo) UpdateExerciseType(ctx context.Context, exerciseType ExerciseType
 		ctx,
 		`
 			UPDATE exercise_type
-			SET muscle_group = $2, name = $3, description = $4
-			WHERE id = $1
+			SET exercise_id = $1, muscle_group = $2, name = $3, description = $4
+			WHERE exercise_id = $1 AND muscle_group = $2
 		`,
-		exerciseType.ID,
+		exerciseType.ExerciseID,
 		exerciseType.MuscleGroup,
 		exerciseType.Name,
 		exerciseType.Description,
@@ -252,7 +254,7 @@ func (r *Repo) UpdateExerciseType(ctx context.Context, exerciseType ExerciseType
 	return nil
 }
 
-func (r *Repo) ExerciseTypeIsInUse(ctx context.Context, exerciseTypeID string) (_ bool, err error) {
+func (r *Repo) ExerciseTypeIsInUse(ctx context.Context, exerciseTypeID, muscleGroup string) (_ bool, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.is_in_use")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
@@ -264,9 +266,9 @@ func (r *Repo) ExerciseTypeIsInUse(ctx context.Context, exerciseTypeID string) (
 		`
 			SELECT COUNT(*)
 			FROM exercise
-			WHERE exercise_id = $1
+			WHERE exercise_id = $1 AND muscle_group = $2
 		`,
-		exerciseTypeID,
+		exerciseTypeID, muscleGroup,
 	).Scan(&count)
 	if err != nil {
 		return false, err
@@ -275,7 +277,7 @@ func (r *Repo) ExerciseTypeIsInUse(ctx context.Context, exerciseTypeID string) (
 	return count > 0, nil
 }
 
-func (r *Repo) DeleteExerciseType(ctx context.Context, exerciseTypeID string) (err error) {
+func (r *Repo) DeleteExerciseType(ctx context.Context, exerciseTypeID, muscleGroup string) (err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.exercise_types.delete")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
@@ -285,9 +287,9 @@ func (r *Repo) DeleteExerciseType(ctx context.Context, exerciseTypeID string) (e
 		ctx,
 		`
 			DELETE FROM exercise_type
-			WHERE id = $1
+			WHERE exercise_id = $1 AND muscle_group = $2
 		`,
-		exerciseTypeID,
+		exerciseTypeID, muscleGroup,
 	)
 	if err != nil {
 		if pkg.IsForeignKeyViolationError(err) {

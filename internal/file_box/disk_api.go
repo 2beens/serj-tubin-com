@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
-
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 )
 
 var (
@@ -229,13 +229,15 @@ func (da *DiskApi) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (da *DiskApi) DeleteFolder(ctx context.Context, folderId int64) error {
+func (da *DiskApi) DeleteFolder(ctx context.Context, folderId int64) (err error) {
+	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.deleteFolder")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	if folderId == 0 {
 		return errors.New("cannot delete root folder")
 	}
-
-	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.deleteFolder")
-	defer span.End()
 
 	da.mutex.Lock()
 	defer da.mutex.Unlock()
