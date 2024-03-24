@@ -252,7 +252,6 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	defer span.End()
 
 	vars := mux.Vars(r)
-
 	pageStr := vars["page"]
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
@@ -309,11 +308,6 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		Page: page,
 		Size: size,
 	}
-
-	log.Tracef(
-		"list exercises - page %s size %s, muscle group [%s], exercise id [%s], only prod [%t], exclude testing data [%t]",
-		pageStr, sizeStr, listParams.MuscleGroup, listParams.ExerciseID, listParams.OnlyProd, listParams.ExcludeTestingData,
-	)
 
 	exercises, total, err := handler.repo.List(ctx, listParams)
 	if err != nil {
