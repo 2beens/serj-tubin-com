@@ -38,6 +38,7 @@ func (s *IntegrationTestSuite) doLogin(ctx context.Context) string {
 
 	var loginResp misc.LoginResponse
 	require.NoError(t, json.Unmarshal(respBytes, &loginResp))
+	require.NotEmpty(t, loginResp.Token)
 
 	return loginResp.Token
 }

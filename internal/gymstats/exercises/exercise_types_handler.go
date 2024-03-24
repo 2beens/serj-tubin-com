@@ -46,7 +46,7 @@ var MuscleGroups = []string{
 	MuscleGroup.Other,
 }
 
-//go:generate mockgen -source=$GOFILE -destination=exercise_types_mocks_test.go -package=exercises_test
+//go:generate go run go.uber.org/mock/mockgen  -source=$GOFILE -destination=exercise_types_mocks_test.go -package=exercises_test
 
 type exerciseTypesRepo interface {
 	GetExerciseType(ctx context.Context, exerciseTypeID string) (_ ExerciseType, err error)

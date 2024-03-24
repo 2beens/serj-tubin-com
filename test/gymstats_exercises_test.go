@@ -36,7 +36,7 @@ func (s *IntegrationTestSuite) newExerciseRequest(
 		bytes.NewReader(exerciseJson),
 	)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -67,7 +67,7 @@ func (s *IntegrationTestSuite) updateExerciseRequest(
 		bytes.NewReader(exerciseJson),
 	)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -103,7 +103,7 @@ func (s *IntegrationTestSuite) getExerciseHistory(ctx context.Context, params ex
 
 	req, err := http.NewRequestWithContext(ctx, "GET", reqUrl.String(), nil)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 
 	resp, err := s.httpClient.Do(req)
@@ -135,7 +135,7 @@ func (s *IntegrationTestSuite) getAvgDurationBetweenExercises(ctx context.Contex
 
 	req, err := http.NewRequestWithContext(ctx, "GET", reqUrl.String(), nil)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 
 	resp, err := s.httpClient.Do(req)
@@ -159,7 +159,7 @@ func (s *IntegrationTestSuite) getExerciseRequest(ctx context.Context, id int) e
 		nil,
 	)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 
 	resp, err := s.httpClient.Do(req)
@@ -182,7 +182,7 @@ func (s *IntegrationTestSuite) deleteExerciseRequest(ctx context.Context, id int
 		nil,
 	)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 
 	resp, err := s.httpClient.Do(req)
@@ -225,7 +225,7 @@ func (s *IntegrationTestSuite) listExercisesRequest(ctx context.Context, params 
 		nil,
 	)
 	require.NoError(s.T(), err)
-	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("User-Agent", "GymStats/1")
 	req.Header.Set("Authorization", testGymStatsIOSAppSecret)
 
 	resp, err := s.httpClient.Do(req)
@@ -313,7 +313,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 			bytes.NewReader(e1Json),
 		)
 		require.NoError(t, err)
-		req.Header.Set("User-Agent", "test-agent")
+		req.Header.Set("User-Agent", "GymStats/1")
 
 		resp, err := s.httpClient.Do(req)
 		require.NoError(s.T(), err)
@@ -322,7 +322,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 
 		req, err = http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/gymstats/list/page/1/size/10", serverEndpoint), nil)
 		require.NoError(s.T(), err)
-		req.Header.Set("User-Agent", "test-agent")
+		req.Header.Set("User-Agent", "GymStats/1")
 
 		resp, err = s.httpClient.Do(req)
 		require.NoError(s.T(), err)
@@ -339,7 +339,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 			bytes.NewReader(e1Json),
 		)
 		require.NoError(t, err)
-		req.Header.Set("User-Agent", "test-agent")
+		req.Header.Set("User-Agent", "GymStats/1")
 		req.Header.Set("Authorization", "invalid-token")
 
 		resp, err := s.httpClient.Do(req)
@@ -349,7 +349,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 
 		req, err = http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/gymstats/list/page/1/size/10", serverEndpoint), nil)
 		require.NoError(s.T(), err)
-		req.Header.Set("User-Agent", "test-agent")
+		req.Header.Set("User-Agent", "GymStats/1")
 		req.Header.Set("Authorization", "invalid-token")
 
 		resp, err = s.httpClient.Do(req)
