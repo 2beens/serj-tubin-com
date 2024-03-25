@@ -139,8 +139,12 @@ func (handler *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	e, err := handler.repo.Get(ctx, id)
 	if err != nil {
+		if errors.Is(err, ErrExerciseNotFound) {
+			http.Error(w, "exercise not found", http.StatusNotFound)
+			return
+		}
 		log.Errorf("failed to get exercise %d: %s", id, err)
-		http.Error(w, "exercise not found", http.StatusBadRequest)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
