@@ -260,10 +260,17 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		Name:        "Exercise2",
 		Description: "Ex2 description",
 	}
+	ex3legsExType := exercises.ExerciseType{
+		ExerciseID:  "ex3",
+		MuscleGroup: "legs",
+		Name:        "Exercise3",
+		Description: "Ex3 description",
+	}
 
 	authToken := s.doLogin(ctx)
 	s.addExerciseTypeRequest(ctx, authToken, ex1TricepsExType, http.StatusCreated)
 	s.addExerciseTypeRequest(ctx, authToken, ex2legsExType, http.StatusCreated)
+	s.addExerciseTypeRequest(ctx, authToken, ex3legsExType, http.StatusCreated)
 
 	e1 := exercises.Exercise{
 		ExerciseID:  ex1TricepsExType.ExerciseID,
@@ -277,8 +284,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		},
 	}
 	e2 := exercises.Exercise{
-		ExerciseID:  "ex2",
-		MuscleGroup: "legs",
+		ExerciseID:  ex2legsExType.ExerciseID,
+		MuscleGroup: ex2legsExType.MuscleGroup,
 		Kilos:       250,
 		Reps:        8,
 		CreatedAt:   now.Add(-time.Minute * 5),
@@ -288,8 +295,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		},
 	}
 	e3 := exercises.Exercise{
-		ExerciseID:  "ex2",
-		MuscleGroup: "legs",
+		ExerciseID:  ex2legsExType.ExerciseID,
+		MuscleGroup: ex2legsExType.MuscleGroup,
 		Kilos:       220,
 		Reps:        12,
 		CreatedAt:   now.Add(-time.Minute * 4),
@@ -299,8 +306,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		},
 	}
 	e4 := exercises.Exercise{
-		ExerciseID:  "ex3",
-		MuscleGroup: "legs",
+		ExerciseID:  ex3legsExType.ExerciseID,
+		MuscleGroup: ex3legsExType.MuscleGroup,
 		Kilos:       210,
 		Reps:        10,
 		CreatedAt:   now,
@@ -310,8 +317,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		},
 	}
 	e5 := exercises.Exercise{
-		ExerciseID:  "ex2",
-		MuscleGroup: "legs",
+		ExerciseID:  ex2legsExType.ExerciseID,
+		MuscleGroup: ex2legsExType.MuscleGroup,
 		Kilos:       510,
 		Reps:        50,
 		CreatedAt:   now.Add(time.Minute * 2),
@@ -565,8 +572,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		newCreatedAt := e3.CreatedAt.Add(-time.Minute * 10).In(time.UTC)
 		updateResp := s.updateExerciseRequest(ctx, exercises.Exercise{
 			ID:          e3.ID,
-			ExerciseID:  "new-exercise-id",
-			MuscleGroup: "legs",
+			ExerciseID:  ex3legsExType.ExerciseID,
+			MuscleGroup: ex3legsExType.MuscleGroup,
 			Kilos:       220,
 			Reps:        15,
 			CreatedAt:   newCreatedAt,
@@ -579,8 +586,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 
 		// now assert that the update was successful
 		updatedEx3 := s.getExerciseRequest(ctx, e3.ID)
-		assert.Equal(t, "new-exercise-id", updatedEx3.ExerciseID)
-		assert.Equal(t, "legs", updatedEx3.MuscleGroup)
+		assert.Equal(t, ex3legsExType.ExerciseID, updatedEx3.ExerciseID)
+		assert.Equal(t, ex3legsExType.MuscleGroup, updatedEx3.MuscleGroup)
 		assert.Equal(t, 220, updatedEx3.Kilos)
 		assert.Equal(t, 15, updatedEx3.Reps)
 		assert.Equal(t,
