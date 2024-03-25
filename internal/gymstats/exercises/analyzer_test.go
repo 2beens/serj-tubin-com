@@ -257,47 +257,53 @@ func TestAnalyzer_ExercisePercentages(t *testing.T) {
 
 	testExercises := []exercises.Exercise{
 		{
-			ExerciseID:  "ex1",
-			MuscleGroup: "mg1",
-			Kilos:       20,
-			Reps:        10,
-			CreatedAt:   dateNow,
-			Metadata:    nil,
+			ExerciseID:   "ex1",
+			MuscleGroup:  "mg1",
+			ExerciseName: "Exercise 1",
+			Kilos:        20,
+			Reps:         10,
+			CreatedAt:    dateNow,
+			Metadata:     nil,
 		},
 		{
-			ExerciseID:  "ex1",
-			MuscleGroup: "mg1",
-			Kilos:       75,
-			Reps:        10,
-			CreatedAt:   dateYesterday,
+			ExerciseID:   "ex1",
+			MuscleGroup:  "mg1",
+			ExerciseName: "Exercise 1",
+			Kilos:        75,
+			Reps:         10,
+			CreatedAt:    dateYesterday,
 		},
 		{
-			ExerciseID:  "ex1",
-			MuscleGroup: "mg1",
-			Kilos:       80,
-			Reps:        12,
-			CreatedAt:   dateYesterday,
+			ExerciseID:   "ex1",
+			MuscleGroup:  "mg1",
+			ExerciseName: "Exercise 1",
+			Kilos:        80,
+			Reps:         12,
+			CreatedAt:    dateYesterday,
 		},
 		{
-			ExerciseID:  "ex2",
-			MuscleGroup: "mg1",
-			Kilos:       50,
-			Reps:        13,
-			CreatedAt:   dateYesterday,
+			ExerciseID:   "ex2",
+			MuscleGroup:  "mg1",
+			ExerciseName: "Exercise 2",
+			Kilos:        50,
+			Reps:         13,
+			CreatedAt:    dateYesterday,
 		},
 		{
-			ExerciseID:  "ex2",
-			MuscleGroup: "mg1",
-			Kilos:       20,
-			Reps:        13,
-			CreatedAt:   dateTenDaysAgo,
+			ExerciseID:   "ex2",
+			MuscleGroup:  "mg1",
+			ExerciseName: "Exercise 2",
+			Kilos:        20,
+			Reps:         13,
+			CreatedAt:    dateTenDaysAgo,
 		},
 		{
-			ExerciseID:  "ex3",
-			MuscleGroup: "mg1",
-			Kilos:       20,
-			Reps:        13,
-			CreatedAt:   dateTenDaysAgo,
+			ExerciseID:   "ex3",
+			MuscleGroup:  "mg1",
+			ExerciseName: "Exercise 3",
+			Kilos:        20,
+			Reps:         13,
+			CreatedAt:    dateTenDaysAgo,
 		},
 	}
 
@@ -324,10 +330,14 @@ func TestAnalyzer_ExercisePercentages(t *testing.T) {
 	res, err := analyzer.ExercisePercentages(context.Background(), "mg2", true, true)
 	require.NoError(t, err)
 	require.Equal(t, 4, len(res))
-	assert.Equal(t, float64(50), res["ex1"])
-	assert.Equal(t, float64(33.33), res["ex2"])
-	assert.Equal(t, float64(16.66), res["ex3"])
-	assert.Equal(t, float64(0), res["ex4"])
+	assert.Equal(t, float64(50), res["ex1"].Percentage)
+	assert.Equal(t, float64(33.33), res["ex2"].Percentage)
+	assert.Equal(t, float64(16.66), res["ex3"].Percentage)
+	assert.Equal(t, float64(0), res["ex4"].Percentage)
+
+	assert.Equal(t, "Exercise 1", res["ex1"].ExerciseName)
+	assert.Equal(t, "Exercise 2", res["ex2"].ExerciseName)
+	assert.Equal(t, "Exercise 3", res["ex3"].ExerciseName)
 }
 
 func TestAnalyzer_ExercisePercentages_NoExercisesFound(t *testing.T) {
@@ -358,5 +368,5 @@ func TestAnalyzer_ExercisePercentages_NoExercisesFound(t *testing.T) {
 	res, err := analyzer.ExercisePercentages(context.Background(), "mg2", true, true)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(res))
-	assert.Equal(t, float64(0), res["ex4"])
+	assert.Equal(t, float64(0), res["ex4"].Percentage)
 }

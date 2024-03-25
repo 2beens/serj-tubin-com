@@ -149,12 +149,17 @@ func (a *Analyzer) ExerciseHistory(
 	return history, nil
 }
 
+type ExercisePercentageInfo struct {
+	ExerciseName string  `json:"exerciseName"`
+	Percentage   float64 `json:"percentage"`
+}
+
 // ExercisePercentages returns the percentages of the exercises worked out for a given muscle group
 func (a *Analyzer) ExercisePercentages(
 	ctx context.Context,
 	muscleGroup string,
 	onlyProd, excludeTestingData bool,
-) (_ map[string]float64, err error) {
+) (_ map[string]ExercisePercentageInfo, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.exerciseHistory")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
@@ -176,11 +181,20 @@ func (a *Analyzer) ExercisePercentages(
 		exercise2count[ex.ExerciseID]++
 	}
 
-	exercise2percentage := make(map[string]float64)
+	exercise2name := make(map[string]string)
+	for _, ex := range exercises {
+		exercise2name[ex.ExerciseID] = ex.ExerciseName
+	}
+
+	exercise2percentage := make(map[string]ExercisePercentageInfo)
 	for exercise, count := range exercise2count {
-		exercise2percentage[exercise] = float64(count) / float64(len(exercises)) * 100
+		p := float64(count) / float64(len(exercises)) * 100
 		// leave only 2 decimals
-		exercise2percentage[exercise] = float64(int(exercise2percentage[exercise]*100)) / 100
+		p = float64(int(p*100)) / 100
+		exercise2percentage[exercise] = ExercisePercentageInfo{
+			ExerciseName: exercise2name[exercise],
+			Percentage:   p,
+		}
 	}
 
 	// get all exercise types, even if there are no exercises for them
@@ -194,7 +208,10 @@ func (a *Analyzer) ExercisePercentages(
 
 	for _, exType := range exTypes {
 		if _, ok := exercise2percentage[exType.ExerciseID]; !ok {
-			exercise2percentage[exType.ExerciseID] = 0
+			exercise2percentage[exType.ExerciseID] = ExercisePercentageInfo{
+				ExerciseName: exType.Name,
+				Percentage:   0,
+			}
 		}
 	}
 
