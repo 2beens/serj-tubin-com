@@ -3,13 +3,14 @@ package exercises
 import "time"
 
 type Exercise struct {
-	ID          int               `json:"id"`
-	ExerciseID  string            `json:"exerciseId"`
-	MuscleGroup string            `json:"muscleGroup"`
-	Kilos       int               `json:"kilos"`
-	Reps        int               `json:"reps"`
-	CreatedAt   time.Time         `json:"createdAt"`
-	Metadata    map[string]string `json:"metadata"`
+	ID           int               `json:"id"`
+	ExerciseID   string            `json:"exerciseId"`
+	ExerciseName string            `json:"exerciseName"`
+	MuscleGroup  string            `json:"muscleGroup"`
+	Kilos        int               `json:"kilos"`
+	Reps         int               `json:"reps"`
+	CreatedAt    time.Time         `json:"createdAt"`
+	Metadata     map[string]string `json:"metadata"`
 }
 
 type ExerciseType struct {

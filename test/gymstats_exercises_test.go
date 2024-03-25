@@ -248,9 +248,26 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 
 	now := time.Now().In(time.Local)
 
-	e1 := exercises.Exercise{
+	ex1TricepsExType := exercises.ExerciseType{
 		ExerciseID:  "ex1",
 		MuscleGroup: "triceps",
+		Name:        "Exercise1",
+		Description: "Ex1 description",
+	}
+	ex2legsExType := exercises.ExerciseType{
+		ExerciseID:  "ex2",
+		MuscleGroup: "legs",
+		Name:        "Exercise2",
+		Description: "Ex2 description",
+	}
+
+	authToken := s.doLogin(ctx)
+	s.addExerciseTypeRequest(ctx, authToken, ex1TricepsExType, http.StatusCreated)
+	s.addExerciseTypeRequest(ctx, authToken, ex2legsExType, http.StatusCreated)
+
+	e1 := exercises.Exercise{
+		ExerciseID:  ex1TricepsExType.ExerciseID,
+		MuscleGroup: ex1TricepsExType.MuscleGroup,
 		Kilos:       10,
 		Reps:        10,
 		CreatedAt:   now.Add(-time.Minute * 10),
@@ -370,6 +387,21 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		addedE4 := s.newExerciseRequest(ctx, e4)
 		addedE5 := s.newExerciseRequest(ctx, e5)
 		e1.ID, e2.ID, e3.ID, e4.ID, e5.ID = addedE1.ID, addedE2.ID, addedE3.ID, addedE4.ID, addedE5.ID
+
+		ex1TricepsExercises := s.listExercisesRequest(ctx, exercises.ListParams{
+			ExerciseParams: exercises.ExerciseParams{
+				ExerciseID:         ex1TricepsExType.ExerciseID,
+				MuscleGroup:        ex1TricepsExType.MuscleGroup,
+				OnlyProd:           true,
+				ExcludeTestingData: true,
+			},
+			Page: 1, Size: 10,
+		})
+		require.Len(t, ex1TricepsExercises.Exercises, 1)
+		assert.Equal(t, e1.ID, ex1TricepsExercises.Exercises[0].ID)
+		assert.Equal(t, e1.ExerciseID, ex1TricepsExercises.Exercises[0].ExerciseID)
+		assert.Equal(t, e1.MuscleGroup, ex1TricepsExercises.Exercises[0].MuscleGroup)
+		assert.Equal(t, ex1TricepsExType.Name, ex1TricepsExercises.Exercises[0].ExerciseName)
 
 		assert.Equal(t, 1, addedE1.CountToday)
 		assert.Equal(t, 1, addedE2.CountToday)
