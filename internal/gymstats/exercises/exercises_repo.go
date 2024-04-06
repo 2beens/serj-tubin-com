@@ -139,9 +139,9 @@ func (r *Repo) Get(ctx context.Context, id int) (_ *Exercise, err error) {
 		ctx,
 		`
 			SELECT
-				e.id, e.exercise_id, et.name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
+				e.id, e.exercise_id, COALESCE(et.name, e.exercise_id) as name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
 			FROM exercise e
-			JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
+			LEFT JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
 			WHERE id = $1;`,
 		id,
 	)
@@ -187,9 +187,9 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 		ctx,
 		`
 			SELECT
-				e.id, e.exercise_id, et.name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
+				e.id, e.exercise_id, COALESCE(et.name, e.exercise_id) as name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
 			FROM exercise e
-			JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
+			LEFT JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
 				WHERE ($1::text = '' OR e.exercise_id = $1)
 				AND ($2::text = '' OR e.muscle_group = $2)
 				AND ($3::timestamp IS NULL OR e.created_at >= $3)
@@ -268,9 +268,9 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 		ctx,
 		`
 			SELECT
-				e.id, e.exercise_id, et.name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
+				e.id, e.exercise_id, COALESCE(et.name, e.exercise_id) as name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
 			FROM exercise e
-			JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
+			LEFT JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
 				WHERE ($1::text = '' OR e.exercise_id = $1)
 				AND ($2::text = '' OR e.muscle_group = $2)
 				AND ($5::boolean IS FALSE OR e.metadata->>'env' = 'prod' OR e.metadata->>'env' = 'production')
