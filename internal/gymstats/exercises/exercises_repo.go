@@ -139,8 +139,9 @@ func (r *Repo) Get(ctx context.Context, id int) (_ *Exercise, err error) {
 		ctx,
 		`
 			SELECT
-				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
-			FROM exercise
+				e.id, e.exercise_id, COALESCE(et.name, e.exercise_id) as name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
+			FROM exercise e
+			LEFT JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
 			WHERE id = $1;`,
 		id,
 	)
@@ -186,15 +187,16 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 		ctx,
 		`
 			SELECT
-				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
-			FROM exercise
-				WHERE ($1::text = '' OR exercise_id = $1)
-				AND ($2::text = '' OR muscle_group = $2)
-				AND ($3::timestamp IS NULL OR created_at >= $3)
-				AND ($4::timestamp IS NULL OR created_at <= $4)
-				AND ($5::boolean IS FALSE OR metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
-				AND ($6::boolean IS FALSE OR metadata->>'testing' != 'true' OR metadata->>'test' != 'true')
-			ORDER BY created_at DESC;`,
+				e.id, e.exercise_id, COALESCE(et.name, e.exercise_id) as name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
+			FROM exercise e
+			LEFT JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
+				WHERE ($1::text = '' OR e.exercise_id = $1)
+				AND ($2::text = '' OR e.muscle_group = $2)
+				AND ($3::timestamp IS NULL OR e.created_at >= $3)
+				AND ($4::timestamp IS NULL OR e.created_at <= $4)
+				AND ($5::boolean IS FALSE OR e.metadata->>'env' = 'prod' OR e.metadata->>'env' = 'production')
+				AND ($6::boolean IS FALSE OR e.metadata->>'testing' != 'true' OR e.metadata->>'test' != 'true')
+			ORDER BY e.created_at DESC;`,
 		params.ExerciseID, params.MuscleGroup,
 		params.From, params.To,
 		params.OnlyProd, params.ExcludeTestingData,
@@ -266,13 +268,14 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 		ctx,
 		`
 			SELECT
-				id, exercise_id, muscle_group, kilos, reps, metadata, created_at
-			FROM exercise
-				WHERE ($1::text = '' OR exercise_id = $1)
-				AND ($2::text = '' OR muscle_group = $2)
-				AND ($5::boolean IS FALSE OR metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
-				AND ($6::boolean IS FALSE OR metadata->>'testing' != 'true' OR metadata->>'test' != 'true')
-			ORDER BY created_at DESC
+				e.id, e.exercise_id, COALESCE(et.name, e.exercise_id) as name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
+			FROM exercise e
+			LEFT JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
+				WHERE ($1::text = '' OR e.exercise_id = $1)
+				AND ($2::text = '' OR e.muscle_group = $2)
+				AND ($5::boolean IS FALSE OR e.metadata->>'env' = 'prod' OR e.metadata->>'env' = 'production')
+				AND ($6::boolean IS FALSE OR e.metadata->>'testing' != 'true' OR e.metadata->>'test' != 'true')
+			ORDER BY e.created_at DESC
 			LIMIT $3
 			OFFSET $4;`,
 		params.ExerciseID, params.MuscleGroup,
@@ -338,22 +341,24 @@ func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
 	for rows.Next() {
 		var id int
 		var exerciseID string
+		var exerciseName string
 		var muscleGroup string
 		var kilos int
 		var reps int
 		var metadataBytes []byte
 		var createdAt time.Time
-		if err := rows.Scan(&id, &exerciseID, &muscleGroup, &kilos, &reps, &metadataBytes, &createdAt); err != nil {
+		if err := rows.Scan(&id, &exerciseID, &exerciseName, &muscleGroup, &kilos, &reps, &metadataBytes, &createdAt); err != nil {
 			return nil, err
 		}
 
 		e := Exercise{
-			ID:          id,
-			ExerciseID:  exerciseID,
-			MuscleGroup: muscleGroup,
-			Kilos:       kilos,
-			Reps:        reps,
-			CreatedAt:   createdAt,
+			ID:           id,
+			ExerciseID:   exerciseID,
+			ExerciseName: exerciseName,
+			MuscleGroup:  muscleGroup,
+			Kilos:        kilos,
+			Reps:         reps,
+			CreatedAt:    createdAt,
 		}
 
 		// parse metadata field from JSON to map[string]string

@@ -248,9 +248,33 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 
 	now := time.Now().In(time.Local)
 
-	e1 := exercises.Exercise{
+	ex1TricepsExType := exercises.ExerciseType{
 		ExerciseID:  "ex1",
 		MuscleGroup: "triceps",
+		Name:        "Exercise1",
+		Description: "Ex1 description",
+	}
+	ex2legsExType := exercises.ExerciseType{
+		ExerciseID:  "ex2",
+		MuscleGroup: "legs",
+		Name:        "Exercise2",
+		Description: "Ex2 description",
+	}
+	ex3legsExType := exercises.ExerciseType{
+		ExerciseID:  "ex3",
+		MuscleGroup: "legs",
+		Name:        "Exercise3",
+		Description: "Ex3 description",
+	}
+
+	authToken := s.doLogin(ctx)
+	s.addExerciseTypeRequest(ctx, authToken, ex1TricepsExType, http.StatusCreated)
+	s.addExerciseTypeRequest(ctx, authToken, ex2legsExType, http.StatusCreated)
+	s.addExerciseTypeRequest(ctx, authToken, ex3legsExType, http.StatusCreated)
+
+	e1 := exercises.Exercise{
+		ExerciseID:  ex1TricepsExType.ExerciseID,
+		MuscleGroup: ex1TricepsExType.MuscleGroup,
 		Kilos:       10,
 		Reps:        10,
 		CreatedAt:   now.Add(-time.Minute * 10),
@@ -260,8 +284,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		},
 	}
 	e2 := exercises.Exercise{
-		ExerciseID:  "ex2",
-		MuscleGroup: "legs",
+		ExerciseID:  ex2legsExType.ExerciseID,
+		MuscleGroup: ex2legsExType.MuscleGroup,
 		Kilos:       250,
 		Reps:        8,
 		CreatedAt:   now.Add(-time.Minute * 5),
@@ -271,8 +295,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		},
 	}
 	e3 := exercises.Exercise{
-		ExerciseID:  "ex2",
-		MuscleGroup: "legs",
+		ExerciseID:  ex2legsExType.ExerciseID,
+		MuscleGroup: ex2legsExType.MuscleGroup,
 		Kilos:       220,
 		Reps:        12,
 		CreatedAt:   now.Add(-time.Minute * 4),
@@ -282,8 +306,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		},
 	}
 	e4 := exercises.Exercise{
-		ExerciseID:  "ex3",
-		MuscleGroup: "legs",
+		ExerciseID:  ex3legsExType.ExerciseID,
+		MuscleGroup: ex3legsExType.MuscleGroup,
 		Kilos:       210,
 		Reps:        10,
 		CreatedAt:   now,
@@ -293,8 +317,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		},
 	}
 	e5 := exercises.Exercise{
-		ExerciseID:  "ex2",
-		MuscleGroup: "legs",
+		ExerciseID:  ex2legsExType.ExerciseID,
+		MuscleGroup: ex2legsExType.MuscleGroup,
 		Kilos:       510,
 		Reps:        50,
 		CreatedAt:   now.Add(time.Minute * 2),
@@ -370,6 +394,21 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		addedE4 := s.newExerciseRequest(ctx, e4)
 		addedE5 := s.newExerciseRequest(ctx, e5)
 		e1.ID, e2.ID, e3.ID, e4.ID, e5.ID = addedE1.ID, addedE2.ID, addedE3.ID, addedE4.ID, addedE5.ID
+
+		ex1TricepsExercises := s.listExercisesRequest(ctx, exercises.ListParams{
+			ExerciseParams: exercises.ExerciseParams{
+				ExerciseID:         ex1TricepsExType.ExerciseID,
+				MuscleGroup:        ex1TricepsExType.MuscleGroup,
+				OnlyProd:           true,
+				ExcludeTestingData: true,
+			},
+			Page: 1, Size: 10,
+		})
+		require.Len(t, ex1TricepsExercises.Exercises, 1)
+		assert.Equal(t, e1.ID, ex1TricepsExercises.Exercises[0].ID)
+		assert.Equal(t, e1.ExerciseID, ex1TricepsExercises.Exercises[0].ExerciseID)
+		assert.Equal(t, e1.MuscleGroup, ex1TricepsExercises.Exercises[0].MuscleGroup)
+		assert.Equal(t, ex1TricepsExType.Name, ex1TricepsExercises.Exercises[0].ExerciseName)
 
 		assert.Equal(t, 1, addedE1.CountToday)
 		assert.Equal(t, 1, addedE2.CountToday)
@@ -533,8 +572,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		newCreatedAt := e3.CreatedAt.Add(-time.Minute * 10).In(time.UTC)
 		updateResp := s.updateExerciseRequest(ctx, exercises.Exercise{
 			ID:          e3.ID,
-			ExerciseID:  "new-exercise-id",
-			MuscleGroup: "legs",
+			ExerciseID:  ex3legsExType.ExerciseID,
+			MuscleGroup: ex3legsExType.MuscleGroup,
 			Kilos:       220,
 			Reps:        15,
 			CreatedAt:   newCreatedAt,
@@ -547,8 +586,8 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 
 		// now assert that the update was successful
 		updatedEx3 := s.getExerciseRequest(ctx, e3.ID)
-		assert.Equal(t, "new-exercise-id", updatedEx3.ExerciseID)
-		assert.Equal(t, "legs", updatedEx3.MuscleGroup)
+		assert.Equal(t, ex3legsExType.ExerciseID, updatedEx3.ExerciseID)
+		assert.Equal(t, ex3legsExType.MuscleGroup, updatedEx3.MuscleGroup)
 		assert.Equal(t, 220, updatedEx3.Kilos)
 		assert.Equal(t, 15, updatedEx3.Reps)
 		assert.Equal(t,
