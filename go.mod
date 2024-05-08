@@ -45,7 +45,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/containerd/continuity v0.4.3 // indirect
 	github.com/docker/cli v26.0.0+incompatible // indirect
-	github.com/docker/docker v26.0.0+incompatible // indirect
+	github.com/docker/docker v26.0.2+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
