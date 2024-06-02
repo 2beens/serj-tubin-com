@@ -13,7 +13,7 @@ jobs:
           fetch-depth: 1
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.22.1
+          go-version-file: ./go.mod
       - name: Setup dependencies
         run: |
           go mod tidy
@@ -49,12 +49,12 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v3 # checks-out the repository under $GITHUB_WORKSPACE
+      - uses: actions/checkout@v4 # checks-out the repository under $GITHUB_WORKSPACE
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.22.1'
+          go-version-file: ./go.mod
       - name: Get PSQL CLI
         run: |
           apt-get update
@@ -77,13 +77,13 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           persist-credentials: false
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.22.1'
+          go-version-file: ./go.mod
       - name: Setup dependencies
         run: |
           go mod tidy
