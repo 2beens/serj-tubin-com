@@ -105,3 +105,10 @@ compile: ## Compile for various OS and platforms
 	GOOS=linux GOARCH=arm64 go build -o $(BINARY_OUTPUT)/linux-arm64/main main.go
 	GOOS=freebsd GOARCH=386 go build -o $(BINARY_OUTPUT)/freebsd-386/main main.go
 	# ... Add other platforms as needed
+
+.PHONY: organize-imports
+organize-imports: ## Organize imports for the whole project
+	# check if goimports-reviser is installed
+	@command -v goimports-reviser > /dev/null || (echo "goimports-reviser is not installed. Please run 'go install -v github.com/incu6us/goimports-reviser/v3@latest' to install it" && exit 1)
+	# run goimports-reviser
+	goimports-reviser -rm-unused -format -recursive -imports-order std,project,company,general,blanked,dotted --company-prefixes github.com/2beens ./...

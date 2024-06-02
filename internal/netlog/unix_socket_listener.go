@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/pkg"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // VisitsBackupUnixSocketListenerSetup - this is a deliberately overengineered method of communicating of netlog backup with the main service

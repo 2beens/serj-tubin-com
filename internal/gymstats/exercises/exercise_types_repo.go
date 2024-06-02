@@ -9,6 +9,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
+
 	"go.opentelemetry.io/otel/attribute"
 )
 

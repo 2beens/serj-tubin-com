@@ -6,11 +6,11 @@ import (
 	"regexp"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/codes"
-
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
+
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/codes"
 )
 
 //go:generate go run go.uber.org/mock/mockgen -source=auth.go -destination=auth_mocks_test.go -package=middleware_test

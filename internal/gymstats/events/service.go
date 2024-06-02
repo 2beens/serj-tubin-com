@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"go.opentelemetry.io/otel/codes"
 )
 

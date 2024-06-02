@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
-
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 )
 
 const (

@@ -8,12 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/db"
 	"github.com/2beens/serjtubincom/internal/logging"
 	"github.com/2beens/serjtubincom/internal/netlog"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // netlog google drive backup cmd

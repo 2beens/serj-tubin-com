@@ -11,13 +11,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
-
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
+
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const maxUploadedFileSize = 1024 * 1024 * 999 // 999 MB

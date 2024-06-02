@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
-
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
-	"github.com/2beens/serjtubincom/pkg"
 )
 
 var (

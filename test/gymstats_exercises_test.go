@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
 )
 
 func (s *IntegrationTestSuite) deleteAllExercises(ctx context.Context) {
