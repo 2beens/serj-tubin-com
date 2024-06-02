@@ -9,12 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/logging"
 	"github.com/2beens/serjtubincom/pkg"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {

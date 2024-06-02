@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	"github.com/2beens/serjtubincom/pkg"
+
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 )
 
 type NotesListResponse struct {
@@ -21,6 +21,7 @@ type NotesListResponse struct {
 }
 
 var _ notesRepo = (*Repo)(nil)
+
 var _ notesRepo = (*repoMock)(nil)
 
 type notesRepo interface {

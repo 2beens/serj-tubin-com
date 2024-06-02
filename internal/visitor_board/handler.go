@@ -9,13 +9,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
-
 	"github.com/2beens/serjtubincom/internal/auth"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
+
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type Handler struct {
@@ -24,6 +24,7 @@ type Handler struct {
 }
 
 var _ boardMessagesRepo = (*Repo)(nil)
+
 var _ boardMessagesRepo = (*repoMock)(nil)
 
 type boardMessagesRepo interface {

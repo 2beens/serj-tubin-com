@@ -14,6 +14,7 @@ import (
 )
 
 var GlobalTracer = otel.Tracer("main-backend")
+
 var GlobalNetlogBackupTracer = otel.Tracer("gdrive-netlog-backup")
 
 // HoneycombSetup uses honeycomb distro to set up the OpenTelemetry SDK

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+
 	"github.com/go-redis/redis_rate/v9"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 )
 
 type RequestRateLimiter interface {

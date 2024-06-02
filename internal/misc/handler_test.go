@@ -7,16 +7,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/2beens/serjtubincom/internal/auth"
+	"github.com/2beens/serjtubincom/internal/misc"
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
-
-	"github.com/2beens/serjtubincom/internal/auth"
-	"github.com/2beens/serjtubincom/internal/misc"
-	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 )
 
 // use TestMain(m *testing.M) { ... } for

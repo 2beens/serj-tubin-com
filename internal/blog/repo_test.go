@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/db"
+
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/2beens/serjtubincom/internal/db"
 )
 
 func testRepoSetup(t *testing.T) (*Repo, func()) {

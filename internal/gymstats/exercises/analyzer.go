@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"go.opentelemetry.io/otel/attribute"
 )
 

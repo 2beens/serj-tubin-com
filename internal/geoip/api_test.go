@@ -6,12 +6,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
-
-	"github.com/2beens/serjtubincom/pkg"
 )
 
 const (

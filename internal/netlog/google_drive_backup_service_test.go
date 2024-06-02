@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	promcl "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 )
 
 func Test_trySendMetrics(t *testing.T) {

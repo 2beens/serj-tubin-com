@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/coocood/freecache"
 	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/codes"
-
-	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 )
 
 // example API call

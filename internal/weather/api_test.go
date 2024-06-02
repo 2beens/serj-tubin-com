@@ -7,11 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
-
-	"github.com/2beens/serjtubincom/pkg"
 )
 
 // TestMain will run goleak after all tests have been run in the package

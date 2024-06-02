@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

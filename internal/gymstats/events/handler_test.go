@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/gymstats/events"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

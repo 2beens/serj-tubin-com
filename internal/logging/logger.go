@@ -4,11 +4,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/2beens/serjtubincom/pkg"
+
 	"github.com/getsentry/sentry-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
-
-	"github.com/2beens/serjtubincom/pkg"
 )
 
 type LoggerSetupParams struct {

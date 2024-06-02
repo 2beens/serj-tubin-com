@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func PanicRecovery(metricsManager *metrics.Manager) func(next http.Handler) http.Handler {
