@@ -40,7 +40,7 @@ services:
     restart: always
     volumes:
       - ./prometheus-for-misc-server/:/etc/prometheus/
-      - /home/serj/docker-data-prometheus:/prometheus
+      - /mnt/misc-serj-volume-nbg1-1/docker-data-prometheus:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
