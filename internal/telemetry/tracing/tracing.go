@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
+	"github.com/honeycombio/honeycomb-opentelemetry-go"
 	"github.com/honeycombio/otel-config-go/otelconfig"
-	"go.opentelemetry.io/contrib/processors/baggage/baggagetrace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -38,7 +38,7 @@ func HoneycombSetup(
 	}
 
 	// enable multi-span attributes
-	bsp := baggagetrace.New()
+	bsp := honeycomb.NewBaggageSpanProcessor()
 
 	// use honeycomb distro to set up OpenTelemetry SDK
 	shutdownFunc, err := otelconfig.ConfigureOpenTelemetry(

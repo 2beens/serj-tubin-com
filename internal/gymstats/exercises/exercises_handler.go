@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 //go:generate mockgen -source=$GOFILE -destination=exercises_mocks_test.go -package=exercises_test
@@ -131,13 +129,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		lastEx := listRes[0]
 		timeSincePreviousSet := addedExercise.CreatedAt.Sub(lastEx.CreatedAt)
 		minutesSincePreviousSet = timeSincePreviousSet.Minutes()
-		span.AddEvent(fmt.Sprintf("previous exercise found: %+v", listRes[0]))
-		span.AddEvent(fmt.Sprintf("time since previous set: %s", timeSincePreviousSet))
-	} else {
-		span.AddEvent("no previous exercise found")
 	}
-
-	span.SetAttributes(attribute.Float64("minutesSincePreviousSet", minutesSincePreviousSet))
 
 	addExerciseResponse := AddExerciseResponse{
 		Exercise:                *addedExercise,
