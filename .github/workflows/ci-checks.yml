@@ -19,9 +19,10 @@ jobs:
           go mod tidy
           go mod vendor
       - name: Run linter
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
         with:
           args: --timeout 6m
+          version: v1.59.1
   tests:
     name: tests
     runs-on: ubuntu-latest

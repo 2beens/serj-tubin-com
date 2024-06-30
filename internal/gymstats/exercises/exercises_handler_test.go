@@ -21,13 +21,14 @@ func TestHandler_HandleAdd(t *testing.T) {
 	repoMock := NewMockexercisesRepo(ctrl)
 	h := exercises.NewHandler(repoMock)
 
+	tenMinutesAgo := time.Now().Add(-10 * time.Minute)
 	now := time.Now()
 	testEx1 := exercises.Exercise{
 		ExerciseID:  "test-ex-1",
 		MuscleGroup: "legs",
 		Kilos:       20,
 		Reps:        10,
-		CreatedAt:   now.Add(-10 * time.Minute),
+		CreatedAt:   tenMinutesAgo,
 		Metadata: map[string]string{
 			"testKey": "test-val",
 		},
@@ -49,8 +50,8 @@ func TestHandler_HandleAdd(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("POST", "", bytes.NewReader(testExJson))
-	req.Header.Set("Content-Type", "application/json")
 	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
 
 	repoMock.EXPECT().
 		Add(gomock.Any(), gomock.Any()).
@@ -88,6 +89,18 @@ func TestHandler_HandleAdd(t *testing.T) {
 		}).
 		Return([]exercises.Exercise{testEx1, testEx2}, nil)
 
+	repoMock.EXPECT().
+		List(gomock.Any(), exercises.ListParams{
+			ExerciseParams: exercises.ExerciseParams{
+				From:               &todayMidnight,
+				To:                 &tomorrowMidnight,
+				OnlyProd:           true,
+				ExcludeTestingData: true,
+			},
+			Page: 1,
+			Size: 1,
+		}).Return([]exercises.Exercise{testEx1}, 2, nil)
+
 	h.HandleAdd(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
 
@@ -104,4 +117,5 @@ func TestHandler_HandleAdd(t *testing.T) {
 	)
 	assert.Equal(t, testEx2.Metadata, addExerciseResponse.Metadata)
 	assert.Equal(t, 2, addExerciseResponse.CountToday)
+	assert.Equal(t, now.Sub(tenMinutesAgo).Minutes(), addExerciseResponse.MinutesSincePreviousSet)
 }
