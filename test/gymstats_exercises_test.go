@@ -48,10 +48,10 @@ func (s *IntegrationTestSuite) newExerciseRequest(
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	var addedExercise exercises.AddExerciseResponse
-	require.NoError(s.T(), json.Unmarshal(respBytes, &addedExercise))
+	var addedExerciseResp exercises.AddExerciseResponse
+	require.NoError(s.T(), json.Unmarshal(respBytes, &addedExerciseResp))
 
-	return addedExercise
+	return addedExerciseResp
 }
 
 func (s *IntegrationTestSuite) updateExerciseRequest(
@@ -394,6 +394,9 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		addedE4 := s.newExerciseRequest(ctx, e4)
 		addedE5 := s.newExerciseRequest(ctx, e5)
 		e1.ID, e2.ID, e3.ID, e4.ID, e5.ID = addedE1.ID, addedE2.ID, addedE3.ID, addedE4.ID, addedE5.ID
+		assert.NotZero(t, addedE1.MinutesSincePreviousSet)
+		assert.NotZero(t, addedE4.MinutesSincePreviousSet)
+		assert.NotZero(t, addedE5.MinutesSincePreviousSet)
 
 		ex1TricepsExercises := s.listExercisesRequest(ctx, exercises.ListParams{
 			ExerciseParams: exercises.ExerciseParams{

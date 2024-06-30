@@ -38,7 +38,10 @@ type UpdateExerciseResponse struct {
 
 type AddExerciseResponse struct {
 	Exercise
+	// CountToday represents the number of exercises of the same type done today
 	CountToday int `json:"countToday"`
+	// MinutesSincePreviousSet represents the time since the previous set (of any exercise, on the same day)
+	MinutesSincePreviousSet float64 `json:"minutesSincePreviousSet"`
 }
 
 type ListResponse struct {
@@ -105,9 +108,33 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("failed to get exercises today [%s] [%s]: %s", addedExercise.ExerciseID, addedExercise.MuscleGroup, err)
 	}
 
+	// get last one added, so we can calculate time since previous set
+	minutesSincePreviousSet := float64(0)
+	listRes, _, err := handler.repo.List(ctx, ListParams{
+		ExerciseParams: ExerciseParams{
+			From:               &todayMidnight,
+			To:                 &tomorrowMidnight,
+			OnlyProd:           true,
+			ExcludeTestingData: true,
+		},
+		Page: 1,
+		Size: 1,
+	})
+	if err != nil {
+		// just log the error, no need to return error to the client
+		log.Errorf("failed to get last exercise: %s", err)
+	}
+
+	if len(listRes) > 0 {
+		lastEx := listRes[0]
+		timeSincePreviousSet := addedExercise.CreatedAt.Sub(lastEx.CreatedAt)
+		minutesSincePreviousSet = timeSincePreviousSet.Minutes()
+	}
+
 	addExerciseResponse := AddExerciseResponse{
-		Exercise:   *addedExercise,
-		CountToday: len(exercisesToday),
+		Exercise:                *addedExercise,
+		CountToday:              len(exercisesToday),
+		MinutesSincePreviousSet: minutesSincePreviousSet,
 	}
 
 	addedExJson, err := json.Marshal(addExerciseResponse)
