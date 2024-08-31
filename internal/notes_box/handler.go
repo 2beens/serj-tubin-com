@@ -3,6 +3,7 @@ package notes_box
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -14,6 +15,8 @@ import (
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
+
+var ErrBadRequest = errors.New("bad request")
 
 type NotesListResponse struct {
 	Notes []Note `json:"notes"`
@@ -156,38 +159,33 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	pkg.WriteTextResponseOK(w, fmt.Sprintf("updated:%d", note.ID))
 }
 
-func (handler *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) HandleDelete(_ http.ResponseWriter, r *http.Request) ([]byte, error) {
 	vars := mux.Vars(r)
 
 	idStr := vars["id"]
 	if idStr == "" {
-		http.Error(w, "error, id empty", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("%w: id empty", ErrBadRequest)
 	}
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "error, id NaN", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("%w: id invalid", ErrBadRequest)
 	}
 
 	if err := handler.repo.Delete(r.Context(), id); err != nil {
 		log.Errorf("failed to delete note %d: %s", id, err)
-		http.Error(w, "error, note not deleted, internal server error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("delete note %d: %w", id, err)
 	}
 
-	pkg.WriteTextResponseOK(w, fmt.Sprintf("deleted:%d", id))
+	return []byte(fmt.Sprintf("deleted:%d", id)), nil
 }
 
-func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) HandleList(_ http.ResponseWriter, r *http.Request) ([]byte, error) {
 	notes, err := handler.repo.List(r.Context())
 	if err != nil {
-		log.Errorf("list notes error: %s", err)
-		http.Error(w, "failed to get notes", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("list notes: %w", err)
 	}
 
-	if len(notes) == 0 {
+	if notes == nil {
 		notes = []Note{}
 	}
 
@@ -198,10 +196,8 @@ func (handler *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 	notesListResJson, err := json.Marshal(notesListRes)
 	if err != nil {
-		log.Errorf("marshal notes error: %s", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("marshal notes: %w", err)
 	}
 
-	pkg.WriteResponseBytes(w, pkg.ContentType.JSON, notesListResJson, http.StatusOK)
+	return notesListResJson, nil
 }

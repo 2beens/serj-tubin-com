@@ -56,12 +56,12 @@ func TestNotesBoxHandler_AllNotes(t *testing.T) {
 	require.NoError(t, err)
 	rr := httptest.NewRecorder()
 
-	handler.HandleList(rr, req)
-	require.NotNil(t, rr)
+	listResp, err := handler.HandleList(rr, req)
+	require.NoError(t, err)
+	require.NotNil(t, listResp)
 
 	var notesListRes NotesListResponse
-	err = json.Unmarshal(rr.Body.Bytes(), &notesListRes)
-	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(listResp, &notesListRes))
 
 	require.Len(t, notesListRes.Notes, 2)
 	assert.Equal(t, n1.ID, notesListRes.Notes[0].ID)

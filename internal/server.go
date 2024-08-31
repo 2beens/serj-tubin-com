@@ -28,6 +28,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	visitorBoard "github.com/2beens/serjtubincom/internal/visitor_board"
 	"github.com/2beens/serjtubincom/internal/weather"
+	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/IBM/pgxpoolprometheus"
 	"github.com/getsentry/sentry-go"
@@ -208,6 +209,21 @@ func NewServer(
 	return s, nil
 }
 
+// https://boldlygo.tech/posts/2024-01-08-error-handling/
+func customHandler(f func(http.ResponseWriter, *http.Request) ([]byte, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := f(w, r)
+		switch {
+		case err == nil:
+			pkg.WriteResponseBytes(w, pkg.ContentType.JSON, resp, http.StatusOK)
+		case errors.Is(err, notesBox.ErrBadRequest):
+			pkg.WriteResponseBytes(w, pkg.ContentType.JSON, resp, http.StatusBadRequest)
+		default:
+			pkg.WriteResponseBytes(w, pkg.ContentType.JSON, resp, http.StatusInternalServerError)
+		}
+	}
+}
+
 func (s *Server) routerSetup() (*mux.Router, error) {
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware("main-router"))
@@ -245,10 +261,10 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 		notesBox.NewRepo(s.dbPool),
 		s.metricsManager,
 	)
-	r.HandleFunc("/notes", notesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-notes")
-	r.HandleFunc("/notes", notesHandler.HandleAdd).Methods("POST", "OPTIONS").Name("new-note")
-	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS").Name("update-note")
-	r.HandleFunc("/notes/{id}", notesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("remove-note")
+	r.HandleFunc("/notes", customHandler(notesHandler.HandleList)).Methods("GET", "OPTIONS")
+	r.HandleFunc("/notes", notesHandler.HandleAdd).Methods("POST", "OPTIONS")
+	r.HandleFunc("/notes", notesHandler.HandleUpdate).Methods("PUT", "OPTIONS")
+	r.HandleFunc("/notes/{id}", customHandler(notesHandler.HandleDelete)).Methods("DELETE", "OPTIONS")
 
 	gsRepo := exercises.NewRepo(s.dbPool)
 	gymStatsExercisesHandler := exercises.NewHandler(gsRepo)
