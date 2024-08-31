@@ -110,8 +110,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("failed to get exercises today [%s] [%s]: %s", addedExercise.ExerciseID, addedExercise.MuscleGroup, err)
 	}
 
-	// get last one added, so we can calculate time since previous set
-	minutesSincePreviousSet := float64(0)
+	// get two last added, so we can calculate time since previous set
 	listRes, _, err := handler.repo.List(ctx, ListParams{
 		ExerciseParams: ExerciseParams{
 			From:               &todayMidnight,
@@ -120,20 +119,26 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 			ExcludeTestingData: true,
 		},
 		Page: 1,
-		Size: 1,
+		Size: 2,
 	})
 	if err != nil {
 		// just log the error, no need to return error to the client
 		log.Errorf("failed to get last exercise: %s", err)
 	}
 
-	if len(listRes) > 0 {
-		lastEx := listRes[0]
-		timeSincePreviousSet := addedExercise.CreatedAt.Sub(lastEx.CreatedAt)
+	minutesSincePreviousSet := float64(0)
+	if len(listRes) == 2 {
+		previousEx := listRes[1]
+		// TODO: timezone bug here, need to fix
+		// simple and stupid fix is to add 2 hours to the time
+		// as right now in summer time, we see this in prod: time since previous set: -1h59m11.120257784s
+		// dirty stupid quick fix for now, add 2 hours to the addedExercise.
+		addedExerciseCreatedAt := addedExercise.CreatedAt.Add(2 * time.Hour)
+		timeSincePreviousSet := addedExerciseCreatedAt.Sub(previousEx.CreatedAt)
 		minutesSincePreviousSet = timeSincePreviousSet.Minutes()
-		span.AddEvent(fmt.Sprintf("previous exercise found: %+v", listRes[0]))
+		span.AddEvent(fmt.Sprintf("previous exercise found: %+v", previousEx))
 		span.AddEvent(fmt.Sprintf("time since previous set: %s", timeSincePreviousSet))
-		log.Debugf("add exercise: previous exercise found: %+v", listRes[0])
+		log.Debugf("add exercise: previous exercise found: %+v", previousEx)
 	} else {
 		span.AddEvent("no previous exercise found")
 		log.Debugf("add exercise: no previous exercise found")

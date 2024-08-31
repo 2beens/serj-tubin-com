@@ -99,7 +99,7 @@ func TestHandler_HandleAdd(t *testing.T) {
 			},
 			Page: 1,
 			Size: 1,
-		}).Return([]exercises.Exercise{testEx1}, 2, nil)
+		}).Return([]exercises.Exercise{testEx2, testEx1}, 2, nil)
 
 	h.HandleAdd(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
