@@ -394,9 +394,9 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		addedE4 := s.newExerciseRequest(ctx, e4)
 		addedE5 := s.newExerciseRequest(ctx, e5)
 		e1.ID, e2.ID, e3.ID, e4.ID, e5.ID = addedE1.ID, addedE2.ID, addedE3.ID, addedE4.ID, addedE5.ID
-		assert.NotZero(t, addedE1.MinutesSincePreviousSet)
-		assert.NotZero(t, addedE4.MinutesSincePreviousSet)
-		assert.NotZero(t, addedE5.MinutesSincePreviousSet)
+		assert.NotZero(t, addedE1.SecondsSincePreviousSet)
+		assert.NotZero(t, addedE4.SecondsSincePreviousSet)
+		assert.NotZero(t, addedE5.SecondsSincePreviousSet)
 
 		ex1TricepsExercises := s.listExercisesRequest(ctx, exercises.ListParams{
 			ExerciseParams: exercises.ExerciseParams{

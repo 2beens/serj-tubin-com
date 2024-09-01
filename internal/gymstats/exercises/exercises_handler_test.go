@@ -76,7 +76,7 @@ func TestHandler_HandleAdd(t *testing.T) {
 			}, nil
 		}).Times(1)
 
-	todayMidnight := time.Now().Truncate(24 * time.Hour)
+	todayMidnight := time.Now().In(exercises.TimeLocationBerlin).Truncate(24 * time.Hour)
 	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
 	repoMock.EXPECT().
 		ListAll(gomock.Any(), exercises.ExerciseParams{
@@ -98,8 +98,8 @@ func TestHandler_HandleAdd(t *testing.T) {
 				ExcludeTestingData: true,
 			},
 			Page: 1,
-			Size: 1,
-		}).Return([]exercises.Exercise{testEx1}, 2, nil)
+			Size: 2,
+		}).Return([]exercises.Exercise{testEx2, testEx1}, 2, nil)
 
 	h.HandleAdd(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
@@ -117,5 +117,5 @@ func TestHandler_HandleAdd(t *testing.T) {
 	)
 	assert.Equal(t, testEx2.Metadata, addExerciseResponse.Metadata)
 	assert.Equal(t, 2, addExerciseResponse.CountToday)
-	assert.Equal(t, now.Sub(tenMinutesAgo).Minutes(), addExerciseResponse.MinutesSincePreviousSet)
+	assert.Equal(t, int(now.Sub(tenMinutesAgo).Seconds()), addExerciseResponse.SecondsSincePreviousSet)
 }

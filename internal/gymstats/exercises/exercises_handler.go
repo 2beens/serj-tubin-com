@@ -19,6 +19,16 @@ import (
 
 //go:generate mockgen -source=$GOFILE -destination=exercises_mocks_test.go -package=exercises_test
 
+var TimeLocationBerlin *time.Location
+
+func init() {
+	var err error
+	TimeLocationBerlin, err = time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		log.Fatalf("failed to load Berlin time location: %s", err)
+	}
+}
+
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise Exercise) (*Exercise, error)
 	Get(ctx context.Context, id int) (*Exercise, error)
@@ -42,8 +52,8 @@ type AddExerciseResponse struct {
 	Exercise
 	// CountToday represents the number of exercises of the same type done today
 	CountToday int `json:"countToday"`
-	// MinutesSincePreviousSet represents the time since the previous set (of any exercise, on the same day)
-	MinutesSincePreviousSet float64 `json:"minutesSincePreviousSet"`
+	// SecondsSincePreviousSet represents the time since the previous set (of any exercise, on the same day)
+	SecondsSincePreviousSet int `json:"secondsSincePreviousSet"`
 }
 
 type ListResponse struct {
@@ -85,7 +95,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if exercise.CreatedAt.IsZero() {
-		exercise.CreatedAt = time.Now()
+		exercise.CreatedAt = time.Now().In(TimeLocationBerlin)
 	}
 
 	addedExercise, err := handler.repo.Add(ctx, exercise)
@@ -95,7 +105,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todayMidnight := time.Now().Truncate(24 * time.Hour)
+	todayMidnight := time.Now().In(TimeLocationBerlin).Truncate(24 * time.Hour)
 	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
 	exercisesToday, err := handler.repo.ListAll(ctx, ExerciseParams{
 		ExerciseID:         addedExercise.ExerciseID,
@@ -110,8 +120,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("failed to get exercises today [%s] [%s]: %s", addedExercise.ExerciseID, addedExercise.MuscleGroup, err)
 	}
 
-	// get last one added, so we can calculate time since previous set
-	minutesSincePreviousSet := float64(0)
+	// get two last added, so we can calculate time since previous set
 	listRes, _, err := handler.repo.List(ctx, ListParams{
 		ExerciseParams: ExerciseParams{
 			From:               &todayMidnight,
@@ -120,32 +129,46 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 			ExcludeTestingData: true,
 		},
 		Page: 1,
-		Size: 1,
+		Size: 2,
 	})
 	if err != nil {
 		// just log the error, no need to return error to the client
 		log.Errorf("failed to get last exercise: %s", err)
 	}
 
-	if len(listRes) > 0 {
-		lastEx := listRes[0]
-		timeSincePreviousSet := addedExercise.CreatedAt.Sub(lastEx.CreatedAt)
-		minutesSincePreviousSet = timeSincePreviousSet.Minutes()
-		span.AddEvent(fmt.Sprintf("previous exercise found: %+v", listRes[0]))
-		span.AddEvent(fmt.Sprintf("time since previous set: %s", timeSincePreviousSet))
-		log.Debugf("add exercise: previous exercise found: %+v", listRes[0])
+	secondsSincePreviousSet := -1
+	if len(listRes) == 2 {
+		previousEx := listRes[1]
+		previousEx.CreatedAt = previousEx.CreatedAt.In(TimeLocationBerlin)
+		timeSincePreviousSet := addedExercise.CreatedAt.Sub(previousEx.CreatedAt)
+
+		// TODO: due to annoying timezone bug, need this patch until I have more time to investigate
+		// check if timeSincePreviousSet is negative, between -2 and -1 hours, then add 2 hours (summer time)
+		if timeSincePreviousSet.Hours() > -2 && timeSincePreviousSet.Hours() < -1 {
+			timeSincePreviousSet = timeSincePreviousSet + 2*time.Hour
+		}
+		// else, if winter time, check if between -1 and 0 hours, then add 1 hour
+		if timeSincePreviousSet.Hours() > -1 && timeSincePreviousSet.Hours() < 0 {
+			timeSincePreviousSet = timeSincePreviousSet + time.Hour
+		}
+
+		secondsSincePreviousSet = int(timeSincePreviousSet.Seconds())
+		span.AddEvent(fmt.Sprintf("previous exercise found: %+v", previousEx))
+		span.AddEvent(fmt.Sprintf("duration since previous set: %s", timeSincePreviousSet))
+		span.SetAttributes(attribute.Int("secondsSincePreviousSet", secondsSincePreviousSet))
+		log.Debugf(
+			"add exercise: previous exercise found [seconds since last: %d]: %+v",
+			secondsSincePreviousSet, previousEx,
+		)
 	} else {
 		span.AddEvent("no previous exercise found")
 		log.Debugf("add exercise: no previous exercise found")
 	}
 
-	span.SetAttributes(attribute.Float64("minutesSincePreviousSet", minutesSincePreviousSet))
-	log.Debugf("add exercise: minutes since previous set: %f", minutesSincePreviousSet)
-
 	addExerciseResponse := AddExerciseResponse{
 		Exercise:                *addedExercise,
 		CountToday:              len(exercisesToday),
-		MinutesSincePreviousSet: minutesSincePreviousSet,
+		SecondsSincePreviousSet: secondsSincePreviousSet,
 	}
 
 	addedExJson, err := json.Marshal(addExerciseResponse)
