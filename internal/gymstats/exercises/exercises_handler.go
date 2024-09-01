@@ -42,8 +42,8 @@ type AddExerciseResponse struct {
 	Exercise
 	// CountToday represents the number of exercises of the same type done today
 	CountToday int `json:"countToday"`
-	// MinutesSincePreviousSet represents the time since the previous set (of any exercise, on the same day)
-	MinutesSincePreviousSet float64 `json:"minutesSincePreviousSet"`
+	// SecondsSincePreviousSet represents the time since the previous set (of any exercise, on the same day)
+	SecondsSincePreviousSet int `json:"secondsSincePreviousSet"`
 }
 
 type ListResponse struct {
@@ -126,31 +126,27 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("failed to get last exercise: %s", err)
 	}
 
-	minutesSincePreviousSet := float64(0)
+	secondsSincePreviousSet := -1
 	if len(listRes) == 2 {
 		previousEx := listRes[1]
-		// TODO: timezone bug here, need to fix
-		// simple and stupid fix is to add 2 hours to the time
-		// as right now in summer time, we see this in prod: time since previous set: -1h59m11.120257784s
-		// dirty stupid quick fix for now, add 2 hours to the addedExercise.
-		addedExerciseCreatedAt := addedExercise.CreatedAt.Add(2 * time.Hour)
-		timeSincePreviousSet := addedExerciseCreatedAt.Sub(previousEx.CreatedAt)
-		minutesSincePreviousSet = timeSincePreviousSet.Minutes()
+		timeSincePreviousSet := addedExercise.CreatedAt.UTC().Sub(previousEx.CreatedAt.UTC())
+		secondsSincePreviousSet = int(timeSincePreviousSet.Seconds())
 		span.AddEvent(fmt.Sprintf("previous exercise found: %+v", previousEx))
-		span.AddEvent(fmt.Sprintf("time since previous set: %s", timeSincePreviousSet))
-		log.Debugf("add exercise: previous exercise found: %+v", previousEx)
+		span.AddEvent(fmt.Sprintf("seconds since previous set: %s", timeSincePreviousSet))
+		span.SetAttributes(attribute.Int("secondsSincePreviousSet", secondsSincePreviousSet))
+		log.Debugf(
+			"add exercise: previous exercise found [seconds since last: %d]: %+v",
+			secondsSincePreviousSet, previousEx,
+		)
 	} else {
 		span.AddEvent("no previous exercise found")
 		log.Debugf("add exercise: no previous exercise found")
 	}
 
-	span.SetAttributes(attribute.Float64("minutesSincePreviousSet", minutesSincePreviousSet))
-	log.Debugf("add exercise: minutes since previous set: %f", minutesSincePreviousSet)
-
 	addExerciseResponse := AddExerciseResponse{
 		Exercise:                *addedExercise,
 		CountToday:              len(exercisesToday),
-		MinutesSincePreviousSet: minutesSincePreviousSet,
+		SecondsSincePreviousSet: secondsSincePreviousSet,
 	}
 
 	addedExJson, err := json.Marshal(addExerciseResponse)
