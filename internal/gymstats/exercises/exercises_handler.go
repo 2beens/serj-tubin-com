@@ -141,6 +141,17 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		previousEx := listRes[1]
 		previousEx.CreatedAt = previousEx.CreatedAt.In(TimeLocationBerlin)
 		timeSincePreviousSet := addedExercise.CreatedAt.Sub(previousEx.CreatedAt)
+
+		// TODO: due to annoying timezone bug, need this patch until I have more time to investigate
+		// check if timeSincePreviousSet is negative, between -2 and -1 hours, then add 2 hours (summer time)
+		if timeSincePreviousSet.Hours() > -2 && timeSincePreviousSet.Hours() < -1 {
+			timeSincePreviousSet = timeSincePreviousSet + 2*time.Hour
+		}
+		// else, if winter time, check if between -1 and 0 hours, then add 1 hour
+		if timeSincePreviousSet.Hours() > -1 && timeSincePreviousSet.Hours() < 0 {
+			timeSincePreviousSet = timeSincePreviousSet + time.Hour
+		}
+
 		secondsSincePreviousSet = int(timeSincePreviousSet.Seconds())
 		span.AddEvent(fmt.Sprintf("previous exercise found: %+v", previousEx))
 		span.AddEvent(fmt.Sprintf("duration since previous set: %s", timeSincePreviousSet))
