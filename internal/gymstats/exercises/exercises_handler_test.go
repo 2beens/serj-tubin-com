@@ -76,7 +76,7 @@ func TestHandler_HandleAdd(t *testing.T) {
 			}, nil
 		}).Times(1)
 
-	todayMidnight := time.Now().Truncate(24 * time.Hour)
+	todayMidnight := time.Now().In(exercises.TimeLocationBerlin).Truncate(24 * time.Hour)
 	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
 	repoMock.EXPECT().
 		ListAll(gomock.Any(), exercises.ExerciseParams{

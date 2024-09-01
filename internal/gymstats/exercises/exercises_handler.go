@@ -19,6 +19,16 @@ import (
 
 //go:generate mockgen -source=$GOFILE -destination=exercises_mocks_test.go -package=exercises_test
 
+var TimeLocationBerlin *time.Location
+
+func init() {
+	var err error
+	TimeLocationBerlin, err = time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		log.Fatalf("failed to load Berlin time location: %s", err)
+	}
+}
+
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise Exercise) (*Exercise, error)
 	Get(ctx context.Context, id int) (*Exercise, error)
@@ -85,7 +95,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if exercise.CreatedAt.IsZero() {
-		exercise.CreatedAt = time.Now()
+		exercise.CreatedAt = time.Now().In(TimeLocationBerlin)
 	}
 
 	addedExercise, err := handler.repo.Add(ctx, exercise)
@@ -95,7 +105,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todayMidnight := time.Now().Truncate(24 * time.Hour)
+	todayMidnight := time.Now().In(TimeLocationBerlin).Truncate(24 * time.Hour)
 	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
 	exercisesToday, err := handler.repo.ListAll(ctx, ExerciseParams{
 		ExerciseID:         addedExercise.ExerciseID,
@@ -129,10 +139,11 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	secondsSincePreviousSet := -1
 	if len(listRes) == 2 {
 		previousEx := listRes[1]
-		timeSincePreviousSet := addedExercise.CreatedAt.UTC().Sub(previousEx.CreatedAt.UTC())
+		previousEx.CreatedAt = previousEx.CreatedAt.In(TimeLocationBerlin)
+		timeSincePreviousSet := addedExercise.CreatedAt.Sub(previousEx.CreatedAt)
 		secondsSincePreviousSet = int(timeSincePreviousSet.Seconds())
 		span.AddEvent(fmt.Sprintf("previous exercise found: %+v", previousEx))
-		span.AddEvent(fmt.Sprintf("seconds since previous set: %s", timeSincePreviousSet))
+		span.AddEvent(fmt.Sprintf("duration since previous set: %s", timeSincePreviousSet))
 		span.SetAttributes(attribute.Int("secondsSincePreviousSet", secondsSincePreviousSet))
 		log.Debugf(
 			"add exercise: previous exercise found [seconds since last: %d]: %+v",
