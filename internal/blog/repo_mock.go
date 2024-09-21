@@ -24,6 +24,18 @@ func (r *repoMock) PostsCount() int {
 	return len(r.Posts)
 }
 
+func (r *repoMock) GetBlog(_ context.Context, id int) (*Blog, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	b, found := r.Posts[id]
+	if !found {
+		return nil, ErrBlogNotFound
+	}
+
+	return b, nil
+}
+
 func (r *repoMock) AddBlog(_ context.Context, blog *Blog) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()

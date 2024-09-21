@@ -62,6 +62,8 @@ func NewAuthMiddlewareHandler(
 			"^/gymstats/image/\\d+",
 			// allow starting with: /blog/page/
 			"^/blog/page/.*",
+			// allow path for a single blog post: /blog/post/{id}
+			"^/blog/post/\\d+",
 		},
 	}
 }
