@@ -2,7 +2,9 @@ package blog
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
@@ -41,7 +43,12 @@ func NewRepo(db *pgxpool.Pool) *Repo {
 	}
 }
 
-func (r *Repo) AddBlog(ctx context.Context, blog *Blog) error {
+func (r *Repo) AddBlog(ctx context.Context, blog *Blog) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.AddBlog")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	if blog.Content == "" || blog.Title == "" {
 		return errors.New("blog title or content empty")
 	}
@@ -77,7 +84,12 @@ func (r *Repo) AddBlog(ctx context.Context, blog *Blog) error {
 
 // UpdateBlog will update the content and title of the blog
 // createdAt and claps are not updated
-func (r *Repo) UpdateBlog(ctx context.Context, id int, title, content string) error {
+func (r *Repo) UpdateBlog(ctx context.Context, id int, title, content string) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.UpdateBlog")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	if content == "" || title == "" {
 		return ErrBlogTitleOrContentEmpty
 	}
@@ -87,8 +99,11 @@ func (r *Repo) UpdateBlog(ctx context.Context, id int, title, content string) er
 		`UPDATE blog SET title = $1, content = $2 WHERE id = $3`,
 		title, content, id,
 	)
-	if err != nil {
-		return err
+	switch {
+	case errors.Is(err, pgx.ErrNoRows), errors.Is(err, sql.ErrNoRows):
+		return ErrBlogNotFound
+	case err != nil:
+		return fmt.Errorf("query: %w", err)
 	}
 
 	if tag.RowsAffected() == 0 {
@@ -98,10 +113,19 @@ func (r *Repo) UpdateBlog(ctx context.Context, id int, title, content string) er
 	return nil
 }
 
-func (r *Repo) BlogClapped(ctx context.Context, id int) error {
+func (r *Repo) BlogClapped(ctx context.Context, id int) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.BlogClapped")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+	span.SetAttributes(attribute.Int("id", id))
+
 	tag, err := r.db.Exec(ctx, `UPDATE blog SET claps = claps + 1 WHERE id = $1`, id)
-	if err != nil {
-		return err
+	switch {
+	case errors.Is(err, pgx.ErrNoRows), errors.Is(err, sql.ErrNoRows):
+		return ErrBlogNotFound
+	case err != nil:
+		return fmt.Errorf("query: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrBlogNotFound
@@ -109,10 +133,18 @@ func (r *Repo) BlogClapped(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *Repo) DeleteBlog(ctx context.Context, id int) error {
+func (r *Repo) DeleteBlog(ctx context.Context, id int) (err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.DeleteBlog")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	tag, err := r.db.Exec(ctx, `DELETE FROM blog WHERE id = $1`, id)
-	if err != nil {
-		return err
+	switch {
+	case errors.Is(err, pgx.ErrNoRows), errors.Is(err, sql.ErrNoRows):
+		return ErrBlogNotFound
+	case err != nil:
+		return fmt.Errorf("query: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrBlogNotFound
@@ -120,16 +152,18 @@ func (r *Repo) DeleteBlog(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *Repo) All(ctx context.Context) ([]*Blog, error) {
+func (r *Repo) All(ctx context.Context) (_ []*Blog, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.All")
-	defer span.End()
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
 
 	rows, err := r.db.Query(
 		ctx,
 		`SELECT * FROM blog ORDER BY id DESC;`,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query: %w", err)
 	}
 	defer rows.Close()
 
@@ -140,9 +174,11 @@ func (r *Repo) All(ctx context.Context) ([]*Blog, error) {
 	return r.rows2blogs(rows)
 }
 
-func (r *Repo) BlogsCount(ctx context.Context) (int, error) {
+func (r *Repo) BlogsCount(ctx context.Context) (_ int, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.BlogsCount")
-	defer span.End()
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
 
 	rows, err := r.db.Query(ctx, `SELECT COUNT(*) FROM blog`)
 	if err != nil {
@@ -164,11 +200,14 @@ func (r *Repo) BlogsCount(ctx context.Context) (int, error) {
 	return -1, errors.New("unexpected error, failed to get blogs count")
 }
 
-func (r *Repo) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error) {
+func (r *Repo) GetBlogsPage(ctx context.Context, page, size int) (_ []*Blog, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.GetBlogsPage")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	span.SetAttributes(attribute.Int("page", page))
 	span.SetAttributes(attribute.Int("size", size))
-	defer span.End()
 
 	limit := size
 	offset := (page - 1) * size
@@ -210,12 +249,14 @@ func (r *Repo) GetBlogsPage(ctx context.Context, page, size int) ([]*Blog, error
 	return r.rows2blogs(rows)
 }
 
-func (r *Repo) GetBlog(ctx context.Context, id int) (*Blog, error) {
-	log.Tracef("getting blog %d", id)
-
+func (r *Repo) GetBlog(ctx context.Context, id int) (_ *Blog, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "blogApi.GetBlog")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
 	span.SetAttributes(attribute.Int("id", id))
-	defer span.End()
+	log.Tracef("getting blog %d", id)
 
 	rows, err := r.db.Query(
 		ctx,
@@ -225,8 +266,11 @@ func (r *Repo) GetBlog(ctx context.Context, id int) (*Blog, error) {
 		`,
 		id,
 	)
-	if err != nil {
-		return nil, err
+	switch {
+	case errors.Is(err, pgx.ErrNoRows), errors.Is(err, sql.ErrNoRows):
+		return nil, ErrBlogNotFound
+	case err != nil:
+		return nil, fmt.Errorf("query: %w", err)
 	}
 	defer rows.Close()
 

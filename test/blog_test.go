@@ -17,6 +17,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func (s *IntegrationTestSuite) getBlog(
+	ctx context.Context,
+	postID int,
+) blog.Blog {
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"GET", fmt.Sprintf("%s/blog/post/%d", serverEndpoint, postID),
+		nil,
+	)
+	require.NoError(s.T(), err)
+	req.Header.Set("User-Agent", "test-agent")
+
+	resp, err := s.httpClient.Do(req)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	defer resp.Body.Close()
+
+	var post blog.Blog
+	require.NoError(s.T(),
+		json.NewDecoder(resp.Body).Decode(&post),
+	)
+
+	return post
+}
+
 func (s *IntegrationTestSuite) getBlogPostsPage(
 	ctx context.Context,
 	page int,
@@ -120,6 +145,26 @@ func (s *IntegrationTestSuite) TestBlogs() {
 		require.NoError(t, err)
 		assert.NoError(t, resp.Body.Close())
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	s.T().Run("try add then get blog and delete", func(t *testing.T) {
+		authToken := s.doLogin(ctx)
+
+		postID := s.newBlogPostRequest(ctx, authToken, blog.Blog{
+			Title:   "test blog",
+			Content: "test content",
+		})
+		require.NotZero(t, postID)
+
+		foundPost := s.getBlog(ctx, postID)
+		require.Equal(t, postID, foundPost.ID)
+		require.Equal(t, "test blog", foundPost.Title)
+		require.Equal(t, "test content", foundPost.Content)
+		require.NotZero(t, foundPost.CreatedAt)
+
+		resp, err := s.deleteBlogPostRequest(ctx, authToken, postID)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	s.T().Run("add posts and try delete", func(t *testing.T) {

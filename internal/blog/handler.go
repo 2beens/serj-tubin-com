@@ -3,6 +3,7 @@ package blog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -36,6 +37,7 @@ type updateBlogRequest struct {
 }
 
 type blogRepo interface {
+	GetBlog(ctx context.Context, id int) (*Blog, error)
 	AddBlog(ctx context.Context, blog *Blog) error
 	UpdateBlog(ctx context.Context, id int, title, content string) error
 	BlogClapped(ctx context.Context, id int) error
@@ -61,12 +63,47 @@ func NewBlogHandler(
 }
 
 func (handler *Handler) SetupRoutes(router *mux.Router) {
+	router.HandleFunc("/blog/post/{id}", handler.handleGetBlog).Methods("GET").Name("get-blog")
 	router.HandleFunc("/blog/new", handler.handleNewBlog).Methods("POST", "OPTIONS").Name("new-blog")
 	router.HandleFunc("/blog/update", handler.handleUpdateBlog).Methods("POST", "OPTIONS").Name("update-blog")
 	router.HandleFunc("/blog/clap", handler.handleBlogClapped).Methods("PATCH", "OPTIONS").Name("blog-clapped")
 	router.HandleFunc("/blog/delete/{id}", handler.handleDeleteBlog).Methods("DELETE", "OPTIONS").Name("delete-blog")
 	router.HandleFunc("/blog/all", handler.handleAll).Methods("GET").Name("all-blogs")
 	router.HandleFunc("/blog/page/{page}/size/{size}", handler.handleGetPage).Methods("GET").Name("blogs-page")
+}
+
+func (handler *Handler) handleGetBlog(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	if idStr == "" {
+		http.Error(w, "error, id empty", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "error, id NaN", http.StatusBadRequest)
+		return
+	}
+
+	blog, err := handler.repo.GetBlog(r.Context(), id)
+	switch {
+	case errors.Is(err, ErrBlogNotFound):
+		http.Error(w, "blog not found", http.StatusNotFound)
+		return
+	case err != nil:
+		log.Errorf("get blog %d error: %s", id, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	blogJson, err := json.Marshal(blog)
+	if err != nil {
+		log.Errorf("marshal blog %d error: %s", id, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteResponseBytesOK(w, "application/json", blogJson)
 }
 
 func (handler *Handler) handleNewBlog(w http.ResponseWriter, r *http.Request) {

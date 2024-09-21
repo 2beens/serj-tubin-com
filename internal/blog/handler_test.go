@@ -147,8 +147,8 @@ func TestBlogHandler_handleAll(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
 	var blogPosts []*Blog
 	err = json.Unmarshal(rr.Body.Bytes(), &blogPosts)
