@@ -38,6 +38,8 @@ func HoneycombSetup(
 	}
 
 	// enable multi-span attributes
+	// TODO: replace honeycomb with otel SDK
+	// https://docs.honeycomb.io/troubleshoot/product-lifecycle/recommended-migrations/migrate-from-honeycomb-distributions/go/honeycomb-distribution/
 	bsp := honeycomb.NewBaggageSpanProcessor()
 
 	// use honeycomb distro to set up OpenTelemetry SDK
