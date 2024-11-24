@@ -1,4 +1,4 @@
-FROM golang:1.22.3-alpine AS builder
+FROM golang:1.23.3-alpine AS builder
 
 # Disables the use of CGo when building the go app; CGo is a feature in the Go that allows code to call C functions.
 # By disabling CGo, we ensure that the Go binary does not depend on any C libraries, which provides a few benefits:
