@@ -31,7 +31,7 @@ require (
 	go.uber.org/mock v0.5.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/crypto v0.29.0
-	google.golang.org/api v0.209.0
+	google.golang.org/api v0.210.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
