@@ -11,7 +11,7 @@
   
   Hosted and available at: https://www.serj-tubin.com/
   
-  (also at https://2beens.xyz 🤷🏼‍)
+  (also at https://2beens.online 🤷🏼‍)
 
 </div>
 
