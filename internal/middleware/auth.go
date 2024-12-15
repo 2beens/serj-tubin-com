@@ -64,7 +64,6 @@ func NewAuthMiddlewareHandler(
 			"^/blog/page/.*",
 			// allow path for a single blog post: /blog/post/{id}
 			"^/blog/post/\\d+",
-			"^/spotify/.*",
 		},
 	}
 }

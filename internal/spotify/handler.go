@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
@@ -22,7 +23,7 @@ type Handler struct {
 	client              *spotify.Client
 	tracker             *Tracker
 	fireIntervalMinutes int
-	randStateGenerator  func() string
+	randStateGenerator  func() (string, error)
 	stateToken          string
 }
 
@@ -33,7 +34,7 @@ func NewHandler(
 	redirectURI string,
 	spotifyClientID string,
 	spotifyClientSecret string,
-	randStateGenerator func() string,
+	randStateGenerator func() (string, error),
 	fireIntervalMinutes int,
 ) *Handler {
 	return &Handler{
@@ -50,17 +51,27 @@ func NewHandler(
 	}
 }
 
-func GenerateStateString() string {
+func GenerateStateString() (string, error) {
 	b := make([]byte, 16)
-	rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("rand read: %w", err)
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }
 
 func (h *Handler) Authenticate(w http.ResponseWriter, r *http.Request) {
+	var err error
 	_, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.authenticate")
-	defer span.End()
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
 
-	h.stateToken = h.randStateGenerator()
+	h.stateToken, err = h.randStateGenerator()
+	if err != nil {
+		http.Error(w, "failed to generate state token", http.StatusInternalServerError)
+		log.Errorf("failed to generate state token: %v", err)
+		return
+	}
 	redirectURL := h.auth.AuthURL(h.stateToken)
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
