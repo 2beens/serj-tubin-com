@@ -12,6 +12,7 @@ var allowedOrigins = map[string]bool{
 	"https://2beens.online":      true,
 	"http://localhost:8080":      true,
 	"test":                       true,
+	"":                           true,
 }
 
 func Cors() func(next http.Handler) http.Handler {

@@ -35,6 +35,10 @@ type Config struct {
 	SentryDSN     string // loaded from env. var.
 	// GymStats
 	GymStatsDiskApiRootPath string `toml:"gymstats_disk_api_root_path"`
+	// Spotify Tracker
+	SpotifyRedirectURI  string `toml:"spotify_redirect_uri"`
+	SpotifyClientID     string `toml:"spotify_client_id"`
+	SpotifyClientSecret string `toml:"spotify_client_secret"`
 	// Other
 	LoginRateLimitAllowedPerMin int `toml:"login_rate_limit_allowed_per_min"`
 }

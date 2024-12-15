@@ -23,6 +23,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	notesBox "github.com/2beens/serjtubincom/internal/notes_box"
+	"github.com/2beens/serjtubincom/internal/spotify"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	metricsmiddleware "github.com/2beens/serjtubincom/internal/telemetry/metrics/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
@@ -278,6 +279,15 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/events/report/weight", gymStatsEventsHandler.HandleWeightReport).Methods("POST", "OPTIONS")
 	r.HandleFunc("/gymstats/events/report/pain", gymStatsEventsHandler.HandlePainReport).Methods("POST", "OPTIONS")
 	r.HandleFunc("/gymstats/events/list/page/{page}/size/{size}", gymStatsEventsHandler.HandleList).Methods("GET", "OPTIONS")
+
+	spotifyTracker := spotify.NewTracker(
+		s.config.SpotifyRedirectURI,
+		s.config.SpotifyClientID,
+		s.config.SpotifyClientSecret,
+		spotify.GenerateStateString,
+	)
+	r.HandleFunc("/spotify/auth", spotifyTracker.Authenticate).Methods("GET")
+	r.HandleFunc("/spotify/auth/redirect", spotifyTracker.AuthRedirect).Methods("GET")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
