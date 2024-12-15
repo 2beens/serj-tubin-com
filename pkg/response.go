@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"encoding/json"
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
@@ -49,4 +50,14 @@ func WriteResponseBytes(w http.ResponseWriter, contentType string, message []byt
 
 func WriteResponseBytesOK(w http.ResponseWriter, contentType string, message []byte) {
 	WriteResponseBytes(w, contentType, message, http.StatusOK)
+}
+
+func SendJsonResponse(w http.ResponseWriter, statusCode int, value any) {
+	valueJson, err := json.Marshal(value)
+	if err != nil {
+		log.Errorf("failed to marshal value to json: %v", err)
+		http.Error(w, "failed to marshal value to json", http.StatusInternalServerError)
+		return
+	}
+	WriteResponseBytes(w, ContentType.JSON, valueJson, statusCode)
 }

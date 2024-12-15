@@ -56,7 +56,7 @@ type Server struct {
 	geoIp          *geoip.Api
 	weatherApi     *weather.Api
 	quotesManager  *misc.QuotesManager
-	spotifyTracker *spotify.Tracker
+	spotifyHandler *spotify.Handler
 
 	redisClient  *redis.Client
 	loginChecker *auth.LoginChecker
@@ -163,11 +163,12 @@ func NewServer(
 		return nil, fmt.Errorf("create gymstats images folder: %w", err)
 	}
 
-	spotifyTracker := spotify.NewTracker(
+	spotifyHandler := spotify.NewHandler(
 		params.Config.SpotifyRedirectURI,
 		params.SpotifyClientID,
 		params.SpotifyClientSecret,
 		spotify.GenerateStateString,
+		dbPool,
 	)
 	log.Debugf("spotify redirect uri: %s", params.Config.SpotifyRedirectURI)
 
@@ -189,7 +190,7 @@ func NewServer(
 			tracedHttpClient,
 		),
 		versionInfo:    params.VersionInfo,
-		spotifyTracker: spotifyTracker,
+		spotifyHandler: spotifyHandler,
 
 		redisClient:  rdb,
 		authService:  authService,
@@ -292,9 +293,12 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/events/report/pain", gymStatsEventsHandler.HandlePainReport).Methods("POST", "OPTIONS")
 	r.HandleFunc("/gymstats/events/list/page/{page}/size/{size}", gymStatsEventsHandler.HandleList).Methods("GET", "OPTIONS")
 
-	r.HandleFunc("/spotify/auth", s.spotifyTracker.Authenticate).Methods("GET")
-	r.HandleFunc("/spotify/auth/redirect", s.spotifyTracker.AuthRedirect).Methods("GET")
-	r.HandleFunc("/spotify/recent", s.spotifyTracker.GetRecentlyPlayed).Methods("GET")
+	r.HandleFunc("/spotify/auth", s.spotifyHandler.Authenticate).Methods("GET")
+	r.HandleFunc("/spotify/auth/redirect", s.spotifyHandler.AuthRedirect).Methods("GET")
+	r.HandleFunc("/spotify/recent", s.spotifyHandler.GetRecentlyPlayed).Methods("GET")
+	r.HandleFunc("/spotify/tracker/status", s.spotifyHandler.GetTrackerStatus).Methods("GET")
+	r.HandleFunc("/spotify/tracker/start", s.spotifyHandler.StartTracker).Methods("GET")
+	r.HandleFunc("/spotify/tracker/stop", s.spotifyHandler.StopTracker).Methods("GET")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
