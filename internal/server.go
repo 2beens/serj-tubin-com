@@ -294,6 +294,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	r.HandleFunc("/spotify/auth", s.spotifyTracker.Authenticate).Methods("GET")
 	r.HandleFunc("/spotify/auth/redirect", s.spotifyTracker.AuthRedirect).Methods("GET")
+	r.HandleFunc("/spotify/recent", s.spotifyTracker.GetRecentlyPlayed).Methods("GET")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {

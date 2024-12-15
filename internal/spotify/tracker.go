@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+	"github.com/2beens/serjtubincom/pkg"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/zmb3/spotify/v2"
@@ -72,7 +74,8 @@ func (t *Tracker) AuthRedirect(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("state mismatch: %s != %s\n", st, t.state)
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	// redirect to the main page
+	http.Redirect(w, r, "/", http.StatusFound)
 
 	// let the request finish, and we set the spotify client in a new goroutine
 	go func() {
@@ -95,4 +98,42 @@ func (t *Tracker) AuthRedirect(w http.ResponseWriter, r *http.Request) {
 			log.Debugf("authenticated as: %s\n", u.DisplayName)
 		}
 	}()
+}
+
+func (t *Tracker) GetRecentlyPlayed(w http.ResponseWriter, r *http.Request) {
+	var err error
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "spotify.tracker.getRecentlyPlayed")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
+	if t.client == nil {
+		log.Debugln("get latest songs - spotify client is nil, redirecting to authenticate")
+		// redirect the request to authenticate
+		t.Authenticate(w, r.WithContext(ctx))
+	}
+
+	// check if the client is still unauthenticated / nil, then return error
+	if t.client == nil {
+		http.Error(w, "failed to authenticate", http.StatusForbidden)
+		return
+	}
+
+	// get the latest played songs
+	plays, err := t.client.PlayerRecentlyPlayed(ctx)
+	if err != nil {
+		log.Errorf("failed to get recently played songs: %v", err)
+		http.Error(w, "failed to get recently played songs", http.StatusInternalServerError)
+		return
+	}
+
+	// return the latest played songs
+	playsJson, err := json.Marshal(plays)
+	if err != nil {
+		log.Errorf("failed to marshal plays to json: %v", err)
+		http.Error(w, "failed to marshal plays to json", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteJSONResponseOK(w, string(playsJson))
 }
