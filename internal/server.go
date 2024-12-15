@@ -164,11 +164,12 @@ func NewServer(
 	}
 
 	spotifyHandler := spotify.NewHandler(
+		dbPool,
 		params.Config.SpotifyRedirectURI,
 		params.SpotifyClientID,
 		params.SpotifyClientSecret,
 		spotify.GenerateStateString,
-		dbPool,
+		params.Config.SpotifyTrackerFireIntervalMinutes,
 	)
 	log.Debugf("spotify redirect uri: %s", params.Config.SpotifyRedirectURI)
 

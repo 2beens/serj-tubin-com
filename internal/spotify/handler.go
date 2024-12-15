@@ -17,33 +17,36 @@ import (
 )
 
 type Handler struct {
-	auth               *spotifyauth.Authenticator
-	client             *spotify.Client
-	tracker            *Tracker
-	db                 *pgxpool.Pool
-	randStateGenerator func() string
-	state              string
+	db                  *pgxpool.Pool
+	auth                *spotifyauth.Authenticator
+	client              *spotify.Client
+	tracker             *Tracker
+	fireIntervalMinutes int
+	randStateGenerator  func() string
+	stateToken          string
 }
 
 // https://developer.spotify.com/documentation/web-api/reference/get-recently-played
 
 func NewHandler(
+	db *pgxpool.Pool,
 	redirectURI string,
 	spotifyClientID string,
 	spotifyClientSecret string,
 	randStateGenerator func() string,
-	db *pgxpool.Pool,
+	fireIntervalMinutes int,
 ) *Handler {
 	return &Handler{
+		db:                  db,
+		randStateGenerator:  randStateGenerator,
+		tracker:             nil,
+		fireIntervalMinutes: fireIntervalMinutes,
 		auth: spotifyauth.New(
 			spotifyauth.WithRedirectURL(redirectURI),
 			spotifyauth.WithScopes(spotifyauth.ScopeUserReadRecentlyPlayed),
 			spotifyauth.WithClientID(spotifyClientID),
 			spotifyauth.WithClientSecret(spotifyClientSecret),
 		),
-		randStateGenerator: randStateGenerator,
-		tracker:            nil,
-		db:                 db,
 	}
 }
 
@@ -57,8 +60,8 @@ func (h *Handler) Authenticate(w http.ResponseWriter, r *http.Request) {
 	_, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.authenticate")
 	defer span.End()
 
-	h.state = h.randStateGenerator()
-	redirectURL := h.auth.AuthURL(h.state)
+	h.stateToken = h.randStateGenerator()
+	redirectURL := h.auth.AuthURL(h.stateToken)
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
@@ -69,15 +72,15 @@ func (h *Handler) AuthRedirect(w http.ResponseWriter, r *http.Request) {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
 
-	tok, err := h.auth.Token(ctx, h.state, r)
+	tok, err := h.auth.Token(ctx, h.stateToken, r)
 	if err != nil {
 		http.Error(w, "failed to get get token", http.StatusForbidden)
 		log.Errorf("failed to get token: %v", err)
 		return
 	}
-	if st := r.FormValue("state"); st != h.state {
+	if st := r.FormValue("state"); st != h.stateToken {
 		http.Error(w, "state mismatch", http.StatusForbidden)
-		log.Fatalf("state mismatch: %s != %s\n", st, h.state)
+		log.Fatalf("state mismatch: %s != %s\n", st, h.stateToken)
 	}
 
 	// redirect to the main page
@@ -107,7 +110,11 @@ func (h *Handler) AuthRedirect(w http.ResponseWriter, r *http.Request) {
 		if h.tracker != nil {
 			h.tracker.Stop()
 		}
-		h.tracker = NewTracker(NewRepo(h.db), h.client)
+		h.tracker = NewTracker(NewRepo(h.db), h.client, h.fireIntervalMinutes)
+
+		// start the tracker
+		h.tracker.Start()
+		log.Debugln("spotify tracker started")
 	}()
 }
 
