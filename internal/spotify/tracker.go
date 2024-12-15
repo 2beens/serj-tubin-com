@@ -2,11 +2,13 @@ package spotify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/zmb3/spotify/v2"
 )
@@ -64,8 +66,11 @@ func (t *Tracker) Stop() {
 	// wait for the tracker to stop
 	t.wg.Wait()
 	t.isRunning = false
+	log.Debugf("tracker stopped")
 }
 
+// Start starts the tracker loop. The tracker will fire at the interval specified
+// in the fireIntervalMinutes field. It will also start the first iteration immediately.
 func (t *Tracker) Start() {
 	if t.isRunning {
 		return
@@ -74,7 +79,10 @@ func (t *Tracker) Start() {
 	t.isRunning = true
 	t.wg.Add(1)
 
-	log.Debugf("starting tracker loop, next fire in %d minutes", t.fireIntervalMinutes)
+	log.Debugf("starting tracker loop and first iteration, next fire in %d minutes", t.fireIntervalMinutes)
+	if err := t.SaveRecentlyPlayedTracks(context.Background()); err != nil {
+		log.Errorf("failed to save (some) recently played tracks: %s", err)
+	}
 
 	go func() {
 		defer t.wg.Done()
@@ -88,7 +96,7 @@ func (t *Tracker) Start() {
 				ctx, span := tracing.GlobalTracer.Start(context.Background(), "spotify.tracker.tick")
 				err := t.SaveRecentlyPlayedTracks(ctx)
 				if err != nil {
-					log.Errorf("failed to save recently played tracks: %s", err)
+					log.Errorf("failed to save (some) recently played tracks: %s", err)
 				}
 				tracing.EndSpanWithErrCheck(span, err)
 			}
@@ -113,10 +121,14 @@ func (t *Tracker) SaveRecentlyPlayedTracks(ctx context.Context) (err error) {
 		lastPlayedTrackTime = time.Now().Add(-7 * 24 * time.Hour)
 	}
 
+	// also add a few seconds to the last played track time to avoid fetching the same track again
+	lastPlayedTrackTime = lastPlayedTrackTime.Add(5 * time.Second)
+
 	ops := spotify.RecentlyPlayedOptions{
 		// AfterEpochMs is a Unix epoch in milliseconds that describes a time after
 		// which to return songs.
 		AfterEpochMs: lastPlayedTrackTime.Unix() * 1000,
+		Limit:        35,
 	}
 
 	tracks, err := t.client.PlayerRecentlyPlayedOpt(ctx, &ops)
@@ -127,10 +139,18 @@ func (t *Tracker) SaveRecentlyPlayedTracks(ctx context.Context) (err error) {
 
 	for _, track := range tracks {
 		trackDBRecord := NewTrackDBRecordFromRecentlyPlayedItem(track)
-		if err := t.repo.Add(ctx, trackDBRecord); err != nil {
-			return fmt.Errorf("add track to db: %w", err)
+		if addErr := t.repo.Add(ctx, trackDBRecord); addErr != nil {
+			err = errors.Join(err, fmt.Errorf(
+				"add track [spid:%s song:%s-%s] to db: %w",
+				trackDBRecord.SpotifyID, trackDBRecord.Artists, trackDBRecord.Name, addErr,
+			))
+		} else {
+			log.Debugf("saved track -> %s: %s [at: %s]", trackDBRecord.Artists, trackDBRecord.Name, trackDBRecord.PlayedAt)
 		}
-		log.Debugf("saved track -> %s: %s [at: %s]", trackDBRecord.Artists, trackDBRecord.Name, trackDBRecord.PlayedAt)
+	}
+
+	if err != nil {
+		return fmt.Errorf("save recently played tracks: %w", err)
 	}
 
 	return nil

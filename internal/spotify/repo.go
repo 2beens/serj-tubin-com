@@ -2,11 +2,13 @@ package spotify
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -76,16 +78,21 @@ func (r *Repo) GetLastPlayedTrackTime(ctx context.Context) (playedAt time.Time, 
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
 
+	var nullPlayedAt sql.NullTime
 	row := r.db.QueryRow(ctx, `
 		SELECT MAX(played_at) FROM spotify_track_record
 	`)
 
-	err = row.Scan(&playedAt)
+	err = row.Scan(&nullPlayedAt)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("scan row: %w", err)
 	}
 
-	return playedAt, nil
+	if nullPlayedAt.Valid {
+		return nullPlayedAt.Time, nil
+	}
+
+	return time.Time{}, nil
 }
 
 func (r *Repo) Update(ctx context.Context, track TrackDBRecord) (err error) {
