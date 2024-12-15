@@ -71,6 +71,15 @@ func main() {
 		adminPasswordHash = "$$2a$$14$$gPDY7P8qGduPi.OKoPKzM.N/MTyZpP.q2tmbprdHH.1jyw7fK3KfW"
 	}
 
+	spotifyClientID := os.Getenv("SERJ_TUBIN_COM_SPOTIFY_CLIENT_ID")
+	if spotifyClientID == "" {
+		log.Errorf("spotify client id not set. use SERJ_TUBIN_COM_SPOTIFY_CLIENT_ID")
+	}
+	spotifyClientSecret := os.Getenv("SERJ_TUBIN_COM_SPOTIFY_CLIENT_SECRET")
+	if spotifyClientSecret == "" {
+		log.Errorf("spotify client secret not set. use SERJ_TUBIN_COM_SPOTIFY_CLIENT_SECRET")
+	}
+
 	browserRequestsSecret := os.Getenv("SERJ_BROWSER_REQ_SECRET")
 	if browserRequestsSecret == "" {
 		log.Errorf("browser secret not set. use SERJ_BROWSER_REQ_SECRET")
@@ -129,6 +138,8 @@ func main() {
 			RedisPassword:           redisPassword,
 			HoneycombTracingEnabled: honeycombEnabled,
 			GymStatsDiskApiRootPath: cfg.GymStatsDiskApiRootPath,
+			SpotifyClientID:         spotifyClientID,
+			SpotifyClientSecret:     spotifyClientSecret,
 		},
 	)
 	if err != nil {

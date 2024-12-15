@@ -21,6 +21,8 @@ services:
         HONEYCOMB_ENABLED: "false"
         HONEYCOMB_API_KEY: ""
         SENTRY_DSN: todo
+        SERJ_TUBIN_COM_SPOTIFY_CLIENT_ID: todo
+        SERJ_TUBIN_COM_SPOTIFY_CLIENT_SECRET: todo
     depends_on:
       - postgres
       - redis

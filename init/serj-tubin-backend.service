@@ -19,6 +19,8 @@ Environment="OTEL_SERVICE_NAME=serj-tubin-com-main-backend"
 Environment="HONEYCOMB_ENABLED=true"
 Environment="HONEYCOMB_API_KEY=<value_here>"
 Environment="SENTRY_DSN=<value_here>"
+Environment="SERJ_TUBIN_COM_SPOTIFY_CLIENT_ID=<value_here>"
+Environment="SERJ_TUBIN_COM_SPOTIFY_CLIENT_SECRET=<value_here>"
 WorkingDirectory=/home/serj/serj-tubin-com
 ExecStart=/home/serj/serj-tubin-com/bin/service -env=production -config=/home/serj/serj-tubin-com/config.toml
 

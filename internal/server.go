@@ -51,11 +51,12 @@ type Server struct {
 	versionInfo           string
 	gymStatsDiskApi       *file_box.DiskApi // used for storing/getting gymstats exercise type images
 
-	config        *config.Config
-	dbPool        *pgxpool.Pool
-	geoIp         *geoip.Api
-	weatherApi    *weather.Api
-	quotesManager *misc.QuotesManager
+	config         *config.Config
+	dbPool         *pgxpool.Pool
+	geoIp          *geoip.Api
+	weatherApi     *weather.Api
+	quotesManager  *misc.QuotesManager
+	spotifyTracker *spotify.Tracker
 
 	redisClient  *redis.Client
 	loginChecker *auth.LoginChecker
@@ -79,6 +80,8 @@ type NewServerParams struct {
 	RedisPassword           string
 	HoneycombTracingEnabled bool
 	GymStatsDiskApiRootPath string
+	SpotifyClientID         string
+	SpotifyClientSecret     string
 }
 
 func NewServer(
@@ -160,6 +163,14 @@ func NewServer(
 		return nil, fmt.Errorf("create gymstats images folder: %w", err)
 	}
 
+	spotifyTracker := spotify.NewTracker(
+		params.Config.SpotifyRedirectURI,
+		params.SpotifyClientID,
+		params.SpotifyClientSecret,
+		spotify.GenerateStateString,
+	)
+	log.Debugf("spotify redirect uri: %s", params.Config.SpotifyRedirectURI)
+
 	s := &Server{
 		config:                params.Config,
 		dbPool:                dbPool,
@@ -177,7 +188,8 @@ func NewServer(
 			weatherCitiesData,
 			tracedHttpClient,
 		),
-		versionInfo: params.VersionInfo,
+		versionInfo:    params.VersionInfo,
+		spotifyTracker: spotifyTracker,
 
 		redisClient:  rdb,
 		authService:  authService,
@@ -280,14 +292,8 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/events/report/pain", gymStatsEventsHandler.HandlePainReport).Methods("POST", "OPTIONS")
 	r.HandleFunc("/gymstats/events/list/page/{page}/size/{size}", gymStatsEventsHandler.HandleList).Methods("GET", "OPTIONS")
 
-	spotifyTracker := spotify.NewTracker(
-		s.config.SpotifyRedirectURI,
-		s.config.SpotifyClientID,
-		s.config.SpotifyClientSecret,
-		spotify.GenerateStateString,
-	)
-	r.HandleFunc("/spotify/auth", spotifyTracker.Authenticate).Methods("GET")
-	r.HandleFunc("/spotify/auth/redirect", spotifyTracker.AuthRedirect).Methods("GET")
+	r.HandleFunc("/spotify/auth", s.spotifyTracker.Authenticate).Methods("GET")
+	r.HandleFunc("/spotify/auth/redirect", s.spotifyTracker.AuthRedirect).Methods("GET")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
