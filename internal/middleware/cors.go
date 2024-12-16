@@ -20,6 +20,12 @@ func Cors() func(next http.Handler) http.Handler {
 			origin := r.Header.Get("Origin")
 			userAgent := r.Header.Get("User-Agent")
 
+			// used with spotify tracker
+			if r.URL.Path == "/spotify/auth" && origin == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			switch {
 			case
 				allowedOrigins[origin],
