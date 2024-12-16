@@ -144,6 +144,7 @@ func main() {
 			GymStatsDiskApiRootPath: cfg.GymStatsDiskApiRootPath,
 			SpotifyClientID:         spotifyClientID,
 			SpotifyClientSecret:     spotifyClientSecret,
+			SpotifyAuthToken:        spotifyAuthToken,
 		},
 	)
 	if err != nil {
