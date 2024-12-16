@@ -27,7 +27,8 @@ type Handler struct {
 	stateToken          string
 	// authRedirectURL is the URL to redirect to after successful authentication with Spotify, not the URL to authenticate
 	// e.g. after successful authentication, redirect to the main page (www.serj-tubin.com/spotify)
-	authRedirectURL string
+	authRedirectURL  string
+	authRequestToken string
 }
 
 // https://developer.spotify.com/documentation/web-api/reference/get-recently-played
@@ -40,6 +41,7 @@ func NewHandler(
 	spotifyClientSecret string,
 	randStateGenerator func() (string, error),
 	fireIntervalMinutes int,
+	authRequestToken string,
 ) *Handler {
 	return &Handler{
 		db:                  db,
@@ -47,6 +49,7 @@ func NewHandler(
 		tracker:             nil,
 		fireIntervalMinutes: fireIntervalMinutes,
 		authRedirectURL:     authRedirectURL,
+		authRequestToken:    authRequestToken,
 		auth: spotifyauth.New(
 			spotifyauth.WithRedirectURL(redirectURL),
 			spotifyauth.WithScopes(spotifyauth.ScopeUserReadRecentlyPlayed),
@@ -70,6 +73,14 @@ func (h *Handler) Authenticate(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
+
+	// get the token from the url params
+	token := r.URL.Query().Get("token")
+	if token != h.authRequestToken {
+		http.Error(w, "invalid token", http.StatusForbidden)
+		log.Errorf("invalid token: %s", token)
+		return
+	}
 
 	h.stateToken, err = h.randStateGenerator()
 	if err != nil {

@@ -79,6 +79,10 @@ func main() {
 	if spotifyClientSecret == "" {
 		log.Errorf("spotify client secret not set. use SERJ_TUBIN_COM_SPOTIFY_CLIENT_SECRET")
 	}
+	spotifyAuthToken := os.Getenv("SERJ_TUBIN_COM_SPOTIFY_AUTH_TOKEN")
+	if spotifyAuthToken == "" {
+		log.Errorf("spotify auth token not set. use SERJ_TUBIN_COM_SPOTIFY_AUTH_TOKEN")
+	}
 
 	browserRequestsSecret := os.Getenv("SERJ_BROWSER_REQ_SECRET")
 	if browserRequestsSecret == "" {

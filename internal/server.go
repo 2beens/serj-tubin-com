@@ -80,6 +80,7 @@ type NewServerParams struct {
 	RedisPassword           string
 	HoneycombTracingEnabled bool
 	GymStatsDiskApiRootPath string
+	SpotifyAuthToken        string
 	SpotifyClientID         string
 	SpotifyClientSecret     string
 }
@@ -171,6 +172,7 @@ func NewServer(
 		params.SpotifyClientSecret,
 		spotify.GenerateStateString,
 		params.Config.SpotifyTrackerFireIntervalMinutes,
+		params.SpotifyAuthToken,
 	)
 	log.Debugf("spotify redirect uri: %s", params.Config.SpotifyRedirectURI)
 
