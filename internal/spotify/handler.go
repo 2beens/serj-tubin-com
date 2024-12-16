@@ -25,13 +25,17 @@ type Handler struct {
 	fireIntervalMinutes int
 	randStateGenerator  func() (string, error)
 	stateToken          string
+	// authRedirectURL is the URL to redirect to after successful authentication with Spotify, not the URL to authenticate
+	// e.g. after successful authentication, redirect to the main page (www.serj-tubin.com/spotify)
+	authRedirectURL string
 }
 
 // https://developer.spotify.com/documentation/web-api/reference/get-recently-played
 
 func NewHandler(
 	db *pgxpool.Pool,
-	redirectURI string,
+	redirectURL string,
+	authRedirectURL string,
 	spotifyClientID string,
 	spotifyClientSecret string,
 	randStateGenerator func() (string, error),
@@ -42,8 +46,9 @@ func NewHandler(
 		randStateGenerator:  randStateGenerator,
 		tracker:             nil,
 		fireIntervalMinutes: fireIntervalMinutes,
+		authRedirectURL:     authRedirectURL,
 		auth: spotifyauth.New(
-			spotifyauth.WithRedirectURL(redirectURI),
+			spotifyauth.WithRedirectURL(redirectURL),
 			spotifyauth.WithScopes(spotifyauth.ScopeUserReadRecentlyPlayed),
 			spotifyauth.WithClientID(spotifyClientID),
 			spotifyauth.WithClientSecret(spotifyClientSecret),
@@ -95,7 +100,7 @@ func (h *Handler) AuthRedirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// redirect to the main page
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, h.authRedirectURL, http.StatusFound)
 
 	// let the request finish, and we set the spotify client in a new goroutine
 	go func() {

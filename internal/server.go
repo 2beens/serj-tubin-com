@@ -166,6 +166,7 @@ func NewServer(
 	spotifyHandler := spotify.NewHandler(
 		dbPool,
 		params.Config.SpotifyRedirectURI,
+		params.Config.PostAuthRedirectURL,
 		params.SpotifyClientID,
 		params.SpotifyClientSecret,
 		spotify.GenerateStateString,
@@ -294,12 +295,12 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/events/report/pain", gymStatsEventsHandler.HandlePainReport).Methods("POST", "OPTIONS")
 	r.HandleFunc("/gymstats/events/list/page/{page}/size/{size}", gymStatsEventsHandler.HandleList).Methods("GET", "OPTIONS")
 
-	r.HandleFunc("/spotify/auth", s.spotifyHandler.Authenticate).Methods("GET")
-	r.HandleFunc("/spotify/auth/redirect", s.spotifyHandler.AuthRedirect).Methods("GET")
-	r.HandleFunc("/spotify/recent", s.spotifyHandler.GetRecentlyPlayed).Methods("GET")
-	r.HandleFunc("/spotify/tracker/status", s.spotifyHandler.GetTrackerStatus).Methods("GET")
-	r.HandleFunc("/spotify/tracker/start", s.spotifyHandler.StartTracker).Methods("GET")
-	r.HandleFunc("/spotify/tracker/stop", s.spotifyHandler.StopTracker).Methods("GET")
+	r.HandleFunc("/spotify/auth", s.spotifyHandler.Authenticate).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/auth/redirect", s.spotifyHandler.AuthRedirect).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/recent", s.spotifyHandler.GetRecentlyPlayed).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/status", s.spotifyHandler.GetTrackerStatus).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/start", s.spotifyHandler.StartTracker).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/stop", s.spotifyHandler.StopTracker).Methods("GET", "OPTIONS")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
