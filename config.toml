@@ -91,7 +91,7 @@ sentry_enabled = true
 # GYMSTATS
 gymstats_disk_api_root_path = "/home/serj/gymstats-data"
 # SPOTIFY TRACKER
-spotify_redirect_uri = "https://www.serj-tubin.com/spotify/auth/redirect"
+spotify_redirect_uri = "https://h.serj-tubin.com/api/spotify/auth/redirect"
 post_auth_redirect_url = "https://www.serj-tubin.com/spotify"
 spotify_tracker_fire_interval_minutes = 180
 # OTHER

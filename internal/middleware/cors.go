@@ -21,7 +21,7 @@ func Cors() func(next http.Handler) http.Handler {
 			userAgent := r.Header.Get("User-Agent")
 
 			// used with spotify tracker
-			if r.URL.Path == "/spotify/auth" && origin == "" {
+			if strings.HasPrefix(r.URL.Path, "/spotify/auth") && origin == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
