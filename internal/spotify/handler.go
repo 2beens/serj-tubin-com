@@ -12,6 +12,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
+	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"github.com/zmb3/spotify/v2"
@@ -194,35 +195,24 @@ func (h *Handler) StopTracker(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetPage(w http.ResponseWriter, r *http.Request) {
-	_, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.getPage")
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.getPage")
 	defer span.End()
 
-	if h.client == nil {
-		log.Debugln("get page - spotify client is nil, redirecting to authenticate")
-		// redirect the request to authenticate
-		h.Authenticate(w, r)
-	}
-
-	// check if the client is still unauthenticated / nil, then return error
-	if h.client == nil {
-		http.Error(w, "failed to authenticate", http.StatusForbidden)
-		return
-	}
-
-	pageStr := r.URL.Query().Get("page")
-	sizeStr := r.URL.Query().Get("size")
+	vars := mux.Vars(r)
+	pageStr := vars["page"]
+	sizeStr := vars["size"]
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
-		http.Error(w, "invalid page", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("invalid page: [%s]", pageStr), http.StatusBadRequest)
 		return
 	}
 	size, err := strconv.Atoi(sizeStr)
 	if err != nil {
-		http.Error(w, "invalid size", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("invalid size: [%s]", sizeStr), http.StatusBadRequest)
 		return
 	}
 
-	tracks, err := h.repo.GetPage(r.Context(), page, size)
+	tracks, err := h.repo.GetPage(ctx, page, size)
 	if err != nil {
 		log.Warnf("failed to get page [%d, %d]: %v", page, size, err)
 		http.Error(w, "failed to get page", http.StatusInternalServerError)

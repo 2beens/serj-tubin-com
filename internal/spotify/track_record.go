@@ -7,18 +7,18 @@ import (
 )
 
 type TrackDBRecord struct {
-	ID           int               `db:"id"`
-	Album        string            `db:"album"`
-	Artists      []string          `db:"artists"`
-	Duration     int               `db:"duration_ms"`
-	Explicit     bool              `db:"explicit"`
-	ExternalURLs map[string]string `db:"external_urls"`
-	Endpoint     string            `db:"href"`
-	SpotifyID    string            `db:"spotify_id"`
-	Name         string            `db:"name"`
-	URI          string            `db:"uri"`
-	Type         string            `db:"type"`
-	PlayedAt     time.Time         `db:"played_at"`
+	ID           int               `db:"id" json:"id"`
+	Album        string            `db:"album" json:"album"`
+	Artists      []string          `db:"artists" json:"artists"`
+	Duration     int               `db:"duration_ms" json:"duration_ms"`
+	Explicit     bool              `db:"explicit" json:"explicit"`
+	ExternalURLs map[string]string `db:"external_urls" json:"external_urls"`
+	Endpoint     string            `db:"href" json:"href"`
+	SpotifyID    string            `db:"spotify_id" json:"spotify_id"`
+	Name         string            `db:"name" json:"name"`
+	URI          string            `db:"uri" json:"uri"`
+	Type         string            `db:"type" json:"type"`
+	PlayedAt     time.Time         `db:"played_at" json:"played_at"`
 }
 
 func NewTrackDBRecordFromRecentlyPlayedItem(item spotify.RecentlyPlayedItem) TrackDBRecord {
