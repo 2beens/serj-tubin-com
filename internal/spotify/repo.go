@@ -43,6 +43,54 @@ func (r *Repo) Add(ctx context.Context, track TrackDBRecord) (err error) {
 	return err
 }
 
+// GetPage returns a page of tracks from the database.
+func (r *Repo) GetPage(ctx context.Context, page, size int) (_ []TrackDBRecord, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.spotify.getPage")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+
+	if page < 1 {
+		return nil, fmt.Errorf("page must be greater than 0")
+	}
+	if size < 1 {
+		return nil, fmt.Errorf("size must be greater than 0")
+	}
+
+	limit := size
+	offset := (page - 1) * size
+
+	rows, err := r.db.Query(ctx, `
+		SELECT * FROM spotify_track_record
+		ORDER BY played_at DESC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer rows.Close()
+
+	var tracks []TrackDBRecord
+	for rows.Next() {
+		var track TrackDBRecord
+		var externalURLs []byte
+		if err := rows.Scan(
+			&track.ID, &track.Album, &track.Artists, &track.Duration, &track.Explicit, &externalURLs,
+			&track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
+		}
+
+		if err := json.Unmarshal(externalURLs, &track.ExternalURLs); err != nil {
+			return nil, fmt.Errorf("unmarshal external URLs: %w", err)
+		}
+
+		tracks = append(tracks, track)
+	}
+
+	return tracks, nil
+}
+
 func (r *Repo) GetByID(ctx context.Context, id int) (_ TrackDBRecord, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.spotify.getByID")
 	defer func() {
@@ -50,8 +98,7 @@ func (r *Repo) GetByID(ctx context.Context, id int) (_ TrackDBRecord, err error)
 	}()
 
 	row := r.db.QueryRow(ctx, `
-		SELECT id, album, artists, duration_ms, explicit, external_urls, href, spotify_id, name, uri, track_type, played_at
-		FROM spotify_track_record 
+		SELECT * FROM spotify_track_record 
 		WHERE id = $1
 	`, id)
 
@@ -62,7 +109,7 @@ func (r *Repo) GetByID(ctx context.Context, id int) (_ TrackDBRecord, err error)
 		&track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt,
 	)
 	if err != nil {
-		return TrackDBRecord{}, err
+		return TrackDBRecord{}, fmt.Errorf("scan: %w", err)
 	}
 
 	if err := json.Unmarshal(externalURLs, &track.ExternalURLs); err != nil {
@@ -83,8 +130,7 @@ func (r *Repo) GetLastPlayedTrackTime(ctx context.Context) (playedAt time.Time, 
 		SELECT MAX(played_at) FROM spotify_track_record
 	`)
 
-	err = row.Scan(&nullPlayedAt)
-	if err != nil {
+	if err := row.Scan(&nullPlayedAt); err != nil {
 		return time.Time{}, fmt.Errorf("scan row: %w", err)
 	}
 
