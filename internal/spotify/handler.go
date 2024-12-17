@@ -27,6 +27,7 @@ type Handler struct {
 	stateToken          string
 	// authRedirectURL is the URL to redirect to after successful authentication with Spotify, not the URL to authenticate
 	// e.g. after successful authentication, redirect to the main page (www.serj-tubin.com/spotify)
+	// just check the config.toml to see the actual values and make it clear.
 	authRedirectURL  string
 	authRequestToken string
 }
@@ -35,7 +36,7 @@ type Handler struct {
 
 func NewHandler(
 	db *pgxpool.Pool,
-	redirectURL string,
+	redirectURL string, // spotify will invoke this URL after successful/unsuccessful authentication
 	authRedirectURL string,
 	spotifyClientID string,
 	spotifyClientSecret string,

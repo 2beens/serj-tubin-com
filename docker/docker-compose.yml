@@ -23,6 +23,7 @@ services:
         SENTRY_DSN: todo
         SERJ_TUBIN_COM_SPOTIFY_CLIENT_ID: todo
         SERJ_TUBIN_COM_SPOTIFY_CLIENT_SECRET: todo
+        SERJ_TUBIN_COM_SPOTIFY_AUTH_TOKEN: todo
     depends_on:
       - postgres
       - redis
