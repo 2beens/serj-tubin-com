@@ -25,7 +25,8 @@ func init() {
 	var err error
 	TimeLocationBerlin, err = time.LoadLocation("Europe/Berlin")
 	if err != nil {
-		log.Fatalf("failed to load Berlin time location: %s", err)
+		log.Errorf("failed to load Berlin time location: %s", err)
+		TimeLocationBerlin = time.Local
 	}
 }
 
