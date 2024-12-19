@@ -83,8 +83,9 @@ func (r *Repo) GetPage(ctx context.Context, page, size int) (_ []TrackDBRecord, 
 	for rows.Next() {
 		var track TrackDBRecord
 		var externalURLs, albumImages []byte
+		var releaseDate sql.NullTime
 		if err := rows.Scan(
-			&track.ID, &track.Album, &albumImages, &track.ReleaseDate, &track.Artists, &track.Duration, &track.Explicit,
+			&track.ID, &track.Album, &albumImages, &releaseDate, &track.Artists, &track.Duration, &track.Explicit,
 			&externalURLs, &track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
@@ -96,6 +97,10 @@ func (r *Repo) GetPage(ctx context.Context, page, size int) (_ []TrackDBRecord, 
 
 		if err := json.Unmarshal(albumImages, &track.AlbumImages); err != nil {
 			return nil, fmt.Errorf("unmarshal album images: %w", err)
+		}
+
+		if releaseDate.Valid {
+			track.ReleaseDate = releaseDate.Time
 		}
 
 		tracks = append(tracks, track)
@@ -120,8 +125,9 @@ func (r *Repo) GetByID(ctx context.Context, id int) (_ TrackDBRecord, err error)
 
 	var track TrackDBRecord
 	var externalURLs, albumImages []byte
+	var releaseDate sql.NullTime
 	err = row.Scan(
-		&track.ID, &track.Album, &albumImages, &track.ReleaseDate, &track.Artists, &track.Duration, &track.Explicit, &externalURLs,
+		&track.ID, &track.Album, &albumImages, &releaseDate, &track.Artists, &track.Duration, &track.Explicit, &externalURLs,
 		&track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt,
 	)
 	if err != nil {
@@ -130,6 +136,10 @@ func (r *Repo) GetByID(ctx context.Context, id int) (_ TrackDBRecord, err error)
 
 	if err := json.Unmarshal(externalURLs, &track.ExternalURLs); err != nil {
 		return TrackDBRecord{}, fmt.Errorf("unmarshal external URLs: %w", err)
+	}
+
+	if releaseDate.Valid {
+		track.ReleaseDate = releaseDate.Time
 	}
 
 	if err := json.Unmarshal(albumImages, &track.AlbumImages); err != nil {
