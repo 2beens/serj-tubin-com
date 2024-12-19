@@ -6,9 +6,21 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
+// Image identifies an image associated with an item.
+type Image struct {
+	// The image height, in pixels.
+	Height int `db:"height" json:"height"`
+	// The image width, in pixels.
+	Width int `db:"width" json:"width"`
+	// The source URL of the image.
+	URL string `db:"url" json:"url"`
+}
+
 type TrackDBRecord struct {
 	ID           int               `db:"id" json:"id"`
 	Album        string            `db:"album" json:"album"`
+	AlbumImages  []Image           `db:"album_images" json:"album_images"`
+	ReleaseDate  time.Time         `db:"release_date" json:"release_date"`
 	Artists      []string          `db:"artists" json:"artists"`
 	Duration     int               `db:"duration_ms" json:"duration_ms"`
 	Explicit     bool              `db:"explicit" json:"explicit"`
@@ -27,9 +39,20 @@ func NewTrackDBRecordFromRecentlyPlayedItem(item spotify.RecentlyPlayedItem) Tra
 		artists = append(artists, artist.Name)
 	}
 
+	images := make([]Image, 0, len(item.Track.Album.Images))
+	for _, img := range item.Track.Album.Images {
+		images = append(images, Image{
+			Height: int(img.Height),
+			Width:  int(img.Width),
+			URL:    img.URL,
+		})
+	}
+
 	return TrackDBRecord{
 		Album:        item.Track.Album.Name,
 		Artists:      artists,
+		AlbumImages:  images,
+		ReleaseDate:  item.Track.Album.ReleaseDateTime(),
 		Duration:     int(item.Track.Duration),
 		Explicit:     item.Track.Explicit,
 		ExternalURLs: item.Track.ExternalURLs,

@@ -210,6 +210,8 @@ VALUES
 CREATE TABLE public.spotify_track_record (
     id SERIAL PRIMARY KEY,
     album TEXT,
+    album_images JSONB,
+    release_date TIMESTAMPTZ,
     artists TEXT[] NOT NULL,
     duration_ms INT,
     explicit BOOLEAN,

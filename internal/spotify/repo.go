@@ -33,11 +33,17 @@ func (r *Repo) Add(ctx context.Context, track TrackDBRecord) (err error) {
 		return fmt.Errorf("marshal external URLs: %w", err)
 	}
 
+	albumImages, err := json.Marshal(track.AlbumImages)
+	if err != nil {
+		return fmt.Errorf("marshal album images: %w", err)
+	}
+
 	_, err = r.db.Exec(ctx, `
 		INSERT INTO spotify_track_record (
-			album, artists, duration_ms, explicit, external_urls, href, spotify_id, name, uri, track_type, played_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-		track.Album, track.Artists, track.Duration, track.Explicit, externalURLs, track.Endpoint,
+			album, album_images, release_date, artists, duration_ms, explicit,
+			external_urls, href, spotify_id, name, uri, track_type, played_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+		track.Album, albumImages, track.ReleaseDate, track.Artists, track.Duration, track.Explicit, externalURLs, track.Endpoint,
 		track.SpotifyID, track.Name, track.URI, track.Type, track.PlayedAt,
 	)
 	return err
@@ -61,7 +67,10 @@ func (r *Repo) GetPage(ctx context.Context, page, size int) (_ []TrackDBRecord, 
 	offset := (page - 1) * size
 
 	rows, err := r.db.Query(ctx, `
-		SELECT * FROM spotify_track_record
+		SELECT
+		    id, album, album_images, release_date, artists, duration_ms, explicit,
+		    external_urls, href, spotify_id, name, uri, track_type, played_at
+		FROM spotify_track_record
 		ORDER BY played_at DESC
 		LIMIT $1 OFFSET $2
 	`, limit, offset)
@@ -73,16 +82,20 @@ func (r *Repo) GetPage(ctx context.Context, page, size int) (_ []TrackDBRecord, 
 	var tracks []TrackDBRecord
 	for rows.Next() {
 		var track TrackDBRecord
-		var externalURLs []byte
+		var externalURLs, albumImages []byte
 		if err := rows.Scan(
-			&track.ID, &track.Album, &track.Artists, &track.Duration, &track.Explicit, &externalURLs,
-			&track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt,
+			&track.ID, &track.Album, &albumImages, &track.ReleaseDate, &track.Artists, &track.Duration, &track.Explicit,
+			&externalURLs, &track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
 
 		if err := json.Unmarshal(externalURLs, &track.ExternalURLs); err != nil {
 			return nil, fmt.Errorf("unmarshal external URLs: %w", err)
+		}
+
+		if err := json.Unmarshal(albumImages, &track.AlbumImages); err != nil {
+			return nil, fmt.Errorf("unmarshal album images: %w", err)
 		}
 
 		tracks = append(tracks, track)
@@ -98,14 +111,17 @@ func (r *Repo) GetByID(ctx context.Context, id int) (_ TrackDBRecord, err error)
 	}()
 
 	row := r.db.QueryRow(ctx, `
-		SELECT * FROM spotify_track_record 
+		SELECT
+		    id, album, album_images, release_date, artists, duration_ms, explicit,
+		    external_urls, href, spotify_id, name, uri, track_type, played_at
+		FROM spotify_track_record
 		WHERE id = $1
 	`, id)
 
 	var track TrackDBRecord
-	var externalURLs []byte
+	var externalURLs, albumImages []byte
 	err = row.Scan(
-		&track.ID, &track.Album, &track.Artists, &track.Duration, &track.Explicit, &externalURLs,
+		&track.ID, &track.Album, &albumImages, &track.ReleaseDate, &track.Artists, &track.Duration, &track.Explicit, &externalURLs,
 		&track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt,
 	)
 	if err != nil {
@@ -114,6 +130,10 @@ func (r *Repo) GetByID(ctx context.Context, id int) (_ TrackDBRecord, err error)
 
 	if err := json.Unmarshal(externalURLs, &track.ExternalURLs); err != nil {
 		return TrackDBRecord{}, fmt.Errorf("unmarshal external URLs: %w", err)
+	}
+
+	if err := json.Unmarshal(albumImages, &track.AlbumImages); err != nil {
+		return TrackDBRecord{}, fmt.Errorf("unmarshal album images: %w", err)
 	}
 
 	return track, nil
@@ -152,12 +172,18 @@ func (r *Repo) Update(ctx context.Context, track TrackDBRecord) (err error) {
 		return err
 	}
 
+	albumImages, err := json.Marshal(track.AlbumImages)
+	if err != nil {
+		return fmt.Errorf("marshal album images: %w", err)
+	}
+
 	_, err = r.db.Exec(ctx, `
 		UPDATE spotify_track_record SET
-			album = $1, artists = $2, duration_ms = $3, explicit = $4, external_urls = $5, href = $6, spotify_id = $7, name = $8, uri = $9, track_type = $10, played_at = $11
-		WHERE id = $12`,
-		track.Album, track.Artists, track.Duration, track.Explicit, externalURLs, track.Endpoint,
-		track.SpotifyID, track.Name, track.URI, track.Type, track.PlayedAt, track.ID,
+			album = $1, album_images = $2, release_date = $3, artists = $4, duration_ms = $5, explicit = $6,
+			external_urls = $7, href = $8, spotify_id = $9, name = $10, uri = $11, track_type = $12, played_at = $13
+		WHERE id = $14`,
+		track.Album, albumImages, track.ReleaseDate, track.Artists, track.Duration, track.Explicit,
+		externalURLs, track.Endpoint, track.SpotifyID, track.Name, track.URI, track.Type, track.PlayedAt, track.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("update track: %w", err)
