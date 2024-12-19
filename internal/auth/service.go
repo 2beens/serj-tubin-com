@@ -22,7 +22,7 @@ var (
 )
 
 const (
-	DefaultTTL       = 24 * 7 * time.Hour
+	DefaultTTL       = 90 * 24 * time.Hour // 90 days ~ 3 months
 	sessionKeyPrefix = "serj-service-session||"
 	tokensSetKey     = "serj-service-sessions"
 )
