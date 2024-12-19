@@ -90,3 +90,21 @@ func TestWriteJSONResponseOK(t *testing.T) {
 	assert.Equal(t, ContentType.JSON, w.HeaderMap.Get("Content-Type"))
 	assert.Equal(t, testJson, string(w.Body))
 }
+
+func TestSendJsonResponse(t *testing.T) {
+	w := &TestHttpResponseWriter{
+		HeaderMap: make(http.Header),
+	}
+	testStruct := struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}{
+		Key:   "key1",
+		Value: "value1",
+	}
+	SendJsonResponse(w, http.StatusOK, testStruct)
+
+	assert.Equal(t, http.StatusOK, w.StatusCode)
+	assert.Equal(t, ContentType.JSON, w.HeaderMap.Get("Content-Type"))
+	assert.Equal(t, `{"key":"key1","value":"value1"}`, string(w.Body))
+}
