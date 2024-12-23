@@ -304,6 +304,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/spotify/tracker/status", s.spotifyHandler.GetTrackerStatus).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/tracker/start", s.spotifyHandler.StartTracker).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/tracker/stop", s.spotifyHandler.StopTracker).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/run", s.spotifyHandler.Run).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/page/{page}/size/{size}", s.spotifyHandler.GetPage).Methods("GET", "OPTIONS")
 
 	// all the rest - unhandled paths

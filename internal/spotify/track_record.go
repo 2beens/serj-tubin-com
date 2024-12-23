@@ -6,7 +6,7 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-// Image identifies an image associated with an item.
+// Image identifies an image associated with a track.
 type Image struct {
 	// The image height, in pixels.
 	Height int `db:"height" json:"height"`

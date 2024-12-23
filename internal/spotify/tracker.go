@@ -13,16 +13,27 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
+//go:generate mockgen -source=$GOFILE -destination=tracker_mocks_test.go -package=spotify_test
+
+type tracksRepo interface {
+	GetLastPlayedTrackTime(context.Context) (time.Time, error)
+	Add(context.Context, TrackDBRecord) error
+}
+
+type spotifyClient interface {
+	PlayerRecentlyPlayedOpt(ctx context.Context, opt *spotify.RecentlyPlayedOptions) ([]spotify.RecentlyPlayedItem, error)
+}
+
 type signal struct{}
 
 // Tracker is a struct that fires at every interval (e.g. 24 hours, at midnight),
 // fetches the logged-in user's recently played tracks and saves them to the database.
 // The user is actually - me!
 type Tracker struct {
-	// repo is the repository used to interact with the database.
-	repo *Repo
+	// tracksRepo is the repository used to interact with the database.
+	repo tracksRepo
 	// client is the Spotify client used to interact with the Spotify API.
-	client *spotify.Client
+	client spotifyClient
 	// isRunning is a flag that indicates whether the tracker is running or not.
 	isRunning bool
 	// fireIntervalMinutes is the interval in minutes at which the tracker should fire.
@@ -32,8 +43,8 @@ type Tracker struct {
 }
 
 func NewTracker(
-	repo *Repo,
-	client *spotify.Client,
+	repo tracksRepo,
+	client spotifyClient,
 	fireIntervalMinutes int,
 ) *Tracker {
 	return &Tracker{

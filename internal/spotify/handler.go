@@ -194,6 +194,24 @@ func (h *Handler) StopTracker(w http.ResponseWriter, r *http.Request) {
 	pkg.SendJsonResponse(w, http.StatusOK, TrackerStatusResponse{Status: "stopped"})
 }
 
+func (h *Handler) Run(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.run")
+	defer span.End()
+
+	if h.tracker == nil {
+		http.Error(w, "tracker not initialized", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.tracker.SaveRecentlyPlayedTracks(ctx); err != nil {
+		http.Error(w, fmt.Sprintf("failed to save recently played tracks: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// just return ok - no content response - 204
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) GetPage(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.getPage")
 	defer span.End()
