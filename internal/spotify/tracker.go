@@ -36,23 +36,23 @@ type Tracker struct {
 	client spotifyClient
 	// isRunning is a flag that indicates whether the tracker is running or not.
 	isRunning bool
-	// fireIntervalMinutes is the interval in minutes at which the tracker should fire.
-	fireIntervalMinutes int
-	wg                  sync.WaitGroup
-	stopCh              chan signal
+	// fireIntervalMinutes is the interval at which the tracker will fire.
+	fireInterval time.Duration
+	wg           sync.WaitGroup
+	stopCh       chan signal
 }
 
 func NewTracker(
 	repo tracksRepo,
 	client spotifyClient,
-	fireIntervalMinutes int,
+	fireInterval time.Duration,
 ) *Tracker {
 	return &Tracker{
-		repo:                repo,
-		client:              client,
-		isRunning:           false,
-		fireIntervalMinutes: fireIntervalMinutes,
-		stopCh:              make(chan signal),
+		repo:         repo,
+		client:       client,
+		isRunning:    false,
+		fireInterval: fireInterval,
+		stopCh:       make(chan signal),
 	}
 }
 
@@ -90,7 +90,7 @@ func (t *Tracker) Start() {
 	t.isRunning = true
 	t.wg.Add(1)
 
-	log.Debugf("starting tracker loop and first iteration, next fire in %d minutes", t.fireIntervalMinutes)
+	log.Debugf("starting tracker loop and first iteration, next fire in: %s", t.fireInterval)
 	if err := t.SaveRecentlyPlayedTracks(context.Background()); err != nil {
 		log.Errorf("failed to save (some) recently played tracks: %s", err)
 	}
@@ -102,7 +102,7 @@ func (t *Tracker) Start() {
 			select {
 			case <-t.stopCh:
 				return
-			case <-time.After(time.Duration(t.fireIntervalMinutes) * time.Minute):
+			case <-time.After(t.fireInterval):
 				log.Debugf("tracker tick, saving recently played tracks ...")
 				ctx, span := tracing.GlobalTracer.Start(context.Background(), "spotify.tracker.tick")
 				err := t.SaveRecentlyPlayedTracks(ctx)

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
@@ -143,7 +144,11 @@ func (h *Handler) AuthRedirect(w http.ResponseWriter, r *http.Request) {
 		if h.tracker != nil {
 			h.tracker.Stop()
 		}
-		h.tracker = NewTracker(NewRepo(h.db), h.client, h.fireIntervalMinutes)
+		h.tracker = NewTracker(
+			NewRepo(h.db),
+			h.client,
+			time.Duration(h.fireIntervalMinutes)*time.Minute,
+		)
 
 		// start the tracker
 		h.tracker.Start()

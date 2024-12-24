@@ -194,21 +194,30 @@ func TestTracker_Start_Stop(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockTracksRepo := NewMocktracksRepo(ctrl)
 	mockSpotifyClient := NewMockspotifyClient(ctrl)
-	tracker := spotify.NewTracker(mockTracksRepo, mockSpotifyClient, 1)
+	tracker := spotify.NewTracker(mockTracksRepo, mockSpotifyClient, time.Duration(50)*time.Millisecond)
 
+	assert.Equal(t, "stopped", tracker.Status())
 	assert.False(t, tracker.IsRunning())
 
 	mockTracksRepo.EXPECT().
 		GetLastPlayedTrackTime(gomock.Any()).
-		Return(time.Now(), nil).AnyTimes()
+		Return(time.Now(), nil).
+		Times(2)
 
 	mockSpotifyClient.EXPECT().
 		PlayerRecentlyPlayedOpt(gomock.Any(), gomock.Any()).
-		Return([]spotifyclient.RecentlyPlayedItem{}, nil).AnyTimes()
+		Return([]spotifyclient.RecentlyPlayedItem{}, nil).
+		Times(2)
 
 	tracker.Start()
 	assert.True(t, tracker.IsRunning())
+	tracker.Start() // consecutive start calls should be no-op
+	assert.True(t, tracker.IsRunning())
+	assert.Equal(t, "running", tracker.Status())
 
+	time.Sleep(50 * time.Millisecond)
 	tracker.Stop()
 	assert.False(t, tracker.IsRunning())
+
+	assert.Equal(t, "stopped", tracker.Status())
 }
