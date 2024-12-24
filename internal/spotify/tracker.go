@@ -37,23 +37,28 @@ type Tracker struct {
 	// isRunning is a flag that indicates whether the tracker is running or not.
 	isRunning bool
 	// fireIntervalMinutes is the interval at which the tracker will fire.
-	fireInterval time.Duration
-	wg           sync.WaitGroup
-	stopCh       chan signal
+	fireInterval         time.Duration
+	periodicCheckEnabled bool
+	wg                   sync.WaitGroup
+	stopCh               chan signal
 }
 
 func NewTracker(
 	repo tracksRepo,
-	client spotifyClient,
 	fireInterval time.Duration,
 ) *Tracker {
 	return &Tracker{
-		repo:         repo,
-		client:       client,
-		isRunning:    false,
-		fireInterval: fireInterval,
-		stopCh:       make(chan signal),
+		repo:                 repo,
+		isRunning:            false,
+		fireInterval:         fireInterval,
+		stopCh:               make(chan signal),
+		periodicCheckEnabled: true,
 	}
+}
+
+func (t *Tracker) WithSpotifyClient(client spotifyClient) *Tracker {
+	t.client = client
+	return t
 }
 
 func (t *Tracker) IsRunning() bool {
@@ -78,6 +83,36 @@ func (t *Tracker) Stop() {
 	t.wg.Wait()
 	t.isRunning = false
 	log.Debugf("tracker stopped")
+}
+
+func (t *Tracker) EnablePeriodicCheck() {
+	t.periodicCheckEnabled = true
+	log.Debugln("periodic check enabled")
+}
+
+func (t *Tracker) DisablePeriodicCheck() {
+	t.periodicCheckEnabled = false
+	log.Debugln("periodic check disabled")
+}
+
+// PeriodicStatusCheck is a function that will check its own state periodically,
+// and log an error in case the tracker is not running or its spotify client is nil.
+// Why? Because error log will be report to sentry, and sentry will send me an email, that's why.
+func (t *Tracker) PeriodicStatusCheck() {
+	// we can use fireInterval as the interval for the status check as well, why not
+	for {
+		time.Sleep(t.fireInterval)
+		// I still want to be able to suppress this if it starts annoying me while on vacation
+		if !t.periodicCheckEnabled {
+			continue
+		}
+		if !t.isRunning {
+			log.Errorf("[spotify tracker] not running")
+		}
+		if t.client == nil {
+			log.Errorf("[spotify tracker] spotify client is nil")
+		}
+	}
 }
 
 // Start starts the tracker loop. The tracker will fire at the interval specified

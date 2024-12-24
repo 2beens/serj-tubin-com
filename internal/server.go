@@ -164,18 +164,23 @@ func NewServer(
 		return nil, fmt.Errorf("create gymstats images folder: %w", err)
 	}
 
+	spotifyRepo := spotify.NewRepo(dbPool)
+	spotifyTracker := spotify.NewTracker(
+		spotifyRepo,
+		time.Duration(params.Config.SpotifyTrackerFireIntervalMinutes)*time.Minute,
+	)
 	spotifyHandler := spotify.NewHandler(
-		dbPool,
-		spotify.NewRepo(dbPool),
+		spotifyTracker,
+		spotifyRepo,
 		params.Config.SpotifyRedirectURI,
 		params.Config.PostAuthRedirectURL,
 		params.SpotifyClientID,
 		params.SpotifyClientSecret,
 		spotify.GenerateStateString,
-		params.Config.SpotifyTrackerFireIntervalMinutes,
 		params.SpotifyAuthToken,
 	)
-	log.Debugf("spotify redirect uri: %s", params.Config.SpotifyRedirectURI)
+	go spotifyTracker.PeriodicStatusCheck()
+	log.Debugf("spotify tracker redirect uri: %s", params.Config.SpotifyRedirectURI)
 
 	s := &Server{
 		config:                params.Config,
@@ -300,11 +305,12 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 
 	r.HandleFunc("/spotify/auth", s.spotifyHandler.Authenticate).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/auth/redirect", s.spotifyHandler.AuthRedirect).Methods("GET", "OPTIONS")
-	r.HandleFunc("/spotify/recent", s.spotifyHandler.GetRecentlyPlayed).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/tracker/status", s.spotifyHandler.GetTrackerStatus).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/tracker/start", s.spotifyHandler.StartTracker).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/tracker/stop", s.spotifyHandler.StopTracker).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/tracker/run", s.spotifyHandler.Run).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/check/enable", s.spotifyHandler.EnableTrackerPeriodicCheck).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/check/disable", s.spotifyHandler.DisableTrackerPeriodicCheck).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/page/{page}/size/{size}", s.spotifyHandler.GetPage).Methods("GET", "OPTIONS")
 
 	// all the rest - unhandled paths

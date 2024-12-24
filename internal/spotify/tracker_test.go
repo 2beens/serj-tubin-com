@@ -17,7 +17,8 @@ func TestTracker_SaveRecentlyPlayedTracks_NoTracks(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockTracksRepo := NewMocktracksRepo(ctrl)
 	mockSpotifyClient := NewMockspotifyClient(ctrl)
-	tracker := spotify.NewTracker(mockTracksRepo, mockSpotifyClient, 1)
+	tracker := spotify.NewTracker(mockTracksRepo, time.Duration(50)*time.Millisecond).
+		WithSpotifyClient(mockSpotifyClient)
 
 	now := time.Now()
 	mockTracksRepo.EXPECT().
@@ -43,7 +44,8 @@ func TestTracker_SaveRecentlyPlayedTracks_TracksFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockTracksRepo := NewMocktracksRepo(ctrl)
 	mockSpotifyClient := NewMockspotifyClient(ctrl)
-	tracker := spotify.NewTracker(mockTracksRepo, mockSpotifyClient, 1)
+	tracker := spotify.NewTracker(mockTracksRepo, time.Duration(50)*time.Millisecond).
+		WithSpotifyClient(mockSpotifyClient)
 
 	now := time.Now()
 	mockTracksRepo.EXPECT().
@@ -115,7 +117,8 @@ func TestTracker_SaveRecentlyPlayedTracks_FetchError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockTracksRepo := NewMocktracksRepo(ctrl)
 	mockSpotifyClient := NewMockspotifyClient(ctrl)
-	tracker := spotify.NewTracker(mockTracksRepo, mockSpotifyClient, 1)
+	tracker := spotify.NewTracker(mockTracksRepo, time.Duration(50)*time.Millisecond).
+		WithSpotifyClient(mockSpotifyClient)
 
 	now := time.Now()
 	mockTracksRepo.EXPECT().
@@ -135,7 +138,8 @@ func TestTracker_SaveRecentlyPlayedTracks_AddTrackError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockTracksRepo := NewMocktracksRepo(ctrl)
 	mockSpotifyClient := NewMockspotifyClient(ctrl)
-	tracker := spotify.NewTracker(mockTracksRepo, mockSpotifyClient, 1)
+	tracker := spotify.NewTracker(mockTracksRepo, time.Duration(50)*time.Millisecond).
+		WithSpotifyClient(mockSpotifyClient)
 
 	now := time.Now()
 	mockTracksRepo.EXPECT().
@@ -194,7 +198,8 @@ func TestTracker_Start_Stop(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockTracksRepo := NewMocktracksRepo(ctrl)
 	mockSpotifyClient := NewMockspotifyClient(ctrl)
-	tracker := spotify.NewTracker(mockTracksRepo, mockSpotifyClient, time.Duration(50)*time.Millisecond)
+	tracker := spotify.NewTracker(mockTracksRepo, time.Duration(50)*time.Millisecond).
+		WithSpotifyClient(mockSpotifyClient)
 
 	assert.Equal(t, "stopped", tracker.Status())
 	assert.False(t, tracker.IsRunning())

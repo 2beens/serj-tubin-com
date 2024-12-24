@@ -4,31 +4,25 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
 type Handler struct {
-	db                  *pgxpool.Pool
-	repo                *Repo
-	auth                *spotifyauth.Authenticator
-	client              *spotify.Client
-	tracker             *Tracker
-	fireIntervalMinutes int
-	randStateGenerator  func() (string, error)
-	stateToken          string
+	tracker            *Tracker
+	repo               *Repo
+	auth               *spotifyauth.Authenticator
+	randStateGenerator func() (string, error)
+	stateToken         string
 	// authRedirectURL is the URL to redirect to after successful authentication with Spotify, not the URL to authenticate
 	// e.g. after successful authentication, redirect to the main page (www.serj-tubin.com/spotify)
 	// just check the config.toml to see the actual values and make it clear.
@@ -39,24 +33,21 @@ type Handler struct {
 // https://developer.spotify.com/documentation/web-api/reference/get-recently-played
 
 func NewHandler(
-	db *pgxpool.Pool,
+	tracker *Tracker,
 	repo *Repo,
 	redirectURL string, // spotify will invoke this URL after successful/unsuccessful authentication
 	authRedirectURL string,
 	spotifyClientID string,
 	spotifyClientSecret string,
 	randStateGenerator func() (string, error),
-	fireIntervalMinutes int,
 	authRequestToken string,
 ) *Handler {
 	return &Handler{
-		db:                  db,
-		repo:                repo,
-		randStateGenerator:  randStateGenerator,
-		tracker:             nil,
-		fireIntervalMinutes: fireIntervalMinutes,
-		authRedirectURL:     authRedirectURL,
-		authRequestToken:    authRequestToken,
+		tracker:            tracker,
+		repo:               repo,
+		randStateGenerator: randStateGenerator,
+		authRedirectURL:    authRedirectURL,
+		authRequestToken:   authRequestToken,
 		auth: spotifyauth.New(
 			spotifyauth.WithRedirectURL(redirectURL),
 			spotifyauth.WithScopes(spotifyauth.ScopeUserReadRecentlyPlayed),
@@ -132,23 +123,17 @@ func (h *Handler) AuthRedirect(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		// use the token to get an authenticated client
-		h.client = spotify.New(h.auth.Client(innerCtx, tok))
+		client := spotify.New(h.auth.Client(innerCtx, tok))
 
-		u, err := h.client.CurrentUser(innerCtx)
+		u, err := client.CurrentUser(innerCtx)
 		if err != nil {
 			log.Errorf("failed to get current user: %s", err)
 		} else {
 			log.Debugf("authenticated as: %s\n", u.DisplayName)
 		}
 
-		if h.tracker != nil {
-			h.tracker.Stop()
-		}
-		h.tracker = NewTracker(
-			NewRepo(h.db),
-			h.client,
-			time.Duration(h.fireIntervalMinutes)*time.Minute,
-		)
+		h.tracker.Stop()
+		h.tracker = h.tracker.WithSpotifyClient(client)
 
 		// start the tracker
 		h.tracker.Start()
@@ -164,11 +149,6 @@ type TrackerStatusResponse struct {
 func (h *Handler) GetTrackerStatus(w http.ResponseWriter, r *http.Request) {
 	_, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.getTrackerStatus")
 	defer span.End()
-
-	if h.tracker == nil {
-		pkg.SendJsonResponse(w, http.StatusOK, TrackerStatusResponse{Status: "stopped"})
-		return
-	}
 	status := h.tracker.Status()
 	pkg.SendJsonResponse(w, http.StatusOK, TrackerStatusResponse{Status: status})
 }
@@ -176,12 +156,6 @@ func (h *Handler) GetTrackerStatus(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) StartTracker(w http.ResponseWriter, r *http.Request) {
 	_, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.startTracker")
 	defer span.End()
-
-	if h.tracker == nil {
-		respMsg := TrackerStatusResponse{Status: "stopped", Message: "tracker not initialized"}
-		pkg.SendJsonResponse(w, http.StatusBadRequest, respMsg)
-		return
-	}
 	h.tracker.Start()
 	pkg.SendJsonResponse(w, http.StatusOK, TrackerStatusResponse{Status: "started"})
 }
@@ -189,22 +163,30 @@ func (h *Handler) StartTracker(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) StopTracker(w http.ResponseWriter, r *http.Request) {
 	_, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.stopTracker")
 	defer span.End()
-
-	if h.tracker == nil {
-		respMsg := TrackerStatusResponse{Status: "stopped", Message: "tracker not initialized"}
-		pkg.SendJsonResponse(w, http.StatusBadRequest, respMsg)
-		return
-	}
 	h.tracker.Stop()
 	pkg.SendJsonResponse(w, http.StatusOK, TrackerStatusResponse{Status: "stopped"})
+}
+
+func (h *Handler) EnableTrackerPeriodicCheck(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.enableTrackerPeriodicCheck")
+	defer span.End()
+	h.tracker.EnablePeriodicCheck()
+	pkg.SendJsonResponse(w, http.StatusOK, TrackerStatusResponse{Message: "enabled periodic check"})
+}
+
+func (h *Handler) DisableTrackerPeriodicCheck(w http.ResponseWriter, r *http.Request) {
+	_, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.disableTrackerPeriodicCheck")
+	defer span.End()
+	h.tracker.DisablePeriodicCheck()
+	pkg.SendJsonResponse(w, http.StatusOK, TrackerStatusResponse{Message: "disabled periodic check"})
 }
 
 func (h *Handler) Run(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.run")
 	defer span.End()
 
-	if h.tracker == nil {
-		http.Error(w, "tracker not initialized", http.StatusBadRequest)
+	if !h.tracker.isRunning {
+		http.Error(w, "tracker not running", http.StatusBadRequest)
 		return
 	}
 
@@ -243,42 +225,4 @@ func (h *Handler) GetPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pkg.SendJsonResponse(w, http.StatusOK, tracks)
-}
-
-func (h *Handler) GetRecentlyPlayed(w http.ResponseWriter, r *http.Request) {
-	var err error
-	ctx, span := tracing.GlobalTracer.Start(r.Context(), "spotify.handler.getRecentlyPlayed")
-	defer func() {
-		tracing.EndSpanWithErrCheck(span, err)
-	}()
-
-	if h.client == nil {
-		log.Debugln("get latest songs - spotify client is nil, redirecting to authenticate")
-		// redirect the request to authenticate
-		h.Authenticate(w, r.WithContext(ctx))
-	}
-
-	// check if the client is still unauthenticated / nil, then return error
-	if h.client == nil {
-		http.Error(w, "failed to authenticate", http.StatusForbidden)
-		return
-	}
-
-	// get the latest played songs
-	plays, err := h.client.PlayerRecentlyPlayed(ctx)
-	if err != nil {
-		log.Errorf("failed to get recently played songs: %v", err)
-		http.Error(w, "failed to get recently played songs", http.StatusInternalServerError)
-		return
-	}
-
-	// return the latest played songs
-	playsJson, err := json.Marshal(plays)
-	if err != nil {
-		log.Errorf("failed to marshal plays to json: %v", err)
-		http.Error(w, "failed to marshal plays to json", http.StatusInternalServerError)
-		return
-	}
-
-	pkg.WriteJSONResponseOK(w, string(playsJson))
 }
