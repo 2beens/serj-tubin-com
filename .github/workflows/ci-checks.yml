@@ -14,6 +14,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: ./go.mod
+      - name: Cache Go Modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Setup dependencies
         run: |
           go mod tidy
@@ -27,9 +36,7 @@ jobs:
   tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    container: node:latest
     services:
-      # Label used to access the service container
       postgres:
         image: postgres:latest
         env:
@@ -51,12 +58,21 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4 # checks-out the repository under $GITHUB_WORKSPACE
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
         with:
           go-version-file: ./go.mod
+      - name: Cache Go Modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Get PSQL CLI
         run: |
           apt-get update
@@ -70,7 +86,6 @@ jobs:
       - name: Run tests
         run: make test-all
         env:
-          # The hostname used to communicate with the PostgreSQL service container
           POSTGRES_HOST: postgres
           REDIS_HOST: redis
           REDIS_PASS: <remove>
@@ -86,6 +101,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: ./go.mod
+      - name: Cache Go Modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Setup dependencies
         run: |
           go mod tidy
