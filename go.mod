@@ -32,14 +32,14 @@ require (
 	go.uber.org/mock v0.5.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/crypto v0.31.0
-	google.golang.org/api v0.209.0
+	google.golang.org/api v0.214.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
-	cloud.google.com/go/auth v0.11.0 // indirect
+	cloud.google.com/go/auth v0.13.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.6 // indirect
-	cloud.google.com/go/compute/metadata v0.5.2 // indirect
+	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -75,7 +75,7 @@ require (
 	go.opentelemetry.io/otel/log v0.8.0 // indirect
 	go.opentelemetry.io/otel/sdk/log v0.8.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241118233622-e639e219e697 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241118233622-e639e219e697 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
@@ -91,7 +91,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-redis/redis/extra/rediscmd/v8 v8.11.5 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.0 // indirect
@@ -109,7 +108,6 @@ require (
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.9.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/host v0.57.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.57.0 // indirect
 	go.opentelemetry.io/contrib/propagators/b3 v1.32.0 // indirect
