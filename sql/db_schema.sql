@@ -205,3 +205,26 @@ VALUES
     ('hanging_knee_raise', 'other', 'Hanging Knee Raise', NOW()),
     ('v_sit', 'other', 'V-sit', NOW()),
     ('test', 'other', '🛠️Test🛠️[dummy]🛠️', NOW());
+
+-- spotify tracker stuff
+CREATE TABLE public.spotify_track_record (
+    id SERIAL PRIMARY KEY,
+    album TEXT,
+    album_images JSONB,
+    release_date TIMESTAMPTZ,
+    artists TEXT[] NOT NULL,
+    duration_ms INT,
+    explicit BOOLEAN,
+    external_urls JSONB,
+    href TEXT,
+    spotify_id TEXT,
+    name TEXT NOT NULL,
+    uri TEXT,
+    track_type TEXT,
+    played_at TIMESTAMPTZ UNIQUE NOT NULL
+);
+
+ALTER TABLE public.spotify_track_record OWNER TO postgres;
+CREATE INDEX ix_track_db_record_played_at ON public.spotify_track_record (played_at);
+CREATE INDEX ix_track_db_record_name ON public.spotify_track_record (name);
+CREATE INDEX ix_track_db_record_artists ON public.spotify_track_record USING gin (artists);

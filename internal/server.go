@@ -23,6 +23,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/netlog"
 	notesBox "github.com/2beens/serjtubincom/internal/notes_box"
+	"github.com/2beens/serjtubincom/internal/spotify"
 	"github.com/2beens/serjtubincom/internal/telemetry/metrics"
 	metricsmiddleware "github.com/2beens/serjtubincom/internal/telemetry/metrics/middleware"
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
@@ -50,11 +51,12 @@ type Server struct {
 	versionInfo           string
 	gymStatsDiskApi       *file_box.DiskApi // used for storing/getting gymstats exercise type images
 
-	config        *config.Config
-	dbPool        *pgxpool.Pool
-	geoIp         *geoip.Api
-	weatherApi    *weather.Api
-	quotesManager *misc.QuotesManager
+	config         *config.Config
+	dbPool         *pgxpool.Pool
+	geoIp          *geoip.Api
+	weatherApi     *weather.Api
+	quotesManager  *misc.QuotesManager
+	spotifyHandler *spotify.Handler
 
 	redisClient  *redis.Client
 	loginChecker *auth.LoginChecker
@@ -78,6 +80,9 @@ type NewServerParams struct {
 	RedisPassword           string
 	HoneycombTracingEnabled bool
 	GymStatsDiskApiRootPath string
+	SpotifyAuthToken        string
+	SpotifyClientID         string
+	SpotifyClientSecret     string
 }
 
 func NewServer(
@@ -159,6 +164,24 @@ func NewServer(
 		return nil, fmt.Errorf("create gymstats images folder: %w", err)
 	}
 
+	spotifyRepo := spotify.NewRepo(dbPool)
+	spotifyTracker := spotify.NewTracker(
+		spotifyRepo,
+		time.Duration(params.Config.SpotifyTrackerFireIntervalMinutes)*time.Minute,
+	)
+	spotifyHandler := spotify.NewHandler(
+		spotifyTracker,
+		spotifyRepo,
+		params.Config.SpotifyRedirectURI,
+		params.Config.PostAuthRedirectURL,
+		params.SpotifyClientID,
+		params.SpotifyClientSecret,
+		spotify.GenerateStateString,
+		params.SpotifyAuthToken,
+	)
+	go spotifyTracker.PeriodicStatusCheck()
+	log.Debugf("spotify tracker redirect uri: %s", params.Config.SpotifyRedirectURI)
+
 	s := &Server{
 		config:                params.Config,
 		dbPool:                dbPool,
@@ -176,7 +199,8 @@ func NewServer(
 			weatherCitiesData,
 			tracedHttpClient,
 		),
-		versionInfo: params.VersionInfo,
+		versionInfo:    params.VersionInfo,
+		spotifyHandler: spotifyHandler,
 
 		redisClient:  rdb,
 		authService:  authService,
@@ -278,6 +302,16 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/events/report/weight", gymStatsEventsHandler.HandleWeightReport).Methods("POST", "OPTIONS")
 	r.HandleFunc("/gymstats/events/report/pain", gymStatsEventsHandler.HandlePainReport).Methods("POST", "OPTIONS")
 	r.HandleFunc("/gymstats/events/list/page/{page}/size/{size}", gymStatsEventsHandler.HandleList).Methods("GET", "OPTIONS")
+
+	r.HandleFunc("/spotify/auth", s.spotifyHandler.Authenticate).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/auth/redirect", s.spotifyHandler.AuthRedirect).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/status", s.spotifyHandler.GetTrackerStatus).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/start", s.spotifyHandler.StartTracker).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/stop", s.spotifyHandler.StopTracker).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/run", s.spotifyHandler.Run).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/check/enable", s.spotifyHandler.EnableTrackerPeriodicCheck).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/tracker/check/disable", s.spotifyHandler.DisableTrackerPeriodicCheck).Methods("GET", "OPTIONS")
+	r.HandleFunc("/spotify/page/{page}/size/{size}", s.spotifyHandler.GetPage).Methods("GET", "OPTIONS")
 
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
