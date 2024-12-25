@@ -1,36 +1,33 @@
-name: Manual Deploy
+name: Deploy
 
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        description: Deployed branch
-        default: master
-        required: true
+  release:
+    types: [published]
 
 jobs:
   deploy-main-service:
     name: Main Service - run remote build and deploy script
     runs-on: ubuntu-latest
     steps:
-      - name: executing remote ssh commands using ssh key
+      - name: Execute remote SSH commands
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSR2_HOST }}
           port: ${{ secrets.SSR2_PORT }}
           username: ${{ secrets.SSR2_USERNAME }}
           key: ${{ secrets.SSR2_KEY_RSA }}
-          script: bash ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }} mainservice ${{ github.event.inputs.branch }}
+          script: bash ${{ secrets.SSR2_REDEPLOY_SERVICE_SCRIPT }} mainservice ${{ github.event_name == 'release' && 'master' || github.ref_name }}
 
   deploy-file-service:
     name: File Service - run remote build and deploy script
     runs-on: ubuntu-latest
     steps:
-      - name: executing remote ssh commands using ssh key
+      - name: Execute remote SSH commands
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.MISC_HOST }}
           port: ${{ secrets.MISC_PORT }}
           username: ${{ secrets.MISC_USERNAME }}
           key: ${{ secrets.MISC_KEY_RSA }}
-          script: bash ${{ secrets.MISC_REDEPLOY_SERVICE_SCRIPT }} filebox ${{ github.event.inputs.branch }}
+          script: bash ${{ secrets.MISC_REDEPLOY_SERVICE_SCRIPT }} filebox ${{ github.event_name == 'release' && 'master' || github.ref_name }}
