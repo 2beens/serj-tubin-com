@@ -190,17 +190,18 @@ func (s *IntegrationTestSuite) cleanup() {
 func getTestConfig(redisPort, postgresPort string) *config.Config {
 	tempDir := os.TempDir()
 	return &config.Config{
-		Host:                        serverHost,
-		Port:                        serverPort,
-		QuotesCsvPath:               "../assets/quotes.csv",
-		NetlogUnixSocketAddrDir:     tempDir,
-		NetlogUnixSocketFileName:    "netlog-test.sock",
-		RedisHost:                   "localhost",
-		RedisPort:                   redisPort,
-		PostgresPort:                postgresPort,
-		PostgresHost:                "localhost",
-		PostgresDBName:              "serj_blogs",
-		LoginRateLimitAllowedPerMin: 10,
+		Host:                              serverHost,
+		Port:                              serverPort,
+		QuotesCsvPath:                     "../assets/quotes.csv",
+		NetlogUnixSocketAddrDir:           tempDir,
+		NetlogUnixSocketFileName:          "netlog-test.sock",
+		RedisHost:                         "localhost",
+		RedisPort:                         redisPort,
+		PostgresPort:                      postgresPort,
+		PostgresHost:                      "localhost",
+		PostgresDBName:                    "serj_blogs",
+		LoginRateLimitAllowedPerMin:       10,
+		SpotifyTrackerFireIntervalMinutes: 10,
 	}
 }
 

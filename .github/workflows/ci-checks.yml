@@ -36,6 +36,7 @@ jobs:
   tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    container: node:latest
     services:
       postgres:
         image: postgres:latest
@@ -44,12 +45,11 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: admin
           POSTGRES_HOST_AUTH_METHOD: trust
-          # Set health checks to wait until postgres has started
-          options: >-
-            --health-cmd pg_isready
-            --health-interval 10s
-            --health-timeout 5s
-            --health-retries 5
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       redis:
         image: redis:latest
         options: >-
@@ -77,6 +77,12 @@ jobs:
         run: |
           apt-get update
           apt-get install --yes --no-install-recommends postgresql-client
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
       - name: Initialize DB
         run: psql -f sql/db_schema.sql postgresql://postgres:postgres@postgres:5432/serj_blogs
       - name: Setup dependencies
