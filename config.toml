@@ -27,7 +27,7 @@ gymstats_disk_api_root_path = "/var/gymstats"
 # SPOTIFY TRACKER
 spotify_redirect_uri = "http://localhost:9000/spotify/auth/redirect"
 post_auth_redirect_url = "http://localhost:8080/spotify"
-spotify_tracker_fire_interval_minutes = 1
+spotify_tracker_fire_interval_minutes = 10
 # OTHER
 login_rate_limit_allowed_per_min = 15
 
@@ -60,7 +60,7 @@ gymstats_disk_api_root_path = "/var/tmp/gymstats"
 # SPOTIFY TRACKER
 spotify_redirect_uri = "http://localhost:9000/spotify/auth/redirect"
 post_auth_redirect_url = "http://localhost:8080/spotify"
-spotify_tracker_fire_interval_minutes = 1
+spotify_tracker_fire_interval_minutes = 10
 # OTHER
 login_rate_limit_allowed_per_min = 15
 
