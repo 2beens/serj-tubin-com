@@ -99,7 +99,7 @@ func (w *Api) GetWeatherCurrent(ctx context.Context, cityID int, cityName string
 
 	resp, err := w.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
+		return nil, fmt.Errorf("http client do: %s", err.Error())
 	}
 	defer resp.Body.Close()
 

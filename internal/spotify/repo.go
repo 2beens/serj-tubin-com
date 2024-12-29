@@ -41,10 +41,10 @@ func (r *Repo) Add(ctx context.Context, track TrackDBRecord) (err error) {
 	_, err = r.db.Exec(ctx, `
 		INSERT INTO spotify_track_record (
 			album, album_images, release_date, artists, duration_ms, explicit,
-			external_urls, href, spotify_id, name, uri, track_type, played_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+			external_urls, href, spotify_id, name, uri, track_type, played_at, source
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 		track.Album, albumImages, track.ReleaseDate, track.Artists, track.Duration, track.Explicit, externalURLs, track.Endpoint,
-		track.SpotifyID, track.Name, track.URI, track.Type, track.PlayedAt,
+		track.SpotifyID, track.Name, track.URI, track.Type, track.PlayedAt, track.Source,
 	)
 	return err
 }
@@ -69,7 +69,7 @@ func (r *Repo) GetPage(ctx context.Context, page, size int) (_ []TrackDBRecord, 
 	rows, err := r.db.Query(ctx, `
 		SELECT
 		    id, album, album_images, release_date, artists, duration_ms, explicit,
-		    external_urls, href, spotify_id, name, uri, track_type, played_at
+		    external_urls, href, spotify_id, name, uri, track_type, played_at, source
 		FROM spotify_track_record
 		ORDER BY played_at DESC
 		LIMIT $1 OFFSET $2
@@ -86,7 +86,7 @@ func (r *Repo) GetPage(ctx context.Context, page, size int) (_ []TrackDBRecord, 
 		var releaseDate sql.NullTime
 		if err := rows.Scan(
 			&track.ID, &track.Album, &albumImages, &releaseDate, &track.Artists, &track.Duration, &track.Explicit,
-			&externalURLs, &track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt,
+			&externalURLs, &track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt, &track.Source,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
@@ -118,7 +118,7 @@ func (r *Repo) GetByID(ctx context.Context, id int) (_ TrackDBRecord, err error)
 	row := r.db.QueryRow(ctx, `
 		SELECT
 		    id, album, album_images, release_date, artists, duration_ms, explicit,
-		    external_urls, href, spotify_id, name, uri, track_type, played_at
+		    external_urls, href, spotify_id, name, uri, track_type, played_at, source
 		FROM spotify_track_record
 		WHERE id = $1
 	`, id)
@@ -128,7 +128,7 @@ func (r *Repo) GetByID(ctx context.Context, id int) (_ TrackDBRecord, err error)
 	var releaseDate sql.NullTime
 	err = row.Scan(
 		&track.ID, &track.Album, &albumImages, &releaseDate, &track.Artists, &track.Duration, &track.Explicit, &externalURLs,
-		&track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt,
+		&track.Endpoint, &track.SpotifyID, &track.Name, &track.URI, &track.Type, &track.PlayedAt, &track.Source,
 	)
 	if err != nil {
 		return TrackDBRecord{}, fmt.Errorf("scan: %w", err)
@@ -190,10 +190,11 @@ func (r *Repo) Update(ctx context.Context, track TrackDBRecord) (err error) {
 	_, err = r.db.Exec(ctx, `
 		UPDATE spotify_track_record SET
 			album = $1, album_images = $2, release_date = $3, artists = $4, duration_ms = $5, explicit = $6,
-			external_urls = $7, href = $8, spotify_id = $9, name = $10, uri = $11, track_type = $12, played_at = $13
-		WHERE id = $14`,
+			external_urls = $7, href = $8, spotify_id = $9, name = $10, uri = $11, track_type = $12, played_at = $13, source = $14
+		WHERE id = $15`,
 		track.Album, albumImages, track.ReleaseDate, track.Artists, track.Duration, track.Explicit,
-		externalURLs, track.Endpoint, track.SpotifyID, track.Name, track.URI, track.Type, track.PlayedAt, track.ID,
+		externalURLs, track.Endpoint, track.SpotifyID, track.Name, track.URI, track.Type, track.PlayedAt,
+		track.Source, track.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("update track: %w", err)
