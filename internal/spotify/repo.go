@@ -46,7 +46,11 @@ func (r *Repo) Add(ctx context.Context, track TrackDBRecord) (err error) {
 		track.Album, albumImages, track.ReleaseDate, track.Artists, track.Duration, track.Explicit, externalURLs, track.Endpoint,
 		track.SpotifyID, track.Name, track.URI, track.Type, track.PlayedAt, track.Source,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("db exec: %w", err)
+	}
+
+	return nil
 }
 
 // GetPage returns a page of tracks from the database.

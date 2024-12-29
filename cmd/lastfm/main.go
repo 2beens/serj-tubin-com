@@ -4,11 +4,15 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal/db"
 	"github.com/2beens/serjtubincom/internal/spotify"
@@ -86,6 +90,80 @@ func main() {
 		log.Println("")
 		log.Printf("Failed inserts below: \n")
 		log.Println(string(failedInsertsJSON))
+
+		log.Println("----------------------------------------------------")
+		log.Println("----------------------------------------------------")
+		log.Println("")
+		log.Println("Retrying failed inserts with adjusted played_at timestamps...")
+
+		isUniqueViolationError := func(err error) bool {
+			if strings.Contains(err.Error(), "SQLSTATE 23505") {
+				return true
+			}
+			return false
+		}
+
+		// Many tracks have the same "played_at", most likely due to hiccups/fuckups in LastFM or its integration with Spotify,
+		// so we need to adjust the "played_at" timestamp to avoid unique constraint violations
+		for _, lfmTrack := range failedInserts {
+			retries := 0
+			maxRetries := 5 // Limit the number of retries to avoid infinite loops
+			for retries < maxRetries {
+				spotifyTrack, err := mapLastFMTrackToSpotifyTrack(lfmTrack)
+				if err != nil {
+					log.Printf("Failed to map track %+v during retry: %v", lfmTrack, err)
+					break
+				}
+
+				// Adjust the played_at timestamp, by adding a random duration of 1-3 hours
+				randMinutes, err := rand.Int(rand.Reader, big.NewInt(180))
+				if err != nil {
+					log.Fatalf("Failed to generate random number: %v\n", err)
+				}
+				spotifyTrack.PlayedAt = spotifyTrack.PlayedAt.Add(time.Duration(randMinutes.Int64()) * time.Minute)
+				randSeconds, err := rand.Int(rand.Reader, big.NewInt(60))
+				if err != nil {
+					log.Fatalf("Failed to generate random number: %v\n", err)
+				}
+				spotifyTrack.PlayedAt = spotifyTrack.PlayedAt.Add(time.Duration(randSeconds.Int64()) * time.Second)
+				randMillis, err := rand.Int(rand.Reader, big.NewInt(1000))
+				if err != nil {
+					log.Fatalf("Failed to generate random number: %v\n", err)
+				}
+				spotifyTrack.PlayedAt = spotifyTrack.PlayedAt.Add(time.Duration(randMillis.Int64()) * time.Millisecond)
+
+				// Retry insertion
+				if err = repo.Add(ctx, spotifyTrack); err != nil {
+					if isUniqueViolationError(err) {
+						log.Printf(
+							"Duplicate during retry for track [%s - %s] [played at: %s]: %v\n",
+							spotifyTrack.Artists, spotifyTrack.Name, spotifyTrack.PlayedAt, err,
+						)
+						retries++
+						continue // Try again with a further adjustment
+					} else {
+						log.Printf(
+							"Failed to insert track [%s - %s] during retry: %v\n",
+							spotifyTrack.Artists, spotifyTrack.Name, err,
+						)
+						break // Break on non-unique errors
+					}
+				} else {
+					log.Printf(
+						"+++ Successfully inserted track [%s - %s] after retry [played at: %s]\n",
+						spotifyTrack.Artists, spotifyTrack.Name, spotifyTrack.PlayedAt,
+					)
+					break // Successfully inserted, stop retrying
+				}
+			}
+
+			if retries >= maxRetries {
+				log.Printf(
+					"--- Giving up on track [%+v] after %d retries\n",
+					lfmTrack, maxRetries,
+				)
+			}
+		}
 	}
 }
 
