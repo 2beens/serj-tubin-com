@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -65,7 +66,7 @@ func (handler *Handler) HandleCurrent(w http.ResponseWriter, r *http.Request) {
 		span.SetStatus(codes.Error, err.Error())
 		if errors.Is(err, ErrNotFound) {
 			log.Warnf("handle current weather: weather city not found for %s %s", locationInfo.City, locationInfo.Country)
-		} else {
+		} else if !errors.Is(err, context.Canceled) {
 			log.Errorf(
 				"handle current weather: error getting weather city from geo ip info [%s %s]: %s",
 				locationInfo.City, locationInfo.Country, err,
@@ -77,8 +78,10 @@ func (handler *Handler) HandleCurrent(w http.ResponseWriter, r *http.Request) {
 
 	weatherInfo, err := handler.weatherApi.GetWeatherCurrent(ctx, city.ID, city.Name)
 	if err != nil {
+		if !errors.Is(err, context.Canceled) {
+			log.Errorf("error getting weather info: %s", err)
+		}
 		span.SetStatus(codes.Error, err.Error())
-		log.Errorf("error getting weather info: %s", err)
 		http.Error(w, "weather api error", http.StatusInternalServerError)
 		return
 	}

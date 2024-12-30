@@ -221,7 +221,9 @@ CREATE TABLE public.spotify_track_record (
     name TEXT NOT NULL,
     uri TEXT,
     track_type TEXT,
-    played_at TIMESTAMPTZ UNIQUE NOT NULL
+    played_at TIMESTAMPTZ UNIQUE NOT NULL,
+    -- source of the track record, spotify or lastfm backup file
+    source TEXT DEFAULT 'spotify'
 );
 
 ALTER TABLE public.spotify_track_record OWNER TO postgres;

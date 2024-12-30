@@ -31,6 +31,9 @@ type TrackDBRecord struct {
 	URI          string            `db:"uri" json:"uri"`
 	Type         string            `db:"type" json:"type"`
 	PlayedAt     time.Time         `db:"played_at" json:"played_at"`
+	// Source is the source of the track record, which can be "spotify" (default) or "lastfm".
+	// "lastfm" is used when the track record is fetched from Last.fm backup file.
+	Source string `db:"source" json:"source"`
 }
 
 func NewTrackDBRecordFromRecentlyPlayedItem(item spotify.RecentlyPlayedItem) TrackDBRecord {
