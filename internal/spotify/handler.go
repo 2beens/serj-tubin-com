@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
@@ -216,8 +217,17 @@ func (h *Handler) GetPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid size: [%s]", sizeStr), http.StatusBadRequest)
 		return
 	}
+	keywordsParam := r.URL.Query().Get("keywords")
+	var searchKeywords []string
+	if keywordsParam != "" {
+		searchKeywords = strings.Split(keywordsParam, ",")
+	}
 
-	tracks, err := h.repo.GetPage(ctx, page, size)
+	tracks, err := h.repo.GetPage(ctx, GetPageParams{
+		Page:           page,
+		Size:           size,
+		SearchKeywords: searchKeywords,
+	})
 	if err != nil {
 		log.Warnf("failed to get page [%d, %d]: %v", page, size, err)
 		http.Error(w, "failed to get page", http.StatusInternalServerError)

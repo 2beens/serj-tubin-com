@@ -53,31 +53,49 @@ func (r *Repo) Add(ctx context.Context, track TrackDBRecord) (err error) {
 	return nil
 }
 
-// GetPage returns a page of tracks from the database.
-func (r *Repo) GetPage(ctx context.Context, page, size int) (_ []TrackDBRecord, err error) {
+type GetPageParams struct {
+	Page           int
+	Size           int
+	SearchKeywords []string
+}
+
+func (r *Repo) GetPage(ctx context.Context, params GetPageParams) (_ []TrackDBRecord, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.spotify.getPage")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
 
-	if page < 1 {
+	if params.Page < 1 {
 		return nil, fmt.Errorf("page must be greater than 0")
 	}
-	if size < 1 {
+	if params.Size < 1 {
 		return nil, fmt.Errorf("size must be greater than 0")
 	}
 
-	limit := size
-	offset := (page - 1) * size
+	limit := params.Size
+	offset := (params.Page - 1) * params.Size
 
-	rows, err := r.db.Query(ctx, `
-		SELECT
-		    id, album, album_images, release_date, artists, duration_ms, explicit,
-		    external_urls, href, spotify_id, name, uri, track_type, played_at, source
-		FROM spotify_track_record
-		ORDER BY played_at DESC
-		LIMIT $1 OFFSET $2
-	`, limit, offset)
+	query := `
+        SELECT
+            id, album, album_images, release_date, artists, duration_ms, explicit,
+            external_urls, href, spotify_id, name, uri, track_type, played_at, source
+        FROM spotify_track_record
+        WHERE 1=1
+    `
+	var args []interface{}
+
+	// Add search keywords filtering.
+	if len(params.SearchKeywords) > 0 {
+		for _, keyword := range params.SearchKeywords {
+			query += ` AND (ARRAY_TO_STRING(artists, ' ') ILIKE '%' || $` + fmt.Sprint(len(args)+1) + ` || '%' OR name ILIKE '%' || $` + fmt.Sprint(len(args)+2) + ` || '%')`
+			args = append(args, keyword, keyword)
+		}
+	}
+
+	query += ` ORDER BY played_at DESC LIMIT $` + fmt.Sprint(len(args)+1) + ` OFFSET $` + fmt.Sprint(len(args)+2)
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
