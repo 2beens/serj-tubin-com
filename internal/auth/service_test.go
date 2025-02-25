@@ -42,7 +42,7 @@ func TestAuthService_NewAuthService(t *testing.T) {
 	authService := NewAuthService(testAdmin, time.Hour, db)
 	require.NotNil(t, authService)
 	assert.NotNil(t, authService.redisClient)
-	assert.Equal(t, time.Hour, authService.ttl)
+	assert.Equal(t, time.Hour, authService.loginSessionTTL)
 
 	testToken := "test_token"
 	randStringFunc := func(s int) (string, error) {
@@ -52,7 +52,7 @@ func TestAuthService_NewAuthService(t *testing.T) {
 
 	now := time.Now()
 	sessionKey := sessionKeyPrefix + testToken
-	mock.ExpectSet(sessionKey, now.Unix(), 0).SetVal(fmt.Sprintf("%d", now.Unix()))
+	mock.ExpectSet(sessionKey, now.Unix(), authService.loginSessionTTL).SetVal(fmt.Sprintf("%d", now.Unix()))
 	mock.ExpectSAdd(tokensSetKey, testToken).SetVal(1)
 	token, err := authService.Login(context.Background(), testCredentials, now)
 	require.NoError(t, err)
