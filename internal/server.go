@@ -124,15 +124,14 @@ func NewServer(
 		log.Debugf("redis ping: %s", rdbStatus.Val())
 	}
 
-	authService := auth.NewAuthService(&auth.Admin{
-		Username:     params.AdminUsername,
-		PasswordHash: params.AdminPasswordHash,
-	}, auth.DefaultTTL, rdb)
-	go func() {
-		for range time.Tick(time.Hour * 8) {
-			authService.ScanAndClean(ctx)
-		}
-	}()
+	authService := auth.NewAuthService(
+		&auth.Admin{
+			Username:     params.AdminUsername,
+			PasswordHash: params.AdminPasswordHash,
+		},
+		auth.DefaultLoginSessionTTL,
+		rdb,
+	)
 
 	// use honeycomb distro to setup OpenTelemetry SDK
 	otelShutdown, err := tracing.HoneycombSetup(params.HoneycombTracingEnabled, "main-backend", rdb)
@@ -204,7 +203,7 @@ func NewServer(
 
 		redisClient:  rdb,
 		authService:  authService,
-		loginChecker: auth.NewLoginChecker(auth.DefaultTTL, rdb),
+		loginChecker: auth.NewLoginChecker(auth.DefaultLoginSessionTTL, rdb),
 
 		// telemetry
 		metricsManager: metricsManager,
