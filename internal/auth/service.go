@@ -11,8 +11,6 @@ import (
 	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/go-redis/redis/v8"
-	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 var (
@@ -22,9 +20,9 @@ var (
 )
 
 const (
-	DefaultTTL       = 90 * 24 * time.Hour // 90 days ~ 3 months
-	sessionKeyPrefix = "serj-service-session||"
-	tokensSetKey     = "serj-service-sessions"
+	DefaultLoginSessionTTL = 90 * 24 * time.Hour // 90 days ~ 3 months
+	sessionKeyPrefix       = "serj-service-session||"
+	tokensSetKey           = "serj-service-sessions"
 )
 
 type Admin struct {
@@ -43,23 +41,23 @@ type LoginSession struct {
 }
 
 type Service struct {
-	admin       *Admin
-	redisClient *redis.Client
-	ttl         time.Duration
+	admin           *Admin
+	redisClient     *redis.Client
+	loginSessionTTL time.Duration
 	// ability to inject random string generator func for tokens (for unit and dev testing)
 	RandStringFunc func(s int) (string, error)
 }
 
 func NewAuthService(
 	admin *Admin,
-	ttl time.Duration,
+	loginSessionTTL time.Duration,
 	redisClient *redis.Client,
 ) *Service {
 	return &Service{
-		admin:          admin,
-		ttl:            ttl,
-		redisClient:    redisClient,
-		RandStringFunc: pkg.GenerateRandomString,
+		admin:           admin,
+		loginSessionTTL: loginSessionTTL,
+		redisClient:     redisClient,
+		RandStringFunc:  pkg.GenerateRandomString,
 	}
 }
 
@@ -81,7 +79,8 @@ func (as *Service) Login(ctx context.Context, creds Credentials, createdAt time.
 	}
 
 	sessionKey := sessionKeyPrefix + token
-	cmdSet := as.redisClient.Set(ctx, sessionKey, createdAt.Unix(), 0)
+	// TODO: avoid sending redis db.statement to honeycomb traces
+	cmdSet := as.redisClient.Set(ctx, sessionKey, createdAt.Unix(), as.loginSessionTTL)
 	if err := cmdSet.Err(); err != nil {
 		return "", err
 	}
@@ -126,68 +125,4 @@ func (as *Service) Logout(ctx context.Context, token string) (bool, error) {
 	}
 
 	return createdAtUnix > 0, nil
-}
-
-// ScanAndClean will run through all sessions, check the TTL, and clean them if old
-func (as *Service) ScanAndClean(ctx context.Context) {
-	ctx, span := tracing.GlobalTracer.Start(ctx, "authService.scanAndClean")
-	defer span.End()
-	defer func(start time.Time) {
-		span.SetAttributes(attribute.Int64("elapsed.ms", time.Since(start).Milliseconds()))
-	}(time.Now())
-
-	cmd := as.redisClient.SMembers(ctx, tokensSetKey)
-	if err := cmd.Err(); err != nil {
-		log.Errorf("!!! auth service, scan and clean, get sessions: %s", err)
-		return
-	}
-
-	sessionTokens := cmd.Val()
-	if len(sessionTokens) == 0 {
-		log.Warnln("=> auth service, scan and clean abort, no sessions")
-		return
-	}
-
-	log.Warnf("=> auth service, scan and clean [%d sessions] start ...", len(sessionTokens))
-	var toRemove []string
-	for _, token := range sessionTokens {
-		sessionKey := sessionKeyPrefix + token
-		cmd := as.redisClient.Get(ctx, sessionKey)
-		if err := cmd.Err(); err != nil {
-			log.Errorf("=> auth service, scan and clean token %s: %s", token, err)
-			continue
-		}
-
-		createdAtUnixStr := cmd.Val()
-		createdAtUnix, err := strconv.ParseInt(createdAtUnixStr, 10, 64)
-		if err != nil {
-			log.Errorf("=> auth service, scan and clean token %s: %s", token, err)
-			// just remove the token with invalid value
-			toRemove = append(toRemove, token)
-			continue
-		}
-
-		createdAt := time.Unix(createdAtUnix, 0)
-		sessionDuration := time.Since(createdAt)
-		if sessionDuration > as.ttl {
-			log.Warnf("=>\twill clean the session with token: %s", token)
-			toRemove = append(toRemove, token)
-		}
-	}
-
-	for _, token := range toRemove {
-		sessionKey := sessionKeyPrefix + token
-		cmdSet := as.redisClient.Del(ctx, sessionKey)
-		if err := cmdSet.Err(); err != nil {
-			log.Errorf("=> auth service, clean token %s: %s", token, err)
-			continue
-		}
-
-		// remove token from the list of sessions
-		cmdSRem := as.redisClient.SRem(ctx, tokensSetKey, token)
-		if err := cmdSRem.Err(); err != nil {
-			log.Errorf("=> auth service, clean token %s: %s", token, err)
-			continue
-		}
-	}
 }

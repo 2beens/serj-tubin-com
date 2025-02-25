@@ -71,7 +71,7 @@ func NewFileService(
 
 	return &FileService{
 		api:           api,
-		loginChecker:  auth.NewLoginChecker(auth.DefaultTTL, rdb),
+		loginChecker:  auth.NewLoginChecker(auth.DefaultLoginSessionTTL, rdb),
 		shutdownFuncs: shutdownFuncs,
 	}, nil
 }

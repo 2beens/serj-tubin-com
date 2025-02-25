@@ -42,7 +42,7 @@ func TestAuthService_NewAuthService(t *testing.T) {
 	authService := NewAuthService(testAdmin, time.Hour, db)
 	require.NotNil(t, authService)
 	assert.NotNil(t, authService.redisClient)
-	assert.Equal(t, time.Hour, authService.ttl)
+	assert.Equal(t, time.Hour, authService.loginSessionTTL)
 
 	testToken := "test_token"
 	randStringFunc := func(s int) (string, error) {
