@@ -15,7 +15,7 @@ jobs:
         with:
           go-version-file: ./go.mod
       - name: Cache Go Modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.cache/go-build
@@ -31,7 +31,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           args: --timeout 6m
-          version: v1.62.0
+          version: v1.64.8
 
   tests:
     name: Unit Tests
