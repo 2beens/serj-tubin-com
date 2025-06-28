@@ -246,7 +246,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	now := time.Now().In(time.Local)
+	now := time.Now()
 
 	ex1TricepsExType := exercises.ExerciseType{
 		ExerciseID:  "ex1",
@@ -419,10 +419,10 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Equal(t, 1, addedE4.CountToday)
 		assert.Equal(t, 2, addedE5.CountToday) // testing one will be ignored, that's why 2 and not 3
 
-		assert.Equal(t, e1.CreatedAt.Truncate(time.Second).In(time.UTC), addedE1.CreatedAt.Truncate(time.Second).In(time.UTC))
-		assert.Equal(t, e2.CreatedAt.Truncate(time.Second).In(time.UTC), addedE2.CreatedAt.Truncate(time.Second).In(time.UTC))
-		assert.Equal(t, e3.CreatedAt.Truncate(time.Second).In(time.UTC), addedE3.CreatedAt.Truncate(time.Second).In(time.UTC))
-		assert.Equal(t, e4.CreatedAt.Truncate(time.Second).In(time.UTC), addedE4.CreatedAt.Truncate(time.Second).In(time.UTC))
+		assert.Equal(t, e1.CreatedAt.Truncate(time.Second), addedE1.CreatedAt.Truncate(time.Second))
+		assert.Equal(t, e2.CreatedAt.Truncate(time.Second), addedE2.CreatedAt.Truncate(time.Second))
+		assert.Equal(t, e3.CreatedAt.Truncate(time.Second), addedE3.CreatedAt.Truncate(time.Second))
+		assert.Equal(t, e4.CreatedAt.Truncate(time.Second), addedE4.CreatedAt.Truncate(time.Second))
 		addedE1.CreatedAt = e1.CreatedAt
 		addedE2.CreatedAt = e2.CreatedAt
 		addedE3.CreatedAt = e3.CreatedAt
@@ -439,7 +439,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		require.Len(t, avgDurationResp.DurationPerDay, 1)
 		assert.Equal(t,
 			float64(3.3333333333333335),
-			avgDurationResp.DurationPerDay[time.Now().UTC().Truncate(24*time.Hour)].Minutes(),
+			avgDurationResp.DurationPerDay[now.Truncate(24*time.Hour)].Minutes(),
 		)
 
 		ex2history := s.getExerciseHistory(ctx, exercises.ExerciseParams{
@@ -572,7 +572,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Equal(t, e3.ID, exercisesListResp.Exercises[1].ID)
 
 		// lastly, try update
-		newCreatedAt := e3.CreatedAt.Add(-time.Minute * 10).In(time.UTC)
+		newCreatedAt := e3.CreatedAt.Add(-time.Minute * 10)
 		updateResp := s.updateExerciseRequest(ctx, exercises.Exercise{
 			ID:          e3.ID,
 			ExerciseID:  ex3legsExType.ExerciseID,

@@ -52,7 +52,7 @@ func (s *IntegrationTestSuite) addExerciseTypeRequest(
 	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 
-	fmt.Printf("add ex. type, response body: %s\n", string(respBytes))
+	fmt.Printf("add ex. type, response body: [%s]\n", string(respBytes))
 }
 
 func (s *IntegrationTestSuite) getAllExerciseTypesRequest(
