@@ -2,7 +2,7 @@ CREATE TABLE public.blog
 (
     id         SERIAL PRIMARY KEY,
     title      VARCHAR NOT NULL,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
     content    TEXT    NOT NULL,
     claps      INTEGER NOT NULL DEFAULT 0
 );
@@ -30,7 +30,7 @@ CREATE TABLE public.note
 (
     id         SERIAL PRIMARY KEY,
     title      VARCHAR,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
     content    TEXT NOT NULL
 );
 
@@ -45,7 +45,7 @@ CREATE TABLE public.exercise
     kilos        INTEGER NOT NULL,
     reps         INTEGER NOT NULL,
     metadata     JSONB NOT NULL DEFAULT '{}',
-    created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL
+    created_at   TIMESTAMPTZ NOT NULL
 
     -- TODO: add fk constraint to exercise_type table after DB cleanup
     -- because there are exercises added from before, with invalid exercise_id
@@ -64,7 +64,7 @@ CREATE TABLE public.exercise_type
     muscle_group VARCHAR NOT NULL,  -- example: "legs", "chest", etc.
     name         VARCHAR NOT NULL,  -- example: "Deadlift", "Bench Press", etc.
     description  TEXT,
-    created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (exercise_id, muscle_group)
 );
 
@@ -79,7 +79,7 @@ CREATE TABLE public.exercise_image
     id           BIGINT PRIMARY KEY,
     exercise_id  VARCHAR NOT NULL,
     muscle_group VARCHAR NOT NULL,
-    created_at   TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL,
     CONSTRAINT fk_exercise FOREIGN KEY (exercise_id, muscle_group) REFERENCES public.exercise_type (exercise_id, muscle_group)
 );
 
@@ -91,7 +91,7 @@ CREATE TABLE public.gymstats_event
     id         SERIAL PRIMARY KEY,
     type       VARCHAR NOT NULL,
     data       JSONB NOT NULL DEFAULT '{}',
-    timestamp  TIMESTAMP WITHOUT TIME ZONE NOT NULL
+    timestamp  TIMESTAMPTZ NOT NULL
 );
 
 ALTER TABLE public.gymstats_event OWNER TO postgres;
@@ -102,7 +102,7 @@ CREATE TABLE public.visitor_board_message
     id         SERIAL PRIMARY KEY,
     author     VARCHAR,
     message    VARCHAR NOT NULL,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+    created_at TIMESTAMPTZ NOT NULL
 );
 
 ALTER TABLE public.visitor_board_message OWNER TO postgres;
