@@ -1,11 +1,20 @@
 apiVersion: 1
 
 providers:
-- name: 'Prometheus'
+- name: 'Serj Tubin Com Dashboards'
   orgId: 1
-  folder: ''
+  folder: 'Application'
   type: file
   disableDeletion: false
   editable: true
   options:
-    path: /etc/grafana/provisioning/dashboards
+    path: /etc/grafana/provisioning/dashboards/app
+
+- name: 'Infrastructure Dashboards'
+  orgId: 1
+  folder: 'Infrastructure'
+  type: file
+  disableDeletion: false
+  editable: true
+  options:
+    path: /etc/grafana/provisioning/dashboards/infrastructure
