@@ -3,6 +3,7 @@ networks:
     driver: bridge
   app-network:
     external: true
+    name: docker_app-network
 
 services:
   # Prometheus metrics collection
