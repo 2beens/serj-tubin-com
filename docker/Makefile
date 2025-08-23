@@ -1,84 +1,100 @@
-.PHONY: up up-nc up-win
-.PHONY: down down-nc down-win
-.PHONY: stop stop-nc stop-win
-.PHONY: up-prometheus up-redis down-prometheus down-redis
-.PHONY: logs-fileservice logs-main
+.PHONY: up down stop restart
+.PHONY: up-monitoring down-monitoring stop-monitoring
+.PHONY: logs-fileservice logs-main logs-all
 .PHONY: rebuild-fileservice rebuild-mainservice
-.PHONY: up-mainservice-nc, down-mainservice-nc, stop-mainservice-nc
-.PHONY: up-mainservice, down-mainservice, stop-mainservice
-.PHONY: redis-cli
+.PHONY: redis-cli clean
 
-# using regular docker on unix
+# Core application services
 up:
-	@echo "Starting services ..."
-	@./run.sh up
+	@echo "Starting core services..."
+	@docker compose up --build -d
+
 down:
-	@echo "Stopping services ..."
-	@./run.sh down
+	@echo "Stopping core services..."
+	@docker compose down
+
 stop:
-	@echo "Stopping services ..."
-	@./run.sh stop
+	@echo "Stopping core services..."
+	@docker compose stop
 
-# using nerdctl
-up-nc:
-	@echo "Starting services via nerdctl ..."
-	@./run.sh up --nerdctl
-down-nc:
-	@echo "Removing services via nerdctl ..."
-	@./run.sh down --nerdctl
-stop-nc:
-	@echo "Stopping services via nerdctl ..."
-	@./run.sh stop --nerdctl
+restart:
+	@echo "Restarting core services..."
+	@docker compose restart
 
-# oh my dear windows
-up-win:
-	powershell.exe -Command "docker compose -p serjservice up --build -d"
-down-win:
-	powershell.exe -Command "docker compose -p serjservice down"
-stop-win:
-	powershell.exe -Command "docker compose -p serjservice stop"
+# Monitoring stack (optional)
+up-monitoring:
+	@echo "Starting monitoring stack..."
+	@docker compose -f docker-compose.monitoring.yml up -d
 
-# will run only the main service and its dependencies
+down-monitoring:
+	@echo "Stopping monitoring stack..."
+	@docker compose -f docker-compose.monitoring.yml down
+
+stop-monitoring:
+	@echo "Stopping monitoring stack..."
+	@docker compose -f docker-compose.monitoring.yml stop
+
+# Combined operations
+up-all:
+	@echo "Starting all services (core + monitoring)..."
+	@docker compose up --build -d
+	@docker compose -f docker-compose.monitoring.yml up -d
+
+down-all:
+	@echo "Stopping all services..."
+	@docker compose down
+	@docker compose -f docker-compose.monitoring.yml down
+
+# Individual service operations
 up-mainservice:
-	@docker compose -f docker-compose.yml -f docker-compose.apple-m1.yml up mainservice --build -d
-down-mainservice:
-	@docker compose -f docker-compose.yml -f docker-compose.apple-m1.yml down
-stop-mainservice:
-	@docker compose -f docker-compose.yml -f docker-compose.apple-m1.yml stop mainservice
+	@echo "Starting main service and dependencies..."
+	@docker compose up mainservice --build -d
 
-up-mainservice-nc:
-	@nerdctl compose -f docker-compose.yml -f docker-compose.apple-m1.yml up mainservice --build -d
-down-mainservice-nc:
-	@nerdctl compose -f docker-compose.yml -f docker-compose.apple-m1.yml down
-stop-mainservice-nc:
-	@nerdctl compose -f docker-compose.yml -f docker-compose.apple-m1.yml stop mainservice
+up-fileservice:
+	@echo "Starting file service and dependencies..."
+	@docker compose up fileservice --build -d
 
-up-prometheus:
-	@echo "Starting Prometheus in Docker ..."
-	@docker compose -p serj-tubin-com-prometheus -f docker-compose-prometheus.yml up -d
-up-redis:
-	@echo "Starting Redis in Docker ..."
-	@docker compose -p serj-tubin-com-redis -f docker-compose-redis.yml up -d
-
-down-prometheus:
-	@echo "Stopping Prometheus in Docker ..."
-	@docker compose -p serj-tubin-com-prometheus -f docker-compose-prometheus.yml down
-down-redis:
-	@echo "Stopping Redis in Docker ..."
-	@docker compose -p serj-tubin-com-redis -f docker-compose-redis.yml down
-
+# Logs
 logs-fileservice:
-	@docker compose -p serjservice logs fileservice --follow
+	@docker compose logs fileservice --follow
+
 logs-main:
-	@docker compose -p serjservice logs mainservice --follow
+	@docker compose logs mainservice --follow
 
+logs-all:
+	@docker compose logs --follow
+
+# Rebuild services
 rebuild-fileservice:
-	@echo "Recreating file service without building dependencies ..."
-	@docker compose -p serjservice up -d --force-recreate --no-deps --build fileservice
-rebuild-mainservice:
-	@echo "Recreating main service without building dependencies ..."
-	@docker compose -p serjservice up -d --force-recreate --no-deps --build mainservice
+	@echo "Rebuilding file service..."
+	@docker compose up -d --force-recreate --no-deps --build fileservice
 
+rebuild-mainservice:
+	@echo "Rebuilding main service..."
+	@docker compose up -d --force-recreate --no-deps --build mainservice
+
+# Utilities
 redis-cli:
-	@echo "Accessing Redis CLI ..."
+	@echo "Accessing Redis CLI..."
 	@docker exec -it st-redis redis-cli -a $${SERJ_REDIS_PASS}
+
+clean:
+	@echo "Cleaning up unused Docker resources..."
+	@docker system prune -f
+	@docker volume prune -f
+
+# Help
+help:
+	@echo "Available commands:"
+	@echo "  up              - Start core services"
+	@echo "  down            - Stop and remove core services"
+	@echo "  stop            - Stop core services"
+	@echo "  restart         - Restart core services"
+	@echo "  up-monitoring   - Start monitoring stack"
+	@echo "  down-monitoring - Stop monitoring stack"
+	@echo "  up-all          - Start all services"
+	@echo "  down-all        - Stop all services"
+	@echo "  logs-*          - View logs for specific services"
+	@echo "  rebuild-*       - Rebuild specific services"
+	@echo "  redis-cli       - Access Redis CLI"
+	@echo "  clean           - Clean up unused Docker resources"

@@ -1,3 +1,18 @@
-# username is admin
-GF_SECURITY_ADMIN_PASSWORD=todo
+# Grafana Configuration
+# Default admin credentials: admin / admin123
+GF_SECURITY_ADMIN_PASSWORD=admin123
 GF_USERS_ALLOW_SIGN_UP=false
+
+# Server settings
+GF_SERVER_ROOT_URL=http://localhost:3000
+GF_SERVER_SERVE_FROM_SUB_PATH=false
+
+# Analytics and reporting
+GF_ANALYTICS_REPORTING_ENABLED=false
+GF_ANALYTICS_CHECK_FOR_UPDATES=false
+
+# Dashboard settings
+GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/serj-tubin-overview.json
+
+# Logging
+GF_LOG_LEVEL=info
