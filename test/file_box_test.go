@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/stretchr/testify/assert"
@@ -24,11 +25,13 @@ func (s *IntegrationTestSuite) TestFileBox() {
 
 	// 1. Create a new folder
 	// POST /f/{parentId}/new
-	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/f/0/new", fileServiceEndpoint), nil)
+	form := url.Values{}
+	form.Add("name", "test-folder")
+	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/f/0/new", fileServiceEndpoint), strings.NewReader(form.Encode()))
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", token)
-	req.Header.Set("Origin", "http://localhost")
-	req.PostForm = map[string][]string{"name": {"test-folder"}}
+	req.Header.Set("Origin", "test")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := s.httpClient.Do(req)
 	require.NoError(t, err)
@@ -56,7 +59,7 @@ func (s *IntegrationTestSuite) TestFileBox() {
 	req, err = http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/f/upload/%s", fileServiceEndpoint, folderIdStr), &b)
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", token)
-	req.Header.Set("Origin", "http://localhost")
+	req.Header.Set("Origin", "test")
 	req.Header.Set("Content-Type", w.FormDataContentType())
 
 	resp, err = s.httpClient.Do(req)
@@ -77,7 +80,7 @@ func (s *IntegrationTestSuite) TestFileBox() {
 	req, err = http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/link/%s", fileServiceEndpoint, fileIdStr), nil)
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", token)
-	req.Header.Set("Origin", "http://localhost")
+	req.Header.Set("Origin", "test")
 
 	resp, err = s.httpClient.Do(req)
 	require.NoError(t, err)
@@ -89,11 +92,13 @@ func (s *IntegrationTestSuite) TestFileBox() {
 
 	// 4. Delete the file
 	// POST /f/del
-	req, err = http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/f/del", fileServiceEndpoint), nil)
+	delForm := url.Values{}
+	delForm.Add("ids", fileIdStr)
+	req, err = http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/f/del", fileServiceEndpoint), strings.NewReader(delForm.Encode()))
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", token)
-	req.Header.Set("Origin", "http://localhost")
-	req.PostForm = map[string][]string{"ids": {fileIdStr}}
+	req.Header.Set("Origin", "test")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err = s.httpClient.Do(req)
 	require.NoError(t, err)
@@ -107,7 +112,7 @@ func (s *IntegrationTestSuite) TestFileBox() {
 	req, err = http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/link/%s", fileServiceEndpoint, fileIdStr), nil)
 	require.NoError(t, err)
 	req.Header.Set("X-SERJ-TOKEN", token)
-	req.Header.Set("Origin", "http://localhost")
+	req.Header.Set("Origin", "test")
 	resp, err = s.httpClient.Do(req)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode) // currently returns 500 on file not found in handleGet, or 404 if handled
