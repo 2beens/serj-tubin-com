@@ -261,3 +261,29 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	require.ErrorIs(t, err, ErrFolderNotFound)
 	assert.Nil(t, folder11)
 }
+
+func TestDiskApi_NewFolder_Sanitization(t *testing.T) {
+	tempDir := t.TempDir()
+	api, err := NewDiskApi(tempDir)
+	require.NoError(t, err)
+
+	// Case 1: Path traversal attempt
+	folder, err := api.NewFolder(context.Background(), 0, "../foo")
+	require.NoError(t, err)
+	assert.Equal(t, "foo", folder.Name)
+
+	// Case 2: Nested path attempt
+	folder, err = api.NewFolder(context.Background(), 0, "bar/baz")
+	require.NoError(t, err)
+	assert.Equal(t, "baz", folder.Name)
+
+	// Case 3: Absolute path attempt
+	folder, err = api.NewFolder(context.Background(), 0, "/etc")
+	require.NoError(t, err)
+	assert.Equal(t, "etc", folder.Name)
+
+	// Case 4: Invalid character (backslash is explicitly forbidden in code)
+	folder, err = api.NewFolder(context.Background(), 0, "foo\\bar")
+	assert.Error(t, err)
+	assert.Nil(t, folder)
+}

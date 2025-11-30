@@ -1,11 +1,9 @@
 package file_box
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -155,18 +153,15 @@ func (handler *FileHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fileContent, err := os.ReadFile(fileInfo.Path)
+	file, err := os.Open(fileInfo.Path)
 	if err != nil {
-		log.Errorf("read file [%s]: %s", fileInfo.Path, err)
+		log.Errorf("open file [%s]: %s", fileInfo.Path, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	defer file.Close()
 
-	if _, err := io.Copy(w, bytes.NewReader(fileContent)); err != nil {
-		log.Errorf("copy file content for [%s]: %s", fileInfo.Path, err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
+	http.ServeContent(w, r, fileInfo.Name, fileInfo.CreatedAt, file)
 }
 
 func (handler *FileHandler) handleUpdateInfo(w http.ResponseWriter, r *http.Request) {

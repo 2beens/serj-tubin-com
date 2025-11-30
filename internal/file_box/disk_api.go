@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -124,28 +125,40 @@ type SaveFileParams struct {
 }
 
 func (da *DiskApi) Save(ctx context.Context, params SaveFileParams) (_ int64, err error) {
-	da.mutex.Lock()
-	defer da.mutex.Unlock()
-
-	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.updateInfo")
+	_, span := tracing.GlobalTracer.Start(ctx, "diskApi.save")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
+
+	// Sanitize filename
+	params.Filename = filepath.Base(params.Filename)
 
 	span.SetAttributes(attribute.String("file.name", params.Filename))
 	span.SetAttributes(attribute.Int64("file.size", params.Size))
 	log.Debugf("disk api: saving new file: %s, folder id: %d", params.Filename, params.FolderId)
 
+	// 1. Initial check with Read Lock
+	da.mutex.RLock()
 	folder := da.getFolder(da.root, params.FolderId)
 	if folder == nil {
+		da.mutex.RUnlock()
 		return -1, ErrFolderNotFound
 	}
+	folderPath := folder.Path
+	da.mutex.RUnlock()
 
-	log.Debugf("disk api: parent folder found: %s", folder.Path)
+	log.Debugf("disk api: parent folder found: %s", folderPath)
 
+	// 2. Perform I/O without holding the lock
 	newId := NewId()
 	newFileName := fmt.Sprintf("%d_%s", newId, params.Filename)
-	newFilePath := path.Join(folder.Path, newFileName)
+	newFilePath := filepath.Join(folderPath, newFileName)
+
+	// Check if file already exists (unlikely with timestamp ID, but good practice)
+	if _, err := os.Stat(newFilePath); err == nil {
+		return -1, fmt.Errorf("file already exists: %s", newFilePath)
+	}
+
 	dst, err := os.Create(newFilePath)
 	if err != nil {
 		return -1, err
@@ -154,6 +167,20 @@ func (da *DiskApi) Save(ctx context.Context, params SaveFileParams) (_ int64, er
 
 	if _, err := io.Copy(dst, params.File); err != nil {
 		return -1, err
+	}
+
+	// 3. Update structure with Write Lock
+	da.mutex.Lock()
+	defer da.mutex.Unlock()
+
+	// Re-fetch folder in case it was deleted while we were writing the file
+	folder = da.getFolder(da.root, params.FolderId)
+	if folder == nil {
+		// Cleanup the file we just wrote
+		if removeErr := os.Remove(newFilePath); removeErr != nil {
+			log.Errorf("failed to remove file after folder not found: %s", removeErr)
+		}
+		return -1, ErrFolderNotFound
 	}
 
 	newFile := &File{
@@ -309,6 +336,13 @@ func (da *DiskApi) NewFolder(ctx context.Context, parentId int64, name string) (
 
 	log.Debugf("disk api: creating new child folder for: %d", parentId)
 
+	// Sanitize folder name
+	name = filepath.Base(name)
+
+	if strings.Contains(name, "..") || strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		return nil, errors.New("invalid folder name")
+	}
+
 	parentFolder := da.getFolder(da.root, parentId)
 	if parentFolder == nil {
 		return nil, fmt.Errorf("parent folder [%d]: %w", parentId, ErrFolderNotFound)
@@ -320,7 +354,7 @@ func (da *DiskApi) NewFolder(ctx context.Context, parentId int64, name string) (
 		}
 	}
 
-	newPath := path.Join(parentFolder.Path, name)
+	newPath := filepath.Join(parentFolder.Path, name)
 	if err := os.Mkdir(newPath, 0755); err != nil {
 		return nil, fmt.Errorf("create child folder [%s]: %s", name, err)
 	} else {
