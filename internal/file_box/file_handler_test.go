@@ -419,3 +419,61 @@ func TestFileHandler_handleGetRoot(t *testing.T) {
 }
 
 // TODO: add the rest :)
+
+func TestFileHandler_handleGet_ContentTypeAndRange(t *testing.T) {
+	ctx := context.Background()
+	tempRootDir := t.TempDir()
+	api, err := NewDiskApi(tempRootDir)
+	require.NoError(t, err)
+
+	// Create a dummy video file
+	fileName := "video.mp4"
+	fileContent := make([]byte, 100)
+	for i := range fileContent {
+		fileContent[i] = byte(i)
+	}
+	contentReader := bytes.NewReader(fileContent)
+
+	fileId, err := api.Save(
+		ctx,
+		SaveFileParams{
+			Filename:  fileName,
+			FolderId:  0,
+			Size:      int64(len(fileContent)),
+			FileType:  "video/mp4",
+			File:      contentReader,
+			IsPrivate: false,
+		},
+	)
+	require.NoError(t, err)
+
+	loginChecker := auth.NewLoginTestChecker()
+	fileHandler := NewFileHandler(api, loginChecker)
+	metricsManager := metrics.NewTestManager()
+	r := RouterSetup(fileHandler, metricsManager)
+
+	// Test 1: Check Content-Type
+	req, err := http.NewRequest("GET", fmt.Sprintf("/link/%d", fileId), nil)
+	require.NoError(t, err)
+	req.Header.Set("Origin", "test")
+
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "video/mp4", rr.Header().Get("Content-Type"))
+	assert.Equal(t, fileContent, rr.Body.Bytes())
+
+	// Test 2: Range Request (first 10 bytes)
+	reqRange, err := http.NewRequest("GET", fmt.Sprintf("/link/%d", fileId), nil)
+	require.NoError(t, err)
+	reqRange.Header.Set("Origin", "test")
+	reqRange.Header.Set("Range", "bytes=0-9")
+
+	rrRange := httptest.NewRecorder()
+	r.ServeHTTP(rrRange, reqRange)
+
+	assert.Equal(t, http.StatusPartialContent, rrRange.Code)
+	assert.Equal(t, "bytes 0-9/100", rrRange.Header().Get("Content-Range"))
+	assert.Equal(t, fileContent[:10], rrRange.Body.Bytes())
+}
