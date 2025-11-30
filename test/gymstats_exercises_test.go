@@ -419,10 +419,10 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Equal(t, 1, addedE4.CountToday)
 		assert.Equal(t, 2, addedE5.CountToday) // testing one will be ignored, that's why 2 and not 3
 
-		assert.Equal(t, e1.CreatedAt.Truncate(time.Second), addedE1.CreatedAt.Truncate(time.Second))
-		assert.Equal(t, e2.CreatedAt.Truncate(time.Second), addedE2.CreatedAt.Truncate(time.Second))
-		assert.Equal(t, e3.CreatedAt.Truncate(time.Second), addedE3.CreatedAt.Truncate(time.Second))
-		assert.Equal(t, e4.CreatedAt.Truncate(time.Second), addedE4.CreatedAt.Truncate(time.Second))
+		assert.WithinDuration(t, e1.CreatedAt, addedE1.CreatedAt, time.Second)
+		assert.WithinDuration(t, e2.CreatedAt, addedE2.CreatedAt, time.Second)
+		assert.WithinDuration(t, e3.CreatedAt, addedE3.CreatedAt, time.Second)
+		assert.WithinDuration(t, e4.CreatedAt, addedE4.CreatedAt, time.Second)
 		addedE1.CreatedAt = e1.CreatedAt
 		addedE2.CreatedAt = e2.CreatedAt
 		addedE3.CreatedAt = e3.CreatedAt
@@ -593,10 +593,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Equal(t, ex3legsExType.MuscleGroup, updatedEx3.MuscleGroup)
 		assert.Equal(t, 220, updatedEx3.Kilos)
 		assert.Equal(t, 15, updatedEx3.Reps)
-		assert.Equal(t,
-			newCreatedAt.Truncate(time.Second),
-			updatedEx3.CreatedAt.Truncate(time.Second),
-		)
+		assert.WithinDuration(t, newCreatedAt, updatedEx3.CreatedAt, time.Second)
 		assert.Equal(t, map[string]string{
 			"test": "false",
 			"env":  "stage",
