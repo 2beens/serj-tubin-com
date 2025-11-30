@@ -13,6 +13,7 @@ import (
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/db"
+	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/go-redis/redis/v8"
@@ -41,10 +42,11 @@ var (
 type IntegrationTestSuite struct {
 	suite.Suite
 
-	dbPool     *pgxpool.Pool
-	dockerPool *dockertest.Pool
-	server     *internal.Server
-	teardown   []func()
+	dbPool      *pgxpool.Pool
+	dockerPool  *dockertest.Pool
+	server      *internal.Server
+	fileService *file_box.FileService
+	teardown    []func()
 
 	httpClient  *http.Client
 	redisClient *redis.Client
@@ -164,6 +166,30 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	s.server.Serve(ctx, cfg.Host, cfg.Port)
 	fmt.Println("server started")
+
+	// setup file service
+	fileBoxRootDir, err := os.MkdirTemp("", "file-box-root")
+	if err != nil {
+		s.cleanup()
+		log.Fatalf("create temp dir for file box: %s", err)
+	}
+	s.fileService, err = file_box.NewFileService(
+		ctx,
+		fileBoxRootDir,
+		"localhost",
+		func() int {
+			p, _ := strconv.Atoi(redisPort)
+			return p
+		}(),
+		"", // no password for test redis
+		false,
+	)
+	if err != nil {
+		s.cleanup()
+		log.Fatalf("new file service: %s", err)
+	}
+	go s.fileService.SetupAndServe("localhost", 9001)
+	fmt.Println("file service started")
 }
 
 // runs after all tests are executed
@@ -177,6 +203,10 @@ func (s *IntegrationTestSuite) cleanup() {
 		s.server.GracefulShutdown()
 	}
 	fmt.Println(" --> test suite server shut down")
+	if s.fileService != nil {
+		s.fileService.GracefulShutdown()
+	}
+	fmt.Println(" --> test suite file service shut down")
 	for _, teardown := range s.teardown {
 		teardown()
 	}
