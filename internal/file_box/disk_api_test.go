@@ -261,3 +261,29 @@ func TestDiskApi_DeleteFolder(t *testing.T) {
 	require.ErrorIs(t, err, ErrFolderNotFound)
 	assert.Nil(t, folder11)
 }
+
+func TestDiskApi_NewFolder_Validation(t *testing.T) {
+	tempDir := t.TempDir()
+	api, err := NewDiskApi(tempDir)
+	require.NoError(t, err)
+
+	invalidNames := []string{
+		"../foo",
+		"foo/bar",
+		"foo\\bar",
+		"/etc",
+	}
+
+	for _, name := range invalidNames {
+		folder, err := api.NewFolder(context.Background(), 0, name)
+		assert.Error(t, err, "expected error for name: %s", name)
+		assert.Nil(t, folder)
+		assert.Contains(t, err.Error(), "invalid folder name")
+	}
+
+	// Valid name should succeed
+	folder, err := api.NewFolder(context.Background(), 0, "valid-name")
+	require.NoError(t, err)
+	assert.NotNil(t, folder)
+	assert.Equal(t, "valid-name", folder.Name)
+}
