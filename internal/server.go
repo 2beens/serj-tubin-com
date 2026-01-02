@@ -287,6 +287,10 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/{id}", gymStatsExercisesHandler.HandleDelete).Methods("DELETE", "OPTIONS").Name("delete-exercise")
 	r.HandleFunc("/gymstats/list/page/{page}/size/{size}", gymStatsExercisesHandler.HandleList).Methods("GET", "OPTIONS").Name("list-exercises")
 
+	gymStatsStatsHandler := exercises.NewStatsHandler(gsRepo)
+	r.HandleFunc("/gymstats/stats/verify", gymStatsStatsHandler.HandleVerifyToken).Methods("GET", "OPTIONS").Name("verify-token")
+	r.HandleFunc("/gymstats/stats/progress", gymStatsStatsHandler.HandleProgress).Methods("GET", "OPTIONS").Name("stats-progress")
+
 	gymStatsExTypesHandler := exercises.NewTypesHandler(s.gymStatsDiskApi, gsRepo)
 	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleAdd).Methods("POST", "OPTIONS")
 	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleGet).Methods("GET", "OPTIONS")
