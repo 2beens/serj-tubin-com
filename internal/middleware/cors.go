@@ -11,6 +11,7 @@ var allowedOrigins = map[string]bool{
 	"https://www.serj-tubin.com": true,
 	"https://2beens.online":      true,
 	"http://localhost:8080":      true,
+	"http://localhost:3000":      true, // Gym Stats Analytics frontend
 	"test":                       true,
 }
 
@@ -26,6 +27,7 @@ func Cors() func(next http.Handler) http.Handler {
 				return
 			}
 
+			var isAllowed bool
 			switch {
 			case
 				allowedOrigins[origin],
@@ -45,6 +47,7 @@ func Cors() func(next http.Handler) http.Handler {
 						allowOrigin = "*"
 					}
 					w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+					isAllowed = true
 					w.Header().Set("Access-Control-Allow-Headers",
 						"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-SERJ-TOKEN, X-MCP-Secret, MCP-Protocol-Version, MCP-Session-Id",
 					)
@@ -53,6 +56,12 @@ func Cors() func(next http.Handler) http.Handler {
 			default:
 				log.Warnf("CORS: origin not allowed for path [%s] and origin [%s]", r.URL.Path, origin)
 				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+
+			// Handle preflight OPTIONS requests
+			if r.Method == http.MethodOptions && isAllowed {
+				w.WriteHeader(http.StatusOK)
 				return
 			}
 

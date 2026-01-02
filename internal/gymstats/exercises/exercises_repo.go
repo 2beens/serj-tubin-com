@@ -385,3 +385,99 @@ func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
 
 	return exercises, nil
 }
+
+// GetProgressOverTime returns progress statistics grouped by date for a muscle group
+func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup string) (_ []ProgressData, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.progress_over_time")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+	span.SetAttributes(attribute.String("muscle_group", muscleGroup))
+
+	var query string
+	var args []interface{}
+
+	if muscleGroup == "all" {
+		query = `
+			SELECT 
+				DATE(created_at) as date,
+				AVG(kilos)::numeric(10,2) as avg_weight,
+				MAX(kilos) as max_weight,
+				SUM(kilos * reps)::numeric(10,2) as total_volume,
+				COUNT(*) as exercise_count
+			FROM exercise
+			WHERE metadata->>'env' = 'prod' OR metadata->>'env' = 'production'
+				AND (metadata->>'testing' != 'true' AND metadata->>'test' != 'true')
+			GROUP BY DATE(created_at)
+			ORDER BY date DESC
+			LIMIT 90;
+		`
+		args = []interface{}{}
+	} else {
+		query = `
+			SELECT 
+				DATE(created_at) as date,
+				AVG(kilos)::numeric(10,2) as avg_weight,
+				MAX(kilos) as max_weight,
+				SUM(kilos * reps)::numeric(10,2) as total_volume,
+				COUNT(*) as exercise_count
+			FROM exercise
+			WHERE muscle_group = $1
+				AND (metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
+				AND (metadata->>'testing' != 'true' AND metadata->>'test' != 'true')
+			GROUP BY DATE(created_at)
+			ORDER BY date DESC
+			LIMIT 90;
+		`
+		args = []interface{}{muscleGroup}
+	}
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query progress: %w", err)
+	}
+	defer rows.Close()
+
+	var progress []ProgressData
+	for rows.Next() {
+		var pd ProgressData
+		var dateStr string
+		var avgWeight float64
+		var maxWeight int
+		var totalVolume float64
+		var exerciseCount int
+
+		if err := rows.Scan(&dateStr, &avgWeight, &maxWeight, &totalVolume, &exerciseCount); err != nil {
+			return nil, fmt.Errorf("scan progress row: %w", err)
+		}
+
+		// Parse date
+		date, err := time.Parse("2006-01-02", dateStr)
+		if err != nil {
+			return nil, fmt.Errorf("parse date %s: %w", dateStr, err)
+		}
+
+		pd.Date = date
+		pd.AvgWeight = avgWeight
+		pd.MaxWeight = maxWeight
+		pd.TotalVolume = totalVolume
+		pd.ExerciseCount = exerciseCount
+
+		progress = append(progress, pd)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	// Reverse to get chronological order (oldest first)
+	for i, j := 0, len(progress)-1; i < j; i, j = i+1, j-1 {
+		progress[i], progress[j] = progress[j], progress[i]
+	}
+
+	if progress == nil {
+		progress = make([]ProgressData, 0)
+	}
+
+	return progress, nil
+}

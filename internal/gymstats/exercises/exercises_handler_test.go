@@ -11,9 +11,9 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestHandler_HandleAdd(t *testing.T) {
