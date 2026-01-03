@@ -410,6 +410,7 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup string) (_ [
 				AND (metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')
 				AND (metadata->>'test' IS NULL OR metadata->>'test' != 'true')
 			GROUP BY DATE(created_at)
+			HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
 			ORDER BY DATE(created_at) DESC
 			LIMIT 90;
 		`
@@ -428,6 +429,7 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup string) (_ [
 				AND (metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')
 				AND (metadata->>'test' IS NULL OR metadata->>'test' != 'true')
 			GROUP BY DATE(created_at)
+			HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
 			ORDER BY DATE(created_at) DESC
 			LIMIT 90;
 		`
