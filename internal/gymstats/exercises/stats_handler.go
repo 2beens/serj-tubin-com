@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
@@ -101,6 +102,79 @@ func (handler *StatsHandler) HandleProgressionRate(w http.ResponseWriter, r *htt
 	responseJson, err := json.Marshal(response)
 	if err != nil {
 		log.Errorf("failed to marshal progression rate response: %s", err)
+		http.Error(w, "failed to marshal response", http.StatusInternalServerError)
+		return
+	}
+
+	pkg.WriteJSONResponseOK(w, string(responseJson))
+}
+
+// HandleExercisesByDateRange returns exercises for a specific date or date range
+func (handler *StatsHandler) HandleExercisesByDateRange(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.stats.exercises_by_date_range")
+	defer span.End()
+
+	muscleGroup := r.URL.Query().Get("muscle_group")
+	if muscleGroup == "" {
+		muscleGroup = "all"
+	}
+	exerciseID := r.URL.Query().Get("exercise_id") // Optional: filter by exercise type
+
+	// Parse date parameters
+	dateFromStr := r.URL.Query().Get("date_from")
+	dateToStr := r.URL.Query().Get("date_to")
+
+	if dateFromStr == "" {
+		http.Error(w, "date_from parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse dates and set to start of day (midnight) in UTC to avoid timezone issues
+	dateFrom, err := time.Parse("2006-01-02", dateFromStr)
+	if err != nil {
+		http.Error(w, "invalid date_from format (expected YYYY-MM-DD)", http.StatusBadRequest)
+		return
+	}
+	// Set to start of day in UTC
+	dateFrom = time.Date(dateFrom.Year(), dateFrom.Month(), dateFrom.Day(), 0, 0, 0, 0, time.UTC)
+
+	// If date_to is not provided, use the same day (single date selection)
+	var dateTo time.Time
+	if dateToStr == "" {
+		// Same day, end of day (23:59:59.999)
+		dateTo = time.Date(dateFrom.Year(), dateFrom.Month(), dateFrom.Day(), 23, 59, 59, 999999999, time.UTC)
+	} else {
+		dateTo, err = time.Parse("2006-01-02", dateToStr)
+		if err != nil {
+			http.Error(w, "invalid date_to format (expected YYYY-MM-DD)", http.StatusBadRequest)
+			return
+		}
+		// End of the selected day (23:59:59.999)
+		dateTo = time.Date(dateTo.Year(), dateTo.Month(), dateTo.Day(), 23, 59, 59, 999999999, time.UTC)
+	}
+
+	// Get exercises using ListAll with date filters
+	exercises, err := handler.repo.ListAll(ctx, ExerciseParams{
+		ExerciseID:         exerciseID,
+		MuscleGroup:        muscleGroup,
+		From:               &dateFrom,
+		To:                 &dateTo,
+		OnlyProd:           true,
+		ExcludeTestingData: true,
+	})
+	if err != nil {
+		log.Errorf("failed to get exercises by date range: %s", err)
+		http.Error(w, "failed to get exercises", http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"exercises": exercises,
+	}
+
+	responseJson, err := json.Marshal(response)
+	if err != nil {
+		log.Errorf("failed to marshal exercises response: %s", err)
 		http.Error(w, "failed to marshal response", http.StatusInternalServerError)
 		return
 	}
