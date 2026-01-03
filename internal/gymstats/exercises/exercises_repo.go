@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
@@ -387,54 +388,59 @@ func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
 }
 
 // GetProgressOverTime returns progress statistics grouped by date for a muscle group
-func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup string) (_ []ProgressData, err error) {
+// exerciseID is optional - if provided, filters to that specific exercise type
+func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID string) (_ []ProgressData, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.progress_over_time")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
 	span.SetAttributes(attribute.String("muscle_group", muscleGroup))
+	if exerciseID != "" {
+		span.SetAttributes(attribute.String("exercise_id", exerciseID))
+	}
 
 	var query string
 	var args []interface{}
 
-	if muscleGroup == "all" {
-		query = `
-			SELECT 
-				DATE(created_at)::text as date,
-				AVG(kilos)::numeric(10,2) as avg_weight,
-				MAX(kilos) as max_weight,
-				SUM(kilos * reps)::numeric(10,2) as total_volume,
-				COUNT(*) as exercise_count
-			FROM exercise
-			WHERE (metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
-				AND (metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')
-				AND (metadata->>'test' IS NULL OR metadata->>'test' != 'true')
-			GROUP BY DATE(created_at)
-			HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
-			ORDER BY DATE(created_at) DESC
-			LIMIT 90;
-		`
-		args = []interface{}{}
-	} else {
-		query = `
-			SELECT 
-				DATE(created_at)::text as date,
-				AVG(kilos)::numeric(10,2) as avg_weight,
-				MAX(kilos) as max_weight,
-				SUM(kilos * reps)::numeric(10,2) as total_volume,
-				COUNT(*) as exercise_count
-			FROM exercise
-			WHERE muscle_group = $1
-				AND (metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
-				AND (metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')
-				AND (metadata->>'test' IS NULL OR metadata->>'test' != 'true')
-			GROUP BY DATE(created_at)
-			HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
-			ORDER BY DATE(created_at) DESC
-			LIMIT 90;
-		`
-		args = []interface{}{muscleGroup}
+	// Build WHERE conditions
+	whereConditions := []string{
+		"(metadata->>'env' = 'prod' OR metadata->>'env' = 'production')",
+		"(metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')",
+		"(metadata->>'test' IS NULL OR metadata->>'test' != 'true')",
 	}
+	argIndex := 1
+
+	if muscleGroup != "all" {
+		whereConditions = append(whereConditions, fmt.Sprintf("muscle_group = $%d", argIndex))
+		args = append(args, muscleGroup)
+		argIndex++
+	}
+
+	if exerciseID != "" {
+		whereConditions = append(whereConditions, fmt.Sprintf("exercise_id = $%d", argIndex))
+		args = append(args, exerciseID)
+		argIndex++
+	}
+
+	whereClause := ""
+	if len(whereConditions) > 0 {
+		whereClause = "WHERE " + strings.Join(whereConditions, " AND ")
+	}
+
+	query = fmt.Sprintf(`
+		SELECT 
+			DATE(created_at)::text as date,
+			AVG(kilos)::numeric(10,2) as avg_weight,
+			MAX(kilos) as max_weight,
+			SUM(kilos * reps)::numeric(10,2) as total_volume,
+			COUNT(*) as exercise_count
+		FROM exercise
+		%s
+		GROUP BY DATE(created_at)
+		HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
+		ORDER BY DATE(created_at) DESC
+		LIMIT 90;
+	`, whereClause)
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
