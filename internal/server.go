@@ -291,6 +291,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/gymstats/stats/verify", gymStatsStatsHandler.HandleVerifyToken).Methods("GET", "OPTIONS").Name("verify-token")
 	r.HandleFunc("/gymstats/stats/progress", gymStatsStatsHandler.HandleProgress).Methods("GET", "OPTIONS").Name("stats-progress")
 	r.HandleFunc("/gymstats/stats/progression-rate", gymStatsStatsHandler.HandleProgressionRate).Methods("GET", "OPTIONS").Name("stats-progression-rate")
+	r.HandleFunc("/gymstats/stats/exercises", gymStatsStatsHandler.HandleExercisesByDateRange).Methods("GET", "OPTIONS").Name("stats-exercises-by-date-range")
 
 	gymStatsExTypesHandler := exercises.NewTypesHandler(s.gymStatsDiskApi, gsRepo)
 	r.HandleFunc("/gymstats/types", gymStatsExTypesHandler.HandleAdd).Methods("POST", "OPTIONS")
