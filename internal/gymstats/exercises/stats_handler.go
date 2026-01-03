@@ -35,9 +35,10 @@ func (handler *StatsHandler) HandleProgress(w http.ResponseWriter, r *http.Reque
 	if muscleGroup == "" {
 		muscleGroup = "all"
 	}
+	exerciseID := r.URL.Query().Get("exercise_id") // Optional: filter by exercise type
 
 	// Get progress data
-	progress, err := handler.repo.GetProgressOverTime(ctx, muscleGroup)
+	progress, err := handler.repo.GetProgressOverTime(ctx, muscleGroup, exerciseID)
 	if err != nil {
 		log.Errorf("failed to get progress over time: %s", err)
 		http.Error(w, "failed to get progress data", http.StatusInternalServerError)

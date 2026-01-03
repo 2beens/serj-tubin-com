@@ -116,18 +116,18 @@ func (mr *MockexercisesRepoMockRecorder) GetExerciseTypes(ctx, params any) *gomo
 }
 
 // GetProgressOverTime mocks base method.
-func (m *MockexercisesRepo) GetProgressOverTime(ctx context.Context, muscleGroup string) ([]exercises.ProgressData, error) {
+func (m *MockexercisesRepo) GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID string) ([]exercises.ProgressData, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetProgressOverTime", ctx, muscleGroup)
+	ret := m.ctrl.Call(m, "GetProgressOverTime", ctx, muscleGroup, exerciseID)
 	ret0, _ := ret[0].([]exercises.ProgressData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetProgressOverTime indicates an expected call of GetProgressOverTime.
-func (mr *MockexercisesRepoMockRecorder) GetProgressOverTime(ctx, muscleGroup any) *gomock.Call {
+func (mr *MockexercisesRepoMockRecorder) GetProgressOverTime(ctx, muscleGroup, exerciseID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProgressOverTime", reflect.TypeOf((*MockexercisesRepo)(nil).GetProgressOverTime), ctx, muscleGroup)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProgressOverTime", reflect.TypeOf((*MockexercisesRepo)(nil).GetProgressOverTime), ctx, muscleGroup, exerciseID)
 }
 
 // List mocks base method.
