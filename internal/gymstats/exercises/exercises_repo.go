@@ -400,23 +400,24 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup string) (_ [
 	if muscleGroup == "all" {
 		query = `
 			SELECT 
-				DATE(created_at) as date,
+				DATE(created_at)::text as date,
 				AVG(kilos)::numeric(10,2) as avg_weight,
 				MAX(kilos) as max_weight,
 				SUM(kilos * reps)::numeric(10,2) as total_volume,
 				COUNT(*) as exercise_count
 			FROM exercise
-			WHERE metadata->>'env' = 'prod' OR metadata->>'env' = 'production'
-				AND (metadata->>'testing' != 'true' AND metadata->>'test' != 'true')
+			WHERE (metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
+				AND (metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')
+				AND (metadata->>'test' IS NULL OR metadata->>'test' != 'true')
 			GROUP BY DATE(created_at)
-			ORDER BY date DESC
+			ORDER BY DATE(created_at) DESC
 			LIMIT 90;
 		`
 		args = []interface{}{}
 	} else {
 		query = `
 			SELECT 
-				DATE(created_at) as date,
+				DATE(created_at)::text as date,
 				AVG(kilos)::numeric(10,2) as avg_weight,
 				MAX(kilos) as max_weight,
 				SUM(kilos * reps)::numeric(10,2) as total_volume,
@@ -424,9 +425,10 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup string) (_ [
 			FROM exercise
 			WHERE muscle_group = $1
 				AND (metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
-				AND (metadata->>'testing' != 'true' AND metadata->>'test' != 'true')
+				AND (metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')
+				AND (metadata->>'test' IS NULL OR metadata->>'test' != 'true')
 			GROUP BY DATE(created_at)
-			ORDER BY date DESC
+			ORDER BY DATE(created_at) DESC
 			LIMIT 90;
 		`
 		args = []interface{}{muscleGroup}
