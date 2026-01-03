@@ -491,3 +491,153 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID 
 
 	return progress, nil
 }
+
+// GetProgressionRate calculates progression rate by comparing current period with past period
+// days parameter specifies the period length (e.g., 30, 60, or 90 days)
+func (r *Repo) GetProgressionRate(ctx context.Context, muscleGroup, exerciseID string, days int) (_ *ProgressionRateData, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.progression_rate")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+	span.SetAttributes(attribute.String("muscle_group", muscleGroup))
+	span.SetAttributes(attribute.Int("days", days))
+	if exerciseID != "" {
+		span.SetAttributes(attribute.String("exercise_id", exerciseID))
+	}
+
+	now := time.Now()
+	currentPeriodEnd := now
+	currentPeriodStart := now.AddDate(0, 0, -days)
+	pastPeriodEnd := currentPeriodStart
+	pastPeriodStart := pastPeriodEnd.AddDate(0, 0, -days)
+
+	// Build WHERE conditions and args for current period
+	currentConditions := []string{
+		"created_at >= $1::timestamptz",
+		"created_at < $2::timestamptz",
+		"(metadata->>'env' = 'prod' OR metadata->>'env' = 'production')",
+		"(metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')",
+		"(metadata->>'test' IS NULL OR metadata->>'test' != 'true')",
+	}
+	currentArgs := []interface{}{currentPeriodStart, currentPeriodEnd}
+	argIndex := 3
+
+	if muscleGroup != "all" {
+		currentConditions = append(currentConditions, fmt.Sprintf("muscle_group = $%d", argIndex))
+		currentArgs = append(currentArgs, muscleGroup)
+		argIndex++
+	}
+
+	if exerciseID != "" {
+		currentConditions = append(currentConditions, fmt.Sprintf("exercise_id = $%d", argIndex))
+		currentArgs = append(currentArgs, exerciseID)
+		argIndex++
+	}
+
+	currentWhereClause := "WHERE " + strings.Join(currentConditions, " AND ")
+
+	currentQuery := fmt.Sprintf(`
+		SELECT 
+			COALESCE(AVG(kilos), 0)::numeric(10,2) as avg_weight,
+			COALESCE(MAX(kilos), 0) as max_weight,
+			COALESCE(SUM(kilos * reps), 0)::numeric(10,2) as total_volume,
+			COUNT(*) as exercise_count
+		FROM exercise
+		%s;
+	`, currentWhereClause)
+
+	var currentAvgWeight, currentTotalVolume float64
+	var currentMaxWeight, currentExerciseCount int
+
+	err = r.db.QueryRow(ctx, currentQuery, currentArgs...).Scan(
+		&currentAvgWeight, &currentMaxWeight, &currentTotalVolume, &currentExerciseCount,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query current period: %w", err)
+	}
+
+	// Build WHERE conditions and args for past period
+	pastConditions := []string{
+		"created_at >= $1::timestamptz",
+		"created_at < $2::timestamptz",
+		"(metadata->>'env' = 'prod' OR metadata->>'env' = 'production')",
+		"(metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')",
+		"(metadata->>'test' IS NULL OR metadata->>'test' != 'true')",
+	}
+	pastArgs := []interface{}{pastPeriodStart, pastPeriodEnd}
+	pastArgIndex := 3
+
+	if muscleGroup != "all" {
+		pastConditions = append(pastConditions, fmt.Sprintf("muscle_group = $%d", pastArgIndex))
+		pastArgs = append(pastArgs, muscleGroup)
+		pastArgIndex++
+	}
+
+	if exerciseID != "" {
+		pastConditions = append(pastConditions, fmt.Sprintf("exercise_id = $%d", pastArgIndex))
+		pastArgs = append(pastArgs, exerciseID)
+		pastArgIndex++
+	}
+
+	pastWhereClause := "WHERE " + strings.Join(pastConditions, " AND ")
+
+	pastQuery := fmt.Sprintf(`
+		SELECT 
+			COALESCE(AVG(kilos), 0)::numeric(10,2) as avg_weight,
+			COALESCE(MAX(kilos), 0) as max_weight,
+			COALESCE(SUM(kilos * reps), 0)::numeric(10,2) as total_volume,
+			COUNT(*) as exercise_count
+		FROM exercise
+		%s;
+	`, pastWhereClause)
+
+	var pastAvgWeight, pastTotalVolume float64
+	var pastMaxWeight, pastExerciseCount int
+
+	err = r.db.QueryRow(ctx, pastQuery, pastArgs...).Scan(
+		&pastAvgWeight, &pastMaxWeight, &pastTotalVolume, &pastExerciseCount,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query past period: %w", err)
+	}
+
+	// Calculate changes
+	avgWeightChange := currentAvgWeight - pastAvgWeight
+	var avgWeightChangePercent float64
+	if pastAvgWeight > 0 {
+		avgWeightChangePercent = (avgWeightChange / pastAvgWeight) * 100
+	}
+
+	maxWeightChange := currentMaxWeight - pastMaxWeight
+	var maxWeightChangePercent float64
+	if pastMaxWeight > 0 {
+		maxWeightChangePercent = (float64(maxWeightChange) / float64(pastMaxWeight)) * 100
+	}
+
+	totalVolumeChange := currentTotalVolume - pastTotalVolume
+	var totalVolumeChangePercent float64
+	if pastTotalVolume > 0 {
+		totalVolumeChangePercent = (totalVolumeChange / pastTotalVolume) * 100
+	}
+
+	exerciseCountChange := currentExerciseCount - pastExerciseCount
+
+	return &ProgressionRateData{
+		Period:                    fmt.Sprintf("%d", days),
+		CurrentAvgWeight:          currentAvgWeight,
+		PastAvgWeight:             pastAvgWeight,
+		AvgWeightChange:           avgWeightChange,
+		AvgWeightChangePercent:   avgWeightChangePercent,
+		CurrentMaxWeight:         currentMaxWeight,
+		PastMaxWeight:            pastMaxWeight,
+		MaxWeightChange:          maxWeightChange,
+		MaxWeightChangePercent:   maxWeightChangePercent,
+		CurrentTotalVolume:       currentTotalVolume,
+		PastTotalVolume:          pastTotalVolume,
+		TotalVolumeChange:        totalVolumeChange,
+		TotalVolumeChangePercent: totalVolumeChangePercent,
+		CurrentExerciseCount:     currentExerciseCount,
+		PastExerciseCount:        pastExerciseCount,
+		ExerciseCountChange:      exerciseCountChange,
+	}, nil
+}
