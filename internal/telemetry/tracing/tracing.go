@@ -111,9 +111,16 @@ type HoneycombConfig struct {
 	Dataset      string
 }
 
+const defaultHoneycombOtlpEndpoint = "api.honeycomb.io:443"
+
 func ReadHoneycombConfig() HoneycombConfig {
+	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if strings.TrimSpace(otlpEndpoint) == "" {
+		otlpEndpoint = defaultHoneycombOtlpEndpoint
+	}
+
 	return HoneycombConfig{
-		OtlpEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		OtlpEndpoint: otlpEndpoint,
 		OtlpHeaders:  os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
 		ApiKey:       os.Getenv("HONEYCOMB_API_KEY"),
 		Dataset:      os.Getenv("HONEYCOMB_DATASET"),
@@ -179,10 +186,6 @@ func normalizeOtlpEndpoint(rawEndpoint string) string {
 }
 
 func ValidateHoneycombConfig(config HoneycombConfig) error {
-	if strings.TrimSpace(config.OtlpEndpoint) == "" {
-		return fmt.Errorf("otel, missing OTEL_EXPORTER_OTLP_ENDPOINT")
-	}
-
 	if strings.TrimSpace(config.OtlpHeaders) == "" && strings.TrimSpace(config.ApiKey) == "" {
 		return fmt.Errorf("otel, missing OTEL_EXPORTER_OTLP_HEADERS or HONEYCOMB_API_KEY")
 	}
