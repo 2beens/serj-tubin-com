@@ -79,6 +79,7 @@ type NewServerParams struct {
 	AdminPasswordHash       string
 	RedisPassword           string
 	HoneycombTracingEnabled bool
+	HoneycombConfig         tracing.HoneycombConfig
 	GymStatsDiskApiRootPath string
 	SpotifyAuthToken        string
 	SpotifyClientID         string
@@ -133,8 +134,8 @@ func NewServer(
 		rdb,
 	)
 
-	// use honeycomb distro to setup OpenTelemetry SDK
-	otelShutdown, err := tracing.HoneycombSetup(params.HoneycombTracingEnabled, "main-backend", rdb)
+	// set up OpenTelemetry SDK for Honeycomb
+	otelShutdown, err := tracing.HoneycombSetup(params.HoneycombTracingEnabled, params.HoneycombConfig, "main-backend", rdb)
 	if err != nil {
 		return nil, err
 	}

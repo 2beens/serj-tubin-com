@@ -12,6 +12,7 @@ import (
 	"github.com/2beens/serjtubincom/internal"
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/logging"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
 	log "github.com/sirupsen/logrus"
@@ -104,9 +105,10 @@ func main() {
 	}
 
 	honeycombEnabled := os.Getenv("HONEYCOMB_ENABLED") == "true"
+	honeycombConfig := tracing.ReadHoneycombConfig()
 	if honeycombEnabled {
-		if honeycombApiKey := os.Getenv("HONEYCOMB_API_KEY"); honeycombApiKey == "" {
-			log.Warnln("HONEYCOMB_API_KEY env var not set")
+		if err := tracing.ValidateHoneycombConfig(honeycombConfig); err != nil {
+			log.Fatalf("honeycomb config invalid: %s", err)
 		}
 	} else {
 		log.Debugln("honeycomb tracing disabled")
@@ -141,6 +143,7 @@ func main() {
 			AdminPasswordHash:       adminPasswordHash,
 			RedisPassword:           redisPassword,
 			HoneycombTracingEnabled: honeycombEnabled,
+			HoneycombConfig:         honeycombConfig,
 			GymStatsDiskApiRootPath: cfg.GymStatsDiskApiRootPath,
 			SpotifyClientID:         spotifyClientID,
 			SpotifyClientSecret:     spotifyClientSecret,
