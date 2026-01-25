@@ -10,6 +10,7 @@ import (
 
 	"github.com/2beens/serjtubincom/internal/file_box"
 	"github.com/2beens/serjtubincom/internal/logging"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -52,9 +53,10 @@ func main() {
 	}
 
 	honeycombEnabled := os.Getenv("HONEYCOMB_ENABLED") == "true"
+	honeycombConfig := tracing.ReadHoneycombConfig()
 	if honeycombEnabled {
-		if honeycombApiKey := os.Getenv("HONEYCOMB_API_KEY"); honeycombApiKey == "" {
-			log.Warnln("HONEYCOMB_API_KEY env var not set")
+		if err := tracing.ValidateHoneycombConfig(honeycombConfig); err != nil {
+			log.Fatalf("honeycomb config invalid: %s", err)
 		}
 	} else {
 		log.Debugln("honeycomb tracing disabled")
@@ -76,7 +78,15 @@ func main() {
 	chOsInterrupt := make(chan os.Signal, 1)
 	signal.Notify(chOsInterrupt, os.Interrupt, syscall.SIGTERM)
 
-	fileService, err := file_box.NewFileService(ctx, *rootPath, *redisHost, *redisPort, redisPassword, honeycombEnabled)
+	fileService, err := file_box.NewFileService(
+		ctx,
+		*rootPath,
+		*redisHost,
+		*redisPort,
+		redisPassword,
+		honeycombEnabled,
+		honeycombConfig,
+	)
 	if err != nil {
 		log.Fatalf("failed to create file service: %s", err)
 	}

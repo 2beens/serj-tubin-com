@@ -12,6 +12,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/db"
 	"github.com/2beens/serjtubincom/internal/logging"
 	"github.com/2beens/serjtubincom/internal/netlog"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -94,8 +95,9 @@ func main() {
 
 	honeycombEnabled := os.Getenv("HONEYCOMB_ENABLED") == "true"
 	if honeycombEnabled {
-		if honeycombApiKey := os.Getenv("HONEYCOMB_API_KEY"); honeycombApiKey == "" {
-			log.Warnln("HONEYCOMB_API_KEY env var not set")
+		honeycombConfig := tracing.ReadHoneycombConfig()
+		if err := tracing.ValidateHoneycombConfig(honeycombConfig); err != nil {
+			log.Fatalf("honeycomb config invalid: %s", err)
 		}
 	} else {
 		log.Debugln("honeycomb tracing disabled")

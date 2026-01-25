@@ -14,6 +14,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/config"
 	"github.com/2beens/serjtubincom/internal/db"
 	"github.com/2beens/serjtubincom/internal/file_box"
+	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 	"github.com/2beens/serjtubincom/pkg"
 
 	"github.com/go-redis/redis/v8"
@@ -144,6 +145,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 			AdminPasswordHash:       testPasswordHash,
 			RedisPassword:           "",
 			HoneycombTracingEnabled: false,
+			HoneycombConfig:         tracing.HoneycombConfig{},
 			GymStatsDiskApiRootPath: gymStatsDiskApiRootDir,
 		},
 	)
@@ -183,6 +185,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		}(),
 		"", // no password for test redis
 		false,
+		tracing.HoneycombConfig{},
 	)
 	if err != nil {
 		s.cleanup()

@@ -32,6 +32,7 @@ func NewFileService(
 	redisPort int,
 	redisPassword string,
 	honeycombTracingEnabled bool,
+	honeycombConfig tracing.HoneycombConfig,
 ) (*FileService, error) {
 	api, err := NewDiskApi(rootPath)
 	if err != nil {
@@ -54,8 +55,8 @@ func NewFileService(
 		log.Debugf("redis ping: %s", rdbStatus.Val())
 	}
 
-	// use honeycomb distro to setup OpenTelemetry SDK
-	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled, "file-service", rdb)
+	// set up OpenTelemetry SDK for Honeycomb
+	otelShutdown, err := tracing.HoneycombSetup(honeycombTracingEnabled, honeycombConfig, "file-service", rdb)
 	if err != nil {
 		return nil, err
 	}
