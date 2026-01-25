@@ -112,6 +112,7 @@ type HoneycombConfig struct {
 }
 
 const defaultHoneycombOtlpEndpoint = "api.honeycomb.io:443"
+const defaultHoneycombDataset = "live"
 
 func ReadHoneycombConfig() HoneycombConfig {
 	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -119,11 +120,16 @@ func ReadHoneycombConfig() HoneycombConfig {
 		otlpEndpoint = defaultHoneycombOtlpEndpoint
 	}
 
+	dataset := os.Getenv("HONEYCOMB_DATASET")
+	if strings.TrimSpace(dataset) == "" {
+		dataset = defaultHoneycombDataset
+	}
+
 	return HoneycombConfig{
 		OtlpEndpoint: otlpEndpoint,
 		OtlpHeaders:  os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
 		ApiKey:       os.Getenv("HONEYCOMB_API_KEY"),
-		Dataset:      os.Getenv("HONEYCOMB_DATASET"),
+		Dataset:      dataset,
 	}
 }
 
