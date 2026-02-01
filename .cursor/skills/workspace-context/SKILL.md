@@ -25,6 +25,7 @@ Gymstats remains in React. The Vue site has a `/gymstats` section (Log, Stats, L
 - **Config**: `config.toml` (sections: dockerdev, development, production). DB name: `serj_blogs`. Production backend listens on `localhost:1988`; nginx proxies `https://h.serj-tubin.com/api` to it.
 - **Run locally**: `cd docker && make up` (Postgres, Redis, main service on 9000, file service, Adminer).
 - **Testing**: Integration tests in `test/` need real dependencies (Docker). Set `ST_INT_TESTS=1` to run; suite uses dockertest for Postgres/Redis and starts the server.
+- **Gymstats MCP**: MCP server at `/mcp` (Streamable HTTP) exposes gymstats schema and production data. Tools: `get_gymstats_context`, `get_exercises_for_time_range`, `get_exercise_types`, `get_exercise_history`, `get_exercise_percentages`, `get_avg_set_duration`. Code: `internal/gymstats/mcp/`; README there for Cursor setup. Auth: MCP secret or X-SERJ-TOKEN. Use when working on gymstats to get real DB schema and data.
 
 ## Main Frontend (serj-tubin-vue)
 
