@@ -13,12 +13,18 @@ import (
 
 // mockContextService implements contextService for tests.
 type mockContextService struct {
-	schema        string
-	schemaErr     error
-	list          []exercises.Exercise
-	listErr       error
-	exerciseTypes []exercises.ExerciseType
-	typesErr      error
+	schema           string
+	schemaErr        error
+	list             []exercises.Exercise
+	listErr          error
+	exerciseTypes    []exercises.ExerciseType
+	typesErr         error
+	exerciseHistory  *exercises.ExerciseHistory
+	historyErr       error
+	percentages      map[string]exercises.ExercisePercentageInfo
+	percentagesErr   error
+	avgSetDuration   *exercises.AvgSetDurationResponse
+	avgSetDurationErr error
 }
 
 func (m *mockContextService) GetSchema(ctx context.Context) (string, error) {
@@ -31,6 +37,18 @@ func (m *mockContextService) ListExercises(ctx context.Context, params exercises
 
 func (m *mockContextService) GetExerciseTypes(ctx context.Context, params exercises.GetExerciseTypesParams) ([]exercises.ExerciseType, error) {
 	return m.exerciseTypes, m.typesErr
+}
+
+func (m *mockContextService) GetExerciseHistory(ctx context.Context, params exercises.ExerciseParams) (*exercises.ExerciseHistory, error) {
+	return m.exerciseHistory, m.historyErr
+}
+
+func (m *mockContextService) GetExercisePercentages(ctx context.Context, muscleGroup string) (map[string]exercises.ExercisePercentageInfo, error) {
+	return m.percentages, m.percentagesErr
+}
+
+func (m *mockContextService) GetAvgSetDuration(ctx context.Context, params exercises.ExerciseParams) (*exercises.AvgSetDurationResponse, error) {
+	return m.avgSetDuration, m.avgSetDurationErr
 }
 
 // Tests for GetGymstatsContextTool.

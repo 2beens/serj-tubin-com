@@ -123,3 +123,141 @@ func (h *Handler) GetExerciseTypesTool() func(context.Context, *mcp.CallToolRequ
 		}, nil, nil
 	}
 }
+
+// ExerciseHistoryInput is the input for get_exercise_history.
+type ExerciseHistoryInput struct {
+	FromDate    string `json:"from_date" jsonschema:"Start date (YYYY-MM-DD)"`
+	ToDate      string `json:"to_date" jsonschema:"End date (YYYY-MM-DD)"`
+	MuscleGroup string `json:"muscle_group,omitempty" jsonschema:"Filter by muscle group (e.g. chest, legs)"`
+	ExerciseID  string `json:"exercise_id,omitempty" jsonschema:"Filter by exercise type id (e.g. bench_press)"`
+}
+
+// GetExerciseHistoryTool returns the MCP tool handler for get_exercise_history.
+func (h *Handler) GetExerciseHistoryTool() func(context.Context, *mcp.CallToolRequest, ExerciseHistoryInput) (*mcp.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcp.CallToolRequest, in ExerciseHistoryInput) (*mcp.CallToolResult, any, error) {
+		from, err := time.Parse("2006-01-02", in.FromDate)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Invalid from_date: use YYYY-MM-DD"}},
+				IsError: true,
+			}, nil, nil
+		}
+		to, err := time.Parse("2006-01-02", in.ToDate)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Invalid to_date: use YYYY-MM-DD"}},
+				IsError: true,
+			}, nil, nil
+		}
+		to = time.Date(to.Year(), to.Month(), to.Day(), 23, 59, 59, 999999999, to.Location())
+		params := exercises.ExerciseParams{
+			From:        &from,
+			To:          &to,
+			MuscleGroup: in.MuscleGroup,
+			ExerciseID:  in.ExerciseID,
+		}
+		history, err := h.service.GetExerciseHistory(ctx, params)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Error fetching exercise history: " + err.Error()}},
+				IsError: true,
+			}, nil, nil
+		}
+		raw, err := json.MarshalIndent(history, "", "  ")
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Error encoding response: " + err.Error()}},
+				IsError: true,
+			}, nil, nil
+		}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: string(raw)}},
+		}, nil, nil
+	}
+}
+
+// ExercisePercentagesInput is the input for get_exercise_percentages.
+type ExercisePercentagesInput struct {
+	MuscleGroup string `json:"muscle_group" jsonschema:"Muscle group (e.g. chest, legs)"`
+}
+
+// GetExercisePercentagesTool returns the MCP tool handler for get_exercise_percentages.
+func (h *Handler) GetExercisePercentagesTool() func(context.Context, *mcp.CallToolRequest, ExercisePercentagesInput) (*mcp.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcp.CallToolRequest, in ExercisePercentagesInput) (*mcp.CallToolResult, any, error) {
+		if in.MuscleGroup == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "muscle_group is required"}},
+				IsError: true,
+			}, nil, nil
+		}
+		percentages, err := h.service.GetExercisePercentages(ctx, in.MuscleGroup)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Error fetching exercise percentages: " + err.Error()}},
+				IsError: true,
+			}, nil, nil
+		}
+		raw, err := json.MarshalIndent(percentages, "", "  ")
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Error encoding response: " + err.Error()}},
+				IsError: true,
+			}, nil, nil
+		}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: string(raw)}},
+		}, nil, nil
+	}
+}
+
+// AvgSetDurationInput is the input for get_avg_set_duration.
+type AvgSetDurationInput struct {
+	FromDate    string `json:"from_date" jsonschema:"Start date (YYYY-MM-DD)"`
+	ToDate      string `json:"to_date" jsonschema:"End date (YYYY-MM-DD)"`
+	MuscleGroup string `json:"muscle_group,omitempty" jsonschema:"Filter by muscle group (e.g. chest, legs)"`
+	ExerciseID  string `json:"exercise_id,omitempty" jsonschema:"Filter by exercise type id (e.g. bench_press)"`
+}
+
+// GetAvgSetDurationTool returns the MCP tool handler for get_avg_set_duration.
+func (h *Handler) GetAvgSetDurationTool() func(context.Context, *mcp.CallToolRequest, AvgSetDurationInput) (*mcp.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcp.CallToolRequest, in AvgSetDurationInput) (*mcp.CallToolResult, any, error) {
+		from, err := time.Parse("2006-01-02", in.FromDate)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Invalid from_date: use YYYY-MM-DD"}},
+				IsError: true,
+			}, nil, nil
+		}
+		to, err := time.Parse("2006-01-02", in.ToDate)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Invalid to_date: use YYYY-MM-DD"}},
+				IsError: true,
+			}, nil, nil
+		}
+		to = time.Date(to.Year(), to.Month(), to.Day(), 23, 59, 59, 999999999, to.Location())
+		params := exercises.ExerciseParams{
+			From:        &from,
+			To:          &to,
+			MuscleGroup: in.MuscleGroup,
+			ExerciseID:  in.ExerciseID,
+		}
+		resp, err := h.service.GetAvgSetDuration(ctx, params)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Error fetching avg set duration: " + err.Error()}},
+				IsError: true,
+			}, nil, nil
+		}
+		raw, err := json.MarshalIndent(resp, "", "  ")
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "Error encoding response: " + err.Error()}},
+				IsError: true,
+			}, nil, nil
+		}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: string(raw)}},
+		}, nil, nil
+	}
+}

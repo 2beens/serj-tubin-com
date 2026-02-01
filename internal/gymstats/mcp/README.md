@@ -1,6 +1,6 @@
 # Gymstats MCP Server
 
-MCP server for **Cursor IDE** (and other MCP clients) when developing the **gymstats** app. It exposes three tools: DB schema, exercises for a time range, and exercise types. Once configured in Cursor, AI agents can use these tools in your prompts to get live gymstats context.
+MCP server for **Cursor IDE** (and other MCP clients) when developing the **gymstats** app. It exposes six tools: DB schema, exercises for a time range, exercise types, exercise history (per-day stats), exercise percentages (workout mix per muscle group), and average set duration (rest between sets). Once configured in Cursor, AI agents can use these tools in your prompts to get live gymstats context.
 
 The MCP server runs **only** as part of the main backend — it is mounted at `/mcp` (Streamable HTTP). There is no standalone binary; use your deployed API URL (e.g. `https://h.serj-tubin.com/api/mcp` if your API is under `/api`).
 
@@ -76,6 +76,9 @@ The `/mcp` route is **not** in the public allowlist and is always protected by t
 | **get_gymstats_context** | DB schema for gymstats tables: exercise, exercise_type, exercise_image, gymstats_event. |
 | **get_exercises_for_time_range** | Exercises (sets) in a date range. Args: `from_date`, `to_date` (YYYY-MM-DD); optional: `muscle_group`, `exercise_id`. |
 | **get_exercise_types** | All exercise types. Optional filters: `muscle_group`, `exercise_id`. |
+| **get_exercise_history** | Per-day stats (avg kilos, avg reps, sets) for an exercise or muscle group in a date range. Use for progression or volume over time. |
+| **get_exercise_percentages** | Percentage of each exercise type for a muscle group (e.g. workout mix for chest). Arg: `muscle_group`. |
+| **get_avg_set_duration** | Average rest time between sets (overall and per day) for a date range. Use for rest patterns or session density. |
 
 ---
 

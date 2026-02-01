@@ -161,7 +161,7 @@ func (a *Analyzer) ExercisePercentages(
 	muscleGroup string,
 	onlyProd, excludeTestingData bool,
 ) (_ map[string]ExercisePercentageInfo, err error) {
-	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.exerciseHistory")
+	ctx, span := tracing.GlobalTracer.Start(ctx, "analyzer.gymstats.exercisePercentages")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()

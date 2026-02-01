@@ -15,25 +15,37 @@ type ExercisesRepo interface {
 	GetExerciseTypes(ctx context.Context, params exercises.GetExerciseTypesParams) ([]exercises.ExerciseType, error)
 }
 
-// contextService provides gymstats context data (schema, exercises, exercise types).
+// exerciseAnalyzer provides exercise history and analytics (for dependency injection and testing).
+type exerciseAnalyzer interface {
+	ExerciseHistory(ctx context.Context, params exercises.ExerciseParams) (*exercises.ExerciseHistory, error)
+	AvgSetDuration(ctx context.Context, params exercises.ExerciseParams) (*exercises.AvgSetDurationResponse, error)
+	ExercisePercentages(ctx context.Context, muscleGroup string, onlyProd, excludeTestingData bool) (map[string]exercises.ExercisePercentageInfo, error)
+}
+
+// contextService provides gymstats context data (schema, exercises, exercise types, analytics).
 // Used by Handler for testability.
 type contextService interface {
 	GetSchema(ctx context.Context) (string, error)
 	ListExercises(ctx context.Context, params exercises.ExerciseParams) ([]exercises.Exercise, error)
 	GetExerciseTypes(ctx context.Context, params exercises.GetExerciseTypesParams) ([]exercises.ExerciseType, error)
+	GetExerciseHistory(ctx context.Context, params exercises.ExerciseParams) (*exercises.ExerciseHistory, error)
+	GetExercisePercentages(ctx context.Context, muscleGroup string) (map[string]exercises.ExercisePercentageInfo, error)
+	GetAvgSetDuration(ctx context.Context, params exercises.ExerciseParams) (*exercises.AvgSetDurationResponse, error)
 }
 
 // ContextService holds dependencies and implements the gymstats context business logic.
 type ContextService struct {
 	schema    SchemaRepo
 	exercises ExercisesRepo
+	analyzer  exerciseAnalyzer
 }
 
 // NewContextService builds a ContextService with the given dependencies.
-func NewContextService(schemaRepo SchemaRepo, exercisesRepo ExercisesRepo) *ContextService {
+func NewContextService(schemaRepo SchemaRepo, exercisesRepo ExercisesRepo, analyzer exerciseAnalyzer) *ContextService {
 	return &ContextService{
 		schema:    schemaRepo,
 		exercises: exercisesRepo,
+		analyzer:  analyzer,
 	}
 }
 
@@ -93,4 +105,19 @@ func (s *ContextService) ListExercises(ctx context.Context, params exercises.Exe
 // GetExerciseTypes returns exercise types, optionally filtered.
 func (s *ContextService) GetExerciseTypes(ctx context.Context, params exercises.GetExerciseTypesParams) ([]exercises.ExerciseType, error) {
 	return s.exercises.GetExerciseTypes(ctx, params)
+}
+
+// GetExerciseHistory returns per-day stats (avg kilos, avg reps, sets) for the given exercise/period.
+func (s *ContextService) GetExerciseHistory(ctx context.Context, params exercises.ExerciseParams) (*exercises.ExerciseHistory, error) {
+	return s.analyzer.ExerciseHistory(ctx, params)
+}
+
+// GetExercisePercentages returns the percentage of each exercise type for the given muscle group.
+func (s *ContextService) GetExercisePercentages(ctx context.Context, muscleGroup string) (map[string]exercises.ExercisePercentageInfo, error) {
+	return s.analyzer.ExercisePercentages(ctx, muscleGroup, false, false)
+}
+
+// GetAvgSetDuration returns the average rest time between sets (overall and per day) for the given period.
+func (s *ContextService) GetAvgSetDuration(ctx context.Context, params exercises.ExerciseParams) (*exercises.AvgSetDurationResponse, error) {
+	return s.analyzer.AvgSetDuration(ctx, params)
 }

@@ -36,6 +36,28 @@ func (m *mockExercisesRepo) GetExerciseTypes(ctx context.Context, params exercis
 	return m.exerciseTypes, m.typesErr
 }
 
+// mockExerciseAnalyzer implements exerciseAnalyzer for service tests.
+type mockExerciseAnalyzer struct {
+	history         *exercises.ExerciseHistory
+	historyErr      error
+	percentages     map[string]exercises.ExercisePercentageInfo
+	percentagesErr  error
+	avgSetDuration  *exercises.AvgSetDurationResponse
+	avgSetDurationErr error
+}
+
+func (m *mockExerciseAnalyzer) ExerciseHistory(ctx context.Context, params exercises.ExerciseParams) (*exercises.ExerciseHistory, error) {
+	return m.history, m.historyErr
+}
+
+func (m *mockExerciseAnalyzer) ExercisePercentages(ctx context.Context, muscleGroup string, onlyProd, excludeTestingData bool) (map[string]exercises.ExercisePercentageInfo, error) {
+	return m.percentages, m.percentagesErr
+}
+
+func (m *mockExerciseAnalyzer) AvgSetDuration(ctx context.Context, params exercises.ExerciseParams) (*exercises.AvgSetDurationResponse, error) {
+	return m.avgSetDuration, m.avgSetDurationErr
+}
+
 func TestContextService_GetSchema(t *testing.T) {
 	t.Run("returns_formatted_schema", func(t *testing.T) {
 		cols := []SchemaColumn{
@@ -43,7 +65,7 @@ func TestContextService_GetSchema(t *testing.T) {
 			{TableSchema: "public", TableName: "exercise", ColumnName: "exercise_id", DataType: "text", IsNullable: "NO", ColumnDef: nil},
 		}
 		schemaRepo := &mockSchemaRepo{cols: cols}
-		svc := NewContextService(schemaRepo, &mockExercisesRepo{})
+		svc := NewContextService(schemaRepo, &mockExercisesRepo{}, &mockExerciseAnalyzer{})
 
 		got, err := svc.GetSchema(context.Background())
 		if err != nil {
@@ -66,7 +88,7 @@ func TestContextService_GetSchema(t *testing.T) {
 
 	t.Run("returns_empty_message_when_no_columns", func(t *testing.T) {
 		schemaRepo := &mockSchemaRepo{cols: nil}
-		svc := NewContextService(schemaRepo, &mockExercisesRepo{})
+		svc := NewContextService(schemaRepo, &mockExercisesRepo{}, &mockExerciseAnalyzer{})
 
 		got, err := svc.GetSchema(context.Background())
 		if err != nil {
@@ -81,7 +103,7 @@ func TestContextService_GetSchema(t *testing.T) {
 	t.Run("returns_error_when_repo_fails", func(t *testing.T) {
 		wantErr := errors.New("db connection failed")
 		schemaRepo := &mockSchemaRepo{err: wantErr}
-		svc := NewContextService(schemaRepo, &mockExercisesRepo{})
+		svc := NewContextService(schemaRepo, &mockExercisesRepo{}, &mockExerciseAnalyzer{})
 
 		_, err := svc.GetSchema(context.Background())
 		if err != wantErr {
@@ -97,7 +119,7 @@ func TestContextService_ListExercises(t *testing.T) {
 			{ID: 1, ExerciseID: "bp", Kilos: 80, Reps: 10, CreatedAt: now},
 		}
 		repo := &mockExercisesRepo{list: want}
-		svc := NewContextService(&mockSchemaRepo{}, repo)
+		svc := NewContextService(&mockSchemaRepo{}, repo, &mockExerciseAnalyzer{})
 
 		params := exercises.ExerciseParams{}
 		got, err := svc.ListExercises(context.Background(), params)
@@ -112,7 +134,7 @@ func TestContextService_ListExercises(t *testing.T) {
 	t.Run("returns_error_when_repo_fails", func(t *testing.T) {
 		wantErr := errors.New("connection refused")
 		repo := &mockExercisesRepo{listErr: wantErr}
-		svc := NewContextService(&mockSchemaRepo{}, repo)
+		svc := NewContextService(&mockSchemaRepo{}, repo, &mockExerciseAnalyzer{})
 
 		_, err := svc.ListExercises(context.Background(), exercises.ExerciseParams{})
 		if err != wantErr {
@@ -127,7 +149,7 @@ func TestContextService_GetExerciseTypes(t *testing.T) {
 			{ExerciseID: "bp", MuscleGroup: "chest", Name: "Bench Press"},
 		}
 		repo := &mockExercisesRepo{exerciseTypes: want}
-		svc := NewContextService(&mockSchemaRepo{}, repo)
+		svc := NewContextService(&mockSchemaRepo{}, repo, &mockExerciseAnalyzer{})
 
 		params := exercises.GetExerciseTypesParams{}
 		got, err := svc.GetExerciseTypes(context.Background(), params)
@@ -142,7 +164,7 @@ func TestContextService_GetExerciseTypes(t *testing.T) {
 	t.Run("returns_error_when_repo_fails", func(t *testing.T) {
 		wantErr := errors.New("timeout")
 		repo := &mockExercisesRepo{typesErr: wantErr}
-		svc := NewContextService(&mockSchemaRepo{}, repo)
+		svc := NewContextService(&mockSchemaRepo{}, repo, &mockExerciseAnalyzer{})
 
 		_, err := svc.GetExerciseTypes(context.Background(), exercises.GetExerciseTypesParams{})
 		if err != wantErr {
