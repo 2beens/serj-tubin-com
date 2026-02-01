@@ -41,6 +41,7 @@ func setupBlogRouterForTests(t *testing.T, repo *repoMock, loginChecker *auth.Lo
 	authMiddleware := middleware.NewAuthMiddlewareHandler(
 		"n/a",
 		"browserRequestsSecret",
+		"",
 		loginChecker,
 	)
 	r.Use(authMiddleware.AuthCheck())

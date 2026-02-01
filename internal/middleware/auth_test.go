@@ -17,6 +17,7 @@ func TestAuthMiddlewareHandler_AuthCheck(t *testing.T) {
 	authMiddleware := middleware.NewAuthMiddlewareHandler(
 		"gymstatsIOSAppSecret",
 		"browserRequestsSecret",
+		"",
 		mockLoginChecker,
 	)
 

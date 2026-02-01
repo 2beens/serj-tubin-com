@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/subtle"
 	"net/http"
 	"regexp"
 	"strings"
@@ -22,6 +23,7 @@ type loginChecker interface {
 type AuthMiddlewareHandler struct {
 	gymstatsIOSAppSecret  string
 	browserRequestsSecret string
+	mcpSecret             string // optional: if set, /mcp requires Authorization: Bearer <mcpSecret> or X-MCP-Secret
 	loginChecker          loginChecker
 	allowedPaths          map[string]bool
 	allowedPathsRegex     []string
@@ -30,11 +32,13 @@ type AuthMiddlewareHandler struct {
 func NewAuthMiddlewareHandler(
 	gymstatsIOSAppSecret string,
 	browserRequestsSecret string,
+	mcpSecret string,
 	loginChecker loginChecker,
 ) *AuthMiddlewareHandler {
 	return &AuthMiddlewareHandler{
 		gymstatsIOSAppSecret:  gymstatsIOSAppSecret,
 		browserRequestsSecret: browserRequestsSecret,
+		mcpSecret:             mcpSecret,
 		loginChecker:          loginChecker,
 		allowedPaths: map[string]bool{
 			// blog handler:
@@ -100,6 +104,27 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 			}
 
 			if h.pathIsAlwaysAllowed(r.URL.Path) {
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
+			// MCP endpoint: if a dedicated MCP secret is configured, require it (no login token).
+			// Otherwise /mcp uses normal auth (X-SERJ-TOKEN + IsLogged) below.
+			if strings.HasPrefix(r.URL.Path, "/mcp") && h.mcpSecret != "" {
+				// Accept Authorization: Bearer <secret> or X-MCP-Secret header (constant-time compare).
+				got := r.Header.Get("X-MCP-Secret")
+				if got == "" {
+					if b := r.Header.Get("Authorization"); strings.HasPrefix(b, "Bearer ") {
+						got = strings.TrimPrefix(b, "Bearer ")
+					}
+				}
+				if subtle.ConstantTimeCompare([]byte(got), []byte(h.mcpSecret)) != 1 {
+					log.Tracef("[mcp] unauthorized: missing or invalid MCP secret => %s", r.URL.Path)
+					w.Header().Set("WWW-Authenticate", `Bearer realm="mcp"`)
+					http.Error(w, "no can do", http.StatusUnauthorized)
+					span.SetStatus(codes.Error, "mcp-secret-invalid")
+					return
+				}
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
