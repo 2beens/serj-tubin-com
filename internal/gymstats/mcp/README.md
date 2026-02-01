@@ -2,13 +2,11 @@
 
 MCP server for **Cursor IDE** (and other MCP clients) when developing the **gymstats** app. It exposes three tools: DB schema, exercises for a time range, and exercise types. Once configured in Cursor, AI agents can use these tools in your prompts to get live gymstats context.
 
+The MCP server runs **only** as part of the main backend — it is mounted at `/mcp` (Streamable HTTP). There is no standalone binary; use your deployed API URL (e.g. `https://h.serj-tubin.com/api/mcp` if your API is under `/api`).
+
 ---
 
 ## Setting up in Cursor IDE
-
-### Option A: HTTP (recommended — use your deployed backend)
-
-Use the MCP server that runs on your main backend at `/mcp`. No local process needed.
 
 1. **Open Cursor settings**  
    **Cursor Settings → Features → MCP** (or search for “MCP” in settings).
@@ -19,8 +17,8 @@ Use the MCP server that runs on your main backend at `/mcp`. No local process ne
 3. **Configure the server**  
    - **Name**: e.g. `gymstats-context`
    - **Type**: **Streamable HTTP** (or **SSE** if your Cursor version uses that label).
-   - **URL**: your backend base URL + `/mcp`, e.g.  
-     `https://h.serj-tubin.com/mcp`
+   - **URL**: your backend base URL + `/mcp`. If your API is behind a prefix (e.g. nginx under `/api`), use that:  
+     `https://h.serj-tubin.com/api/mcp`
 
 4. **Auth** (required for protected `/mcp`):
    - If you use an **MCP secret** (`MCP_SECRET` / `mcp_secret`):  
@@ -35,26 +33,6 @@ Use the MCP server that runs on your main backend at `/mcp`. No local process ne
 5. **Save** and ensure the server shows as connected (green / available).
 
 You can now mention this MCP server in prompts (e.g. “use the gymstats MCP tools”) so the AI can call `get_gymstats_context`, `get_exercises_for_time_range`, and `get_exercise_types` when answering.
-
----
-
-### Option B: Stdio (local only, no auth)
-
-Run the MCP server locally over stdio. Useful when you don’t want to hit the deployed backend or use auth.
-
-1. **Open Cursor settings**  
-   **Cursor Settings → Features → MCP → Add new MCP server**.
-
-2. **Configure the server**  
-   - **Name**: e.g. `gymstats-context-local`
-   - **Type**: **stdio**
-   - **Command**:  
-     `go run ./cmd/gymstats_mcp -config ./config.toml -env development`  
-     (run from the repo root; adjust `-config` and `-env` if needed.)
-
-3. **Save**. Cursor will start this command when it needs to talk to the server.
-
-Your local config must point at a reachable DB (e.g. dev or tunnel). No auth is used for stdio.
 
 ---
 
@@ -103,8 +81,4 @@ The `/mcp` route is **not** in the public allowlist and is always protected by t
 
 ## Where it runs
 
-- **Integrated (recommended)**  
-  The same MCP server is mounted on the main backend at **`/mcp`** (Streamable HTTP). Deploy the main service as usual; no separate MCP deploy.
-
-- **Standalone stdio**  
-  This cmd (`cmd/gymstats_mcp`) runs the same `internal/gymstats/mcp.NewServer` over stdio for local Cursor use.
+The MCP server is mounted on the main backend at **`/mcp`** (Streamable HTTP). Deploy the main service as usual; no separate MCP process or binary. See **internal/server.go** for how it is wired.

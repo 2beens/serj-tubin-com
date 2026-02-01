@@ -56,3 +56,10 @@ cd docker
 make up
 # or make up-win on windows
 ```
+
+### MCP
+* **Gymstats MCP** – [Model Context Protocol](https://modelcontextprotocol.io/) server for Cursor (and other MCP clients) when developing the **gymstats** app. Exposes three tools: DB schema for gymstats tables, exercises for a time range, exercise types. Mounted at `/mcp` on the main backend (Streamable HTTP); protected by optional MCP secret or session auth.
+* **How we use it:** Cursor is configured with the MCP server URL and auth; in any prompt we can ask the AI to use the gymstats MCP tools. The AI then calls the tools (e.g. `get_gymstats_context`, `get_exercises_for_time_range`) and uses the live data to answer. No copy-pasting schema or sample data — the model gets context directly from the backend.
+* **Examples:** When working on the gymstats frontend or API, say *“Use the gymstats MCP to show me the DB schema for gymstats tables”* — the AI calls the MCP, gets the current schema from the database, and uses it to suggest types, queries, or UI changes. Or ask *“With the gymstats MCP, give me an overview of the gym activity I’ve done in the last 14 days”* to get a summary of recent exercise activity; that context helps the AI suggest better changes.
+
+See [internal/gymstats/mcp/README.md](internal/gymstats/mcp/README.md) for Cursor setup and usage in prompts.

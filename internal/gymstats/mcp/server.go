@@ -9,8 +9,7 @@ import (
 
 // NewServer builds an MCP server with gymstats tools: get_gymstats_context,
 // get_exercises_for_time_range, get_exercise_types.
-// Used both by the standalone stdio cmd (cmd/gymstats_mcp) and by the main
-// backend when mounting MCP over HTTP (internal/server).
+// Used by the main backend when mounting MCP at /mcp (internal/server).
 func NewServer(pool *pgxpool.Pool, repo *exercises.Repo) *mcp.Server {
 	svc := NewContextService(NewPoolSchemaRepo(pool), repo)
 	h := NewHandler(svc)

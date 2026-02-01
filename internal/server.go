@@ -318,7 +318,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	// MCP (Model Context Protocol) for gymstats: schema, exercises for time range, exercise types.
 	// /mcp is protected: not in allowedPaths, so it always requires auth. If config.MCPSecret is set,
 	// only requests with Authorization: Bearer <secret> or X-MCP-Secret can access /mcp; otherwise
-	// same auth as API (X-SERJ-TOKEN + login). See internal/middleware/auth.go and cmd/gymstats_mcp/README.md.
+	// same auth as API (X-SERJ-TOKEN + login). See internal/middleware/auth.go and internal/gymstats/mcp/README.md.
 	mcpServer := gymstatsmcp.NewServer(s.dbPool, gsRepo)
 	mcpHandler := mcpsdk.NewStreamableHTTPHandler(func(*http.Request) *mcpsdk.Server { return mcpServer }, nil)
 	r.PathPrefix("/mcp").Handler(mcpHandler)
