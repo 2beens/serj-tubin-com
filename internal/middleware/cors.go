@@ -36,11 +36,17 @@ func Cors() func(next http.Handler) http.Handler {
 				// allow CORS to the files-box /link endpoint from anywhere
 				strings.HasPrefix(r.URL.Path, "/link/"),
 				// allow CORS to the gymstats image endpoint from anywhere
-				strings.HasPrefix(r.URL.Path, "/gymstats/image/"):
+				strings.HasPrefix(r.URL.Path, "/gymstats/image/"),
+				// allow MCP endpoint (Cursor and other MCP clients often send no Origin)
+				strings.HasPrefix(r.URL.Path, "/mcp"):
 				{
-					w.Header().Set("Access-Control-Allow-Origin", origin)
+					allowOrigin := origin
+					if allowOrigin == "" && strings.HasPrefix(r.URL.Path, "/mcp") {
+						allowOrigin = "*"
+					}
+					w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 					w.Header().Set("Access-Control-Allow-Headers",
-						"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-SERJ-TOKEN",
+						"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-SERJ-TOKEN, X-MCP-Secret, MCP-Protocol-Version, MCP-Session-Id",
 					)
 					w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, PATCH, DELETE")
 				}
