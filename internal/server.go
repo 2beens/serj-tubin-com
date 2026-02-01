@@ -19,6 +19,7 @@ import (
 	"github.com/2beens/serjtubincom/internal/geoip"
 	"github.com/2beens/serjtubincom/internal/gymstats/events"
 	"github.com/2beens/serjtubincom/internal/gymstats/exercises"
+	gymstatsmcp "github.com/2beens/serjtubincom/internal/gymstats/mcp"
 	"github.com/2beens/serjtubincom/internal/middleware"
 	"github.com/2beens/serjtubincom/internal/misc"
 	"github.com/2beens/serjtubincom/internal/netlog"
@@ -36,6 +37,7 @@ import (
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
+	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -313,6 +315,14 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	r.HandleFunc("/spotify/tracker/check/disable", s.spotifyHandler.DisableTrackerPeriodicCheck).Methods("GET", "OPTIONS")
 	r.HandleFunc("/spotify/page/{page}/size/{size}", s.spotifyHandler.GetPage).Methods("GET", "OPTIONS")
 
+	// MCP (Model Context Protocol) for gymstats: schema, exercises for time range, exercise types.
+	// /mcp is protected: not in allowedPaths, so it always requires auth. If config.MCPSecret is set,
+	// only requests with Authorization: Bearer <secret> or X-MCP-Secret can access /mcp; otherwise
+	// same auth as API (X-SERJ-TOKEN + login). See internal/middleware/auth.go and cmd/gymstats_mcp/README.md.
+	mcpServer := gymstatsmcp.NewServer(s.dbPool, gsRepo)
+	mcpHandler := mcpsdk.NewStreamableHTTPHandler(func(*http.Request) *mcpsdk.Server { return mcpServer }, nil)
+	r.PathPrefix("/mcp").Handler(mcpHandler)
+
 	// all the rest - unhandled paths
 	r.HandleFunc("/{unknown}", func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
@@ -321,6 +331,7 @@ func (s *Server) routerSetup() (*mux.Router, error) {
 	authMiddleware := middleware.NewAuthMiddlewareHandler(
 		s.gymstatsIOSAppSecret,
 		s.browserRequestsSecret,
+		s.config.MCPSecret,
 		s.loginChecker,
 	)
 

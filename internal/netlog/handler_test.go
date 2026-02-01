@@ -49,6 +49,7 @@ func setupNetlogRouterForTests(
 	authMiddleware := middleware.NewAuthMiddlewareHandler(
 		"n/a",
 		browserReqSecret,
+		"",
 		loginChecker,
 	)
 

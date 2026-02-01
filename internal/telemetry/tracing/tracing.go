@@ -112,6 +112,7 @@ type HoneycombConfig struct {
 }
 
 const defaultHoneycombOtlpEndpoint = "api.honeycomb.io:443"
+
 const defaultHoneycombDataset = "live"
 
 func ReadHoneycombConfig() HoneycombConfig {

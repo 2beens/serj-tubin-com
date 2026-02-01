@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -41,6 +42,10 @@ type Config struct {
 	SpotifyTrackerFireIntervalMinutes int    `toml:"spotify_tracker_fire_interval_minutes"`
 	// Other
 	LoginRateLimitAllowedPerMin int `toml:"login_rate_limit_allowed_per_min"`
+	// MCP (Model Context Protocol): optional secret for /mcp endpoint. If set, only requests
+	// with Authorization: Bearer <MCPSecret> (or X-MCP-Secret header) can access /mcp.
+	// Can also be set via MCP_SECRET env. If empty, /mcp uses same auth as API (X-SERJ-TOKEN + login).
+	MCPSecret string `toml:"mcp_secret"`
 }
 
 type Toml struct {
@@ -83,6 +88,11 @@ func Load(env, path string) (*Config, error) {
 	}
 
 	cfg.Environment = env
+
+	// Optional env override for MCP secret (so it is not stored in config.toml).
+	if v := os.Getenv("MCP_SECRET"); v != "" {
+		cfg.MCPSecret = v
+	}
 
 	return cfg, nil
 }
