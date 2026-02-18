@@ -30,6 +30,7 @@ jobs:
           go-version: 1.26.0
           skip-upload: true
           fail-on-vuln: true
+          vulncheck-version: v1.1.4
 
       - name: Send email if VulnCheck fails
         if: failure()
