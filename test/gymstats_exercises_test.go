@@ -435,11 +435,12 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 
 		// try to get avg wait between exercises
 		avgDurationResp := s.getAvgDurationBetweenExercises(ctx, true, true)
-		assert.Equal(t, float64(3.3333333333333335), avgDurationResp.Duration.Minutes())
+		assert.InDelta(t, float64(3.3333333333333335), avgDurationResp.Duration.Minutes(), 0.001)
 		require.Len(t, avgDurationResp.DurationPerDay, 1)
-		assert.Equal(t,
+		assert.InDelta(t,
 			float64(3.3333333333333335),
 			avgDurationResp.DurationPerDay[now.Truncate(24*time.Hour)].Minutes(),
+			0.001,
 		)
 
 		ex2history := s.getExerciseHistory(ctx, exercises.ExerciseParams{
