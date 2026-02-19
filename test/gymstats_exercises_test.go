@@ -437,9 +437,15 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		avgDurationResp := s.getAvgDurationBetweenExercises(ctx, true, true)
 		assert.InDelta(t, float64(3.3333333333333335), avgDurationResp.Duration.Minutes(), 0.001)
 		require.Len(t, avgDurationResp.DurationPerDay, 1)
+		// Get the single entry from the map (regardless of the timezone-dependent key)
+		var durationPerDayValue time.Duration
+		for _, duration := range avgDurationResp.DurationPerDay {
+			durationPerDayValue = duration
+			break
+		}
 		assert.InDelta(t,
 			float64(3.3333333333333335),
-			avgDurationResp.DurationPerDay[now.Truncate(24*time.Hour)].Minutes(),
+			durationPerDayValue.Minutes(),
 			0.001,
 		)
 
