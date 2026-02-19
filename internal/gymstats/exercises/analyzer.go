@@ -3,6 +3,7 @@ package exercises
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
@@ -70,6 +71,13 @@ func (a *Analyzer) AvgSetDuration(
 		if len(dayExercises) == 1 {
 			continue
 		}
+		
+		// Sort exercises by created_at in ascending order (oldest first)
+		// This is necessary because the database query returns them in descending order
+		sort.Slice(dayExercises, func(i, j int) bool {
+			return dayExercises[i].CreatedAt.Before(dayExercises[j].CreatedAt)
+		})
+		
 		var avgDuration time.Duration
 		for i, ex := range dayExercises {
 			if i == 0 {
