@@ -37,10 +37,10 @@ func (handler *StatsHandler) HandleProgress(w http.ResponseWriter, r *http.Reque
 	if muscleGroup == "" {
 		muscleGroup = "all"
 	}
-	exerciseID := r.URL.Query().Get("exercise_id") // Optional: filter by exercise type
+	exerciseIDs := r.URL.Query()["exercise_id"] // Optional: filter by exercise type(s); multi-select
 
 	// Get progress data
-	progress, err := handler.repo.GetProgressOverTime(ctx, muscleGroup, exerciseID)
+	progress, err := handler.repo.GetProgressOverTime(ctx, muscleGroup, exerciseIDs)
 	if err != nil {
 		log.Errorf("failed to get progress over time: %s", err)
 		http.Error(w, "failed to get progress data", http.StatusInternalServerError)
@@ -70,8 +70,8 @@ func (handler *StatsHandler) HandleProgressionRate(w http.ResponseWriter, r *htt
 	if muscleGroup == "" {
 		muscleGroup = "all"
 	}
-	exerciseID := r.URL.Query().Get("exercise_id") // Optional: filter by exercise type
-	
+	exerciseIDs := r.URL.Query()["exercise_id"] // Optional: filter by exercise type(s); multi-select
+
 	daysStr := r.URL.Query().Get("days")
 	if daysStr == "" {
 		daysStr = "30" // Default to 30 days
@@ -88,7 +88,7 @@ func (handler *StatsHandler) HandleProgressionRate(w http.ResponseWriter, r *htt
 	}
 
 	// Get progression rate data
-	progressionRate, err := handler.repo.GetProgressionRate(ctx, muscleGroup, exerciseID, days)
+	progressionRate, err := handler.repo.GetProgressionRate(ctx, muscleGroup, exerciseIDs, days)
 	if err != nil {
 		log.Errorf("failed to get progression rate: %s", err)
 		http.Error(w, "failed to get progression rate data", http.StatusInternalServerError)
@@ -118,7 +118,7 @@ func (handler *StatsHandler) HandleExercisesByDateRange(w http.ResponseWriter, r
 	if muscleGroup == "" {
 		muscleGroup = "all"
 	}
-	exerciseID := r.URL.Query().Get("exercise_id") // Optional: filter by exercise type
+	exerciseIDs := r.URL.Query()["exercise_id"] // Optional: filter by exercise type(s); multi-select
 
 	// Parse date parameters
 	dateFromStr := r.URL.Query().Get("date_from")
@@ -155,7 +155,7 @@ func (handler *StatsHandler) HandleExercisesByDateRange(w http.ResponseWriter, r
 
 	// Get exercises using ListAll with date filters
 	exercises, err := handler.repo.ListAll(ctx, ExerciseParams{
-		ExerciseID:         exerciseID,
+		ExerciseIDs:        exerciseIDs,
 		MuscleGroup:        muscleGroup,
 		From:               &dateFrom,
 		To:                 &dateTo,

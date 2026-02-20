@@ -39,8 +39,8 @@ type exercisesRepo interface {
 	Delete(ctx context.Context, id int) error
 	ExercisesCount(ctx context.Context, params ListParams) (int, error)
 	GetExerciseTypes(ctx context.Context, params GetExerciseTypesParams) (_ []ExerciseType, err error)
-	GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID string) ([]ProgressData, error)
-	GetProgressionRate(ctx context.Context, muscleGroup, exerciseID string, days int) (*ProgressionRateData, error)
+	GetProgressOverTime(ctx context.Context, muscleGroup string, exerciseIDs []string) ([]ProgressData, error)
+	GetProgressionRate(ctx context.Context, muscleGroup string, exerciseIDs []string, days int) (*ProgressionRateData, error)
 }
 
 type DeleteExerciseResponse struct {
