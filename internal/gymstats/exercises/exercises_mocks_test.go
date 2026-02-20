@@ -116,33 +116,33 @@ func (mr *MockexercisesRepoMockRecorder) GetExerciseTypes(ctx, params any) *gomo
 }
 
 // GetProgressOverTime mocks base method.
-func (m *MockexercisesRepo) GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID string) ([]exercises.ProgressData, error) {
+func (m *MockexercisesRepo) GetProgressOverTime(ctx context.Context, muscleGroup string, exerciseIDs []string) ([]exercises.ProgressData, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetProgressOverTime", ctx, muscleGroup, exerciseID)
+	ret := m.ctrl.Call(m, "GetProgressOverTime", ctx, muscleGroup, exerciseIDs)
 	ret0, _ := ret[0].([]exercises.ProgressData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetProgressOverTime indicates an expected call of GetProgressOverTime.
-func (mr *MockexercisesRepoMockRecorder) GetProgressOverTime(ctx, muscleGroup, exerciseID any) *gomock.Call {
+func (mr *MockexercisesRepoMockRecorder) GetProgressOverTime(ctx, muscleGroup, exerciseIDs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProgressOverTime", reflect.TypeOf((*MockexercisesRepo)(nil).GetProgressOverTime), ctx, muscleGroup, exerciseID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProgressOverTime", reflect.TypeOf((*MockexercisesRepo)(nil).GetProgressOverTime), ctx, muscleGroup, exerciseIDs)
 }
 
 // GetProgressionRate mocks base method.
-func (m *MockexercisesRepo) GetProgressionRate(ctx context.Context, muscleGroup, exerciseID string, days int) (*exercises.ProgressionRateData, error) {
+func (m *MockexercisesRepo) GetProgressionRate(ctx context.Context, muscleGroup string, exerciseIDs []string, days int) (*exercises.ProgressionRateData, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetProgressionRate", ctx, muscleGroup, exerciseID, days)
+	ret := m.ctrl.Call(m, "GetProgressionRate", ctx, muscleGroup, exerciseIDs, days)
 	ret0, _ := ret[0].(*exercises.ProgressionRateData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetProgressionRate indicates an expected call of GetProgressionRate.
-func (mr *MockexercisesRepoMockRecorder) GetProgressionRate(ctx, muscleGroup, exerciseID, days any) *gomock.Call {
+func (mr *MockexercisesRepoMockRecorder) GetProgressionRate(ctx, muscleGroup, exerciseIDs, days any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProgressionRate", reflect.TypeOf((*MockexercisesRepo)(nil).GetProgressionRate), ctx, muscleGroup, exerciseID, days)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProgressionRate", reflect.TypeOf((*MockexercisesRepo)(nil).GetProgressionRate), ctx, muscleGroup, exerciseIDs, days)
 }
 
 // List mocks base method.

@@ -18,7 +18,8 @@ import (
 var ErrExerciseNotFound = errors.New("exercise not found")
 
 type ExerciseParams struct {
-	ExerciseID         string
+	ExerciseID         string   // single ID (backward compat)
+	ExerciseIDs        []string // multi-select; used when non-empty
 	MuscleGroup        string
 	From               *time.Time
 	To                 *time.Time
@@ -167,13 +168,23 @@ func (r *Repo) Get(ctx context.Context, id int) (_ *Exercise, err error) {
 	return &exercises[0], nil
 }
 
-// ListAll returns all exercises for a certain muscle group and exercise ID.
+// effectiveExerciseIDs returns the exercise IDs to filter by (nil = no filter).
+func (params ExerciseParams) effectiveExerciseIDs() []string {
+	if len(params.ExerciseIDs) > 0 {
+		return params.ExerciseIDs
+	}
+	if params.ExerciseID != "" {
+		return []string{params.ExerciseID}
+	}
+	return nil
+}
+
+// ListAll returns all exercises for a certain muscle group and optional exercise ID(s).
 func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.listall")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
-	span.SetAttributes(attribute.String("exercise_id", params.ExerciseID))
 	span.SetAttributes(attribute.String("muscle_group", params.MuscleGroup))
 	span.SetAttributes(attribute.Bool("only-prod", params.OnlyProd))
 	span.SetAttributes(attribute.Bool("exclude-testing-data", params.ExcludeTestingData))
@@ -184,24 +195,52 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 		span.SetAttributes(attribute.String("to", params.To.String()))
 	}
 
-	rows, err := r.db.Query(
-		ctx,
-		`
+	ids := params.effectiveExerciseIDs()
+	var whereParts []string
+	var args []interface{}
+	argIndex := 1
+
+	if len(ids) == 1 {
+		whereParts = append(whereParts, fmt.Sprintf("e.exercise_id = $%d", argIndex))
+		args = append(args, ids[0])
+		argIndex++
+	} else if len(ids) > 1 {
+		placeholders := make([]string, len(ids))
+		for i := range ids {
+			placeholders[i] = fmt.Sprintf("$%d", argIndex)
+			args = append(args, ids[i])
+			argIndex++
+		}
+		whereParts = append(whereParts, "e.exercise_id IN ("+strings.Join(placeholders, ",")+")")
+	}
+
+	if params.MuscleGroup != "" {
+		whereParts = append(whereParts, fmt.Sprintf("($%d::text = '' OR e.muscle_group = $%d)", argIndex, argIndex))
+		args = append(args, params.MuscleGroup)
+		argIndex++
+	}
+	whereParts = append(whereParts, fmt.Sprintf("($%d::timestamp IS NULL OR e.created_at >= $%d)", argIndex, argIndex))
+	args = append(args, params.From)
+	argIndex++
+	whereParts = append(whereParts, fmt.Sprintf("($%d::timestamp IS NULL OR e.created_at <= $%d)", argIndex, argIndex))
+	args = append(args, params.To)
+	argIndex++
+	whereParts = append(whereParts, fmt.Sprintf("($%d::boolean IS FALSE OR e.metadata->>'env' = 'prod' OR e.metadata->>'env' = 'production')", argIndex))
+	args = append(args, params.OnlyProd)
+	argIndex++
+	whereParts = append(whereParts, fmt.Sprintf("($%d::boolean IS FALSE OR e.metadata->>'testing' != 'true' OR e.metadata->>'test' != 'true')", argIndex))
+	args = append(args, params.ExcludeTestingData)
+
+	whereClause := "WHERE " + strings.Join(whereParts, " AND ")
+	query := `
 			SELECT
 				e.id, e.exercise_id, COALESCE(et.name, e.exercise_id) as name, e.muscle_group, e.kilos, e.reps, e.metadata, e.created_at
 			FROM exercise e
 			LEFT JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
-				WHERE ($1::text = '' OR e.exercise_id = $1)
-				AND ($2::text = '' OR e.muscle_group = $2)
-				AND ($3::timestamp IS NULL OR e.created_at >= $3)
-				AND ($4::timestamp IS NULL OR e.created_at <= $4)
-				AND ($5::boolean IS FALSE OR e.metadata->>'env' = 'prod' OR e.metadata->>'env' = 'production')
-				AND ($6::boolean IS FALSE OR e.metadata->>'testing' != 'true' OR e.metadata->>'test' != 'true')
-			ORDER BY e.created_at DESC;`,
-		params.ExerciseID, params.MuscleGroup,
-		params.From, params.To,
-		params.OnlyProd, params.ExcludeTestingData,
-	)
+				` + whereClause + `
+			ORDER BY e.created_at DESC;`
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
@@ -387,16 +426,16 @@ func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
 	return exercises, nil
 }
 
-// GetProgressOverTime returns progress statistics grouped by date for a muscle group
-// exerciseID is optional - if provided, filters to that specific exercise type
-func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID string) (_ []ProgressData, err error) {
+// GetProgressOverTime returns progress statistics grouped by date for a muscle group.
+// exerciseIDs is optional - when non-empty, filters to those exercise types.
+func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup string, exerciseIDs []string) (_ []ProgressData, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.progress_over_time")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
 	span.SetAttributes(attribute.String("muscle_group", muscleGroup))
-	if exerciseID != "" {
-		span.SetAttributes(attribute.String("exercise_id", exerciseID))
+	if len(exerciseIDs) > 0 {
+		span.SetAttributes(attribute.StringSlice("exercise_ids", exerciseIDs))
 	}
 
 	var query string
@@ -416,10 +455,18 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID 
 		argIndex++
 	}
 
-	if exerciseID != "" {
+	if len(exerciseIDs) == 1 {
 		whereConditions = append(whereConditions, fmt.Sprintf("exercise_id = $%d", argIndex))
-		args = append(args, exerciseID)
+		args = append(args, exerciseIDs[0])
 		argIndex++
+	} else if len(exerciseIDs) > 1 {
+		placeholders := make([]string, len(exerciseIDs))
+		for i := range exerciseIDs {
+			placeholders[i] = fmt.Sprintf("$%d", argIndex)
+			args = append(args, exerciseIDs[i])
+			argIndex++
+		}
+		whereConditions = append(whereConditions, "exercise_id IN ("+strings.Join(placeholders, ",")+")")
 	}
 
 	whereClause := ""
@@ -427,20 +474,40 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID 
 		whereClause = "WHERE " + strings.Join(whereConditions, " AND ")
 	}
 
-	query = fmt.Sprintf(`
-		SELECT 
-			DATE(created_at)::text as date,
-			AVG(kilos)::numeric(10,2) as avg_weight,
-			MAX(kilos) as max_weight,
-			SUM(kilos * reps)::numeric(10,2) as total_volume,
-			COUNT(*) as exercise_count
-		FROM exercise
-		%s
-		GROUP BY DATE(created_at)
-		HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
-		ORDER BY DATE(created_at) DESC
-		LIMIT 90;
-	`, whereClause)
+	groupByExercise := len(exerciseIDs) > 1
+
+	if groupByExercise {
+		query = fmt.Sprintf(`
+			SELECT 
+				DATE(created_at)::text as date,
+				exercise_id,
+				AVG(kilos)::numeric(10,2) as avg_weight,
+				MAX(kilos) as max_weight,
+				SUM(kilos * reps)::numeric(10,2) as total_volume,
+				COUNT(*) as exercise_count
+			FROM exercise
+			%s
+			GROUP BY DATE(created_at), exercise_id
+			HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
+			ORDER BY DATE(created_at) DESC, exercise_id
+			LIMIT 500;
+		`, whereClause)
+	} else {
+		query = fmt.Sprintf(`
+			SELECT 
+				DATE(created_at)::text as date,
+				AVG(kilos)::numeric(10,2) as avg_weight,
+				MAX(kilos) as max_weight,
+				SUM(kilos * reps)::numeric(10,2) as total_volume,
+				COUNT(*) as exercise_count
+			FROM exercise
+			%s
+			GROUP BY DATE(created_at)
+			HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
+			ORDER BY DATE(created_at) DESC
+			LIMIT 90;
+		`, whereClause)
+	}
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
@@ -457,8 +524,16 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID 
 		var totalVolume float64
 		var exerciseCount int
 
-		if err := rows.Scan(&dateStr, &avgWeight, &maxWeight, &totalVolume, &exerciseCount); err != nil {
-			return nil, fmt.Errorf("scan progress row: %w", err)
+		if groupByExercise {
+			var exerciseID string
+			if err := rows.Scan(&dateStr, &exerciseID, &avgWeight, &maxWeight, &totalVolume, &exerciseCount); err != nil {
+				return nil, fmt.Errorf("scan progress row: %w", err)
+			}
+			pd.ExerciseID = exerciseID
+		} else {
+			if err := rows.Scan(&dateStr, &avgWeight, &maxWeight, &totalVolume, &exerciseCount); err != nil {
+				return nil, fmt.Errorf("scan progress row: %w", err)
+			}
 		}
 
 		// Parse date
@@ -492,17 +567,18 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup, exerciseID 
 	return progress, nil
 }
 
-// GetProgressionRate calculates progression rate by comparing current period with past period
-// days parameter specifies the period length (e.g., 30, 60, or 90 days)
-func (r *Repo) GetProgressionRate(ctx context.Context, muscleGroup, exerciseID string, days int) (_ *ProgressionRateData, err error) {
+// GetProgressionRate calculates progression rate by comparing current period with past period.
+// days parameter specifies the period length (e.g., 30, 60, or 90 days).
+// exerciseIDs is optional - when non-empty, filters to those exercise types.
+func (r *Repo) GetProgressionRate(ctx context.Context, muscleGroup string, exerciseIDs []string, days int) (_ *ProgressionRateData, err error) {
 	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.progression_rate")
 	defer func() {
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
 	span.SetAttributes(attribute.String("muscle_group", muscleGroup))
 	span.SetAttributes(attribute.Int("days", days))
-	if exerciseID != "" {
-		span.SetAttributes(attribute.String("exercise_id", exerciseID))
+	if len(exerciseIDs) > 0 {
+		span.SetAttributes(attribute.StringSlice("exercise_ids", exerciseIDs))
 	}
 
 	now := time.Now()
@@ -528,10 +604,18 @@ func (r *Repo) GetProgressionRate(ctx context.Context, muscleGroup, exerciseID s
 		argIndex++
 	}
 
-	if exerciseID != "" {
+	if len(exerciseIDs) == 1 {
 		currentConditions = append(currentConditions, fmt.Sprintf("exercise_id = $%d", argIndex))
-		currentArgs = append(currentArgs, exerciseID)
+		currentArgs = append(currentArgs, exerciseIDs[0])
 		argIndex++
+	} else if len(exerciseIDs) > 1 {
+		placeholders := make([]string, len(exerciseIDs))
+		for i := range exerciseIDs {
+			placeholders[i] = fmt.Sprintf("$%d", argIndex)
+			currentArgs = append(currentArgs, exerciseIDs[i])
+			argIndex++
+		}
+		currentConditions = append(currentConditions, "exercise_id IN ("+strings.Join(placeholders, ",")+")")
 	}
 
 	currentWhereClause := "WHERE " + strings.Join(currentConditions, " AND ")
@@ -573,10 +657,18 @@ func (r *Repo) GetProgressionRate(ctx context.Context, muscleGroup, exerciseID s
 		pastArgIndex++
 	}
 
-	if exerciseID != "" {
+	if len(exerciseIDs) == 1 {
 		pastConditions = append(pastConditions, fmt.Sprintf("exercise_id = $%d", pastArgIndex))
-		pastArgs = append(pastArgs, exerciseID)
+		pastArgs = append(pastArgs, exerciseIDs[0])
 		pastArgIndex++
+	} else if len(exerciseIDs) > 1 {
+		placeholders := make([]string, len(exerciseIDs))
+		for i := range exerciseIDs {
+			placeholders[i] = fmt.Sprintf("$%d", pastArgIndex)
+			pastArgs = append(pastArgs, exerciseIDs[i])
+			pastArgIndex++
+		}
+		pastConditions = append(pastConditions, "exercise_id IN ("+strings.Join(placeholders, ",")+")")
 	}
 
 	pastWhereClause := "WHERE " + strings.Join(pastConditions, " AND ")

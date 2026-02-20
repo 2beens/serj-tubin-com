@@ -2,13 +2,15 @@ package exercises
 
 import "time"
 
-// ProgressData represents progress statistics for a specific date
+// ProgressData represents progress statistics for a specific date.
+// When multiple exercise types are requested, ExerciseID is set per row so the client can show separate series.
 type ProgressData struct {
-	Date        time.Time `json:"date"`
-	AvgWeight   float64   `json:"avg_weight"`
-	MaxWeight    int       `json:"max_weight"`
-	TotalVolume  float64   `json:"total_volume"` // sum of (kilos * reps) for the day
-	ExerciseCount int     `json:"exercise_count"`
+	Date          time.Time `json:"date"`
+	ExerciseID    string    `json:"exercise_id,omitempty"` // set when progress is grouped by exercise (multi-select)
+	AvgWeight     float64   `json:"avg_weight"`
+	MaxWeight     int       `json:"max_weight"`
+	TotalVolume   float64   `json:"total_volume"`   // sum of (kilos * reps) for the day
+	ExerciseCount int       `json:"exercise_count"`
 }
 
 // ProgressionRateData represents progression rate comparison between current and past periods
