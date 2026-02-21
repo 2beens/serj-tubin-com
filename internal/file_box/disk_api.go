@@ -356,7 +356,7 @@ func (da *DiskApi) NewFolder(ctx context.Context, parentId int64, name string) (
 
 	newPath := filepath.Join(parentFolder.Path, name)
 	if err := os.Mkdir(newPath, 0755); err != nil {
-		return nil, fmt.Errorf("create child folder [%s]: %s", name, err)
+		return nil, fmt.Errorf("create child folder [%s]: %w", name, err)
 	} else {
 		log.Debugf("new folder created: %s", name)
 	}

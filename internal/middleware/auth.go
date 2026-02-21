@@ -145,7 +145,11 @@ func (h *AuthMiddlewareHandler) AuthCheck() func(next http.Handler) http.Handler
 			// requests coming from browser extension
 			if strings.HasPrefix(r.URL.Path, "/netlog/new") {
 				if h.browserRequestsSecret != authToken {
-					reqIp, _ := pkg.ReadUserIP(r)
+					reqIp, err := pkg.ReadUserIP(r)
+					if err != nil {
+						log.Warnf("read user IP: %s", err)
+						reqIp = "unknown"
+					}
 					log.Errorf("unauthorized /netlog/new request detected from %s, authToken: %s", reqIp, authToken)
 					// fool the "attacker" by a fake positive response
 					pkg.WriteTextResponseOK(w, "added")

@@ -56,8 +56,9 @@ type IntegrationTestSuite struct {
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestIntegrationTestSuite(t *testing.T) {
-	if ok, _ := strconv.ParseBool(os.Getenv("ST_INT_TESTS")); !ok {
-		t.Skip("Skip running integration tests, set `ST_INT_TESTS=1` to run enable.")
+	ok, err := strconv.ParseBool(os.Getenv("ST_INT_TESTS"))
+	if err != nil || !ok {
+		t.Skip("Skip running integration tests, set `ST_INT_TESTS=1` to run.")
 		return
 	}
 	suite.Run(t, new(IntegrationTestSuite))
@@ -175,14 +176,16 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		s.cleanup()
 		log.Fatalf("create temp dir for file box: %s", err)
 	}
+	redisPortNum, err := strconv.Atoi(redisPort)
+	if err != nil {
+		s.cleanup()
+		log.Fatalf("invalid redis port %q: %s", redisPort, err)
+	}
 	s.fileService, err = file_box.NewFileService(
 		ctx,
 		fileBoxRootDir,
 		"localhost",
-		func() int {
-			p, _ := strconv.Atoi(redisPort)
-			return p
-		}(),
+		redisPortNum,
 		"", // no password for test redis
 		false,
 		tracing.HoneycombConfig{},

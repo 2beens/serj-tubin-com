@@ -102,6 +102,8 @@ func NewServer(
 		return nil, fmt.Errorf("new db pool: %w", err)
 	}
 
+	// DB ping is best-effort at startup; we continue so the server can start even if DB is not ready yet.
+	// To fail fast on ping failure, return the error here instead of only logging.
 	if err := dbPool.Ping(ctx); err != nil {
 		log.Warnf("failed to ping db: %s", err)
 	}
@@ -149,7 +151,7 @@ func NewServer(
 	weatherCitiesData, err := weather.LoadCitiesData()
 	if err != nil {
 		log.Errorf("failed to load weather cities data: %s", err)
-		return nil, fmt.Errorf("failed to load weather cities data: %s", err)
+		return nil, fmt.Errorf("failed to load weather cities data: %w", err)
 	}
 
 	gymStatsDiskApi, err := file_box.NewDiskApi(params.GymStatsDiskApiRootPath)
@@ -228,7 +230,7 @@ func NewServer(
 
 	s.quotesManager, err = misc.NewQuoteManager(csv.NewReader(quotesCsvFile))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create quote manager: %s", err)
+		return nil, fmt.Errorf("failed to create quote manager: %w", err)
 	}
 
 	return s, nil

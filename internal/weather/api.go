@@ -99,17 +99,17 @@ func (w *Api) GetWeatherCurrent(ctx context.Context, cityID int, cityName string
 
 	resp, err := w.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("http client do: %s", err.Error())
+		return nil, fmt.Errorf("http client do: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read weather api response bytes: %s", err)
+		return nil, fmt.Errorf("failed to read weather api response bytes: %w", err)
 	}
 
 	if err := json.Unmarshal(respBytes, weatherApiResponse); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal weather api response bytes: %s", err)
+		return nil, fmt.Errorf("failed to unmarshal weather api response bytes: %w", err)
 	}
 
 	// set cache
@@ -161,18 +161,18 @@ func (w *Api) Get5DaysWeatherForecast(ctx context.Context, cityID int, cityName,
 
 	resp, err := w.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error getting weather api response: %s", err.Error())
+		return nil, fmt.Errorf("error getting weather api response: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read weather api response bytes: %s", err)
+		return nil, fmt.Errorf("failed to read weather api response bytes: %w", err)
 	}
 
 	err = json.Unmarshal(respBytes, weatherApiResponse)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal weather api 5 days response bytes: %s", err)
+		return nil, fmt.Errorf("failed to unmarshal weather api 5 days response bytes: %w", err)
 	}
 
 	// set cache
