@@ -3,6 +3,7 @@ package weather
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -111,11 +112,14 @@ type InfoShort struct {
 var citiesRawData embed.FS
 
 func LoadCitiesData() ([]City, error) {
-	citiesJsonFileData, _ := citiesRawData.ReadFile("data/city.list.json")
+	citiesJsonFileData, err := citiesRawData.ReadFile("data/city.list.json")
+	if err != nil {
+		return nil, fmt.Errorf("read cities data: %w", err)
+	}
 
 	var cities []City
 	if err := json.Unmarshal(citiesJsonFileData, &cities); err != nil {
-		return []City{}, err
+		return nil, fmt.Errorf("unmarshal cities data: %w", err)
 	}
 
 	return cities, nil

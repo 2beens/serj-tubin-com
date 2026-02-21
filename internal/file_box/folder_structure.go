@@ -114,7 +114,7 @@ func NewFolderInfo(parentId int64, folder *Folder) *FileInfo {
 func rootPathExists(rootPath string) error {
 	exists, err := pkg.PathExists(rootPath, true)
 	if err != nil {
-		return fmt.Errorf("check root path %s: %s", rootPath, err)
+		return fmt.Errorf("check root path %s: %w", rootPath, err)
 	}
 	if !exists {
 		return fmt.Errorf("root path [%s] does not exist", rootPath)
@@ -137,7 +137,7 @@ func getRootFolder(ctx context.Context, rootPath string) (_ *Folder, err error) 
 
 	rootFolderJsonExists, err := pkg.PathExists(folderStructureJsonPath, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check existance of root folder [%s]: %s", folderStructureJsonPath, err)
+		return nil, fmt.Errorf("failed to check existance of root folder [%s]: %w", folderStructureJsonPath, err)
 	}
 
 	if !rootFolderJsonExists {

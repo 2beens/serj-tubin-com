@@ -607,7 +607,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		// add some exercises
 		total := 15
 		now := time.Now()
-		for i := 0; i < total; i++ {
+		for i := range total {
 			s.newExerciseRequest(ctx, exercises.Exercise{
 				ExerciseID:  fmt.Sprintf("exercise-%d", i),
 				MuscleGroup: "legs",
@@ -628,7 +628,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		})
 		require.Len(t, exercisesPageResp.Exercises, 10)
 		assert.Equal(t, total, exercisesPageResp.Total)
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			assert.Equal(t, fmt.Sprintf("exercise-%d", i), exercisesPageResp.Exercises[i].ExerciseID)
 			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
 			assert.Equal(t, map[string]string{
@@ -644,7 +644,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		})
 		require.Len(t, exercisesPageResp.Exercises, 10)
 		assert.Equal(t, total, exercisesPageResp.Total)
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			assert.Equal(t, fmt.Sprintf("exercise-%d", i+5), exercisesPageResp.Exercises[i].ExerciseID)
 			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
 			assert.Equal(t, map[string]string{
@@ -659,7 +659,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		})
 		require.Len(t, exercisesPageResp.Exercises, 3)
 		assert.Equal(t, total, exercisesPageResp.Total)
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			assert.Equal(t, fmt.Sprintf("exercise-%d", i+3), exercisesPageResp.Exercises[i].ExerciseID)
 			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
 			assert.Equal(t, map[string]string{
@@ -676,7 +676,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		// add some exercises for stage and no test
 		total := 15
 		now := time.Now()
-		for i := 0; i < total; i++ {
+		for i := range total {
 			s.newExerciseRequest(ctx, exercises.Exercise{
 				ExerciseID:  fmt.Sprintf("exercise-%d", i),
 				MuscleGroup: "legs",
@@ -691,7 +691,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		}
 		// add some exercises for prod and testing true
 		now = time.Now()
-		for i := 0; i < total; i++ {
+		for i := range total {
 			s.newExerciseRequest(ctx, exercises.Exercise{
 				ExerciseID:  fmt.Sprintf("exercise-%d", i),
 				MuscleGroup: "legs",
@@ -707,7 +707,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		// finally, add 5 exercises for real prod (no testing)
 		now = time.Now()
 		totalProd := 5
-		for i := 0; i < totalProd; i++ {
+		for i := range totalProd {
 			s.newExerciseRequest(ctx, exercises.Exercise{
 				ExerciseID:  fmt.Sprintf("exercise-%d", i),
 				MuscleGroup: "legs",
@@ -732,7 +732,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		})
 		require.Len(t, exercisesPageResp.Exercises, totalProd)
 		assert.Equal(t, totalProd, exercisesPageResp.Total)
-		for i := 0; i < totalProd; i++ {
+		for i := range totalProd {
 			assert.Equal(t, fmt.Sprintf("exercise-%d", i), exercisesPageResp.Exercises[i].ExerciseID)
 			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
 			assert.Equal(t, map[string]string{
@@ -751,7 +751,7 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		})
 		require.Len(t, exercisesPageResp.Exercises, 2)
 		assert.Equal(t, totalProd, exercisesPageResp.Total)
-		for i := 0; i < 2; i++ {
+		for i := range 2 {
 			assert.Equal(t, fmt.Sprintf("exercise-%d", i+2), exercisesPageResp.Exercises[i].ExerciseID)
 			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
 			assert.Equal(t, map[string]string{

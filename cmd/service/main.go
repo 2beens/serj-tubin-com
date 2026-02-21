@@ -29,7 +29,7 @@ func main() {
 
 	cfg, err := config.Load(*env, *configPath)
 	if err != nil {
-		panic(err)
+		log.Fatalf("config load: %s", err)
 	}
 
 	sentryDSN := os.Getenv("SENTRY_DSN")

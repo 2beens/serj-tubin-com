@@ -56,7 +56,7 @@ func getRepoMockAndLoginChecker(t *testing.T, redisClient *redis.Client) (*repoM
 	now := time.Now()
 
 	repoMock := newRepoMock()
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		require.NoError(t, repoMock.AddBlog(context.Background(), &Blog{
 			ID:        i,
 			Title:     fmt.Sprintf("blog%dtitle", i),

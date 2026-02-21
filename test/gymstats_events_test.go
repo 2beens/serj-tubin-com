@@ -206,7 +206,7 @@ func (s *IntegrationTestSuite) TestGymStats_Events() {
 			Calories:  760,
 		})
 
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			s.newWeightReportRequest(ctx, events.WeightReport{
 				Timestamp: now.Add(time.Duration(i) * time.Minute),
 				Weight:    10 * i,
