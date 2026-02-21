@@ -8,17 +8,20 @@ import (
 )
 
 var allowedOrigins = map[string]bool{
-	"https://www.serj-tubin.com": true,
-	"https://2beens.online":      true,
-	"http://localhost:8080":      true,
-	"http://localhost:3000":      true, // Gym Stats Analytics frontend
-	"test":                       true,
+	"https://www.serj-tubin.com":     true,
+	"https://gymstats.serj-tubin.com": true,
+	"https://2beens.online":          true,
+	"http://localhost:8080":         true,
+	"http://localhost:3000":         true, // Gym Stats Analytics frontend
+	"test":                          true,
 }
 
 func Cors() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
+			// Normalize: browser may send origin with trailing slash (e.g. https://gymstats.serj-tubin.com/)
+			originNormalized := strings.TrimSuffix(origin, "/")
 			userAgent := r.Header.Get("User-Agent")
 
 			// used with spotify tracker
@@ -30,7 +33,7 @@ func Cors() func(next http.Handler) http.Handler {
 			var isAllowed bool
 			switch {
 			case
-				allowedOrigins[origin],
+				allowedOrigins[originNormalized],
 				strings.HasPrefix(origin, "chrome-extension://"),
 				strings.HasPrefix(userAgent, "GymStats/1"),
 				strings.HasPrefix(userAgent, "curl/"),
