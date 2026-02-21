@@ -25,6 +25,20 @@ func TestCorsMiddleware(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
+			name:           "GymstatsDeployedOrigin",
+			origin:         "https://gymstats.serj-tubin.com",
+			path:           "/a/login",
+			expectCors:     true,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "GymstatsDeployedOriginTrailingSlash",
+			origin:         "https://gymstats.serj-tubin.com/",
+			path:           "/a/login",
+			expectCors:     true,
+			expectedStatus: http.StatusOK,
+		},
+		{
 			name:           "NotAllowedOrigin",
 			origin:         "https://www.notallowed.com",
 			expectCors:     false,
