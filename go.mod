@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/IBM/pgxpoolprometheus v1.1.2
 	github.com/brianvoe/gofakeit/v6 v6.28.0
-	github.com/coocood/freecache v1.2.4
+	github.com/coocood/freecache v1.2.5
 	github.com/exaring/otelpgx v0.9.3
 	github.com/go-redis/redis/extra/redisotel/v8 v8.11.5
 	github.com/go-redis/redis/v8 v8.11.5
