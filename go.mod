@@ -3,7 +3,7 @@ module github.com/2beens/serjtubincom
 go 1.26.0
 
 require (
-	github.com/BurntSushi/toml v1.5.0
+	github.com/BurntSushi/toml v1.6.0
 	github.com/IBM/pgxpoolprometheus v1.1.2
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/coocood/freecache v1.2.5
