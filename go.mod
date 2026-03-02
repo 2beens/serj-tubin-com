@@ -14,7 +14,7 @@ require (
 	github.com/go-redis/redismock/v8 v8.11.5
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/ipinfo/go/v2 v2.10.0
+	github.com/ipinfo/go/v2 v2.12.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/lib/pq v1.10.9
 	github.com/modelcontextprotocol/go-sdk v1.3.1
