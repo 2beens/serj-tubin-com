@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -214,8 +215,9 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 		whereParts = append(whereParts, "e.exercise_id IN ("+strings.Join(placeholders, ",")+")")
 	}
 
-	if params.MuscleGroup != "" {
-		whereParts = append(whereParts, fmt.Sprintf("($%d::text = '' OR e.muscle_group = $%d)", argIndex, argIndex))
+	// Only filter by muscle_group when a specific group is selected (not "all")
+	if params.MuscleGroup != "" && params.MuscleGroup != "all" {
+		whereParts = append(whereParts, fmt.Sprintf("e.muscle_group = $%d", argIndex))
 		args = append(args, params.MuscleGroup)
 		argIndex++
 	}
@@ -559,6 +561,139 @@ func (r *Repo) GetProgressOverTime(ctx context.Context, muscleGroup string, exer
 	for i, j := 0, len(progress)-1; i < j; i, j = i+1, j-1 {
 		progress[i], progress[j] = progress[j], progress[i]
 	}
+
+	if progress == nil {
+		progress = make([]ProgressData, 0)
+	}
+
+	return progress, nil
+}
+
+// GetProgressOverTimeForPeriod returns progress statistics for the last N days.
+// Same as GetProgressOverTime but restricted to created_at >= (CURRENT_DATE - days).
+func (r *Repo) GetProgressOverTimeForPeriod(ctx context.Context, muscleGroup string, exerciseIDs []string, days int) (_ []ProgressData, err error) {
+	ctx, span := tracing.GlobalTracer.Start(ctx, "repo.gymstats.progress_over_time_for_period")
+	defer func() {
+		tracing.EndSpanWithErrCheck(span, err)
+	}()
+	span.SetAttributes(attribute.String("muscle_group", muscleGroup), attribute.Int("days", days))
+	if len(exerciseIDs) > 0 {
+		span.SetAttributes(attribute.StringSlice("exercise_ids", exerciseIDs))
+	}
+
+	var query string
+	var args []any
+
+	whereConditions := []string{
+		"(metadata->>'env' = 'prod' OR metadata->>'env' = 'production')",
+		"(metadata->>'testing' IS NULL OR metadata->>'testing' != 'true')",
+		"(metadata->>'test' IS NULL OR metadata->>'test' != 'true')",
+		"created_at >= CURRENT_DATE - ($1::integer * INTERVAL '1 day')",
+	}
+	args = append(args, days)
+	argIndex := 2
+
+	if muscleGroup != "all" {
+		whereConditions = append(whereConditions, fmt.Sprintf("muscle_group = $%d", argIndex))
+		args = append(args, muscleGroup)
+		argIndex++
+	}
+
+	if len(exerciseIDs) == 1 {
+		whereConditions = append(whereConditions, fmt.Sprintf("exercise_id = $%d", argIndex))
+		args = append(args, exerciseIDs[0])
+		argIndex++
+	} else if len(exerciseIDs) > 1 {
+		placeholders := make([]string, len(exerciseIDs))
+		for i := range exerciseIDs {
+			placeholders[i] = fmt.Sprintf("$%d", argIndex)
+			args = append(args, exerciseIDs[i])
+			argIndex++
+		}
+		whereConditions = append(whereConditions, "exercise_id IN ("+strings.Join(placeholders, ",")+")")
+	}
+
+	whereClause := "WHERE " + strings.Join(whereConditions, " AND ")
+	limit := min(days+50, 400)
+	groupByExercise := len(exerciseIDs) > 1
+
+	if groupByExercise {
+		query = fmt.Sprintf(`
+			SELECT 
+				DATE(created_at)::text as date,
+				exercise_id,
+				AVG(kilos)::numeric(10,2) as avg_weight,
+				MAX(kilos) as max_weight,
+				SUM(kilos * reps)::numeric(10,2) as total_volume,
+				COUNT(*) as exercise_count
+			FROM exercise
+			%s
+			GROUP BY DATE(created_at), exercise_id
+			HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
+			ORDER BY DATE(created_at) DESC, exercise_id
+			LIMIT %d;
+		`, whereClause, limit)
+	} else {
+		query = fmt.Sprintf(`
+			SELECT 
+				DATE(created_at)::text as date,
+				AVG(kilos)::numeric(10,2) as avg_weight,
+				MAX(kilos) as max_weight,
+				SUM(kilos * reps)::numeric(10,2) as total_volume,
+				COUNT(*) as exercise_count
+			FROM exercise
+			%s
+			GROUP BY DATE(created_at)
+			HAVING COUNT(*) > 0 AND SUM(kilos * reps) > 0
+			ORDER BY DATE(created_at) DESC
+			LIMIT %d;
+		`, whereClause, limit)
+	}
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query progress for period: %w", err)
+	}
+	defer rows.Close()
+
+	var progress []ProgressData
+	for rows.Next() {
+		var pd ProgressData
+		var dateStr string
+		var avgWeight float64
+		var maxWeight int
+		var totalVolume float64
+		var exerciseCount int
+
+		if groupByExercise {
+			var exerciseID string
+			if err := rows.Scan(&dateStr, &exerciseID, &avgWeight, &maxWeight, &totalVolume, &exerciseCount); err != nil {
+				return nil, fmt.Errorf("scan progress row: %w", err)
+			}
+			pd.ExerciseID = exerciseID
+		} else {
+			if err := rows.Scan(&dateStr, &avgWeight, &maxWeight, &totalVolume, &exerciseCount); err != nil {
+				return nil, fmt.Errorf("scan progress row: %w", err)
+			}
+		}
+
+		date, parseErr := time.Parse("2006-01-02", dateStr)
+		if parseErr != nil {
+			return nil, fmt.Errorf("parse date %s: %w", dateStr, parseErr)
+		}
+		pd.Date = date
+		pd.AvgWeight = avgWeight
+		pd.MaxWeight = maxWeight
+		pd.TotalVolume = totalVolume
+		pd.ExerciseCount = exerciseCount
+		progress = append(progress, pd)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	slices.Reverse(progress)
 
 	if progress == nil {
 		progress = make([]ProgressData, 0)

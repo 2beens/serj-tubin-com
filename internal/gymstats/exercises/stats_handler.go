@@ -3,6 +3,7 @@ package exercises
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -28,7 +29,8 @@ func (handler *StatsHandler) HandleVerifyToken(w http.ResponseWriter, r *http.Re
 	pkg.WriteJSONResponseOK(w, `{"status": "ok"}`)
 }
 
-// HandleProgress returns progress statistics over time for a muscle group
+// HandleProgress returns progress statistics over time for a muscle group.
+// Optional query param days=30|90|180|365 returns progress for that period; otherwise last 90 days (chart default).
 func (handler *StatsHandler) HandleProgress(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracing.GlobalTracer.Start(r.Context(), "handler.gymstats.stats.progress")
 	defer span.End()
@@ -39,15 +41,25 @@ func (handler *StatsHandler) HandleProgress(w http.ResponseWriter, r *http.Reque
 	}
 	exerciseIDs := r.URL.Query()["exercise_id"] // Optional: filter by exercise type(s); multi-select
 
-	// Get progress data
-	progress, err := handler.repo.GetProgressOverTime(ctx, muscleGroup, exerciseIDs)
+	var progress []ProgressData
+	var err error
+	if daysStr := r.URL.Query().Get("days"); daysStr != "" {
+		days, parseErr := strconv.Atoi(daysStr)
+		if parseErr != nil || !slices.Contains([]int{30, 90, 180, 365}, days) {
+			http.Error(w, "days must be 30, 90, 180, or 365", http.StatusBadRequest)
+			return
+		}
+		progress, err = handler.repo.GetProgressOverTimeForPeriod(ctx, muscleGroup, exerciseIDs, days)
+	} else {
+		progress, err = handler.repo.GetProgressOverTime(ctx, muscleGroup, exerciseIDs)
+	}
 	if err != nil {
 		log.Errorf("failed to get progress over time: %s", err)
 		http.Error(w, "failed to get progress data", http.StatusInternalServerError)
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"progress": progress,
 	}
 

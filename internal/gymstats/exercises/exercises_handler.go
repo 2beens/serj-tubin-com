@@ -40,6 +40,7 @@ type exercisesRepo interface {
 	ExercisesCount(ctx context.Context, params ListParams) (int, error)
 	GetExerciseTypes(ctx context.Context, params GetExerciseTypesParams) (_ []ExerciseType, err error)
 	GetProgressOverTime(ctx context.Context, muscleGroup string, exerciseIDs []string) ([]ProgressData, error)
+	GetProgressOverTimeForPeriod(ctx context.Context, muscleGroup string, exerciseIDs []string, days int) ([]ProgressData, error)
 	GetProgressionRate(ctx context.Context, muscleGroup string, exerciseIDs []string, days int) (*ProgressionRateData, error)
 }
 
