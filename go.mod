@@ -27,7 +27,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.63.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0
 	go.opentelemetry.io/contrib/processors/baggagecopy v0.13.0
-	go.opentelemetry.io/otel v1.40.0
+	go.opentelemetry.io/otel v1.41.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.32.0
 	go.opentelemetry.io/otel/sdk v1.40.0
 	go.uber.org/goleak v1.3.0
@@ -104,8 +104,8 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.32.0 // indirect
-	go.opentelemetry.io/otel/metric v1.40.0 // indirect
-	go.opentelemetry.io/otel/trace v1.40.0
+	go.opentelemetry.io/otel/metric v1.41.0 // indirect
+	go.opentelemetry.io/otel/trace v1.41.0
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
