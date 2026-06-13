@@ -80,8 +80,12 @@ func (hook Hook) Levels() []logrus.Level {
 
 func (hook Hook) Fire(entry *logrus.Entry) error {
 	event := sentry.NewEvent()
-	for k, v := range hook.extra {
-		event.Extra[k] = v
+	if len(hook.extra) > 0 {
+		extra := sentry.Context{}
+		for k, v := range hook.extra {
+			extra[k] = v
+		}
+		event.Contexts["extra"] = extra
 	}
 	for k, v := range hook.tags {
 		event.Tags[k] = v
@@ -105,8 +109,15 @@ func DefaultConverter(entry *logrus.Entry, event *sentry.Event, hub *sentry.Hub)
 	event.Level = levelMap[entry.Level]
 	event.Message = entry.Message
 
-	for k, v := range entry.Data {
-		event.Extra[k] = v
+	if len(entry.Data) > 0 {
+		extra, ok := event.Contexts["extra"]
+		if !ok {
+			extra = sentry.Context{}
+			event.Contexts["extra"] = extra
+		}
+		for k, v := range entry.Data {
+			extra[k] = v
+		}
 	}
 
 	if err, ok := entry.Data[logrus.ErrorKey].(error); ok {
