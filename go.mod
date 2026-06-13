@@ -1,6 +1,6 @@
 module github.com/2beens/serjtubincom
 
-go 1.26.0
+go 1.26.4
 
 require (
 	github.com/BurntSushi/toml v1.5.0
