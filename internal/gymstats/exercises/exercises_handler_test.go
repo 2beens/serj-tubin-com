@@ -76,14 +76,14 @@ func TestHandler_HandleAdd(t *testing.T) {
 			}, nil
 		}).Times(1)
 
-	todayMidnight := time.Now().In(exercises.TimeLocationBerlin).Truncate(24 * time.Hour)
-	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
+	dayStart := exercises.BerlinDayStart(testEx2.CreatedAt)
+	dayEnd := dayStart.Add(24 * time.Hour)
 	repoMock.EXPECT().
 		ListAll(gomock.Any(), exercises.ExerciseParams{
 			ExerciseID:         testEx2.ExerciseID,
 			MuscleGroup:        testEx2.MuscleGroup,
-			From:               &todayMidnight,
-			To:                 &tomorrowMidnight,
+			From:               &dayStart,
+			To:                 &dayEnd,
 			OnlyProd:           true,
 			ExcludeTestingData: true,
 		}).
@@ -92,8 +92,8 @@ func TestHandler_HandleAdd(t *testing.T) {
 	repoMock.EXPECT().
 		List(gomock.Any(), exercises.ListParams{
 			ExerciseParams: exercises.ExerciseParams{
-				From:               &todayMidnight,
-				To:                 &tomorrowMidnight,
+				From:               &dayStart,
+				To:                 &dayEnd,
 				OnlyProd:           true,
 				ExcludeTestingData: true,
 			},
@@ -118,4 +118,50 @@ func TestHandler_HandleAdd(t *testing.T) {
 	assert.Equal(t, testEx2.Metadata, addExerciseResponse.Metadata)
 	assert.Equal(t, 2, addExerciseResponse.CountToday)
 	assert.Equal(t, int(now.Sub(tenMinutesAgo).Seconds()), addExerciseResponse.SecondsSincePreviousSet)
+}
+
+func TestHandler_HandleAdd_NegativeKilos(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	h := exercises.NewHandler(NewMockexercisesRepo(ctrl))
+
+	body, err := json.Marshal(exercises.Exercise{
+		ExerciseID:  "ex",
+		MuscleGroup: "legs",
+		Kilos:       -1,
+		Reps:        8,
+	})
+	require.NoError(t, err)
+
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodPost, "", bytes.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	h.HandleAdd(rec, req)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestHandler_HandleUpdate_NotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	repoMock := NewMockexercisesRepo(ctrl)
+	h := exercises.NewHandler(repoMock)
+
+	repoMock.EXPECT().Get(gomock.Any(), 9).Return(nil, exercises.ErrExerciseNotFound)
+
+	body, err := json.Marshal(exercises.Exercise{
+		ID:          9,
+		ExerciseID:  "ex",
+		MuscleGroup: "legs",
+		Kilos:       10,
+		Reps:        8,
+	})
+	require.NoError(t, err)
+
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest(http.MethodPut, "", bytes.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	h.HandleUpdate(rec, req)
+	require.Equal(t, http.StatusNotFound, rec.Code)
 }

@@ -459,10 +459,10 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Equal(t, "ex2", ex2history.ExerciseID)
 		assert.Equal(t, "legs", ex2history.MuscleGroup)
 		for day, histStats := range ex2history.Stats {
-			assert.Equal(t, time.Now().UTC().Truncate(24*time.Hour).Unix(), day.Unix())
+			assert.Equal(t, exercises.BerlinDayStart(time.Now()).Unix(), day.Unix())
 			assert.Equal(t, 2, histStats.Sets)
-			assert.Equal(t, 235, histStats.AvgKilos)
-			assert.Equal(t, 10, histStats.AvgReps)
+			assert.InDelta(t, 235, histStats.AvgKilos, 0.001)
+			assert.InDelta(t, 10, histStats.AvgReps, 0.001)
 		}
 
 		ex1history := s.getExerciseHistory(ctx, exercises.ExerciseParams{
@@ -474,10 +474,10 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 		assert.Len(t, ex1history.Stats, 1)
 		assert.Equal(t, "ex1", ex1history.ExerciseID)
 		for day, histStats := range ex1history.Stats {
-			assert.Equal(t, time.Now().UTC().Truncate(24*time.Hour).Unix(), day.Unix())
+			assert.Equal(t, exercises.BerlinDayStart(time.Now()).Unix(), day.Unix())
 			assert.Equal(t, 1, histStats.Sets)
-			assert.Equal(t, 10, histStats.AvgKilos)
-			assert.Equal(t, 10, histStats.AvgReps)
+			assert.InDelta(t, 10, histStats.AvgKilos, 0.001)
+			assert.InDelta(t, 10, histStats.AvgReps, 0.001)
 		}
 
 		emptyHistory := s.getExerciseHistory(ctx, exercises.ExerciseParams{
@@ -644,15 +644,15 @@ func (s *IntegrationTestSuite) TestGymStats_Exercises() {
 			}, exercisesPageResp.Exercises[i].Metadata)
 		}
 
-		// will move the offset from 10 to 5, and get last 10
+		// page 2 is the short last page: rows 10-14, no overlap with page 1
 		exercisesPageResp = s.listExercisesRequest(ctx, exercises.ListParams{
 			Page: 2,
 			Size: 10,
 		})
-		require.Len(t, exercisesPageResp.Exercises, 10)
+		require.Len(t, exercisesPageResp.Exercises, 5)
 		assert.Equal(t, total, exercisesPageResp.Total)
-		for i := 0; i < 10; i++ {
-			assert.Equal(t, fmt.Sprintf("exercise-%d", i+5), exercisesPageResp.Exercises[i].ExerciseID)
+		for i := range 5 {
+			assert.Equal(t, fmt.Sprintf("exercise-%d", i+10), exercisesPageResp.Exercises[i].ExerciseID)
 			assert.Equal(t, "legs", exercisesPageResp.Exercises[i].MuscleGroup)
 			assert.Equal(t, map[string]string{
 				"test": "false",

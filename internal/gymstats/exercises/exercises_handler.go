@@ -30,6 +30,14 @@ func init() {
 	}
 }
 
+// BerlinDayStart is local midnight of t's calendar day in Europe/Berlin.
+// time.Truncate(24h) is UTC midnight, which shifts the day by one or two hours.
+func BerlinDayStart(t time.Time) time.Time {
+	t = t.In(TimeLocationBerlin)
+	year, month, day := t.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, TimeLocationBerlin)
+}
+
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise Exercise) (*Exercise, error)
 	Get(ctx context.Context, id int) (*Exercise, error)
@@ -94,9 +102,13 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error, exercise id or muscle group empty", http.StatusBadRequest)
 		return
 	}
+	if exercise.Kilos < 0 || exercise.Reps < 0 {
+		http.Error(w, "kilos and reps must be zero or positive", http.StatusBadRequest)
+		return
+	}
 
 	if exercise.CreatedAt.IsZero() {
-		exercise.CreatedAt = time.Now().In(TimeLocationBerlin)
+		exercise.CreatedAt = time.Now()
 	}
 
 	addedExercise, err := handler.repo.Add(ctx, exercise)
@@ -106,13 +118,13 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todayMidnight := time.Now().In(TimeLocationBerlin).Truncate(24 * time.Hour)
-	tomorrowMidnight := todayMidnight.Add(24 * time.Hour)
+	dayStart := BerlinDayStart(addedExercise.CreatedAt)
+	dayEnd := dayStart.Add(24 * time.Hour)
 	exercisesToday, err := handler.repo.ListAll(ctx, ExerciseParams{
 		ExerciseID:         addedExercise.ExerciseID,
 		MuscleGroup:        addedExercise.MuscleGroup,
-		From:               &todayMidnight,
-		To:                 &tomorrowMidnight,
+		From:               &dayStart,
+		To:                 &dayEnd,
 		OnlyProd:           true,
 		ExcludeTestingData: true,
 	})
@@ -124,8 +136,8 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	// get two last added, so we can calculate time since previous set
 	listRes, _, err := handler.repo.List(ctx, ListParams{
 		ExerciseParams: ExerciseParams{
-			From:               &todayMidnight,
-			To:                 &tomorrowMidnight,
+			From:               &dayStart,
+			To:                 &dayEnd,
 			OnlyProd:           true,
 			ExcludeTestingData: true,
 		},
@@ -140,20 +152,11 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	secondsSincePreviousSet := -1
 	if len(listRes) == 2 {
 		previousEx := listRes[1]
-		previousEx.CreatedAt = previousEx.CreatedAt.In(TimeLocationBerlin)
 		timeSincePreviousSet := addedExercise.CreatedAt.Sub(previousEx.CreatedAt)
-
-		// TODO: due to annoying timezone bug, need this patch until I have more time to investigate
-		// check if timeSincePreviousSet is negative, between -2 and -1 hours, then add 2 hours (summer time)
-		if timeSincePreviousSet.Hours() > -2 && timeSincePreviousSet.Hours() < -1 {
-			timeSincePreviousSet = timeSincePreviousSet + 2*time.Hour
-		}
-		// else, if winter time, check if between -1 and 0 hours, then add 1 hour
-		if timeSincePreviousSet.Hours() > -1 && timeSincePreviousSet.Hours() < 0 {
-			timeSincePreviousSet = timeSincePreviousSet + time.Hour
-		}
-
 		secondsSincePreviousSet = int(timeSincePreviousSet.Seconds())
+		if secondsSincePreviousSet < 0 {
+			secondsSincePreviousSet = -1
+		}
 		span.AddEvent(fmt.Sprintf("previous exercise found: %+v", previousEx))
 		span.AddEvent(fmt.Sprintf("duration since previous set: %s", timeSincePreviousSet))
 		span.SetAttributes(attribute.Int("secondsSincePreviousSet", secondsSincePreviousSet))
@@ -417,15 +420,20 @@ func (handler *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error, exercise id or muscle group empty", http.StatusBadRequest)
 		return
 	}
+	if exercise.Kilos < 0 || exercise.Reps < 0 {
+		http.Error(w, "kilos and reps must be zero or positive", http.StatusBadRequest)
+		return
+	}
 
 	currentExercise, err := handler.repo.Get(ctx, exercise.ID)
-	if err != nil && errors.Is(err, ErrExerciseNotFound) {
+	if err != nil {
+		if errors.Is(err, ErrExerciseNotFound) {
+			log.Debugf("exercise %d not found", exercise.ID)
+			http.Error(w, "exercise not found", http.StatusNotFound)
+			return
+		}
 		log.Errorf("failed to get exercise %d: %s", exercise.ID, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	} else if errors.Is(err, ErrExerciseNotFound) {
-		log.Debugf("exercise %d not found", exercise.ID)
-		http.Error(w, "exercise not found", http.StatusNotFound)
 		return
 	}
 	log.Debugf("update exercise %+v -> %+v", currentExercise, exercise)

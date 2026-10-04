@@ -3,13 +3,18 @@ package exercises
 import (
 	"context"
 	"fmt"
-	"sort"
+	"math"
+	"slices"
 	"time"
 
 	"github.com/2beens/serjtubincom/internal/telemetry/tracing"
 
 	"go.opentelemetry.io/otel/attribute"
 )
+
+// maxSetRest is the longest gap still counted as rest between sets.
+// Longer gaps are a break between sessions. ponytail: fixed 30m, make it a query param if that cutoff is wrong.
+const maxSetRest = 30 * time.Minute
 
 // ExerciseHistory represents the history of an exercise
 // so that, for each day, we get the average kilos and reps per set
@@ -20,9 +25,9 @@ type ExerciseHistory struct {
 }
 
 type ExerciseStats struct {
-	AvgKilos int `json:"avgKilos"`
-	AvgReps  int `json:"avgReps"`
-	Sets     int `json:"sets"`
+	AvgKilos float64 `json:"avgKilos"`
+	AvgReps  float64 `json:"avgReps"`
+	Sets     int     `json:"sets"`
 }
 
 type Analyzer struct {
@@ -62,51 +67,45 @@ func (a *Analyzer) AvgSetDuration(
 
 	day2exercises := make(map[time.Time][]Exercise)
 	for _, ex := range exercises {
-		day := ex.CreatedAt.Truncate(24 * time.Hour)
+		day := BerlinDayStart(ex.CreatedAt)
 		day2exercises[day] = append(day2exercises[day], ex)
 	}
 
 	avgDurationPerDay := make(map[time.Time]time.Duration)
+	var totalRest time.Duration
+	var gaps int
 	for day, dayExercises := range day2exercises {
-		if len(dayExercises) == 1 {
+		if len(dayExercises) < 2 {
 			continue
 		}
-		
-		// Sort exercises by created_at in ascending order (oldest first)
-		// This is necessary because the database query returns them in descending order
-		sort.Slice(dayExercises, func(i, j int) bool {
-			return dayExercises[i].CreatedAt.Before(dayExercises[j].CreatedAt)
+
+		slices.SortFunc(dayExercises, func(a, b Exercise) int {
+			return a.CreatedAt.Compare(b.CreatedAt)
 		})
-		
-		var avgDuration time.Duration
-		for i, ex := range dayExercises {
-			if i == 0 {
+
+		var dayRest time.Duration
+		var dayGaps int
+		for i := 1; i < len(dayExercises); i++ {
+			gap := dayExercises[i].CreatedAt.Sub(dayExercises[i-1].CreatedAt)
+			if gap <= 0 || gap > maxSetRest {
 				continue
 			}
-			avgDuration += ex.CreatedAt.Sub(dayExercises[i-1].CreatedAt)
+			dayRest += gap
+			dayGaps++
 		}
-		avgDuration /= time.Duration(len(dayExercises) - 1)
-
-		// get absolute value of avgDuration
-		if avgDuration < 0 {
-			avgDuration = -avgDuration
+		if dayGaps == 0 {
+			continue
 		}
 
-		avgDurationPerDay[day] = avgDuration
-	}
-
-	if len(avgDurationPerDay) == 0 {
-		return &AvgSetDurationResponse{
-			Duration:       0,
-			DurationPerDay: avgDurationPerDay,
-		}, nil
+		avgDurationPerDay[day] = dayRest / time.Duration(dayGaps)
+		totalRest += dayRest
+		gaps += dayGaps
 	}
 
 	var avgDuration time.Duration
-	for _, dayExercises := range avgDurationPerDay {
-		avgDuration += dayExercises
+	if gaps > 0 {
+		avgDuration = totalRest / time.Duration(gaps)
 	}
-	avgDuration /= time.Duration(len(avgDurationPerDay))
 
 	return &AvgSetDurationResponse{
 		Duration:       avgDuration,
@@ -136,21 +135,20 @@ func (a *Analyzer) ExerciseHistory(
 
 	day2exercises := make(map[time.Time][]Exercise)
 	for _, ex := range exercises {
-		day := ex.CreatedAt.Truncate(24 * time.Hour)
+		day := BerlinDayStart(ex.CreatedAt)
 		day2exercises[day] = append(day2exercises[day], ex)
 	}
 
 	for day, dayExercises := range day2exercises {
-		var avgKilos, avgReps int
+		var sumKilos, sumReps int
 		for _, ex := range dayExercises {
-			avgKilos += ex.Kilos
-			avgReps += ex.Reps
+			sumKilos += ex.Kilos
+			sumReps += ex.Reps
 		}
-		avgKilos /= len(dayExercises)
-		avgReps /= len(dayExercises)
+		n := float64(len(dayExercises))
 		history.Stats[day] = ExerciseStats{
-			AvgKilos: avgKilos,
-			AvgReps:  avgReps,
+			AvgKilos: math.Round(float64(sumKilos)/n*100) / 100,
+			AvgReps:  math.Round(float64(sumReps)/n*100) / 100,
 			Sets:     len(dayExercises),
 		}
 	}
