@@ -38,6 +38,12 @@ func BerlinDayStart(t time.Time) time.Time {
 	return time.Date(year, month, day, 0, 0, 0, 0, TimeLocationBerlin)
 }
 
+// BerlinDayEnd is the next Berlin midnight after t's calendar day.
+// Adding 24h is wrong on DST days: spring-forward days are 23h, fall-back days are 25h.
+func BerlinDayEnd(t time.Time) time.Time {
+	return BerlinDayStart(t).AddDate(0, 0, 1)
+}
+
 type exercisesRepo interface {
 	Add(ctx context.Context, exercise Exercise) (*Exercise, error)
 	Get(ctx context.Context, id int) (*Exercise, error)
@@ -119,7 +125,7 @@ func (handler *Handler) HandleAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dayStart := BerlinDayStart(addedExercise.CreatedAt)
-	dayEnd := dayStart.Add(24 * time.Hour)
+	dayEnd := BerlinDayEnd(addedExercise.CreatedAt)
 	exercisesToday, err := handler.repo.ListAll(ctx, ExerciseParams{
 		ExerciseID:         addedExercise.ExerciseID,
 		MuscleGroup:        addedExercise.MuscleGroup,

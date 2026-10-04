@@ -77,7 +77,7 @@ func TestHandler_HandleAdd(t *testing.T) {
 		}).Times(1)
 
 	dayStart := exercises.BerlinDayStart(testEx2.CreatedAt)
-	dayEnd := dayStart.Add(24 * time.Hour)
+	dayEnd := exercises.BerlinDayEnd(testEx2.CreatedAt)
 	repoMock.EXPECT().
 		ListAll(gomock.Any(), exercises.ExerciseParams{
 			ExerciseID:         testEx2.ExerciseID,
@@ -118,6 +118,22 @@ func TestHandler_HandleAdd(t *testing.T) {
 	assert.Equal(t, testEx2.Metadata, addExerciseResponse.Metadata)
 	assert.Equal(t, 2, addExerciseResponse.CountToday)
 	assert.Equal(t, int(now.Sub(tenMinutesAgo).Seconds()), addExerciseResponse.SecondsSincePreviousSet)
+}
+
+func TestBerlinDayEndOnDST(t *testing.T) {
+	loc := exercises.TimeLocationBerlin
+
+	// 2026-03-29 is the Europe/Berlin spring-forward day (23h).
+	spring := time.Date(2026, 3, 29, 15, 0, 0, 0, loc)
+	springEnd := exercises.BerlinDayEnd(spring)
+	require.True(t, springEnd.Equal(time.Date(2026, 3, 30, 0, 0, 0, 0, loc)))
+	assert.Equal(t, 23*time.Hour, springEnd.Sub(exercises.BerlinDayStart(spring)))
+
+	// 2026-10-25 is the Europe/Berlin fall-back day (25h).
+	fall := time.Date(2026, 10, 25, 15, 0, 0, 0, loc)
+	fallEnd := exercises.BerlinDayEnd(fall)
+	require.True(t, fallEnd.Equal(time.Date(2026, 10, 26, 0, 0, 0, 0, loc)))
+	assert.Equal(t, 25*time.Hour, fallEnd.Sub(exercises.BerlinDayStart(fall)))
 }
 
 func TestHandler_HandleAdd_NegativeKilos(t *testing.T) {
