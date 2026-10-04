@@ -193,9 +193,12 @@ func (r *Repo) ListAll(ctx context.Context, params ExerciseParams) (_ []Exercise
 				WHERE ($1::text = '' OR e.exercise_id = $1)
 				AND ($2::text = '' OR e.muscle_group = $2)
 				AND ($3::timestamp IS NULL OR e.created_at >= $3)
-				AND ($4::timestamp IS NULL OR e.created_at <= $4)
+				AND ($4::timestamp IS NULL OR e.created_at < $4)
 				AND ($5::boolean IS FALSE OR e.metadata->>'env' = 'prod' OR e.metadata->>'env' = 'production')
-				AND ($6::boolean IS FALSE OR e.metadata->>'testing' != 'true' OR e.metadata->>'test' != 'true')
+				AND ($6::boolean IS FALSE OR (
+					COALESCE(e.metadata->>'testing', '') <> 'true'
+					AND COALESCE(e.metadata->>'test', '') <> 'true'
+				))
 			ORDER BY e.created_at DESC;`,
 		params.ExerciseID, params.MuscleGroup,
 		params.From, params.To,
@@ -251,15 +254,6 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 		return nil, -1, err
 	}
 
-	if countAll <= limit {
-		limit = countAll
-		offset = 0
-	}
-
-	if countAll-offset < limit {
-		offset = countAll - limit
-	}
-
 	span.SetAttributes(attribute.Int("count_all", countAll))
 	span.SetAttributes(attribute.Int("limit", limit))
 	span.SetAttributes(attribute.Int("offset", offset))
@@ -273,14 +267,20 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []Exercise, total
 			LEFT JOIN exercise_type et ON e.exercise_id = et.exercise_id AND e.muscle_group = et.muscle_group
 				WHERE ($1::text = '' OR e.exercise_id = $1)
 				AND ($2::text = '' OR e.muscle_group = $2)
+				AND ($3::timestamp IS NULL OR e.created_at >= $3)
+				AND ($4::timestamp IS NULL OR e.created_at < $4)
 				AND ($5::boolean IS FALSE OR e.metadata->>'env' = 'prod' OR e.metadata->>'env' = 'production')
-				AND ($6::boolean IS FALSE OR e.metadata->>'testing' != 'true' OR e.metadata->>'test' != 'true')
+				AND ($6::boolean IS FALSE OR (
+					COALESCE(e.metadata->>'testing', '') <> 'true'
+					AND COALESCE(e.metadata->>'test', '') <> 'true'
+				))
 			ORDER BY e.created_at DESC
-			LIMIT $3
-			OFFSET $4;`,
+			LIMIT $7
+			OFFSET $8;`,
 		params.ExerciseID, params.MuscleGroup,
-		limit, offset,
+		params.From, params.To,
 		params.OnlyProd, params.ExcludeTestingData,
+		limit, offset,
 	)
 	if err != nil {
 		return nil, -1, err
@@ -309,9 +309,12 @@ func (r *Repo) ExercisesCount(ctx context.Context, params ListParams) (_ int, er
 			WHERE ($1::text = '' OR exercise_id = $1)
 			AND ($2::text = '' OR muscle_group = $2)
 		  	AND ($3::timestamp IS NULL OR created_at >= $3)
-			AND ($4::timestamp IS NULL OR created_at <= $4)
+			AND ($4::timestamp IS NULL OR created_at < $4)
 			AND ($5::boolean IS FALSE OR metadata->>'env' = 'prod' OR metadata->>'env' = 'production')
-			AND ($6::boolean IS FALSE OR metadata->>'testing' != 'true' OR metadata->>'test' != 'true');
+			AND ($6::boolean IS FALSE OR (
+				COALESCE(metadata->>'testing', '') <> 'true'
+				AND COALESCE(metadata->>'test', '') <> 'true'
+			));
 	`,
 		params.ExerciseID, params.MuscleGroup,
 		params.From, params.To,
@@ -361,20 +364,11 @@ func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
 			CreatedAt:    createdAt,
 		}
 
-		// parse metadata field from JSON to map[string]string
-		if len(metadataBytes) > 0 {
-			var metadataMap map[string]interface{}
-			if err := json.Unmarshal(metadataBytes, &metadataMap); err != nil {
-				return nil, fmt.Errorf("unmarshal metadata for exercise %d: %w", id, err)
-			}
-
-			e.Metadata = make(map[string]string)
-			for k, v := range metadataMap {
-				e.Metadata[k] = v.(string)
-			}
-		} else {
-			e.Metadata = make(map[string]string)
+		metadata, err := metadataToStrings(metadataBytes, id)
+		if err != nil {
+			return nil, err
 		}
+		e.Metadata = metadata
 
 		exercises = append(exercises, e)
 	}
@@ -382,6 +376,34 @@ func (r *Repo) rows2exercises(rows pgx.Rows) ([]Exercise, error) {
 	if exercises == nil {
 		exercises = make([]Exercise, 0)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return exercises, nil
+}
+
+func metadataToStrings(metadataBytes []byte, exerciseID int) (map[string]string, error) {
+	if len(metadataBytes) == 0 {
+		return map[string]string{}, nil
+	}
+
+	var metadataMap map[string]any
+	if err := json.Unmarshal(metadataBytes, &metadataMap); err != nil {
+		return nil, fmt.Errorf("unmarshal metadata for exercise %d: %w", exerciseID, err)
+	}
+
+	metadata := make(map[string]string, len(metadataMap))
+	for k, v := range metadataMap {
+		if v == nil {
+			continue
+		}
+		switch val := v.(type) {
+		case string:
+			metadata[k] = val
+		default:
+			metadata[k] = fmt.Sprint(val)
+		}
+	}
+	return metadata, nil
 }

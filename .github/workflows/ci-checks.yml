@@ -8,31 +8,21 @@ jobs:
     name: Linter Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: ./go.mod
-      - name: Cache Go Modules
-        uses: actions/cache@v4.2.3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Setup dependencies
         run: |
           go mod tidy
           go mod vendor
       - name: Run linter
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          args: --timeout 6m
-          install-mode: "goinstall"
-          version: latest
+          args: --timeout=6m
+          version: v2.13.2
 
   tests:
     name: Unit Tests

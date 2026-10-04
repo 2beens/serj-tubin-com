@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - -SA1019
+  exclusions:
+    rules:
+      - linters:
+          - errcheck
+        text: Close
+      - linters:
+          - staticcheck
+        text: "^ST"
+      - linters:
+          - staticcheck
+        text: "^QF"

@@ -236,11 +236,11 @@ func (r *Repo) UpdateExerciseType(ctx context.Context, exerciseType ExerciseType
 		tracing.EndSpanWithErrCheck(span, err)
 	}()
 
-	_, err = r.db.Exec(
+	tag, err := r.db.Exec(
 		ctx,
 		`
 			UPDATE exercise_type
-			SET exercise_id = $1, muscle_group = $2, name = $3, description = $4
+			SET name = $3, description = $4
 			WHERE exercise_id = $1 AND muscle_group = $2
 		`,
 		exerciseType.ExerciseID,
@@ -250,6 +250,9 @@ func (r *Repo) UpdateExerciseType(ctx context.Context, exerciseType ExerciseType
 	)
 	if err != nil {
 		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrExerciseTypeNotFound
 	}
 
 	return nil

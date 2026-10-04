@@ -51,12 +51,12 @@ func (r *Repo) Add(ctx context.Context, event Event) (_ *Event, err error) {
 	}
 	defer func() {
 		if err != nil {
-			if rollbackErr := tx.Rollback(ctx); err != nil {
-				err = fmt.Errorf("failed to rollback transaction: %w: %w", rollbackErr, err)
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				err = fmt.Errorf("rollback event insert: %w", errors.Join(rollbackErr, err))
 			}
-		} else {
-			err = tx.Commit(ctx)
+			return
 		}
+		err = tx.Commit(ctx)
 	}()
 
 	log.Debugf("adding event: %+v", event)
@@ -66,7 +66,7 @@ func (r *Repo) Add(ctx context.Context, event Event) (_ *Event, err error) {
 		return nil, fmt.Errorf("marshal data: %w", err)
 	}
 
-	rows, err := r.db.Query(
+	rows, err := tx.Query(
 		ctx, `
 			INSERT INTO gymstats_event (type, data, timestamp) 
 			VALUES ($1, $2, $3)
@@ -145,7 +145,10 @@ func (r *Repo) List(ctx context.Context, params ListParams) (_ []*Event, err err
 			AND ($2::timestamp IS NULL OR timestamp >= $2)
 			AND ($3::timestamp IS NULL OR timestamp <= $3)
 			AND ($4::boolean IS FALSE OR data->>'env' = 'prod' OR data->>'env' = 'production')
-			AND ($5::boolean IS FALSE OR data->>'testing' != 'true' OR data->>'test' != 'true')
+			AND ($5::boolean IS FALSE OR (
+				COALESCE(data->>'testing', '') <> 'true'
+				AND COALESCE(data->>'test', '') <> 'true'
+			))
 		ORDER BY timestamp DESC
 		LIMIT $6 OFFSET $7;
 	`,
@@ -186,7 +189,10 @@ func (r *Repo) Count(ctx context.Context, params EventParams) (_ int, err error)
 		  	AND ($2::timestamp IS NULL OR timestamp >= $2)
 			AND ($3::timestamp IS NULL OR timestamp <= $3)
 			AND ($4::boolean IS FALSE OR data->>'env' = 'prod' OR data->>'env' = 'production')
-			AND ($5::boolean IS FALSE OR data->>'testing' != 'true' OR data->>'test' != 'true');
+			AND ($5::boolean IS FALSE OR (
+				COALESCE(data->>'testing', '') <> 'true'
+				AND COALESCE(data->>'test', '') <> 'true'
+			));
 	`,
 		params.Type,
 		params.From, params.To,

@@ -238,7 +238,17 @@ func (handler *TypesHandler) HandleUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	exerciseType.MuscleGroup = strings.ToLower(exerciseType.MuscleGroup)
+	if !slices.Contains(MuscleGroups, exerciseType.MuscleGroup) {
+		http.Error(w, "error, invalid muscle group", http.StatusBadRequest)
+		return
+	}
+
 	if err := handler.repo.UpdateExerciseType(ctx, exerciseType); err != nil {
+		if errors.Is(err, ErrExerciseTypeNotFound) {
+			http.Error(w, "exercise type not found", http.StatusNotFound)
+			return
+		}
 		log.Errorf("update exercise type: %s", err)
 		http.Error(w, "update exercise type failed", http.StatusInternalServerError)
 		return
@@ -289,11 +299,11 @@ func (handler *TypesHandler) HandleDelete(w http.ResponseWriter, r *http.Request
 	for _, img := range exType.Images {
 		if err := handler.diskApi.Delete(ctx, img.ID); err != nil {
 			log.Errorf("delete exercise type images: %s", err)
-			delImagesErr = errors.Join(err)
+			delImagesErr = errors.Join(delImagesErr, err)
 		}
 		if err := handler.repo.DeleteExerciseTypeImage(ctx, img.ID); err != nil {
 			log.Errorf("delete exercise type images: %s", err)
-			delImagesErr = errors.Join(err)
+			delImagesErr = errors.Join(delImagesErr, err)
 		}
 	}
 
@@ -375,6 +385,11 @@ func (handler *TypesHandler) HandleUploadImage(w http.ResponseWriter, r *http.Re
 			break
 		}
 	}
+	if imagesFolder == nil {
+		log.Errorf("upload image, images folder missing")
+		http.Error(w, "upload image failed", http.StatusInternalServerError)
+		return
+	}
 
 	fileType := "unknown"
 	if t, ok := header.Header["Content-Type"]; ok {
@@ -408,6 +423,9 @@ func (handler *TypesHandler) HandleUploadImage(w http.ResponseWriter, r *http.Re
 	}
 	if err := handler.repo.AddExerciseTypeImage(ctx, exerciseImage); err != nil {
 		log.Errorf("upload image, save image metadata: %s", err)
+		if delErr := handler.diskApi.Delete(ctx, uploadedFileId); delErr != nil {
+			log.Errorf("upload image, delete orphan file %d: %s", uploadedFileId, delErr)
+		}
 		http.Error(w, "upload image failed", http.StatusInternalServerError)
 		return
 	}

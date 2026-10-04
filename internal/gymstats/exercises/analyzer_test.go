@@ -126,23 +126,23 @@ func TestAnalyzer_ExerciseHistory(t *testing.T) {
 	assert.Equal(t, "ex", hist.ExerciseID)
 	assert.Equal(t, "mg", hist.MuscleGroup)
 
-	dateNowStats, ok := hist.Stats[dateNow.Truncate(24*time.Hour)]
+	dateNowStats, ok := hist.Stats[exercises.BerlinDayStart(dateNow)]
 	require.True(t, ok)
-	dateYesterdayStats, ok := hist.Stats[dateYesterday.Truncate(24*time.Hour)]
+	dateYesterdayStats, ok := hist.Stats[exercises.BerlinDayStart(dateYesterday)]
 	require.True(t, ok)
-	dateTenDaysAgoStats, ok := hist.Stats[dateTenDaysAgo.Truncate(24*time.Hour)]
+	dateTenDaysAgoStats, ok := hist.Stats[exercises.BerlinDayStart(dateTenDaysAgo)]
 	require.True(t, ok)
 
-	assert.Equal(t, 20, dateNowStats.AvgKilos)
-	assert.Equal(t, 10, dateNowStats.AvgReps)
+	assert.InDelta(t, 20, dateNowStats.AvgKilos, 0.001)
+	assert.InDelta(t, 10, dateNowStats.AvgReps, 0.001)
 	assert.Equal(t, 1, dateNowStats.Sets)
 
-	assert.Equal(t, 68, dateYesterdayStats.AvgKilos)
-	assert.Equal(t, 11, dateYesterdayStats.AvgReps)
+	assert.InDelta(t, 68.33, dateYesterdayStats.AvgKilos, 0.001)
+	assert.InDelta(t, 11.67, dateYesterdayStats.AvgReps, 0.001)
 	assert.Equal(t, 3, dateYesterdayStats.Sets)
 
-	assert.Equal(t, 23, dateTenDaysAgoStats.AvgKilos)
-	assert.Equal(t, 10, dateTenDaysAgoStats.AvgReps)
+	assert.InDelta(t, 23.33, dateTenDaysAgoStats.AvgKilos, 0.001)
+	assert.InDelta(t, 10.67, dateTenDaysAgoStats.AvgReps, 0.001)
 	assert.Equal(t, 6, dateTenDaysAgoStats.Sets)
 }
 
@@ -206,6 +206,12 @@ func TestAnalyzer_AvgSetDuration(t *testing.T) {
 			Reps:      8,
 			CreatedAt: dateTenDaysAgo.Add(11 * time.Minute),
 		},
+		{
+			// Two hours later is a session break, not rest between sets.
+			Kilos:     35,
+			Reps:      8,
+			CreatedAt: dateTenDaysAgo.Add(11*time.Minute + 2*time.Hour),
+		},
 	}
 
 	for i := range testExercises {
@@ -220,13 +226,14 @@ func TestAnalyzer_AvgSetDuration(t *testing.T) {
 
 	res, err := analyzer.AvgSetDuration(context.Background(), exercises.ExerciseParams{})
 	require.NoError(t, err)
-	assert.Equal(t, int64(135000), res.Duration.Milliseconds())
+	// 15 minutes of rest across 7 gaps. The two-hour break is not one of them.
+	assert.Equal(t, (15 * time.Minute / 7).Milliseconds(), res.Duration.Milliseconds())
 	require.Equal(t, 2, len(res.DurationPerDay))
 
-	avgDurationForDateYesterday, ok := res.DurationPerDay[dateYesterday.Truncate(24*time.Hour)]
+	avgDurationForDateYesterday, ok := res.DurationPerDay[exercises.BerlinDayStart(dateYesterday)]
 	require.True(t, ok)
 	assert.Equal(t, int64(150000), avgDurationForDateYesterday.Milliseconds())
-	avgDurationForDateTenDaysAgo, ok := res.DurationPerDay[dateTenDaysAgo.Truncate(24*time.Hour)]
+	avgDurationForDateTenDaysAgo, ok := res.DurationPerDay[exercises.BerlinDayStart(dateTenDaysAgo)]
 	require.True(t, ok)
 	assert.Equal(t, int64(120000), avgDurationForDateTenDaysAgo.Milliseconds())
 }
